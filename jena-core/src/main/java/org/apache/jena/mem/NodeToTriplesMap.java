@@ -31,6 +31,7 @@ import org.apache.jena.util.iterator.* ;
 	NodeToTriplesMap: a map from nodes to sets of triples.
 	Subclasses must override at least one of useXXXInFilter methods.
 */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class NodeToTriplesMap extends NodeToTriplesMapBase 
     {    
     public NodeToTriplesMap( Field indexField, Field f2, Field f3 )

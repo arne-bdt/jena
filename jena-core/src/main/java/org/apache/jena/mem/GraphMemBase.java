@@ -32,63 +32,43 @@ import org.apache.jena.graph.impl.TripleStore ;
      graph.
     
 */
-public abstract class GraphMemBase extends GraphBase
-    {
+public abstract class GraphMemBase extends GraphBase {
     /**
-         The number-of-times-opened count.
-    */
+     * The number-of-times-opened count.
+     */
     protected int count;
-    
-    /**
-        This Graph's TripleStore. Visible for <i>read-only</i> purposes only.
-    */
-    public final TripleStore store;
-    
-    /**
-         initialise a GraphMemBase with its count set to 1.
-    */
-    public GraphMemBase( )
-    {
-        store = createTripleStore();
-        count = 1; 
-    }
-    
-    protected abstract TripleStore createTripleStore();
-    
-    /**
-         Note a re-opening of this graph by incrementing the count. Answer
-         this Graph.
-    */
-    public GraphMemBase openAgain()
-        { 
-        count += 1; 
-        return this;
-        }
 
     /**
-         Sub-classes over-ride this method to release any resources they no
-         longer need once fully closed.
-    */
+     * initialise a GraphMemBase with its count set to 1.
+     */
+    public GraphMemBase() {
+        count = 1;
+    }
+
+    /**
+     * Note a re-opening of this graph by incrementing the count. Answer
+     * this Graph.
+     */
+    public GraphMemBase openAgain() {
+        count += 1;
+        return this;
+    }
+
+    /**
+     * Sub-classes over-ride this method to release any resources they no
+     * longer need once fully closed.
+     */
     protected abstract void destroy();
 
     /**
-         Close this graph; if it is now fully closed, destroy its resources and run
-         the GraphBase close.
-    */
+     * Close this graph; if it is now fully closed, destroy its resources and run
+     * the GraphBase close.
+     */
     @Override
-    public void close()
-        {
-        if (--count == 0)
-            {
+    public void close() {
+        if (--count == 0) {
             destroy();
             super.close();
-            }
         }
-    
-    /**
-        Answer true iff this triple can be compared for sameValueAs by .equals(),
-        ie, it is a concrete triple with a non-literal object.
-    */
-    protected final boolean isSafeForEquality( Triple t )
-        { return t.isConcrete() && !t.getObject().isLiteral(); }
     }
+}

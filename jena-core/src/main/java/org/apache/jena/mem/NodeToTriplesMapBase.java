@@ -27,6 +27,7 @@ import org.apache.jena.util.iterator.* ;
 /**
     A base class for in-memory graphs
 */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public abstract class NodeToTriplesMapBase
     {
     /**

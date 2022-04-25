@@ -39,6 +39,7 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 /**
  * Test triple bunch implementations - NOT YET FINISHED
  */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 @Contract(TripleBunch.class)
 public class TripleBunchContractTest {
 	private IProducer<? extends TripleBunch> producer;

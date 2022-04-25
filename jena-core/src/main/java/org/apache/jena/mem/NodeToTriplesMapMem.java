@@ -30,6 +30,7 @@ import org.apache.jena.shared.JenaException ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 import org.apache.jena.util.iterator.NullIterator ;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     {    
     public NodeToTriplesMapMem( Field indexField, Field f2, Field f3 )

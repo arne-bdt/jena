@@ -26,6 +26,7 @@ import org.xenei.junit.contract.ContractSuite;
 import org.apache.jena.graph.Graph;
 import org.xenei.junit.contract.IProducer;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 @RunWith(ContractSuite.class)
 @ContractImpl(GraphTripleStore.class)
 public class GraphTripleStore_CS {

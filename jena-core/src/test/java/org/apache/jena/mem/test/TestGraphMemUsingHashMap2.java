@@ -18,25 +18,24 @@
 
 package org.apache.jena.mem.test;
 
-import java.util.Iterator ;
-
 import junit.framework.TestSuite ;
 import org.apache.jena.graph.* ;
 import org.apache.jena.graph.test.AbstractTestGraph ;
-import org.apache.jena.mem.GraphMem;
+import org.apache.jena.mem.GraphMemUsingHashMap;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
-public class TestGraphMem2 extends AbstractTestGraph
+import java.util.Iterator;
+
+public class TestGraphMemUsingHashMap2 extends AbstractTestGraph
     {
-    public TestGraphMem2(String name)
+    public TestGraphMemUsingHashMap2(String name)
         { super( name ); }
     
     public static TestSuite suite()
     { return new TestSuite( TestGraphMem2.class ); }
     
     @Override
-    public Graph getGraph() { return new GraphMem(); }
+    public Graph getGraph() { return new GraphMemUsingHashMap(); }
     
     public void testBrokenIndexes()
         {

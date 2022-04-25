@@ -27,6 +27,7 @@ import org.apache.jena.util.iterator.ExtendedIterator ;
     required by NodeToTriplesMaps. BunchMaps contain only TripleBunch's.
 
 */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public interface BunchMap
     {
     /**

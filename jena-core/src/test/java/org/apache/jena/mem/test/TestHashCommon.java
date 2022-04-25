@@ -23,6 +23,7 @@ import java.util.*;
 import org.apache.jena.mem.HashCommon ;
 import org.apache.jena.rdf.model.test.ModelTestBase ;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class TestHashCommon extends ModelTestBase
     {
     protected static final Item item2X = new Item( 2, "X" );

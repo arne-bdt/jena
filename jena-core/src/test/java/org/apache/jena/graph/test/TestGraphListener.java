@@ -25,7 +25,7 @@ import java.util.List ;
 
 import junit.framework.TestSuite ;
 import org.apache.jena.graph.* ;
-import org.apache.jena.mem.GraphMem ;
+import org.apache.jena.mem.GraphMemUsingHashMap;
 
 /**
  * Version of graph tests that set up a listener that copies all changes
@@ -40,7 +40,7 @@ public class TestGraphListener extends MetaTestGraph {
     { super( graphClass, name); }
     
     public static TestSuite suite()
-    { return MetaTestGraph.suite( TestGraphListener.class, GraphMem.class ); }
+    { return MetaTestGraph.suite( TestGraphListener.class, GraphMemUsingHashMap.class ); }
 	/**
 	 * A listener to check that a graph is being tracked
 	 * correctly by its events.

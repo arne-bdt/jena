@@ -22,12 +22,21 @@ import org.apache.jena.graph.* ;
 import org.apache.jena.graph.impl.TripleStore ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class GraphMem extends GraphMemBase
 {
-    public GraphMem()
-    { super(  ); }
+    /**
+     * This Graph's TripleStore. Visible for <i>read-only</i> purposes only.
+     */
+    public final TripleStore store;
 
-    @Override protected TripleStore createTripleStore()
+    public GraphMem()
+    {
+        super(  );
+        store = createTripleStore();
+    }
+
+    protected TripleStore createTripleStore()
     { return new GraphTripleStoreMem( this ); }
 
     @Override protected void destroy()
@@ -74,4 +83,10 @@ public class GraphMem extends GraphMemBase
         store.clear();
     }
 
+    /**
+     Answer true iff this triple can be compared for sameValueAs by .equals(),
+     ie, it is a concrete triple with a non-literal object.
+     */
+    protected final boolean isSafeForEquality( Triple t )
+    { return t.isConcrete() && !t.getObject().isLiteral(); }
 }

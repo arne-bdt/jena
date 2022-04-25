@@ -18,24 +18,24 @@
 
 package org.apache.jena.mem.test;
 
+
 import junit.framework.TestSuite;
 import org.apache.jena.graph.* ;
 import org.apache.jena.graph.test.* ;
-import org.apache.jena.mem.GraphMem ;
+import org.apache.jena.mem.GraphMemUsingHashMap;
 import org.apache.jena.shared.* ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
-public class TestGraphMem extends AbstractTestGraph
+public class TestGraphMemUsingHashMap extends AbstractTestGraph
     {
-    public TestGraphMem( String name )
+    public TestGraphMemUsingHashMap(String name )
         { super( name ); }
     
     public static TestSuite suite()
-        { return new TestSuite( TestGraphMem.class ); }
+        { return new TestSuite( TestGraphMemUsingHashMap.class ); }
     
     @Override public Graph getGraph()
-        { return new GraphMem(); }
+        { return new GraphMemUsingHashMap(); }
 
     public void testSizeAfterRemove() 
         {
@@ -55,7 +55,7 @@ public class TestGraphMem extends AbstractTestGraph
         assertFalse( g.contains( triple( "y R b" ) ) );
         }    
     
-    protected final class GraphMemWithoutFind extends GraphMem
+    protected final class GraphMemWithoutFind extends GraphMemUsingHashMap
         {
         @Override public ExtendedIterator<Triple> graphBaseFind( Triple t )
             { throw new JenaException( "find is Not Allowed" ); }

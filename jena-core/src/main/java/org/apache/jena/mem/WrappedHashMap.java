@@ -27,6 +27,7 @@ import org.apache.jena.util.iterator.* ;
 /**
     An implementation of BunchMap that delegates to a [Hashed]Map.
 */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class WrappedHashMap implements BunchMap
     {
     protected final Map<Object, TripleBunch> map = CollectionFactory.createHashedMap();

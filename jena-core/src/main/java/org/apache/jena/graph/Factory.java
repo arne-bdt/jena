@@ -19,7 +19,7 @@
 package org.apache.jena.graph;
 
 import org.apache.jena.graph.impl.GraphBase ;
-import org.apache.jena.mem.GraphMem ;
+import org.apache.jena.mem.GraphMemUsingHashMap;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 import org.apache.jena.util.iterator.NullIterator ;
 
@@ -40,11 +40,11 @@ public class Factory
         { return Factory.createGraphMem( ); }
 
     public static Graph createGraphMem()
-        { return new GraphMem(); }
+        { return new GraphMemUsingHashMap(); }
 
     public static Graph createGraphMemWithTransactionHandler( final TransactionHandler th )
         {
-        Graph g = new GraphMem()
+        Graph g = new GraphMemUsingHashMap()
             {
             @Override
             public TransactionHandler getTransactionHandler()

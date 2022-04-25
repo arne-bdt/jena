@@ -1228,10 +1228,26 @@ implements Model, PrefixMapping, Lock
         return st;
     }
 
+    /**
+     Answer a statement (s, p, ?O) from this model. If none exist, return null;
+     if several exist, pick one arbitrarily.
+     --> Arbitrarily is not true here:
+         A lot of tests in {@link org.apache.jena.rdf.model.test.TestList} show that at least RDFList highly depend on
+         the order in which Graph#find returns the triples.
+         {@link GraphMem} returns the triples in the reverse order in which they were inserted. The whole RDFList
+         implementation seems to be based on this premise.
+     @param s the subject of the statement to return
+     @param p the predicate of the statement to return
+     @return some statement (s, p, ?O) or null if none can be found
+     */
+    @SuppressWarnings("JavadocReference")
     @Override
     public Statement getProperty( Resource s, Property p ) {
         StmtIterator iter = listStatements( s, p, (RDFNode) null );
-        try { return iter.hasNext() ? iter.nextStatement() : null; }
+        try {
+            var list = iter.toList();
+            return list.isEmpty() ? null : list.get(list.size()-1);
+        }
         finally { iter.close(); }
     }
 

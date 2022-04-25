@@ -21,6 +21,7 @@ package org.apache.jena.mem.test;
 import org.apache.jena.graph.* ;
 import org.apache.jena.mem.* ;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class TestHashedTripleBunch extends TestTripleBunch
     {
     public TestHashedTripleBunch( String name )

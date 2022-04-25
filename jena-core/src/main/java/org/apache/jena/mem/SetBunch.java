@@ -27,6 +27,7 @@ import org.apache.jena.graph.Triple ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 import org.apache.jena.util.iterator.WrappedIterator ;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class SetBunch implements TripleBunch
     {
     protected Set<Triple> elements = new HashSet<>(20);

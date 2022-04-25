@@ -21,6 +21,7 @@ package org.apache.jena.mem.test;
 import org.apache.jena.mem.* ;
 import org.apache.jena.rdf.model.test.ModelTestBase ;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class TestHashedBunchMap extends ModelTestBase
     { // TODO should extend this a lot
     public TestHashedBunchMap( String name )

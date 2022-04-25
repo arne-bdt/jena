@@ -30,6 +30,7 @@ import org.apache.jena.util.iterator.NiceIterator ;
     (because, if it gets big enough for this linear growth to be bad, it should anyways
     have been replaced by a more efficient set-of-triples implementation).
 */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class ArrayBunch implements TripleBunch
     {
     

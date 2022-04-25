@@ -31,6 +31,7 @@ import org.apache.jena.util.iterator.ExtendedIterator ;
 /**
     Test triple bunch implementations - NOT YET FINISHED
 */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public abstract class TestTripleBunch extends GraphTestBase
     {
     protected static final Triple tripleSPO = triple( "s P o" );

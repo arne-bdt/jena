@@ -36,6 +36,7 @@ import org.apache.jena.util.iterator.ExtendedIterator;
  * Test triple bunch implementations - NOT YET FINISHED
  */
 @Contract(BunchMap.class)
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class BunchMapContractTest {
 	private BunchMap map;
 

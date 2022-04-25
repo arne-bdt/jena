@@ -24,6 +24,7 @@ import junit.framework.TestSuite;
 /**
      TestMemPackage
  */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class TestMemPackage extends TestCase
     {
     public TestMemPackage( String name )

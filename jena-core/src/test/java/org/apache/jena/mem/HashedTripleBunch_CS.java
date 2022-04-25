@@ -23,6 +23,7 @@ import org.xenei.junit.contract.ContractImpl;
 import org.xenei.junit.contract.ContractSuite;
 import org.xenei.junit.contract.IProducer;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 @RunWith(ContractSuite.class)
 @ContractImpl(HashedTripleBunch.class)
 public class HashedTripleBunch_CS {

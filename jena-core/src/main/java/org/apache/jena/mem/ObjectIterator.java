@@ -32,6 +32,7 @@ import org.apache.jena.util.iterator.NiceIterator ;
     filtering those triples for their objects, removing duplicates.
 
 */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public abstract class ObjectIterator extends NiceIterator<Node>
     {
     public ObjectIterator( Iterator<?> domain )

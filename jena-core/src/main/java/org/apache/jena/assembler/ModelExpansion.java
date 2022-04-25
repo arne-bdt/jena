@@ -179,9 +179,8 @@ public class ModelExpansion
             Statement s = it.nextStatement();
             Property property = s.getSubject().as( Property.class );
             RDFNode type = s.getObject();
-            for (StmtIterator x = result.listStatements( ANY, property, ANY ); x.hasNext();)
+                for (Statement t : result.listStatements( ANY, property, ANY ).toList())
                 {
-                Statement t = x.nextStatement();
                 result.add( t.getSubject(), RDF.type, type );
                 }
             }

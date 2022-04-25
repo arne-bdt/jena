@@ -27,6 +27,7 @@ import org.apache.jena.util.iterator.ExtendedIterator ;
     (such as having the same subject or predicate).
 
 */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public interface TripleBunch 
     {
     /**

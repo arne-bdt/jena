@@ -31,6 +31,7 @@ import org.apache.jena.graph.* ;
      StoreTripleIterator is created.
  
 */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class StoreTripleIterator extends TrackingTripleIterator
 	{
     protected NodeToTriplesMapBase X;

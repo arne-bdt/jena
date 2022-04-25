@@ -18,22 +18,18 @@
 
 package org.apache.jena.mem.test;
 
-import junit.framework.TestSuite;
-import org.apache.jena.graph.Graph ;
-import org.apache.jena.graph.impl.TripleStore ;
-import org.apache.jena.graph.test.AbstractTestTripleStore ;
-import org.apache.jena.mem.GraphTripleStore ;
 
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
-public class TestGraphTripleStore extends AbstractTestTripleStore
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
+
+public class TestGraphMemUsingHashMapPackage extends TestCase
     {
-    public TestGraphTripleStore( String name )
-        { super( name ); }
-    
     public static TestSuite suite()
-        { return new TestSuite( TestGraphTripleStore.class ); }
-    
-    @Override
-    public TripleStore getTripleStore()
-        { return new GraphTripleStore( Graph.emptyGraph ); }
+        { 
+        TestSuite result = new TestSuite();
+        result.addTest( TestGraphMemUsingHashMap.suite() );
+        result.addTest( TestGraphMemUsingHashMap2.suite() );
+        result.addTest( TestConcurrentModificationException.suite() );
+        return result;
+        }
     }

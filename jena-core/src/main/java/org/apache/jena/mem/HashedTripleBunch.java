@@ -23,6 +23,7 @@ import java.util.Iterator ;
 import org.apache.jena.graph.Triple ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     {
     public HashedTripleBunch( TripleBunch b )

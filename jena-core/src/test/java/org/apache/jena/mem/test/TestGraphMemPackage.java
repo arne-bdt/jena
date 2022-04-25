@@ -21,6 +21,7 @@ package org.apache.jena.mem.test;
 
 import junit.framework.*;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class TestGraphMemPackage extends TestCase
     {
     public static TestSuite suite()
@@ -28,7 +29,6 @@ public class TestGraphMemPackage extends TestCase
         TestSuite result = new TestSuite();
         result.addTest( TestGraphMem.suite() );
         result.addTest( TestGraphMem2.suite() );
-        result.addTest( TestConcurrentModificationException.suite() );
         return result;
         }
     }

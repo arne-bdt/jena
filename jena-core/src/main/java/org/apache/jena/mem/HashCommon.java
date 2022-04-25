@@ -28,6 +28,7 @@ import org.apache.jena.util.iterator.* ;
     Shared stuff for our hashing implementations: does the base work for
     hashing and growth sizes.
 */
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public abstract class HashCommon<Key>
     {
     /**

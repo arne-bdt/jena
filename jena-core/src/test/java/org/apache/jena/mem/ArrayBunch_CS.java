@@ -25,6 +25,7 @@ import org.xenei.junit.contract.IProducer;
 
 @RunWith(ContractSuite.class)
 @ContractImpl(ArrayBunch.class)
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class ArrayBunch_CS {
 
 	protected IProducer<ArrayBunch> mapProducer = new IProducer<ArrayBunch>() {

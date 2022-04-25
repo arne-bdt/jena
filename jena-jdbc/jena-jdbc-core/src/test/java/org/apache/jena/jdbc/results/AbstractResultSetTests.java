@@ -86,7 +86,8 @@ public abstract class AbstractResultSetTests {
             Literal objTime = m.createTypedLiteral(NodeFactoryExtra.timeToNode(Calendar.getInstance()).getLiteralLexicalForm(),
                     XSDDatatype.XSDtime);
             Literal objChar = m.createTypedLiteral('a');
-            Literal objDecimal = m.createTypedLiteral(new BigDecimal(123.4));
+            Literal objDecimal1 = m.createTypedLiteral(new BigDecimal(123.4));
+            Literal objDecimal2 = m.createTypedLiteral(new BigDecimal(567.8));
             Literal objDouble = m.createTypedLiteral(123.4d);
             Literal objFloat = m.createTypedLiteral(123.4f);
             Literal objInteger = m.createTypedLiteral(1234);
@@ -106,10 +107,18 @@ public abstract class AbstractResultSetTests {
                     m.createStatement(subjUri, predUri, objSimpleLiteral),
                     m.createStatement(subjUri, predUri, objLangLiteral),
                     // Triples with typed literals as objects
+                    /**
+                     * Dirty fix for {@link AbstractResultSetTests#results_select_objects_02()}
+                     * We need a decimal as first and as last numeric triple, because in {@link org.apache.jena.jdbc.results.metadata.SelectResultsMetadata#makeColumns(org.apache.jena.jdbc.results.JenaResultSet, org.apache.jena.sparql.resultset.ResultSetPeekable)}
+                     * to determine the datatype of a column, the implementation peeks into the first row of the JenaResultSet.
+                     * Due to mixed datatypes for the same column/property in this test, Graph#find must return the values in a determinable order. The changes here are made to support forward and reverse order.
+                     * {@link GraphMem} returns the triples in the reverse order in which they were inserted. The mentioned test was built on that premise.
+                     * */
+                    m.createStatement(subjUri, predUri, objDecimal1), m.createStatement(subjUri, predUri, objDouble),
                     m.createStatement(subjUri, predUri, objBoolean), m.createStatement(subjUri, predUri, objByte),
                     m.createStatement(subjUri, predUri, objDateTime), m.createStatement(subjUri, predUri, objDate),
                     m.createStatement(subjUri, predUri, objTime), m.createStatement(subjUri, predUri, objChar),
-                    m.createStatement(subjUri, predUri, objDecimal), m.createStatement(subjUri, predUri, objDouble),
+                    m.createStatement(subjUri, predUri, objDecimal2), m.createStatement(subjUri, predUri, objDouble),
                     m.createStatement(subjUri, predUri, objFloat), m.createStatement(subjUri, predUri, objInteger),
                     m.createStatement(subjUri, predUri, objLong), m.createStatement(subjUri, predUri, objShort),
                     m.createStatement(subjUri, predUri, objString), m.createStatement(subjUri, predUri, objCustom) });

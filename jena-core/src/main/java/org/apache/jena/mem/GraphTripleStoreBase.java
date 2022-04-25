@@ -26,6 +26,7 @@ import org.apache.jena.graph.Triple ;
 import org.apache.jena.graph.impl.TripleStore ;
 import org.apache.jena.util.iterator.* ;
 
+@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public abstract class GraphTripleStoreBase implements TripleStore
     {
     protected final Graph parent;

@@ -17,18 +17,8 @@
  */
 package org.apache.jena.mem;
 
-import static org.apache.jena.testing_framework.GraphHelper.graphAdd;
-import static org.apache.jena.testing_framework.GraphHelper.graphWith;
-import static org.apache.jena.testing_framework.GraphHelper.triple;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.util.Iterator;
-
 import org.apache.jena.graph.*;
 import org.apache.jena.shared.JenaException;
-import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.testing_framework.AbstractGraphProducer;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.junit.runner.RunWith;
@@ -38,16 +28,20 @@ import org.xenei.junit.contract.ContractSuite;
 import org.xenei.junit.contract.ContractTest;
 import org.xenei.junit.contract.IProducer;
 
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
+import java.util.Iterator;
+
+import static org.apache.jena.testing_framework.GraphHelper.*;
+import static org.junit.Assert.*;
+
 @RunWith(ContractSuite.class)
-@ContractImpl(GraphMem.class)
-public class GraphMem_CS {
+@ContractImpl(GraphMemUsingHashMap.class)
+public class GraphMemUsingHashMap_CS {
 
 	protected IProducer<Graph> graphProducer = new AbstractGraphProducer<Graph>() {
 
 		@Override
 		protected Graph createNewGraph() {
-			return new GraphMem();
+			return Factory.createGraphMem();
 		}
 
 		@Override
@@ -61,15 +55,6 @@ public class GraphMem_CS {
 		}
 
 	};
-
-	/**
-	 * Answer a new memory-based graph with Extended prefixes.
-	 */
-	public static Graph memGraph() {
-		Graph result = new GraphMem();
-		result.getPrefixMapping().setNsPrefixes(PrefixMapping.Extended);
-		return result;
-	}
 
 	@Inject
 	public IProducer<Graph> getGraphProducer() {
@@ -86,7 +71,7 @@ public class GraphMem_CS {
 		assertFalse(g.contains(triple("y R b")));
 	}
 
-	protected final class GraphMemWithoutFind extends GraphMem {
+	protected final class GraphMemWithoutFind extends GraphMemUsingHashMap {
 		@Override
 		public ExtendedIterator<Triple> graphBaseFind(Triple t) {
 			throw new JenaException("find is Not Allowed");

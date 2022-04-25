@@ -27,11 +27,11 @@ import static org.junit.Assert.assertTrue ;
 
 import java.util.List ;
 
+import org.apache.jena.graph.Factory;
 import org.apache.jena.graph.Graph ;
 import org.apache.jena.graph.Node ;
 import org.apache.jena.graph.Triple ;
 import org.apache.jena.graph.impl.GraphPlain ;
-import org.apache.jena.mem.GraphMem ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 import org.junit.BeforeClass ;
 import org.junit.Test ;
@@ -41,7 +41,7 @@ public class TestGraphPlain {
     private static Graph graph;
     
     @BeforeClass public static void setUp() {
-        graph = new GraphMem();
+        graph = Factory.createGraphMem();
 
         if ( ! graph.getCapabilities().handlesLiteralTyping() )
             throw new IllegalArgumentException("Test graph does not do the value thing");  
