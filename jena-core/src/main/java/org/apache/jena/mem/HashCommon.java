@@ -27,7 +27,7 @@ import org.apache.jena.util.iterator.* ;
 /**
     Shared stuff for our hashing implementations: does the base work for
     hashing and growth sizes.
-    @deperecated
+    @deprecated
     This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
 */
 @Deprecated(since = "4.5.0")

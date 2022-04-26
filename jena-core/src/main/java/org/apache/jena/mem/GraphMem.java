@@ -24,7 +24,7 @@ import org.apache.jena.util.iterator.ExtendedIterator ;
 
 /**
     This class has been the default in-memory graph from 2012 to 2022.
-    @deperecated
+    @deprecated
     GraphMem is replaced by {@link GraphMemUsingHashMap}
 */
 @Deprecated(since = "4.5.0")

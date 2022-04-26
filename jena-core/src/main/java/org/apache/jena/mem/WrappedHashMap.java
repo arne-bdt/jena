@@ -26,7 +26,7 @@ import org.apache.jena.util.iterator.* ;
 
 /**
     An implementation of BunchMap that delegates to a [Hashed]Map.
-    @deperecated
+    @deprecated
     This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
 */
 @Deprecated(since = "4.5.0")

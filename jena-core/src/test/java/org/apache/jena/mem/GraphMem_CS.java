@@ -39,7 +39,7 @@ import org.xenei.junit.contract.ContractTest;
 import org.xenei.junit.contract.IProducer;
 
 /**
- * @deperecated
+ * @deprecated
  * {@link GraphMem} is replaced by {@link GraphMemUsingHashMap}
  */
 @Deprecated(since = "4.5.0")

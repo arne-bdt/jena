@@ -24,7 +24,7 @@ import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemUsingHashMap;
 
 /**
- * @deperecated
+ * @deprecated
  * This test is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
  * {@link TestGraphMemUsingHashMapPackage} is the replacement for this test.
  */
