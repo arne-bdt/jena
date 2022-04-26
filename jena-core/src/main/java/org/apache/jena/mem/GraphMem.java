@@ -22,7 +22,12 @@ import org.apache.jena.graph.* ;
 import org.apache.jena.graph.impl.TripleStore ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
+/**
+    This class has been the default in-memory graph from 2012 to 2022.
+    @deperecated
+    GraphMem is replaced by {@link GraphMemUsingHashMap}
+*/
+@Deprecated(since = "4.5.0")
 public class GraphMem extends GraphMemBase
 {
     /**

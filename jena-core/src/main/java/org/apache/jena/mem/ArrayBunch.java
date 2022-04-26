@@ -29,8 +29,10 @@ import org.apache.jena.util.iterator.NiceIterator ;
     array of Triples. The array can grow, but it only grows by 4 elements each time
     (because, if it gets big enough for this linear growth to be bad, it should anyways
     have been replaced by a more efficient set-of-triples implementation).
-*/
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
+    @deperecated
+    This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+ */
+@Deprecated(since = "4.5.0")
 public class ArrayBunch implements TripleBunch
     {
     

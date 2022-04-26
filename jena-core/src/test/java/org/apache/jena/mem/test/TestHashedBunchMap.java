@@ -21,7 +21,11 @@ package org.apache.jena.mem.test;
 import org.apache.jena.mem.* ;
 import org.apache.jena.rdf.model.test.ModelTestBase ;
 
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
+/**
+ * @deperecated
+ * This test is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+ */
+@Deprecated(since = "4.5.0")
 public class TestHashedBunchMap extends ModelTestBase
     { // TODO should extend this a lot
     public TestHashedBunchMap( String name )

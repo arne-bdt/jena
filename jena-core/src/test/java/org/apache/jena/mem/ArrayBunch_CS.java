@@ -23,9 +23,13 @@ import org.xenei.junit.contract.ContractImpl;
 import org.xenei.junit.contract.ContractSuite;
 import org.xenei.junit.contract.IProducer;
 
+/**
+ * @deperecated
+ * This test is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+ */
+@Deprecated(since = "4.5.0")
 @RunWith(ContractSuite.class)
 @ContractImpl(ArrayBunch.class)
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
 public class ArrayBunch_CS {
 
 	protected IProducer<ArrayBunch> mapProducer = new IProducer<ArrayBunch>() {

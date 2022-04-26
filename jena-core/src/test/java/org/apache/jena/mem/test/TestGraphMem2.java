@@ -24,9 +24,15 @@ import junit.framework.TestSuite ;
 import org.apache.jena.graph.* ;
 import org.apache.jena.graph.test.AbstractTestGraph ;
 import org.apache.jena.mem.GraphMem;
+import org.apache.jena.mem.GraphMemUsingHashMap;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
+/**
+ * @deperecated
+ * This test is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+ * {@link TestGraphMemUsingHashMap2} is the replacement for this test.
+ */
+@Deprecated(since = "4.5.0")
 public class TestGraphMem2 extends AbstractTestGraph
     {
     public TestGraphMem2(String name)

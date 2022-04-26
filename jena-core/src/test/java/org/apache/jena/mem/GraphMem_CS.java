@@ -38,7 +38,11 @@ import org.xenei.junit.contract.ContractSuite;
 import org.xenei.junit.contract.ContractTest;
 import org.xenei.junit.contract.IProducer;
 
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
+/**
+ * @deperecated
+ * {@link GraphMem} is replaced by {@link GraphMemUsingHashMap}
+ */
+@Deprecated(since = "4.5.0")
 @RunWith(ContractSuite.class)
 @ContractImpl(GraphMem.class)
 public class GraphMem_CS {

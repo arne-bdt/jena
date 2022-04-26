@@ -30,7 +30,11 @@ import org.apache.jena.shared.JenaException ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 import org.apache.jena.util.iterator.NullIterator ;
 
-@Deprecated(since = "GraphMem is replaced by GraphMemUsingHashMap")
+/**
+    @deperecated
+    This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+ */
+@Deprecated(since = "4.5.0")
 public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     {    
     public NodeToTriplesMapMem( Field indexField, Field f2, Field f3 )
