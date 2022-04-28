@@ -186,7 +186,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
 
         if (sm.isConcrete()) { // SPO:S??
             final var triples = this.triplesBySubject.get(sm.getIndexingValue().hashCode());
-            if(triples == null || triples.isEmpty()) {
+            if(triples == null) {
                 return false;
             }
             if(pm.isConcrete()) { // SPO:SP?
@@ -225,7 +225,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
         }
         else if (om.isConcrete()) {
             final var triples = this.triplesByObject.get(om.getIndexingValue().hashCode());
-            if(triples == null || triples.isEmpty()) {
+            if(triples == null) {
                 return false;
             }
             if(pm.isConcrete()) { // SPO:*PO
@@ -245,7 +245,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
         }
         else if (pm.isConcrete()) { // SPO:*P*
             final var triples = this.triplesByPredicate.get(pm.getIndexingValue().hashCode());
-            if(triples == null || triples.isEmpty()) {
+            if(triples == null) {
                 return false;
             }
             for (Triple t : triples) {
@@ -298,7 +298,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
 
         if (s != null && s.isConcrete()) {
             final var triples = this.triplesBySubject.get(s.getIndexingValue().hashCode());
-            if(triples == null || triples.isEmpty()) {
+            if(triples == null) {
                 return Stream.empty();
             }
             if(p != null && p.isConcrete()) { // SPO:SP?
@@ -329,7 +329,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
         }
         else if (o != null && o.isConcrete()) { // SPO:*?O
             var triples = this.triplesByObject.get(o.getIndexingValue().hashCode());
-            if(triples == null || triples.isEmpty()) {
+            if(triples == null) {
                 return Stream.empty();
             }
             if(p != null && p.isConcrete()) { // SPO:*PO
@@ -345,7 +345,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
         }
         else if (p != null && p.isConcrete()) { // SPO:*P*
             var triples = this.triplesByPredicate.get(p.getIndexingValue().hashCode());
-            if(triples == null || triples.isEmpty()) {
+            if(triples == null) {
                 return Stream.empty();
             }
             result = triples
@@ -366,63 +366,62 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
         final Node sm = triplePattern.getSubject();
         final Node pm = triplePattern.getPredicate();
         final Node om = triplePattern.getObject();
-        final IteratorFiltering filterIterator;
+        final Iterator<Triple> iterator;
 
         if (sm.isConcrete()) { // SPO:S??
             final var triples = this.triplesBySubject.get(sm.getIndexingValue().hashCode());
-            if(triples == null || triples.isEmpty()) {
+            if(triples == null) {
                 return NiceIterator.emptyIterator();
             }
             if(pm.isConcrete()) { // SPO:SP?
                 if(om.isConcrete()) { // SPO:SPO
-                    filterIterator = new IteratorFiltering(triples.iterator(),
+                    iterator = new IteratorFiltering(triples.iterator(),
                             t -> om.sameValueAs(t.getObject())
                                     && pm.equals(t.getPredicate())
                                     && sm.equals(t.getSubject()));
                 } else { // SPO:SP*
-                    filterIterator = new IteratorFiltering(triples.iterator(),
+                    iterator = new IteratorFiltering(triples.iterator(),
                             t -> pm.equals(t.getPredicate())
                                     && sm.equals(t.getSubject()));
                 }
             } else { // SPO:S*?
                 if(om.isConcrete()) { // SPO:S*O
-                    filterIterator = new IteratorFiltering(triples.iterator(),
+                    iterator = new IteratorFiltering(triples.iterator(),
                             t -> om.sameValueAs(t.getObject())
                                     && sm.equals(t.getSubject()));
                 } else { // SPO:S**
-                    filterIterator = new IteratorFiltering(triples.iterator(),
+                    iterator = new IteratorFiltering(triples.iterator(),
                             t -> sm.equals(t.getSubject()));
                 }
             }
         }
         else if (om.isConcrete()) { // SPO:*?O
             var triples = this.triplesByObject.get(om.getIndexingValue().hashCode());
-            if(triples == null || triples.isEmpty()) {
+            if(triples == null) {
                 return NiceIterator.emptyIterator();
             }
             if(pm.isConcrete()) { // SPO:*PO
-                filterIterator = new IteratorFiltering(triples.iterator(),
+                iterator = new IteratorFiltering(triples.iterator(),
                         t -> pm.equals(t.getPredicate())
                                 && om.sameValueAs(t.getObject()));
             } else { // SPO:**O
-                filterIterator = new IteratorFiltering(triples.iterator(),
+                iterator = new IteratorFiltering(triples.iterator(),
                         t -> om.sameValueAs(t.getObject()));
             }
         }
         else if (pm.isConcrete()) { // SPO:*P*
             var triples = this.triplesByPredicate.get(pm.getIndexingValue().hashCode());
-            if(triples == null || triples.isEmpty()) {
+            if(triples == null) {
                 return NiceIterator.emptyIterator();
             }
-            filterIterator = new IteratorFiltering(triples.iterator(),
+            iterator = new IteratorFiltering(triples.iterator(),
                     t -> pm.equals(t.getPredicate()));
         }
         else { // SPO:***
             /*use predicates because they are rare compared to subjects and objects*/
-            return new IteratorWrapperWithRemove(
-                    new ListsOfTriplesIterator(this.triplesByPredicate.values().iterator()), this);
+            iterator = new ListsOfTriplesIterator(this.triplesByPredicate.values().iterator());
         }
-        return filterIterator.wrapWithRemoveSupport(this);
+        return new IteratorWrapperWithRemove(iterator, this);
     }
 
     private static class ListsOfTriplesIterator implements Iterator<Triple> {
@@ -648,7 +647,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
      * strange behaviour from any of the base classes.
      * This Iterator also directly supports wrapWithRemoveSupport
      */
-    private static class IteratorFiltering implements ExtendedIterator<Triple> {
+    private static class IteratorFiltering implements Iterator<Triple> {
 
         private final Predicate<Triple> filter;
         private final Iterator<Triple> iterator;
@@ -701,74 +700,6 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
                 return current;
             }
             throw new NoSuchElementException();
-        }
-
-        /**
-         * Answer the next object, and remove it. Equivalent to next(); remove().
-         */
-        @Override
-        public Triple removeNext() {
-            throw new UnsupportedOperationException("removeNext");
-        }
-
-        /**
-         make a new iterator, which is us then the other chap.
-         */
-        @Override
-        public <X extends Triple> ExtendedIterator<Triple> andThen( Iterator<X> other )
-        { return NiceIterator.andThen( this, other ); }
-
-        /**
-         make a new iterator, which is our elements that pass the filter
-         */
-        @Override
-        public FilterIterator<Triple> filterKeep(Predicate<Triple> f )
-        { return new FilterIterator<>( f, this ); }
-
-        /**
-         make a new iterator, which is our elements that do not pass the filter
-         */
-        @Override
-        public FilterIterator<Triple> filterDrop(final Predicate<Triple> f )
-        { return new FilterIterator<>( f.negate(), this ); }
-
-        /**
-         make a new iterator which is the elementwise _map1_ of the base iterator.
-         */
-        @Override
-        public <U> ExtendedIterator<U> mapWith( Function<Triple, U> map1 )
-        { return new Map1Iterator<>( map1, this ); }
-
-        /**
-         * Answer a list of the [remaining] elements of this iterator, in order,
-         * consuming this iterator.
-         */
-        @Override
-        public List<Triple> toList() {
-            return NiceIterator.asList(this);
-        }
-
-        /**
-         * Answer a set of the [remaining] elements of this iterator,
-         * consuming this iterator.
-         */
-        @Override
-        public Set<Triple> toSet() {
-            return NiceIterator.asSet(this);
-        }
-
-        /**
-         * Close the iterator. Other operations on this iterator may now throw an exception.
-         * A ClosableIterator may be closed as many times as desired - the subsequent
-         * calls do nothing.
-         */
-        @Override
-        public void close() {
-            /*this class can only wrap Iterator<>, which has no close method*/
-        }
-
-        public ExtendedIterator<Triple> wrapWithRemoveSupport(GraphMemUsingHashMap graphsToRemoveFrom) {
-            return new IteratorWrapperWithRemove(this, graphsToRemoveFrom);
         }
     }
 }
