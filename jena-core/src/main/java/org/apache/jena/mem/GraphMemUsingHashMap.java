@@ -261,14 +261,40 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
     }
 
     /**
+     * Determines the map with the fewest keys.
+     * This should be helpful in any case where one needs all lists of triples.
+     * Its use makes obsolete the possibly false assumption that there are always
+     * fewer predicates than subjects or objects.
+     * @return
+     */
+    private Map<Integer, ArrayList<Triple>> getMapWithFewestKeys() {
+        var subjectCount = this.triplesBySubject.keySet().size();
+        var predicateCount = this.triplesByPredicate.keySet().size();
+        var objectCount = this.triplesByObject.keySet().size();
+        if(subjectCount < predicateCount) {
+            if(subjectCount < objectCount) {
+                return this.triplesBySubject;
+            } else {
+                return this.triplesByObject;
+            }
+        } else {
+            if(predicateCount < objectCount) {
+                return this.triplesByPredicate;
+            } else {
+                return this.triplesByObject;
+            }
+        }
+    }
+
+    /**
      * Answer the number of triples in this graph. Default implementation counts its
      * way through the results of a findAll. Subclasses must override if they want
      * size() to be efficient.
      */
     @Override
     protected int graphBaseSize() {
-        /*use predicates because they are rare compared to subjects and objects*/
-        return this.triplesByPredicate.values().stream().mapToInt(ArrayList::size).sum();
+        /*use the map with the least keys*/
+        return this.getMapWithFewestKeys().values().stream().mapToInt(ArrayList::size).sum();
     }
 
     /**
@@ -279,8 +305,8 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
      */
     @Override
     public Stream<Triple> stream() {
-        /*use predicates because they are rare compared to subjects and objects*/
-        return this.triplesByPredicate.entrySet().stream().flatMap(set -> set.getValue().stream());
+        /*use the map with the least keys*/
+        return this.getMapWithFewestKeys().entrySet().stream().flatMap(set -> set.getValue().stream());
     }
 
     /**
@@ -418,8 +444,8 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
                     t -> pm.equals(t.getPredicate()));
         }
         else { // SPO:***
-            /*use predicates because they are rare compared to subjects and objects*/
-            iterator = new ListsOfTriplesIterator(this.triplesByPredicate.values().iterator());
+            /*use the map with the least keys*/
+            iterator = new ListsOfTriplesIterator(this.getMapWithFewestKeys().values().iterator());
         }
         return new IteratorWrapperWithRemove(iterator, this);
     }
