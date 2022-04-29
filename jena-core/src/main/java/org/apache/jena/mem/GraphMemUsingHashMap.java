@@ -293,7 +293,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
      */
     @Override
     protected int graphBaseSize() {
-        /*use the map with the least keys*/
+        /*use the map with the fewest keys*/
         return this.getMapWithFewestKeys().values().stream().mapToInt(ArrayList::size).sum();
     }
 
@@ -305,7 +305,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
      */
     @Override
     public Stream<Triple> stream() {
-        /*use the map with the least keys*/
+        /*use the map with the fewest keys*/
         return this.getMapWithFewestKeys().entrySet().stream().flatMap(set -> set.getValue().stream());
     }
 
@@ -444,7 +444,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
                     t -> pm.equals(t.getPredicate()));
         }
         else { // SPO:***
-            /*use the map with the least keys*/
+            /*use the map with the fewest keys*/
             iterator = new ListsOfTriplesIterator(this.getMapWithFewestKeys().values().iterator());
         }
         return new IteratorWrapperWithRemove(iterator, this);
