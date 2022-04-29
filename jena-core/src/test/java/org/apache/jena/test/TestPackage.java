@@ -39,6 +39,7 @@ public class TestPackage extends TestCase {
         addTest(ts,  "Graph", org.apache.jena.graph.test.TestPackage.suite());
         addTest(ts,  "Mem", org.apache.jena.mem.test.TestMemPackage.suite() );
         addTest(ts,  "Mem2", org.apache.jena.mem.test.TestGraphMemPackage.suite() );
+        addTest(ts,  "MemHashMap", org.apache.jena.mem.test.TestGraphMemUsingHashMapPackage.suite() );
         addTest(ts,  "Model", org.apache.jena.rdf.model.test.TestPackage.suite());
         addTest(ts,  "StandardModels", org.apache.jena.rdf.model.test.TestStandardModels.suite() );
         addTest(ts,  "Turtle", org.apache.jena.ttl.turtle.TurtleTestSuite.suite()) ;
