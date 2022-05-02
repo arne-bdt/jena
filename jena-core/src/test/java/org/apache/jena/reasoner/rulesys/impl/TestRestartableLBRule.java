@@ -18,6 +18,8 @@
 
 package org.apache.jena.reasoner.rulesys.impl;
 
+import java.util.Iterator;
+
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 import org.apache.jena.graph.Factory;
@@ -34,8 +36,6 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.WrappedIterator;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.Test;
-
-import java.util.Iterator;
 
 public class TestRestartableLBRule extends TestCase {
 

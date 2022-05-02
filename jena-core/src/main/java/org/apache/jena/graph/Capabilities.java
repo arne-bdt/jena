@@ -24,6 +24,7 @@ import org.apache.jena.mem.GraphMemUsingHashMap;
 /**
  * Interface for expressing capabilities.
  */
+@SuppressWarnings("deprecation")
 public interface Capabilities {
     /**
      * Answer true iff Graph::size() is accurate.
@@ -31,13 +32,13 @@ public interface Capabilities {
     boolean sizeAccurate();
 
     /**
-     * Answer true if Graph::add() can be used to add at least some triples to the
+     * Answer true iff {@link Graph#add} can be used to add at least some triples to the
      * graph.
      */
     boolean addAllowed();
 
     /**
-     * Answer true iff Graph::delete() can be used to remove at least some triples
+     * Answer true iff {@link Graph#delete} can be used to remove at least some triples
      * from the graph.
      */
     boolean deleteAllowed();

@@ -45,6 +45,7 @@ import org.xenei.junit.contract.IProducer;
 @Deprecated(since = "4.5.0")
 @RunWith(ContractSuite.class)
 @ContractImpl(GraphMem.class)
+@SuppressWarnings("deprecation")
 public class GraphMem_CS {
 
 	protected IProducer<Graph> graphProducer = new AbstractGraphProducer<Graph>() {
