@@ -254,8 +254,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
                 }
             }
         } else { // SPO:***
-            /*use predicates because they are rare compared to subjects and objects*/
-            return !this.triplesByPredicate.values().isEmpty();
+            return !this.triplesBySubject.isEmpty();
         }
         return false;
     }
@@ -306,7 +305,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
     @Override
     public Stream<Triple> stream() {
         /*use the map with the fewest keys*/
-        return this.getMapWithFewestKeys().entrySet().stream().flatMap(set -> set.getValue().stream());
+        return this.getMapWithFewestKeys().values().stream().flatMap(Collection::stream);
     }
 
     /**
