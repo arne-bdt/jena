@@ -43,14 +43,14 @@ public abstract class TestGraphMemVariantsBase {
             Pair.of("GraphMem", () -> new GraphMem()),
             Pair.of("GraphMem", () -> new GraphMem()),
             Pair.of("GraphMem", () -> new GraphMem()),
-            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
             Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
             Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
             Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
-            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap())
+            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
+            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted())
     );
 
     protected static Random random = new Random();

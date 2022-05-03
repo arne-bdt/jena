@@ -22,18 +22,17 @@ import org.apache.jena.graph.Triple;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 class TripleMapSorted extends TripleMap {
 
-    protected final int switchToSortedThreshold;
+    protected final static int SWITCH_TO_SORTED_THRESHOLD = 40;
     protected final Comparator<Triple> listComparator;
 
     public TripleMapSorted(final Function<Triple, Node> keyNodeResolver,
-                           final Function<Triple, Node> sortNodeResolver,
-                           int switchToSortedThreshold) {
+                           final Function<Triple, Node> sortNodeResolver) {
         super(keyNodeResolver);
         this.listComparator = Comparator.comparingInt(t -> sortNodeResolver.apply(t).getIndexingValue().hashCode());
-        this.switchToSortedThreshold = switchToSortedThreshold;
     }
 
     /**
@@ -47,12 +46,12 @@ class TripleMapSorted extends TripleMap {
         var key = getKey(t);
         var list = map.get(key);
         if(list != null) {
-            if(list.size() < switchToSortedThreshold) {
+            if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
                 if (list.contains(t)) {
                     return false; /*triple already exists*/
                 }
                 list.add(t);
-                if(list.size() == switchToSortedThreshold) {
+                if(list.size() == SWITCH_TO_SORTED_THRESHOLD) {
                     list.sort(listComparator);
                 }
             } else {
@@ -69,7 +68,7 @@ class TripleMapSorted extends TripleMap {
                         if (t.equals(t1)) {
                             return false;
                         }
-                        if (0 != listComparator.compare(t, t1)) {
+                        if (key != keyNodeResolver.apply(t1).getIndexingValue().hashCode()) {
                             break;
                         }
                     }
@@ -81,7 +80,7 @@ class TripleMapSorted extends TripleMap {
                             if (t.equals(t1)) {
                                 return false;
                             }
-                            if (0 != listComparator.compare(t, t1)) {
+                            if (key != keyNodeResolver.apply(t1).getIndexingValue().hashCode()) {
                                 break;
                             }
                         }
@@ -110,9 +109,9 @@ class TripleMapSorted extends TripleMap {
         var list = map
                 .computeIfAbsent(getKey(t),
                         k -> new ArrayList<>(INITIAL_SIZE_FOR_ARRAY_LISTS));
-        if(list.size() < switchToSortedThreshold) {
+        if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
             list.add(t);
-            if(list.size() == switchToSortedThreshold) {
+            if(list.size() == SWITCH_TO_SORTED_THRESHOLD) {
                 list.sort(listComparator);
             }
         } else {
@@ -131,86 +130,51 @@ class TripleMapSorted extends TripleMap {
     }
 
     /**
-     * Source: https://www.geeksforgeeks.org/find-first-and-last-positions-of-an-element-in-a-sorted-array/
-     * by DANISH_RAZA
-     * @param list
-     * @param key
-     * @param c
-     * @return
-     */
-    private static int getFirstOccurence(final List<Triple> list, final Triple key, final Comparator<Triple> c){
-        int low = 0, high = list.size() - 1,
-                res = -1;
-        while (low <= high)
-        {
-            // Normal Binary Search Logic
-            int mid = (low + high) / 2;
-            var comp = c.compare(key, list.get(mid));
-            if (comp < 0)
-                high = mid - 1;
-            else if (comp > 0)
-                low = mid + 1;
-            else
-            {
-                // If arr[mid] is same as
-                // x, we update res and
-                // move to the left half.
-                res = mid;
-                high = mid - 1;
-            }
-        }
-        return res;
-    }
-
-    /**
-     * Source: https://www.geeksforgeeks.org/find-first-and-last-positions-of-an-element-in-a-sorted-array/
-     * by DANISH_RAZA
-     * @param list
-     * @param key
-     * @param c
-     * @return
-     */
-    private static int getLastOccurence(final List<Triple> list, final Triple key, final Comparator<Triple> c){
-        int low = 0, high = list.size()-1,
-                res = -1;
-        while (low <= high)
-        {
-            // Normal Binary Search Logic
-            int mid = (low + high) / 2;
-            var comp = c.compare(key, list.get(mid));
-            if (comp < 0)
-                high = mid - 1;
-            else if (comp > 0)
-                low = mid + 1;
-            else
-            {
-                // If arr[mid] is same as x,
-                // we update res and move to
-                // the right half.
-                res = mid;
-                low = mid + 1;
-            }
-        }
-        return res;
-    }
-    /**
      *
      * @param t triple with concrete key and concrete sort node
      * @return
      */
-    public List<Triple> searchCandidates(final Triple t) {
-        var list = map.get(getKey(t));
+    public boolean contains(final Triple t, Predicate<Triple> matcher) {
+        var key = getKey(t);
+        var list = map.get(key);
         if(list == null) {
-            return null;
+            return false;
         }
-        if(list.size() < switchToSortedThreshold) {
-            return list;
+        if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
+            for (Triple triple : list) {
+                if(matcher.test(triple)) {
+                    return true;
+                }
+            }
+        } else  {
+            var index = Collections.binarySearch(list, t, listComparator);
+            if (index < 0) {
+                return false;
+            }
+            /*search forward*/
+            for (var i = index; i < list.size(); i++) {
+                var t1 = list.get(i);
+                if (matcher.test(t1)) {
+                    return true;
+                }
+                if (key != keyNodeResolver.apply(t1).getIndexingValue().hashCode()) {
+                    break;
+                }
+            }
+            if (index > 0) {
+                /*search backward*/
+                index--;
+                for (var i = index; i > -1; i--) {
+                    var t1 = list.get(i);
+                    if (matcher.test(t1)) {
+                        return true;
+                    }
+                    if (key != keyNodeResolver.apply(t1).getIndexingValue().hashCode()) {
+                        break;
+                    }
+                }
+            }
         }
-        var firstIndex = getFirstOccurence(list, t, this.listComparator);
-        if (firstIndex < 0) {
-            return null;
-        }
-        return list.subList(firstIndex,
-                getLastOccurence(list.subList(firstIndex, list.size()), t, this.listComparator)+1+firstIndex);
+        return false;
     }
 }

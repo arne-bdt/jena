@@ -63,7 +63,7 @@ import java.util.stream.Stream;
  */
 public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWithPerform {
 
-    private final TripleMapSorted bySubject = new TripleMapSorted(Triple::getSubject, Triple::getObject, 60);
+    private final TripleMapSorted bySubject= new TripleMapSorted(Triple::getSubject, Triple::getObject);
     private final TripleMap byPredicate = new TripleMap(Triple::getPredicate);
     private final TripleMap byObject = new TripleMap(Triple::getObject);
 
@@ -142,17 +142,10 @@ public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWit
         if (sm.isConcrete()) { // SPO:S??
             if(pm.isConcrete()) { // SPO:SP?
                 if(om.isConcrete()) { // SPO:SPO
-                    final var triples = this.bySubject.searchCandidates(triple);
-                    if(triples == null) {
-                        return false;
-                    }
-                    for(Triple t : triples) {
-                        if(om.sameValueAs(t.getObject())
-                                && pm.equals(t.getPredicate())
-                                && sm.equals(t.getSubject())) {
-                            return true;
-                        }
-                    }
+                    return this.bySubject.contains(triple,
+                            t -> om.sameValueAs(t.getObject())
+                                    && pm.equals(t.getPredicate())
+                                    && sm.equals(t.getSubject()));
                 } else { // SPO:SP*
                     final var triples = this.bySubject.get(sm);
                     if(triples == null) {
@@ -167,16 +160,9 @@ public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWit
                 }
             } else { // SPO:S*?
                 if(om.isConcrete()) { // SPO:S*O
-                    final var triples = this.bySubject.searchCandidates(triple);
-                    if(triples == null) {
-                        return false;
-                    }
-                    for(Triple t : triples) {
-                        if(om.sameValueAs(t.getObject())
-                                && sm.equals(t.getSubject())) {
-                            return true;
-                        }
-                    }
+                    return this.bySubject.contains(triple,
+                            t -> om.sameValueAs(t.getObject())
+                                    && sm.equals(t.getSubject()));
                 } else { // SPO:S**
                     final var triples = this.bySubject.get(sm);
                     if(triples == null) {

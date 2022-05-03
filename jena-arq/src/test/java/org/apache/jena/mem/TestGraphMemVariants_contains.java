@@ -71,6 +71,18 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
     }
 
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
+    @Ignore
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SV() {
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
+    }
+
     private void loadGraphsMeasureTimeAndMemory_contains(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, String... graphUris) {
         final var triplesPerGraph = loadTriples(graphMultiplier, graphUris);
         final var nonExistingTriplesToSearchFor = generateRandomTriples(1000);
