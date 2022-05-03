@@ -131,7 +131,8 @@ class TripleMapSorted extends TripleMap {
     }
 
     /**
-     * ource: https://www.geeksforgeeks.org/find-first-and-last-positions-of-an-element-in-a-sorted-array/
+     * Source: https://www.geeksforgeeks.org/find-first-and-last-positions-of-an-element-in-a-sorted-array/
+     * by DANISH_RAZA
      * @param list
      * @param key
      * @param c
@@ -163,6 +164,7 @@ class TripleMapSorted extends TripleMap {
 
     /**
      * Source: https://www.geeksforgeeks.org/find-first-and-last-positions-of-an-element-in-a-sorted-array/
+     * by DANISH_RAZA
      * @param list
      * @param key
      * @param c
