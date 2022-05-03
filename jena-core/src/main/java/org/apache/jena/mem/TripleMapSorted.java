@@ -21,8 +21,8 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 
 import java.util.*;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 class TripleMapSorted extends TripleMap {
 
@@ -134,7 +134,7 @@ class TripleMapSorted extends TripleMap {
      * @param t triple with concrete key and concrete sort node
      * @return
      */
-    public boolean contains(final Triple t, Predicate<Triple> matcher) {
+    public boolean contains(final Triple t, BiPredicate<Triple, Triple> matcher) {
         var key = getKey(t);
         var list = map.get(key);
         if(list == null) {
@@ -142,7 +142,7 @@ class TripleMapSorted extends TripleMap {
         }
         if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
             for (Triple triple : list) {
-                if(matcher.test(triple)) {
+                if(matcher.test(triple, t)) {
                     return true;
                 }
             }
@@ -154,7 +154,7 @@ class TripleMapSorted extends TripleMap {
             /*search forward*/
             for (var i = index; i < list.size(); i++) {
                 var t1 = list.get(i);
-                if (matcher.test(t1)) {
+                if (matcher.test(t1, t)) {
                     return true;
                 }
                 if (key != keyNodeResolver.apply(t1).getIndexingValue().hashCode()) {
@@ -166,7 +166,7 @@ class TripleMapSorted extends TripleMap {
                 index--;
                 for (var i = index; i > -1; i--) {
                     var t1 = list.get(i);
-                    if (matcher.test(t1)) {
+                    if (matcher.test(t1, t)) {
                         return true;
                     }
                     if (key != keyNodeResolver.apply(t1).getIndexingValue().hashCode()) {
