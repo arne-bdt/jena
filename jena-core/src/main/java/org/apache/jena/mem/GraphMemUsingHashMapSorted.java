@@ -64,7 +64,16 @@ import java.util.stream.Stream;
  */
 public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWithPerform {
 
-    private final TripleMapSorted bySubject= new TripleMapSorted(Triple::getSubject, Triple::getObject);
+    /**
+     * Predicate to match two triples with conditions ordered to fail fast for the given
+     * usage, where subject hashCode is already used as key.
+     */
+    private final static BiPredicate<Triple, Triple> matchesOPS =
+            (t1, t2) -> t1.getObject().sameValueAs(t2.getObject())
+                    && t1.getPredicate().equals(t2.getPredicate())
+                    && t1.getSubject().equals(t2.getSubject());
+
+    private final TripleMapSorted bySubject= new TripleMapSorted(Triple::getSubject, Triple::getObject, Triple::getPredicate, matchesOPS);
     private final TripleMap byPredicate = new TripleMap(Triple::getPredicate);
     private final TripleMap byObject = new TripleMap(Triple::getObject);
 
@@ -126,15 +135,6 @@ public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWit
         this.byObject.clear();
     }
 
-    private final static BiPredicate<Triple, Triple> predicateSPO =
-            (t1, t2) -> t1.getObject().sameValueAs(t2.getObject())
-                        && t1.getPredicate().equals(t2.getPredicate())
-                        && t1.getSubject().equals(t2.getSubject());
-
-    private final static BiPredicate<Triple, Triple> predicateS_O =
-            (t1, t2) -> t1.getObject().sameValueAs(t2.getObject())
-                    && t1.getSubject().equals(t2.getSubject());
-
     /**
      * Answer true if the graph contains any triple matching <code>t</code>.
      * The default implementation uses <code>find</code> and checks to see
@@ -152,7 +152,7 @@ public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWit
         if (sm.isConcrete()) { // SPO:S??
             if(pm.isConcrete()) { // SPO:SP?
                 if(om.isConcrete()) { // SPO:SPO
-                    return this.bySubject.contains(triple, predicateSPO);
+                    return this.bySubject.contains(triple);
                 } else { // SPO:SP*
                     final var triples = this.bySubject.get(sm);
                     if(triples == null) {
@@ -166,13 +166,18 @@ public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWit
                     }
                 }
             } else { // SPO:S*?
+                final var triples = this.bySubject.get(sm);
+                if(triples == null) {
+                    return false;
+                }
                 if(om.isConcrete()) { // SPO:S*O
-                    return this.bySubject.contains(triple, predicateS_O);
-                } else { // SPO:S**
-                    final var triples = this.bySubject.get(sm);
-                    if(triples == null) {
-                        return false;
+                    for(Triple t : triples) {
+                        if(om.sameValueAs(t.getObject())
+                            && sm.equals(t.getSubject())) {
+                            return true;
+                        }
                     }
+                } else { // SPO:S**
                     for(Triple t : triples) {
                         if(sm.equals(t.getSubject())) {
                             return true;

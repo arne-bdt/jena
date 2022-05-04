@@ -28,11 +28,16 @@ class TripleMapSorted extends TripleMap {
 
     protected final static int SWITCH_TO_SORTED_THRESHOLD = 40;
     protected final Comparator<Triple> listComparator;
+    protected final BiPredicate<Triple, Triple> containsPredicate;
 
     public TripleMapSorted(final Function<Triple, Node> keyNodeResolver,
-                           final Function<Triple, Node> sortNodeResolver) {
+                           final Function<Triple, Node> firstSortNodeResolver,
+                           final Function<Triple, Node> secondSortNodeResolver,
+                           final BiPredicate<Triple, Triple> containsPredicate) {
         super(keyNodeResolver);
-        this.listComparator = Comparator.comparingInt(t -> sortNodeResolver.apply(t).getIndexingValue().hashCode());
+        this.listComparator = Comparator.comparingInt((Triple t) -> firstSortNodeResolver.apply(t).getIndexingValue().hashCode())
+                .thenComparing(t -> secondSortNodeResolver.apply(t).getIndexingValue().hashCode());
+        this.containsPredicate = containsPredicate;
     }
 
     /**
@@ -68,7 +73,7 @@ class TripleMapSorted extends TripleMap {
                         if (t.equals(t1)) {
                             return false;
                         }
-                        if (key != keyNodeResolver.apply(t1).getIndexingValue().hashCode()) {
+                        if (0 != listComparator.compare(t1, t)) {
                             break;
                         }
                     }
@@ -80,7 +85,7 @@ class TripleMapSorted extends TripleMap {
                             if (t.equals(t1)) {
                                 return false;
                             }
-                            if (key != keyNodeResolver.apply(t1).getIndexingValue().hashCode()) {
+                            if (0 != listComparator.compare(t1, t)) {
                                 break;
                             }
                         }
@@ -134,7 +139,7 @@ class TripleMapSorted extends TripleMap {
      * @param t triple with concrete key and concrete sort node
      * @return
      */
-    public boolean contains(final Triple t, BiPredicate<Triple, Triple> matcher) {
+    public boolean contains(final Triple t) {
         var key = getKey(t);
         var list = map.get(key);
         if(list == null) {
@@ -142,7 +147,7 @@ class TripleMapSorted extends TripleMap {
         }
         if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
             for (Triple triple : list) {
-                if(matcher.test(triple, t)) {
+                if(containsPredicate.test(triple, t)) {
                     return true;
                 }
             }
@@ -154,10 +159,10 @@ class TripleMapSorted extends TripleMap {
             /*search forward*/
             for (var i = index; i < list.size(); i++) {
                 var t1 = list.get(i);
-                if (matcher.test(t1, t)) {
+                if (containsPredicate.test(t1, t)) {
                     return true;
                 }
-                if (key != keyNodeResolver.apply(t1).getIndexingValue().hashCode()) {
+                if (0 != listComparator.compare(t1, t)) {
                     break;
                 }
             }
@@ -166,10 +171,10 @@ class TripleMapSorted extends TripleMap {
                 index--;
                 for (var i = index; i > -1; i--) {
                     var t1 = list.get(i);
-                    if (matcher.test(t1, t)) {
+                    if (containsPredicate.test(t1, t)) {
                         return true;
                     }
-                    if (key != keyNodeResolver.apply(t1).getIndexingValue().hashCode()) {
+                    if (0 != listComparator.compare(t1, t)) {
                         break;
                     }
                 }
