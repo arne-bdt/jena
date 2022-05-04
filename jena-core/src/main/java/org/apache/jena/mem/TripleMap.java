@@ -50,9 +50,13 @@ class TripleMap {
      * @return
      */
     public boolean addIfNotExists(final Triple t) {
-        var list = map.get(getKey(t));
+        var key = getKey(t);
+        var list = map.get(key);
         if(list == null) {
-            return false;
+            list = new ArrayList<>(INITIAL_SIZE_FOR_ARRAY_LISTS);
+            list.add(t);
+            map.put(key, list);
+            return true;
         }
         if(list.contains(t)) {
             return false;
