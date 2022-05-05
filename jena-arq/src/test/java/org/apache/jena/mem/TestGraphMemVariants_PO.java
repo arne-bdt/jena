@@ -29,6 +29,7 @@ import org.junit.Test;
 import java.util.List;
 import java.util.function.Supplier;
 
+@Ignore
 public class TestGraphMemVariants_PO extends TestGraphMemVariantsBase {
 
     @Test
@@ -52,7 +53,6 @@ public class TestGraphMemVariants_PO extends TestGraphMemVariantsBase {
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
     @Test
-    @Ignore
     public void BSBM_50000() {
         loadGraphsMeasureTimeAndMemory_PO(graphImplementationsToTest,
                 1, 1000,
@@ -65,7 +65,6 @@ public class TestGraphMemVariants_PO extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
-    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid() {
         loadGraphsMeasureTimeAndMemory_PO(graphImplementationsToTest, 1, 1000,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",

@@ -26,20 +26,20 @@ import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.util.*;
+import java.util.List;
 import java.util.function.Supplier;
 
-public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
+public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
 
     @Test
     public void pizza_owl_rdf() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1000,
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1000,
                 "./../jena-examples/src/main/resources/data/pizza.owl.rdf");
     }
 
     @Test
     public void cheeses_ttl() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 400,
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 400,
                 "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl");
     }
 
@@ -50,8 +50,9 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
     @Test
+    @Ignore
     public void BSBM_50000() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
     }
 
@@ -61,8 +62,9 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
+    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ_SSH_SV_and_TP() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
@@ -75,8 +77,9 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
+    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
     }
 
@@ -86,8 +89,9 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
+    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SSH() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml");
     }
 
@@ -97,8 +101,9 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
+    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SV() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
     }
 
@@ -108,57 +113,53 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
+    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_TP() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
     }
 
-    private void loadGraphsMeasureTimeAndMemory_contains(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, String... graphUris) {
+    private void loadGraphsMeasureTimeAndMemory_delete(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, String... graphUris) {
         final var triplesPerGraph = loadTriples(graphMultiplier, graphUris);
-        final var nonExistingTriplesToSearchFor = generateRandomTriples(1000);
         for (Pair<String, Supplier<Graph>> graphSuppliersWithName : graphVariantSuppliersWithNames) {
             System.out.println("graph variant: '" + graphSuppliersWithName.getKey() + "'");
             var graphs = fillGraphs(graphSuppliersWithName.getValue(), triplesPerGraph);
 
-            var stopwatchWholeSearch = StopWatch.createStarted();
             {
-                var stopwatchContains = StopWatch.createStarted();
-                stopwatchContains.suspend();
-                var stopwatchNonExisting = StopWatch.createStarted();
-                stopwatchNonExisting.suspend();
+                var stopwatchDelete = StopWatch.createStarted();
+                stopwatchDelete.suspend();
+
+                var memBeforeDelete = runGcAndGetUsedMemoryInMB();
                 for (int i = 0; i < triplesPerGraph.size(); i++) {
                     var graph = graphs.get(i);
                     var triples = triplesPerGraph.get(i);
-
-                    stopwatchContains.resume();
-                    for (Triple t : triples) {
-                        if(!graph.contains(t)) {
-                            Assert.fail();
-                        }
+                    int half = triples.size() / 2;
+                    stopwatchDelete.resume();
+                    for (int k=half; k<triples.size(); k++) {
+                        var t = triples.get(k);
+                        graph.delete(t);
                     }
-                    stopwatchContains.suspend();
-
-                    stopwatchNonExisting.resume();
-                    var counter = 0;
-                    while(counter < triples.size()) {
-                        for (Triple t : nonExistingTriplesToSearchFor) {
-                            if (graph.contains(t)) {
-                                Assert.fail();
-                            }
-                            counter++;
-                        }
-                    }
-                    stopwatchNonExisting.suspend();
-
+                    stopwatchDelete.suspend();
                 }
-                stopwatchContains.stop();
-                stopwatchNonExisting.stop();
-                System.out.println(String.format("contains: %s non_existing: %s",
-                        stopwatchContains.formatTime(),
-                        stopwatchNonExisting.formatTime()));
+                var memAfterDeletingFirstHalf = runGcAndGetUsedMemoryInMB();
+                for (int i = 0; i < triplesPerGraph.size(); i++) {
+                    var graph = graphs.get(i);
+                    var triples = triplesPerGraph.get(i);
+                    int half = triples.size() / 2;
+                    stopwatchDelete.resume();
+                    for (int k=0; k<half; k++) {
+                        var t = triples.get(k);
+                        graph.delete(t);
+                    }
+                    stopwatchDelete.suspend();
+                }
+                var memAfterDeletingSecondHalf = runGcAndGetUsedMemoryInMB();
+                stopwatchDelete.stop();
+                System.out.println(String.format("delete: %s - mem diff after deleting half of the triples: %d MB - mem diff after deleting all: %d MB",
+                        stopwatchDelete.formatTime(),
+                        (memBeforeDelete-memAfterDeletingFirstHalf),
+                        (memBeforeDelete-memAfterDeletingSecondHalf)));
             }
-            stopwatchWholeSearch.stop();
-            System.out.println("total time of all search operations: " + stopwatchWholeSearch.formatTime());
         }
     }
 }
