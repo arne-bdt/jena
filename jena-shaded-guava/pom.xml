@@ -76,10 +76,6 @@
           <groupId>com.google.j2objc</groupId>
           <artifactId>j2objc-annotations</artifactId>
         </exclusion>
-        <exclusion>
-          <groupId>com.google.guava</groupId>
-          <artifactId>listenablefuture</artifactId>
-        </exclusion>
       </exclusions>
     </dependency>
   </dependencies>

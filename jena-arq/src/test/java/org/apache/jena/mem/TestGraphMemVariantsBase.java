@@ -38,13 +38,17 @@ import java.util.function.Supplier;
 
 public abstract class TestGraphMemVariantsBase {
 
-
-
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
             Pair.of("GraphMem", () -> new GraphMem()),
             Pair.of("GraphMem", () -> new GraphMem()),
+            Pair.of("GraphMem", () -> new GraphMem()),
+            Pair.of("GraphMem", () -> new GraphMem()),
             Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
             Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
+            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
+            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
+            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
             Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
             Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted())
     );
