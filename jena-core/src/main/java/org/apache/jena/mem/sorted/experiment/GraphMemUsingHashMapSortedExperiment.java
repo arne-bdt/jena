@@ -16,17 +16,22 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem;
+package org.apache.jena.mem.sorted.experiment;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
+import org.apache.jena.mem.GraphMemBase;
+import org.apache.jena.mem.sorted.TripleMap;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
 import org.apache.jena.util.iterator.NiceIterator;
 
-import java.util.*;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -62,22 +67,32 @@ import java.util.stream.Stream;
  * supported this in some cases. The implementation of ModelExpansion.addDomainTypes relayed on this behaviour, but it
  * has been fixed.
  */
-public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWithPerform {
+public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implements GraphWithPerform {
 
     /**
      * Predicate to match two triples with conditions ordered to fail fast for the given
      * usage, where subject hashCode is already used as key.
      */
-    private final static BiPredicate<Triple, Triple> matchesOPS =
-            (t1, t2) -> t1.getObject().sameValueAs(t2.getObject())
-                    && t1.getPredicate().equals(t2.getPredicate())
+    private final static BiPredicate<Triple, Triple> matchesPOS =
+            (t1, t2) -> t1.getPredicate().equals(t2.getPredicate())
+                    && t1.getObject().sameValueAs(t2.getObject())
                     && t1.getSubject().equals(t2.getSubject());
 
-    private final TripleMapSorted bySubject= new TripleMapSorted(Triple::getSubject, Triple::getObject, Triple::getPredicate, matchesOPS);
-    private final TripleMap byPredicate = new TripleMap(Triple::getPredicate);
-    private final TripleMap byObject = new TripleMap(Triple::getObject);
+    private final static BiPredicate<Triple, Triple> matchesSOP =
+            (t1, t2) -> t1.getSubject().equals(t2.getSubject())
+                    && t1.getObject().sameValueAs(t2.getObject())
+                    && t1.getPredicate().equals(t2.getPredicate());
 
-    public GraphMemUsingHashMapSorted() {
+    private final static BiPredicate<Triple, Triple> matchesOSP =
+            (t1, t2) -> t1.getObject().sameValueAs(t2.getObject())
+                    && t1.getSubject().equals(t2.getSubject())
+                    && t1.getPredicate().equals(t2.getPredicate());
+
+    private final TripleMapSorted2L bySubject= new TripleMapSorted2L(Triple::getSubject, Triple::getObject, matchesPOS);
+    private final TripleMapSorted2L byPredicate = new TripleMapSorted2L(Triple::getPredicate, Triple::getSubject,matchesOSP);
+    private final TripleMapSorted2L byObject = new TripleMapSorted2L(Triple::getObject, Triple::getPredicate, matchesSOP);
+
+    public GraphMemUsingHashMapSortedExperiment() {
         super();
     }
 
@@ -420,7 +435,7 @@ public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWit
     private static class IteratorWrapperWithRemove implements ExtendedIterator<Triple> {
 
         private Iterator<Triple> iterator;
-        private final GraphMemUsingHashMapSorted graphMem;
+        private final GraphMemUsingHashMapSortedExperiment graphMem;
         private boolean isStillIteratorWithNoRemove = true;
 
         /**
@@ -428,7 +443,7 @@ public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWit
          */
         protected Triple current;
 
-        public IteratorWrapperWithRemove(Iterator<Triple> iteratorWithNoRemove, GraphMemUsingHashMapSorted graphMem) {
+        public IteratorWrapperWithRemove(Iterator<Triple> iteratorWithNoRemove, GraphMemUsingHashMapSortedExperiment graphMem) {
             this.iterator = iteratorWithNoRemove;
             this.graphMem = graphMem;
         }

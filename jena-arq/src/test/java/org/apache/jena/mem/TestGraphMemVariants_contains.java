@@ -33,13 +33,13 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
 
     @Test
     public void pizza_owl_rdf() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 200,
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1000,
                 "./../jena-examples/src/main/resources/data/pizza.owl.rdf");
     }
 
     @Test
     public void cheeses_ttl() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 200,
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 400,
                 "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl");
     }
 
@@ -50,7 +50,6 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
     @Test
-    @Ignore
     public void BSBM_50000() {
         loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
@@ -62,8 +61,7 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
-    @Ignore
-    public void ENTSO_E_Test_Configurations_v3_0_RealGrid() {
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ_SSH_SV_and_TP() {
         loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
@@ -77,10 +75,42 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
-    @Ignore
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() {
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
+    }
+
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SSH() {
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml");
+    }
+
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SV() {
         loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
+    }
+
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_TP() {
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
     }
 
     private void loadGraphsMeasureTimeAndMemory_contains(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, String... graphUris) {

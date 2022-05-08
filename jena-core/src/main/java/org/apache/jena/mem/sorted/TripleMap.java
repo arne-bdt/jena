@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem;
+package org.apache.jena.mem.sorted;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
@@ -24,7 +24,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-class TripleMap {
+public class TripleMap {
     protected static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
 
     protected final Map<Integer, List<Triple>> map = new HashMap<>();

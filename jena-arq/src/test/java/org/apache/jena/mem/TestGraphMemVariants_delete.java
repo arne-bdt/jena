@@ -50,7 +50,6 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
     @Test
-    @Ignore
     public void BSBM_50000() {
         loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
@@ -62,7 +61,6 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
-    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ_SSH_SV_and_TP() {
         loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
@@ -77,7 +75,6 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
-    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() {
         loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
@@ -89,7 +86,6 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
-    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SSH() {
         loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml");
@@ -101,7 +97,6 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
-    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SV() {
         loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
@@ -113,7 +108,6 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
-    @Ignore
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_TP() {
         loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");

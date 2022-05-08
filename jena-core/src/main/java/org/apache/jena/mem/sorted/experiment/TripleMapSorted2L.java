@@ -15,28 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem;
+package org.apache.jena.mem.sorted.experiment;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.sorted.TripleMap;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 
-class TripleMapSorted extends TripleMap {
+class TripleMapSorted2L extends TripleMap {
 
     protected final static int SWITCH_TO_SORTED_THRESHOLD = 40;
     protected final Comparator<Triple> listComparator;
     protected final BiPredicate<Triple, Triple> containsPredicate;
 
-    public TripleMapSorted(final Function<Triple, Node> keyNodeResolver,
-                           final Function<Triple, Node> firstSortNodeResolver,
-                           final Function<Triple, Node> secondSortNodeResolver,
-                           final BiPredicate<Triple, Triple> containsPredicate) {
+    public TripleMapSorted2L(final Function<Triple, Node> keyNodeResolver,
+                             final Function<Triple, Node> firstSortNodeResolver,
+                             final BiPredicate<Triple, Triple> containsPredicate) {
         super(keyNodeResolver);
-        this.listComparator = Comparator.comparingInt((Triple t) -> firstSortNodeResolver.apply(t).getIndexingValue().hashCode())
-                .thenComparing(t -> secondSortNodeResolver.apply(t).getIndexingValue().hashCode());
+        this.listComparator = Comparator.comparingInt((Triple t) -> firstSortNodeResolver.apply(t).getIndexingValue().hashCode());
         this.containsPredicate = containsPredicate;
     }
 

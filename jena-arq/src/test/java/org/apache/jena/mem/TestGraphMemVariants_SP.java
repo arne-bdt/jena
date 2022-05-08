@@ -30,18 +30,18 @@ import java.util.List;
 import java.util.function.Supplier;
 
 @Ignore
-public class TestGraphMemVariants_PO extends TestGraphMemVariantsBase {
+public class TestGraphMemVariants_SP extends TestGraphMemVariantsBase {
 
     @Test
     public void cheeses_ttl() {
-        loadGraphsMeasureTimeAndMemory_PO(graphImplementationsToTest,
+        loadGraphsMeasureTimeAndMemory_SP(graphImplementationsToTest,
                 50, 5000,
                 "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl");
     }
 
     @Test
     public void pizza_owl_rdf() {
-        loadGraphsMeasureTimeAndMemory_PO(graphImplementationsToTest,
+        loadGraphsMeasureTimeAndMemory_SP(graphImplementationsToTest,
                 50, 5000,
                 "./../jena-examples/src/main/resources/data/pizza.owl.rdf");
     }
@@ -54,7 +54,7 @@ public class TestGraphMemVariants_PO extends TestGraphMemVariantsBase {
      */
     @Test
     public void BSBM_50000() {
-        loadGraphsMeasureTimeAndMemory_PO(graphImplementationsToTest,
+        loadGraphsMeasureTimeAndMemory_SP(graphImplementationsToTest,
                 1, 1000,
                 "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
     }
@@ -66,14 +66,14 @@ public class TestGraphMemVariants_PO extends TestGraphMemVariantsBase {
      */
     @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid() {
-        loadGraphsMeasureTimeAndMemory_PO(graphImplementationsToTest, 1, 1000,
+        loadGraphsMeasureTimeAndMemory_SP(graphImplementationsToTest, 1, 1000,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
     }
 
-    private void loadGraphsMeasureTimeAndMemory_PO(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, int numberOfRandomTriplesToSearchFor, String... graphUris) {
+    private void loadGraphsMeasureTimeAndMemory_SP(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, int numberOfRandomTriplesToSearchFor, String... graphUris) {
         final var triplesPerGraph = loadTriples(graphMultiplier, graphUris);
         final var existingTriplesToSearchFor = selectRandomTriples(triplesPerGraph, numberOfRandomTriplesToSearchFor);
         final var nonExistingTriplesToSearchFor = generateRandomTriples(1000);
@@ -84,21 +84,21 @@ public class TestGraphMemVariants_PO extends TestGraphMemVariantsBase {
                 var stopwatchWholeSearch = StopWatch.createStarted();
                 {
                     var count_PO = 0;
-                    var stopwatch_PO = StopWatch.createStarted();
-                    stopwatch_PO.suspend();
+                    var stopwatch_SP = StopWatch.createStarted();
+                    stopwatch_SP.suspend();
                     for (int i = 0; i < graphs.size(); i++) {
                         var graph = graphs.get(i);
                         var triples = existingTriplesToSearchFor.get(i);
 
-                        stopwatch_PO.resume();
+                        stopwatch_SP.resume();
                         for (Triple t : triples) {
-                            count_PO += count(graph.find(Node.ANY, t.getPredicate(), t.getObject()));
+                            count_PO += count(graph.find(t.getSubject(), t.getPredicate(), Node.ANY));
                         }
-                        stopwatch_PO.suspend();
+                        stopwatch_SP.suspend();
                     }
-                    System.out.println(String.format("Graph.find: _PO: %d/%s",
+                    System.out.println(String.format("Graph.find: _SP: %d/%s",
                             count_PO,
-                            stopwatch_PO.formatTime()));
+                            stopwatch_SP.formatTime()));
                 }
                 stopwatchWholeSearch.stop();
                 System.out.println("graph-variant: '" + graphSuppliersWithName.getKey() + "' graphs: " + graphs.size() + " number of random triples to search for: " + numberOfRandomTriplesToSearchFor + " total time of all Graph.find and Graph.contains operations: " + stopwatchWholeSearch.formatTime());
