@@ -30,7 +30,6 @@ import org.junit.Test;
 import java.util.*;
 import java.util.function.Supplier;
 
-@Ignore
 public class TestGraphMemVariants_no_SPO extends TestGraphMemVariantsBase {
 
     @Test

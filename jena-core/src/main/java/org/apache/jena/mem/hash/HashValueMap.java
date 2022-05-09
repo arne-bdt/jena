@@ -10,7 +10,17 @@ import java.util.stream.StreamSupport;
 
 public abstract class HashValueMap<T> implements ValueMap<T> {
 
-    private float loadFactor = 1.00f;
+    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
+    private int calcIndex(final int hashCode) {
+        return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+    }
+
+    private int calcIndex(final int hashCode, final int length) {
+        return (hashCode ^ (hashCode >>> 16)) & (length-1);
+    }
+
+    private static int MINIMUM_SIZE = 2;
+    private static float loadFactor = 2.5f;
     private int size = 0;
     private Object[] entries;
 
@@ -167,7 +177,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     };
 
     protected HashValueMap() {
-        this.entries = new Object[2]; /*default capacity*/
+        this.entries = new Object[MINIMUM_SIZE]; /*default capacity*/
     }
 
     private int calcNewSize() {
@@ -175,8 +185,8 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
             return entries.length << 1;
         } else if (size < (entries.length >> 2)) { /*shrink*/
             var new_size = entries.length >> 1;
-            if(new_size < 2) {
-                new_size = 2;
+            if(new_size < MINIMUM_SIZE) {
+                new_size = MINIMUM_SIZE;
             }
             if(entries.length != new_size) {
                 return new_size;
@@ -190,7 +200,6 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         if(newSize < 0) {
             return;
         }
-        var countBefore = countValues(entries);
         final var hashIndex = getHashIndex();
         final var newEntries = new Object[newSize];
         for(int i=0; i<entries.length; i++) {
@@ -199,7 +208,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
                 continue;
             }
             do {
-                var newIndex = entryToMove.hashes[hashIndex] & (newEntries.length - 1);
+                var newIndex = calcIndex(entryToMove.hashes[hashIndex], newEntries.length);
                 var entryInTarget = (MapEntry<T>)newEntries[newIndex];
                 var copyOfNext = entryToMove.nextEntries[hashIndex];
                 /*insert as first element --> reversing order*/
@@ -208,32 +217,28 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
                 entryToMove = copyOfNext;
             } while (entryToMove != null);
         }
-        var countAfter = countValues(newEntries);
-        if(countBefore != countAfter) {
-            int i=0;
-        }
         entries = newEntries;
     }
 
-    private int countValues(Object[] entries) {
-        return Arrays.stream(entries)
-                .filter(entry -> entry != null)
-                .map(entry -> (MapEntry<T>) entry)
-                .mapToInt(entry -> {
-                    var size = 0;
-                    while (entry != null) {
-                        size++;
-                        entry = entry.nextEntries[getHashIndex()];
-                    }
-                    return size;
-                }).sum();
-    }
+//    private int countValues(Object[] entries) {
+//        return Arrays.stream(entries)
+//                .filter(entry -> entry != null)
+//                .map(entry -> (MapEntry<T>) entry)
+//                .mapToInt(entry -> {
+//                    var size = 0;
+//                    while (entry != null) {
+//                        size++;
+//                        entry = entry.nextEntries[getHashIndex()];
+//                    }
+//                    return size;
+//                }).sum();
+//    }
 
     @Override
     public MapEntry<T> addIfNotExists(T value) {
         final var newEntry = createEntry(value);
         final var hashIndex = getHashIndex();
-        final var index = newEntry.hashes[hashIndex] & (entries.length-1);
+        final var index = calcIndex(newEntry.hashes[hashIndex]);
         var existingEntry = (MapEntry<T>)entries[index];
         if(existingEntry == null) {
             entries[index] = newEntry;
@@ -261,7 +266,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     public MapEntry<T> addDefinitetly(T value) {
         final var newEntry = createEntry(value);
         final var hashIndex = getHashIndex();
-        final var index = newEntry.hashes[hashIndex] & (entries.length-1);
+        final var index = calcIndex(newEntry.hashes[hashIndex]);
         var existingEntry = (MapEntry<T>)entries[index];
         if(existingEntry == null) {
             entries[index] = newEntry;
@@ -280,7 +285,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     @Override
     public void addDefinitetly(MapEntry<T> entry) {
         final var hashIndex = getHashIndex();
-        final var index = entry.hashes[hashIndex] & (entries.length-1);
+        final var index = calcIndex(entry.hashes[hashIndex]);
         var existingEntry = (MapEntry<T>)entries[index];
         if(existingEntry == null) {
             entries[index] = entry;
@@ -299,7 +304,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     public MapEntry<T> removeIfExits(T value) {
         var entry = createEntry(value);
         final var hashIndex = getHashIndex();
-        var index = entry.hashes[hashIndex] & (entries.length-1);
+        var index = calcIndex(entry.hashes[hashIndex]);
         var existingEntry = (MapEntry<T>)entries[index];
         if(existingEntry == null) {
             return null;
@@ -327,7 +332,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     @Override
     public void removeExisting(MapEntry<T> entry) {
         final var hashIndex = getHashIndex();
-        var index = entry.hashes[hashIndex] & (entries.length-1);
+        var index = calcIndex(entry.hashes[hashIndex]);
         var existingEntry = (MapEntry<T>)entries[index];
         if(matches(existingEntry, entry)) {
             entries[index] = existingEntry.nextEntries[hashIndex];
@@ -352,7 +357,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     public boolean contains(T value) {
         final var hashCode = getHashCode(value);
         final var hashIndex = getHashIndex();
-        var index = hashCode & (entries.length-1);
+        var index = calcIndex(hashCode);
         var existingEntry = (MapEntry<T>)entries[index];
         if(existingEntry == null) {
            return false;
@@ -373,7 +378,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     @Override
     public boolean contains(final MapEntry<T> entry) {
         final var hashIndex = getHashIndex();
-        var index = entry.hashes[hashIndex] & (entries.length-1);
+        var index = calcIndex(entry.hashes[hashIndex]);
         var existingEntry = (MapEntry<T>)entries[index];
         if(existingEntry == null) {
             return false;
@@ -397,7 +402,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
 
     @Override
     public void clear() {
-        entries = new Object[2];
+        entries = new Object[MINIMUM_SIZE];
         size = 0;
     }
 
@@ -419,7 +424,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     @Override
     public Stream<T> stream(final T valueWithSameKey) {
         final var hashCode = getHashCode(valueWithSameKey);
-        var index = hashCode & (entries.length-1);
+        var index = calcIndex(hashCode);
         var existingEntry = (MapEntry<T>)entries[index];
         var hashIndex = getHashIndex();
         while(existingEntry != null && existingEntry.hashes[hashIndex] != hashCode) {
@@ -442,7 +447,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     @Override
     public Iterator<T> iterator(final T valueWithSameKey) {
         final var hashCode = getHashCode(valueWithSameKey);
-        var index = hashCode & (entries.length-1);
+        var index = calcIndex(hashCode);
         var existingEntry = (MapEntry<T>)entries[index];
         var hashIndex = getHashIndex();
         while(existingEntry != null && existingEntry.hashes[hashIndex] != hashCode) {
@@ -484,9 +489,12 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
          */
         @Override
         public T next() {
-            var next = this.mapEntry.value;
-            this.mapEntry = this.mapEntry.nextEntries[hashIndex];
-            return next;
+            if(hasNext()) {
+                var next = this.mapEntry.value;
+                this.mapEntry = this.mapEntry.nextEntries[hashIndex];
+                return next;
+            }
+            throw new NoSuchElementException();
         }
     }
 

@@ -10,11 +10,13 @@ import java.util.stream.Stream;
 
 public abstract class ArrayValueMap<T> implements ValueMap<T> {
 
-    private static int INITIAL_SIZE = 5;
-    private static int GROW_BY_TRIPLES = 4;
+    private static int INITIAL_SIZE = 2;
+    private static int GROW_BY_TRIPLES = 3;
     private int size = 0;
     private Object[] entries = new Object[INITIAL_SIZE];
 
+    protected abstract int getHashIndex();
+    protected abstract int getHashCode(T value);
     protected abstract MapEntry<T> createEntry(T value);
     protected abstract boolean matches(final T value1, final T value2);
     protected abstract boolean matches(final MapEntry<T> entry1, final MapEntry<T> entry2);
@@ -29,6 +31,16 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
     }
 
     public static Supplier<ValueMap<Triple>> forSubject = () -> new ArrayValueMap<Triple>() {
+        @Override
+        protected int getHashIndex() {
+            return 0;
+        }
+
+        @Override
+        protected int getHashCode(Triple value) {
+            return value.getSubject().getIndexingValue().hashCode();
+        }
+
         @Override
         protected MapEntry<Triple> createEntry(Triple value) {
             return MapEntry.fromTriple(value);
@@ -50,6 +62,16 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
 
     public static Supplier<ValueMap<Triple>> forPredicate = () -> new ArrayValueMap<Triple>() {
         @Override
+        protected int getHashIndex() {
+            return 1;
+        }
+
+        @Override
+        protected int getHashCode(Triple value) {
+            return value.getPredicate().getIndexingValue().hashCode();
+        }
+
+        @Override
         protected MapEntry<Triple> createEntry(Triple value) {
             return MapEntry.fromTriple(value);
         }
@@ -69,6 +91,16 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
     };
 
     public static Supplier<ValueMap<Triple>> forObject = () -> new ArrayValueMap<Triple>() {
+        @Override
+        protected int getHashIndex() {
+            return 2;
+        }
+
+        @Override
+        protected int getHashCode(Triple value) {
+            return value.getObject().getIndexingValue().hashCode();
+        }
+
         @Override
         protected MapEntry<Triple> createEntry(Triple value) {
             return MapEntry.fromTriple(value);
@@ -206,7 +238,12 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
 
     @Override
     public Stream<T> stream(final T valueWithSameKey) {
-        return this.stream();
+        var hashCode = getHashCode(valueWithSameKey);
+        var hashIndex = getHashIndex();
+        return Arrays.stream(entries, 0, size)
+                .map(entry -> ((MapEntry<T>)entry))
+                .filter(entry -> entry.hashes[hashIndex] == hashCode)
+                .map(entry -> entry.value);
     }
 
     @Override
@@ -222,7 +259,7 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
         if(this.isEmpty()) {
             return null;
         }
-        return new ArrayIterator(entries, size);
+        return new ArrayIteratorFiltering<>(entries, size, getHashIndex(), getHashCode(valueWithSameKey));
     }
 
     private static class ArrayIterator<T> implements Iterator<T> {
@@ -231,11 +268,7 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
         private final int size;
         private int pos = 0;
 
-        private ArrayIterator(Object[] entries) {
-            this(entries, entries.length);
-        }
-
-        private ArrayIterator(Object[] entries, int size) {
+        private ArrayIterator(final Object[] entries, final int size) {
             this.entries = entries;
             this.size = size;
         }
@@ -260,7 +293,64 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
          */
         @Override
         public T next() {
-            return ((MapEntry<T>)entries[pos++]).value;
+            if(hasNext()) {
+                return ((MapEntry<T>) entries[pos++]).value;
+            }
+            throw new NoSuchElementException();
+        }
+    }
+
+    private static class ArrayIteratorFiltering<T> implements Iterator<T> {
+
+        private final Object[] entries;
+        private final int size;
+        private final int hashIndex;
+        private final int referenceHashCode;
+        private int pos = 0;
+
+        private boolean hasCurrent = false;
+        private T current;
+
+        private ArrayIteratorFiltering(final Object[] entries, final int size, final int hashIndex, final int referenceHashCode) {
+            this.entries = entries;
+            this.size = size;
+            this.hashIndex = hashIndex;
+            this.referenceHashCode = referenceHashCode;
+        }
+
+        /**
+         * Returns {@code true} if the iteration has more elements.
+         * (In other words, returns {@code true} if {@link #next} would
+         * return an element rather than throwing an exception.)
+         *
+         * @return {@code true} if the iteration has more elements
+         */
+        @Override
+        public boolean hasNext() {
+            while(!hasCurrent && pos < size) {
+                var candidate = ((MapEntry<T>)entries[pos++]);
+                if(candidate.hashes[hashIndex] == referenceHashCode) {
+                    this.current = candidate.value;
+                    hasCurrent = true;
+                }
+            }
+            return hasCurrent;
+        }
+
+        /**
+         * Returns the next element in the iteration.
+         *
+         * @return the next element in the iteration
+         * @throws NoSuchElementException if the iteration has no more elements
+         */
+        @Override
+        public T next() {
+            if (hasCurrent || hasNext())
+            {
+                hasCurrent = false;
+                return current;
+            }
+            throw new NoSuchElementException();
         }
     }
 }
