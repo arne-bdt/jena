@@ -103,8 +103,6 @@ public class GraphMemHash extends GraphMemBase implements GraphWithPerform {
         if(entry != null) {
             byPredicateAndSubject.addDefinitetly(entry);
             byObjectAndPredicate.addDefinitetly(entry);
-        } else {
-            int i=0;
         }
     }
 
@@ -248,7 +246,7 @@ public class GraphMemHash extends GraphMemBase implements GraphWithPerform {
     @SuppressWarnings("java:S3776")
     @Override
     public Stream<Triple> stream(Node s, Node p, Node o) {
-        var triple = Triple.create(s, o, p);
+        var triple = Triple.create(s, p, o);
         final Stream<Triple> result;
         if (s != null && s.isConcrete()) {
             if(p != null && p.isConcrete()) { // SPO:SP?
@@ -553,8 +551,8 @@ public class GraphMemHash extends GraphMemBase implements GraphWithPerform {
         public boolean hasNext() {
             while(!this.hasCurrent && this.iterator.hasNext()) {
                 var candidate = this.iterator.next();
-                this.hasCurrent = filter.test(candidate);
-                if(this.hasCurrent) {
+                if(filter.test(candidate)) {
+                    this.hasCurrent = true;
                     this.current = candidate;
                 }
             }

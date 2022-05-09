@@ -1,6 +1,5 @@
 package org.apache.jena.mem.hash;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.jena.graph.Triple;
 
 import java.util.*;
@@ -13,7 +12,7 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
 
-    private float loadFactor = 0.75f;
+    private float loadFactor = 0.5f;
     private static int MINIMUM_SIZE = 16;
     private int mapSize = 0;
     private Object[] entries;
@@ -22,6 +21,7 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
     protected abstract int getHashCode(MapEntry<T> value);
     protected abstract KeyEntry<T> createEntry(int hashCode);
     protected abstract boolean matches(final T value1, final T value2);
+    protected abstract boolean containsPrimaryIndex(final T value);
     protected abstract boolean containsSecondaryIndex(final T value);
 
     private static boolean compareHashes(int[] hashes1, int[] hashes2) {
@@ -45,6 +45,15 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
             return value.hashes[0];
         }
 
+        @Override
+        protected boolean containsPrimaryIndex(final Triple value) {
+            return value.getSubject().isConcrete();
+        }
+
+        @Override
+        protected boolean containsSecondaryIndex(final Triple value) {
+            return value.getObject().isConcrete();
+        }
 
         @Override
         protected KeyEntry<Triple> createEntry(int hashCode) {
@@ -58,11 +67,6 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
                     && value1.getObject().sameValueAs(value2.getObject())
                     && value1.getPredicate().equals(value2.getPredicate());
         }
-
-        @Override
-        protected boolean containsSecondaryIndex(final Triple value) {
-            return value.getObject().isConcrete();
-        }
     };
 
     public static Supplier<ValueMap<Triple>> forPredicate = () -> new HashKeyMap<Triple>() {
@@ -74,6 +78,11 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
         @Override
         protected int getHashCode(MapEntry<Triple> value) {
             return value.hashes[1];
+        }
+
+        @Override
+        protected boolean containsPrimaryIndex(final Triple value) {
+            return value.getPredicate().isConcrete();
         }
 
         @Override
@@ -104,6 +113,11 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
         @Override
         protected int getHashCode(MapEntry<Triple> value) {
             return value.hashes[2];
+        }
+
+        @Override
+        protected boolean containsPrimaryIndex(final Triple value) {
+            return value.getObject().isConcrete();
         }
 
         @Override
@@ -149,6 +163,7 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
         if(newSize < 0) {
             return;
         }
+        var countBefore = countValues(entries);
         final var newEntries = new Object[newSize];
         for(int i=0; i<entries.length; i++) {
             var entryToMove = (KeyEntry<T>) entries[i];
@@ -165,7 +180,24 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
                 entryToMove = copyOfNext;
             } while (entryToMove != null);
         }
+        var countAfter = countValues(newEntries);
+        if(countBefore != countAfter) {
+            int i=0;
+        }
         entries = newEntries;
+    }
+    private int countValues(Object[] entries) {
+        return Arrays.stream(entries)
+                .filter(entry -> entry != null)
+                .map(entry -> (KeyEntry<T>) entry)
+                .mapToInt(entry -> {
+                    var size = 0;
+                    while (entry != null) {
+                        size += entry.value.size();
+                        entry = entry.next;
+                    }
+                    return size;
+                }).sum();
     }
 
     @Override
@@ -383,22 +415,32 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
 
     @Override
     public int size() {
-        throw new NotImplementedException();
+        return Arrays.stream(entries)
+                .filter(entry -> entry != null)
+                .map(entry -> (KeyEntry<T>) entry)
+                .mapToInt(entry -> {
+                    var size = 0;
+                    while (entry != null) {
+                        size += entry.value.size();
+                        entry = entry.next;
+                    }
+                    return size;
+                }).sum();
     }
 
     @Override
     public Stream<T> stream() {
-        return StreamSupport.stream(new EntriesSpliterator(entries), false);
+        return StreamSupport.stream(new KeyEntriesSpliterator(entries), false);
     }
 
     @Override
     public Stream<T> stream(final T valueWithSameKey) {
+        if(!containsPrimaryIndex(valueWithSameKey)) {
+            return stream();
+        }
         final var hashCode = getHashCode(valueWithSameKey);
         var index = hashCode & (entries.length-1);
         var existingEntry = (KeyEntry<T>)entries[index];
-        if(existingEntry == null) {
-            return Stream.empty();
-        }
         while(existingEntry != null && existingEntry.hash != hashCode) {
             existingEntry = existingEntry.next;
         }
@@ -417,17 +459,17 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
         if(this.isEmpty()) {
             return null;
         }
-        return new EntryIterator(entries);
+        return new KeyEntriesIterator<>(entries);
     }
 
     @Override
     public Iterator<T> iterator(final T valueWithSameKey) {
+        if(!containsPrimaryIndex(valueWithSameKey)) {
+            return iterator();
+        }
         final var hashCode = getHashCode(valueWithSameKey);
         var index = hashCode & (entries.length-1);
         var existingEntry = (KeyEntry<T>)entries[index];
-        if(existingEntry == null) {
-            return null;
-        }
         while(existingEntry != null && existingEntry.hash != hashCode) {
             existingEntry = existingEntry.next;
         }
@@ -441,17 +483,19 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
         }
     }
 
-    private static class EntryIterator<T> implements Iterator<T> {
+    private static class KeyEntryIterator<T> implements Iterator<T> {
 
-        private final Object[] keyEntries;
-        private int keyIndex = 0;
-        private KeyEntry<T> currentKeyEntry;
+        private KeyEntry<T> keyEntry;
         private Iterator<T> currentIterator;
-        private boolean hasCurrent = false;
+        private boolean hasNext = false;
 
 
-        public EntryIterator(Object[] keyEntries) {
-            this.keyEntries = keyEntries;
+        public KeyEntryIterator(KeyEntry<T> keyEntry) {
+            this.keyEntry = keyEntry;
+            this.currentIterator = keyEntry.value.iterator();
+            if(currentIterator != null && currentIterator.hasNext()) {
+                hasNext = true;
+            }
         }
 
         /**
@@ -463,37 +507,22 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
          */
         @Override
         public boolean hasNext() {
-            if(hasCurrent) {
-                if(currentIterator.hasNext()) {
+            if(!hasNext) {
+                if(currentIterator != null && currentIterator.hasNext()) {
+                    hasNext = true;
                     return true;
                 }
-                hasCurrent = false;
-            }
-            while(!this.hasCurrent && keyIndex < keyEntries.length) {
-                while(currentKeyEntry == null && keyIndex < keyEntries.length) {
-                    var keyEntry = (KeyEntry<T>)keyEntries[keyIndex];
+                while(!hasNext && keyEntry != null) {
+                    keyEntry = keyEntry.next;
                     if(keyEntry != null) {
-                        currentKeyEntry = keyEntry;
-                        if(currentKeyEntry != null) {
-                            currentIterator = currentKeyEntry.value.iterator();
-                        }
-                    } else {
-                        keyIndex++;
-                    }
-                }
-                while(!this.hasCurrent && currentKeyEntry != null) {
-                    if(currentIterator != null && currentIterator.hasNext()) {
-                        this.hasCurrent = true;
-                        break;
-                    } else {
-                        currentKeyEntry = currentKeyEntry.next;
-                        if(currentKeyEntry != null) {
-                            currentIterator = currentKeyEntry.value.iterator();
+                        currentIterator = keyEntry.value.iterator();
+                        if(currentIterator.hasNext()) {
+                            hasNext = true;
                         }
                     }
                 }
             }
-            return hasCurrent;
+            return hasNext;
         }
 
         /**
@@ -504,55 +533,87 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
          */
         @Override
         public T next() {
-            if (hasCurrent || hasNext())
+            if (hasNext || hasNext())
             {
-                hasCurrent = false;
+                hasNext = false;
                 return currentIterator.next();
             }
             throw new NoSuchElementException();
         }
     }
 
-    private class EntriesSpliterator implements Spliterator<T> {
+    private static class KeyEntriesIterator<T> implements Iterator<T> {
 
-        private final Object[] keyEntries;
-        private int pos = 0;
-        private KeyEntry<T> currentKeyEntry;
+        private final Object[] entries;
         private Iterator<T> currentIterator;
+        private int pos = 0;
+        private boolean hasNext = false;
+
+        public KeyEntriesIterator(Object[] entries) {
+            this.entries = entries;
+        }
 
 
-        public EntriesSpliterator(Object[] keyEntries) {
-            this.keyEntries = keyEntries;
+        /**
+         * Returns {@code true} if the iteration has more elements.
+         * (In other words, returns {@code true} if {@link #next} would
+         * return an element rather than throwing an exception.)
+         *
+         * @return {@code true} if the iteration has more elements
+         */
+        @Override
+        public boolean hasNext() {
+            if(!hasNext) {
+                if(currentIterator != null && currentIterator.hasNext()) {
+                    hasNext = true;
+                    return true;
+                }
+                while(!hasNext && pos < entries.length) {
+                    var keyEntry = (KeyEntry<T>)entries[pos++];
+                    if(keyEntry != null) {
+                        currentIterator = new KeyEntryIterator<>(keyEntry);
+                        if(currentIterator.hasNext()) {
+                            hasNext = true;
+                        }
+                    }
+                }
+            }
+            return hasNext;
+        }
+
+        /**
+         * Returns the next element in the iteration.
+         *
+         * @return the next element in the iteration
+         * @throws NoSuchElementException if the iteration has no more elements
+         */
+        @Override
+        public T next() {
+            if (hasNext || hasNext())
+            {
+                hasNext = false;
+                return currentIterator.next();
+            }
+            throw new NoSuchElementException();
+        }
+    }
+
+    /*TODO: Implement trySplit to support parallel processing*/
+    private static class KeyEntriesSpliterator<T> implements Spliterator<T> {
+
+        private Iterator<T> iterator;
+
+        public KeyEntriesSpliterator(Object[] keyEntries) {
+            this.iterator = new KeyEntriesIterator<>(keyEntries);
         }
 
 
         @Override
         public boolean tryAdvance(Consumer<? super T> action) {
-            if(currentIterator != null && currentIterator.hasNext()) {
-                action.accept(currentIterator.next());
-                return true;
-            }
-            while (currentKeyEntry != null && (currentIterator == null || !currentIterator.hasNext())) {
-                currentIterator = currentKeyEntry.value.iterator();
-                if (currentIterator == null || !currentIterator.hasNext()) {
-                    currentKeyEntry = currentKeyEntry.next;
-                }
-            }
-            while(currentKeyEntry == null && pos < keyEntries.length) {
-                while (currentKeyEntry == null && pos < keyEntries.length) {
-                    currentKeyEntry = (KeyEntry<T>) keyEntries[pos++];
-                }
-                while (currentKeyEntry != null && (currentIterator == null || !currentIterator.hasNext())) {
-                    currentIterator = currentKeyEntry.value.iterator();
-                    if (currentIterator == null || !currentIterator.hasNext()) {
-                        currentKeyEntry = currentKeyEntry.next;
-                    }
-                }
-            }
-            if(currentIterator == null || !currentIterator.hasNext()) {
+            if(!iterator.hasNext()) {
                 return false;
             }
-            action.accept(currentIterator.next());
+            action.accept(iterator.next());
             return true;
         }
 
@@ -561,7 +622,6 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
         public Spliterator<T> trySplit() {
             return null;
         }
-
 
         @Override
         public long estimateSize() {

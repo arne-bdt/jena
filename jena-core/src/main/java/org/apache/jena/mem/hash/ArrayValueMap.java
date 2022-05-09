@@ -2,11 +2,10 @@ package org.apache.jena.mem.hash;
 
 import org.apache.jena.graph.Triple;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 public abstract class ArrayValueMap<T> implements ValueMap<T> {
@@ -20,7 +19,7 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
     protected abstract boolean matches(final T value1, final T value2);
     protected abstract boolean matches(final MapEntry<T> entry1, final MapEntry<T> entry2);
 
-    private boolean compareHashes(int[] hashes1, int[] hashes2) {
+    private static boolean compareHashes(int[] hashes1, int[] hashes2) {
         for(int i=0; i<hashes1.length; i++) {
             if(hashes1[i] != hashes2[i]) {
                 return false;
@@ -29,7 +28,7 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
         return true;
     }
 
-    public ArrayValueMap forSubject = new ArrayValueMap<Triple>() {
+    public static Supplier<ValueMap<Triple>> forSubject = () -> new ArrayValueMap<Triple>() {
         @Override
         protected MapEntry<Triple> createEntry(Triple value) {
             return MapEntry.fromTriple(value);
@@ -49,7 +48,7 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
         }
     };
 
-    public ArrayValueMap forPredicate = new ArrayValueMap<Triple>() {
+    public static Supplier<ValueMap<Triple>> forPredicate = () -> new ArrayValueMap<Triple>() {
         @Override
         protected MapEntry<Triple> createEntry(Triple value) {
             return MapEntry.fromTriple(value);
@@ -69,7 +68,7 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
         }
     };
 
-    public ArrayValueMap forObject = new ArrayValueMap<Triple>() {
+    public static Supplier<ValueMap<Triple>> forObject = () -> new ArrayValueMap<Triple>() {
         @Override
         protected MapEntry<Triple> createEntry(Triple value) {
             return MapEntry.fromTriple(value);
@@ -93,7 +92,7 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
     }
 
     private void grow() {
-        var newList = new Triple[size + GROW_BY_TRIPLES];
+        var newList = new Object[size + GROW_BY_TRIPLES];
         System.arraycopy(entries, 0, newList, 0, size);
         entries = newList;
     }
@@ -109,8 +108,9 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
         if(size == entries.length) {
             grow();
         }
-        entries[size++] = createEntry(value);
-        return null;
+        var entry = createEntry(value);
+        entries[size++] = entry;
+        return entry;
     }
 
     @Override
@@ -261,125 +261,6 @@ public abstract class ArrayValueMap<T> implements ValueMap<T> {
         @Override
         public T next() {
             return ((MapEntry<T>)entries[pos++]).value;
-        }
-    }
-
-    private static class NestedTriplesIterator implements Iterator<Triple> {
-
-        private final Iterator<Triple[]> baseIterator;
-        private Iterator<Triple> subIterator;
-        private boolean hasSubIterator = false;
-
-        public NestedTriplesIterator(Iterator<Triple[]> baseIterator) {
-
-            this.baseIterator = baseIterator;
-            if (baseIterator.hasNext()) {
-                subIterator = new ArrayIterator(baseIterator.next());
-                hasSubIterator = true;
-            }
-        }
-
-        /**
-         * Returns {@code true} if the iteration has more elements.
-         * (In other words, returns {@code true} if {@link #next} would
-         * return an element rather than throwing an exception.)
-         *
-         * @return {@code true} if the iteration has more elements
-         */
-        @Override
-        public boolean hasNext() {
-            if (hasSubIterator) {
-                if (subIterator.hasNext()) {
-                    return true;
-                }
-                while (baseIterator.hasNext()) {
-                    subIterator = new ArrayIterator(baseIterator.next());
-                    if (subIterator.hasNext()) {
-                        return true;
-                    }
-                }
-                hasSubIterator = false;
-            }
-            return false;
-        }
-
-        /**
-         * Returns the next element in the iteration.
-         *
-         * @return the next element in the iteration
-         * @throws NoSuchElementException if the iteration has no more elements
-         */
-        @Override
-        public Triple next() {
-            if (!hasSubIterator || !this.hasNext()) {
-                throw new NoSuchElementException();
-            }
-            return subIterator.next();
-        }
-    }
-
-    /**
-     * Basically the same as FilterIterator<> but with clear and simple implementation without inheriting possibly
-     * strange behaviour from any of the base classes.
-     * This Iterator also directly supports wrapWithRemoveSupport
-     */
-    private static class IteratorFiltering implements Iterator<Triple> {
-
-        private final Predicate<Triple> filter;
-        private boolean hasCurrent = false;
-
-        private final Triple[] triples;
-        private final int size;
-        private int pos = 0;
-
-        /**
-         The remembered current triple.
-         */
-        private Triple current;
-
-        /**
-         * Initialise this wrapping with the given base iterator and remove-control.
-         *
-         * @param filter        the filter predicate for this iteration
-         */
-        protected IteratorFiltering(Triple[] triples, int size, Predicate<Triple> filter) {
-            this.triples = triples;
-            this.size = size;
-            this.filter = filter;
-        }
-
-        /**
-         * Returns {@code true} if the iteration has more elements.
-         * (In other words, returns {@code true} if {@link #next} would
-         * return an element rather than throwing an exception.)
-         *
-         * @return {@code true} if the iteration has more elements
-         */
-        @Override
-        public boolean hasNext() {
-            while(!this.hasCurrent && pos < size) {
-                var candidate = triples[pos++];
-                this.hasCurrent = filter.test(candidate);
-                if(this.hasCurrent) {
-                    this.current = candidate;
-                }
-            }
-            return this.hasCurrent;
-        }
-
-        /**
-         Answer the next object, remembering it in <code>current</code>.
-         @see Iterator#next()
-         */
-        @Override
-        public Triple next()
-        {
-            if (hasCurrent || hasNext())
-            {
-                hasCurrent = false;
-                return current;
-            }
-            throw new NoSuchElementException();
         }
     }
 }
