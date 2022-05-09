@@ -74,20 +74,17 @@ public class GraphMemHybridMaps extends GraphMemBase implements GraphWithPerform
      * usage, where subject hashCode is already used as key.
      */
      private final static BiPredicate<Triple, Triple> matchesSOP =
-            (t1, t2) -> t1.getPredicate().getIndexingValue().hashCode() == t2.getPredicate().getIndexingValue().hashCode()
-                    && t1.getPredicate().equals(t2.getPredicate())
+            (t1, t2) -> t1.getPredicate().equals(t2.getPredicate())
                     && t1.getObject().sameValueAs(t2.getObject())
                     && t1.getSubject().equals(t2.getSubject());
 
     private final static BiPredicate<Triple, Triple> matchesPSO =
-            (t1, t2) -> t1.getObject().getIndexingValue().hashCode() == t2.getObject().getIndexingValue().hashCode()
-                    && t1.getObject().sameValueAs(t2.getObject())
+            (t1, t2) -> t1.getObject().sameValueAs(t2.getObject())
                     && t1.getSubject().equals(t2.getSubject())
                     && t1.getPredicate().equals(t2.getPredicate());
 
     private final static BiPredicate<Triple, Triple> matchesOPS =
-            (t1, t2) -> t1.getSubject().getIndexingValue().hashCode() == t2.getSubject().getIndexingValue().hashCode()
-                    && t1.getSubject().equals(t2.getSubject())
+            (t1, t2) -> t1.getSubject().equals(t2.getSubject())
                     && t1.getObject().sameValueAs(t2.getObject())
                     && t1.getPredicate().equals(t2.getPredicate());
 

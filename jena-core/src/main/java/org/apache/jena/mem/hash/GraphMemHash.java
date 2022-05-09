@@ -16,12 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.sorted.experiment;
+package org.apache.jena.mem.hash;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
+import org.apache.jena.mem.simple.SubjectPredicateObjectMap;
+import org.apache.jena.mem.simple.TripleMapWithTwoKeys;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -31,7 +33,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
-import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -66,32 +67,14 @@ import java.util.stream.Stream;
  * supported this in some cases. The implementation of ModelExpansion.addDomainTypes relayed on this behaviour, but it
  * has been fixed.
  */
-public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implements GraphWithPerform {
+public class GraphMemHash extends GraphMemBase implements GraphWithPerform {
 
-    /**
-     * Predicate to match two triples with conditions ordered to fail fast for the given
-     * usage, where subject hashCode is already used as key.
-     */
-    private final static BiPredicate<Triple, Triple> matchesPOS =
-            (t1, t2) -> t1.getPredicate().equals(t2.getPredicate())
-                    && t1.getObject().sameValueAs(t2.getObject())
-                    && t1.getSubject().equals(t2.getSubject());
 
-    private final static BiPredicate<Triple, Triple> matchesSOP =
-            (t1, t2) -> t1.getSubject().equals(t2.getSubject())
-                    && t1.getObject().sameValueAs(t2.getObject())
-                    && t1.getPredicate().equals(t2.getPredicate());
+    private final ValueMap<Triple> bySubjectAndObject = HashKeyMap.forSubject.get();
+    private final ValueMap<Triple>  byPredicateAndSubject =  HashKeyMap.forPredicate.get();
+    private final ValueMap<Triple>  byObjectAndPredicate =  HashKeyMap.forObject.get();
 
-    private final static BiPredicate<Triple, Triple> matchesOSP =
-            (t1, t2) -> t1.getObject().sameValueAs(t2.getObject())
-                    && t1.getSubject().equals(t2.getSubject())
-                    && t1.getPredicate().equals(t2.getPredicate());
-
-    private final TripleMapSorted bySubject= new TripleMapSorted(Triple::getSubject, Triple::getObject, matchesPOS);
-    private final TripleMapSorted byPredicate = new TripleMapSorted(Triple::getPredicate, Triple::getSubject,matchesOSP);
-    private final TripleMapSorted byObject = new TripleMapSorted(Triple::getObject, Triple::getPredicate, matchesSOP);
-
-    public GraphMemUsingHashMapSortedExperiment() {
+    public GraphMemHash() {
         super();
     }
 
@@ -101,9 +84,9 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
      */
     @Override
     protected void destroy() {
-        this.bySubject.clear();
-        this.byPredicate.clear();
-        this.byObject.clear();
+        this.bySubjectAndObject.clear();
+        this.byPredicateAndSubject.clear();
+        this.byObjectAndPredicate.clear();
     }
 
     /**
@@ -116,9 +99,12 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
     @SuppressWarnings("java:S1199")
     @Override
     public void performAdd(final Triple t) {
-        if(bySubject.addIfNotExists(t)){
-            byPredicate.addDefinitetly(t);
-            byObject.addDefinitetly(t);
+        var entry = bySubjectAndObject.addIfNotExists(t);
+        if(entry != null) {
+            byPredicateAndSubject.addDefinitetly(entry);
+            byObjectAndPredicate.addDefinitetly(entry);
+        } else {
+            int i=0;
         }
     }
 
@@ -132,9 +118,10 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
     @SuppressWarnings("java:S1199")
     @Override
     public void performDelete(final Triple t) {
-        if(bySubject.removeIfExits(t)) {
-            byPredicate.removeExisting(t);
-            byObject.removeExisting(t);
+        var entry = bySubjectAndObject.removeIfExits(t);
+        if(entry != null) {
+            byPredicateAndSubject.removeExisting(entry);
+            byObjectAndPredicate.removeExisting(entry);
         }
     }
 
@@ -144,9 +131,9 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
     @Override
     public void clear() {
         super.clear(); /* deletes all triples --> could be done better but later*/
-        this.bySubject.clear();
-        this.byPredicate.clear();
-        this.byObject.clear();
+        this.bySubjectAndObject.clear();
+        this.byPredicateAndSubject.clear();
+        this.byObjectAndPredicate.clear();
     }
 
     /**
@@ -166,74 +153,39 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
         if (sm.isConcrete()) { // SPO:S??
             if(pm.isConcrete()) { // SPO:SP?
                 if(om.isConcrete()) { // SPO:SPO
-                    return this.bySubject.contains(triple);
+                    return this.bySubjectAndObject.contains(triple);
                 } else { // SPO:SP*
-                    final var triples = this.bySubject.get(sm);
-                    if(triples == null) {
-                        return false;
-                    }
-                    for(Triple t : triples) {
-                        if(pm.equals(t.getPredicate())
-                                && sm.equals(t.getSubject())) {
-                            return true;
-                        }
-                    }
+                    return this.byPredicateAndSubject.stream(triple)
+                            .anyMatch(t -> pm.equals(t.getPredicate())
+                                    && sm.equals(t.getSubject()));
                 }
             } else { // SPO:S*?
-                final var triples = this.bySubject.get(sm);
-                if(triples == null) {
-                    return false;
-                }
                 if(om.isConcrete()) { // SPO:S*O
-                    for(Triple t : triples) {
-                        if(om.sameValueAs(t.getObject())
-                            && sm.equals(t.getSubject())) {
-                            return true;
-                        }
-                    }
+                    return this.bySubjectAndObject.stream(triple)
+                            .anyMatch(t -> om.sameValueAs(t.getObject())
+                                    && sm.equals(t.getSubject()));
                 } else { // SPO:S**
-                    for(Triple t : triples) {
-                        if(sm.equals(t.getSubject())) {
-                            return true;
-                        }
-                    }
+                    return this.bySubjectAndObject.stream(triple)
+                            .anyMatch(t -> sm.equals(t.getSubject()));
                 }
             }
         }
         else if (om.isConcrete()) {
-            final var triples = this.byObject.get(om);
-            if(triples == null) {
-                return false;
-            }
             if(pm.isConcrete()) { // SPO:*PO
-                for(Triple t : triples) {
-                    if(pm.equals(t.getPredicate())
-                            && om.sameValueAs(t.getObject())) {
-                        return true;
-                    }
-                }
+                return this.byObjectAndPredicate.stream(triple)
+                        .anyMatch(t -> pm.equals(t.getPredicate())
+                                && om.sameValueAs(t.getObject()));
             } else { // SPO:**O
-                for(Triple t : triples) {
-                    if(om.sameValueAs(t.getObject())) {
-                        return true;
-                    }
-                }
+                return this.byObjectAndPredicate.stream(triple)
+                        .anyMatch(t -> om.sameValueAs(t.getObject()));
             }
         }
         else if (pm.isConcrete()) { // SPO:*P*
-            final var triples = this.byPredicate.get(pm);
-            if(triples == null) {
-                return false;
-            }
-            for(Triple t : triples) {
-                if(pm.equals(t.getPredicate())) {
-                    return true;
-                }
-            }
+            return this.byPredicateAndSubject.stream(triple)
+                    .anyMatch(t -> pm.equals(t.getPredicate()));
         } else { // SPO:***
-            return !this.bySubject.isEmpty();
+            return !this.bySubjectAndObject.isEmpty();
         }
-        return false;
     }
 
     /**
@@ -243,21 +195,21 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
      * fewer predicates than subjects or objects.
      * @return
      */
-    private TripleMap getMapWithFewestKeys() {
-        var subjectCount = this.bySubject.numberOfKeys();
-        var predicateCount = this.byPredicate.numberOfKeys();
-        var objectCount = this.byObject.numberOfKeys();
+    private ValueMap<Triple> getMapWithFewestKeys() {
+        var subjectCount = this.bySubjectAndObject.numberOfKeys();
+        var predicateCount = this.byPredicateAndSubject.numberOfKeys();
+        var objectCount = this.byObjectAndPredicate.numberOfKeys();
         if(subjectCount < predicateCount) {
             if(subjectCount < objectCount) {
-                return this.bySubject;
+                return this.bySubjectAndObject;
             } else {
-                return this.byObject;
+                return this.byObjectAndPredicate;
             }
         } else {
             if(predicateCount < objectCount) {
-                return this.byPredicate;
+                return this.byPredicateAndSubject;
             } else {
-                return this.byObject;
+                return this.byObjectAndPredicate;
             }
         }
     }
@@ -296,61 +248,43 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
     @SuppressWarnings("java:S3776")
     @Override
     public Stream<Triple> stream(Node s, Node p, Node o) {
+        var triple = Triple.create(s, o, p);
         final Stream<Triple> result;
         if (s != null && s.isConcrete()) {
-            final var triples = this.bySubject.get(s);
-            if(triples == null) {
-                return Stream.empty();
-            }
             if(p != null && p.isConcrete()) { // SPO:SP?
                 if(o != null && o.isConcrete()) { // SPO:SPO
-                    result = triples
-                            .stream()
+                    result = this.bySubjectAndObject.stream(triple)
                             .filter(t -> o.sameValueAs(t.getObject())
                                     && p.equals(t.getPredicate())
                                     && s.equals(t.getSubject()));
                 } else { // SPO:SP*
-                    result = triples
-                            .stream()
+                    result = this.byPredicateAndSubject.stream(triple)
                             .filter(t -> p.equals(t.getPredicate())
                                     && s.equals(t.getSubject()));
                 }
             } else { // SPO:S*?
                if(o != null && o.isConcrete()) { // SPO:S*O
-                    result = triples
-                            .stream()
+                    result = this.bySubjectAndObject.stream(triple)
                             .filter(t -> o.sameValueAs(t.getObject())
                                     && s.equals(t.getSubject()));
                 } else { // SPO:S**
-                    result = triples
-                            .stream()
+                    result = this.bySubjectAndObject.stream(triple)
                             .filter(t -> s.equals(t.getSubject()));
                 }
             }
         }
         else if (o != null && o.isConcrete()) { // SPO:*?O
-            final var triples = this.byObject.get(o);
-            if(triples == null) {
-                return Stream.empty();
-            }
             if(p != null && p.isConcrete()) { // SPO:*PO
-                result = triples
-                        .stream()
+                result = this.byObjectAndPredicate.stream(triple)
                         .filter(t -> p.equals(t.getPredicate())
                                 && o.sameValueAs(t.getObject()));
             } else { // SPO:**O
-                result = triples
-                        .stream()
+                result = this.byObjectAndPredicate.stream(triple)
                         .filter(t -> o.sameValueAs(t.getObject()));
             }
         }
         else if (p != null && p.isConcrete()) { // SPO:*P*
-            final var triples = this.byPredicate.get(p);
-            if(triples == null) {
-                return Stream.empty();
-            }
-            result = triples
-                    .stream()
+            result = this.byPredicateAndSubject.stream(triple)
                     .filter(t -> p.equals(t.getPredicate()));
         }
         else { // SPO:***
@@ -370,57 +304,48 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
         final Iterator<Triple> iterator;
 
         if (sm.isConcrete()) { // SPO:S??
-            final var triples = this.bySubject.get(sm);
-            if(triples == null) {
-                return NiceIterator.emptyIterator();
-            }
             if(pm.isConcrete()) { // SPO:SP?
                 if(om.isConcrete()) { // SPO:SPO
-                    iterator = new IteratorFiltering(triples.iterator(),
+                    iterator = new IteratorFiltering(bySubjectAndObject.iterator(triplePattern),
                             t -> om.sameValueAs(t.getObject())
                                     && pm.equals(t.getPredicate())
                                     && sm.equals(t.getSubject()));
                 } else { // SPO:SP*
-                    iterator = new IteratorFiltering(triples.iterator(),
+                    iterator = new IteratorFiltering(byPredicateAndSubject.iterator(triplePattern),
                             t -> pm.equals(t.getPredicate())
                                     && sm.equals(t.getSubject()));
                 }
             } else { // SPO:S*?
                if(om.isConcrete()) { // SPO:S*O
-                   iterator = new IteratorFiltering(triples.iterator(),
+                   iterator = new IteratorFiltering(bySubjectAndObject.iterator(triplePattern),
                             t -> om.sameValueAs(t.getObject())
                                     && sm.equals(t.getSubject()));
                 } else { // SPO:S**
-                   iterator = new IteratorFiltering(triples.iterator(),
+                   iterator = new IteratorFiltering(bySubjectAndObject.iterator(triplePattern),
                             t -> sm.equals(t.getSubject()));
                 }
             }
         }
         else if (om.isConcrete()) { // SPO:*?O
-            var triples = this.byObject.get(om);
-            if(triples == null) {
-                return NiceIterator.emptyIterator();
-            }
             if(pm.isConcrete()) { // SPO:*PO
-                iterator = new IteratorFiltering(triples.iterator(),
+                iterator = new IteratorFiltering(byObjectAndPredicate.iterator(triplePattern),
                         t -> pm.equals(t.getPredicate())
                                 && om.sameValueAs(t.getObject()));
             } else { // SPO:**O
-                iterator = new IteratorFiltering(triples.iterator(),
+                iterator = new IteratorFiltering(byObjectAndPredicate.iterator(triplePattern),
                         t -> om.sameValueAs(t.getObject()));
             }
         }
         else if (pm.isConcrete()) { // SPO:*P*
-            var triples = this.byPredicate.get(pm);
-            if(triples == null) {
-                return NiceIterator.emptyIterator();
-            }
-            iterator = new IteratorFiltering(triples.iterator(),
+            iterator = new IteratorFiltering(byPredicateAndSubject.iterator(triplePattern),
                     t -> pm.equals(t.getPredicate()));
         }
         else { // SPO:***
             /*use the map with the fewest keys*/
             iterator = this.getMapWithFewestKeys().iterator();
+        }
+        if(iterator == null) {
+            return NiceIterator.emptyIterator();
         }
         return new IteratorWrapperWithRemove(iterator, this);
     }
@@ -434,7 +359,7 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
     private static class IteratorWrapperWithRemove implements ExtendedIterator<Triple> {
 
         private Iterator<Triple> iterator;
-        private final GraphMemUsingHashMapSortedExperiment graphMem;
+        private final GraphMemHash graphMem;
         private boolean isStillIteratorWithNoRemove = true;
 
         /**
@@ -442,7 +367,7 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
          */
         protected Triple current;
 
-        public IteratorWrapperWithRemove(Iterator<Triple> iteratorWithNoRemove, GraphMemUsingHashMapSortedExperiment graphMem) {
+        public IteratorWrapperWithRemove(Iterator<Triple> iteratorWithNoRemove, GraphMemHash graphMem) {
             this.iterator = iteratorWithNoRemove;
             this.graphMem = graphMem;
         }

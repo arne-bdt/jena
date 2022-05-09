@@ -24,8 +24,12 @@ import org.apache.jena.datatypes.xsd.impl.XSDDouble;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.hash.GraphMemHash;
 import org.apache.jena.mem.hybrid.GraphMemHybridMaps;
+import org.apache.jena.mem.hybrid.HybridTripleMap;
 import org.apache.jena.mem.simple.GraphMemSimple;
+import org.apache.jena.mem.sorted.GraphMemUsingHashMapSorted;
+import org.apache.jena.mem.sorted.experiment.GraphMemUsingHashMapSortedExperiment;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
@@ -41,8 +45,11 @@ public abstract class TestGraphMemVariantsBase {
 
 
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
-            Pair.of("GraphMemSimple", () -> new GraphMemSimple()),
-            Pair.of("GraphMem", () -> new GraphMem())
+            //Pair.of("GraphMem", () -> new GraphMem()),
+            Pair.of("GraphMemHash", () -> new GraphMemHash()),
+            //Pair.of("GraphMemSimple", () -> new GraphMemSimple()),
+            //Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+            Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment())
             //Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
 
     );

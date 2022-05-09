@@ -108,7 +108,8 @@ public class HashTripleMap implements TripleMapWithOneKey {
         if(map.isEmpty()) {
             return null;
         }
-        return new IteratorFiltering(map.iterator(), t -> getKey(t) == firstKeyNode.getIndexingValue().hashCode());
+        return map.iterator();
+        //return new IteratorFiltering(map.iterator(), t -> getKey(t) == firstKeyNode.getIndexingValue().hashCode());
     }
 
     /**

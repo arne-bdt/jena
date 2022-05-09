@@ -180,7 +180,7 @@ public class GraphMemSimple extends GraphMemBase implements GraphWithPerform {
             }
         }
         else if (pm.isConcrete()) { // SPO:*P*
-            return this.byObjectAndPredicate.stream(om)
+            return this.byPredicateAndSubject.stream(om)
                     .anyMatch(t -> pm.equals(t.getPredicate()));
         } else { // SPO:***
             return !this.bySubjectAndObject.isEmpty();
