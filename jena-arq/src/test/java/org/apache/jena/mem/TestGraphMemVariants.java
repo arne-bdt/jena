@@ -53,6 +53,7 @@ public class TestGraphMemVariants extends TestGraphMemVariantsBase {
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
     @Test
+    @Ignore
     public void BSBM_50000() {
         loadGraphsMeasureTimeAndMemory(graphImplementationsToTest,
                 1, 100,

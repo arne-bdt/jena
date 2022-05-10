@@ -25,6 +25,7 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.hash.GraphMemHash;
+import org.apache.jena.mem.hash_no_entry.GraphMemHashNoEntries;
 import org.apache.jena.mem.hybrid.GraphMemHybridMaps;
 import org.apache.jena.mem.hybrid.HybridTripleMap;
 import org.apache.jena.mem.simple.GraphMemSimple;
@@ -45,12 +46,18 @@ public abstract class TestGraphMemVariantsBase {
 
 
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
-            Pair.of("GraphMem", () -> new GraphMem()),
-            Pair.of("GraphMem", () -> new GraphMem()),
-            Pair.of("GraphMem", () -> new GraphMem()),
             Pair.of("GraphMemHash", () -> new GraphMemHash()),
             Pair.of("GraphMemHash", () -> new GraphMemHash()),
-            Pair.of("GraphMemHash", () -> new GraphMemHash())
+            Pair.of("GraphMemHash", () -> new GraphMemHash()),
+            Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries()),
+            Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries()),
+            Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries())
+            //Pair.of("GraphMem", () -> new GraphMem()),
+            //Pair.of("GraphMemHash", () -> new GraphMemHash())
+            //Pair.of("GraphMem", () -> new GraphMem()),
+            //Pair.of("GraphMem", () -> new GraphMem()),
+            //Pair.of("GraphMemHash", () -> new GraphMemHash()),
+            //Pair.of("GraphMemHash", () -> new GraphMemHash()),
             //Pair.of("GraphMemSimple", () -> new GraphMemSimple()),
             //Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
             //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment())

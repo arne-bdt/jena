@@ -50,6 +50,7 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
     @Test
+    @Ignore
     public void BSBM_50000() {
         loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
