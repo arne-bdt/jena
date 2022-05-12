@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.jena.mem.hash_no_entry;
 
 import org.apache.jena.graph.Triple;
@@ -15,11 +33,20 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcIndex(final int hashCode) {
-        return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        return calcIndex(hashCode, entries.length);
     }
 
     private int calcIndex(final int hashCode, final int length) {
         return (hashCode ^ (hashCode >>> 16)) & (length-1);
+    }
+
+    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
+    private int calcIndex(final T value) {
+        return calcIndex(getHashCode(value), entries.length);
+    }
+
+    private int calcIndex(final T value, final int length) {
+        return calcIndex(getHashCode(value), length);
     }
 
     private static int MINIMUM_SIZE = 2;
@@ -28,24 +55,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     private Object[] entries;
 
     protected abstract int getHashCode(T value);
-    protected abstract MapEntry<T> createEntry(T value, int hashCode);
-    protected abstract MapEntry<T> createEntry(T value);
-    protected abstract int getHashIndex();
-    protected abstract Predicate<MapEntry<T>> getMatcherForObject(final MapEntry<T> entry);
-
-    private static boolean compareHashes(int[] hashes1, int[] hashes2) {
-        for(int i=0; i<hashes1.length; i++) {
-            if(hashes1[i] != hashes2[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    protected boolean hashesAndObjectsEquals(final MapEntry<T> entry1, final MapEntry<T> entry2) {
-        return compareHashes(entry1.hashes, entry2.hashes)
-                && entry1.equals(entry2);
-    }
+    protected abstract Predicate<T> getMatcherForObject(final T value);
 
     public static Supplier<ValueMap<Triple>> forSubject = () -> new HashValueMap<Triple>() {
 
@@ -55,36 +65,11 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         }
 
         @Override
-        protected MapEntry<Triple> createEntry(Triple value) {
-            var hashes = new int[] {
-                    value.getSubject().getIndexingValue().hashCode(),
-                    value.getPredicate().getIndexingValue().hashCode(),
-                    value.getObject().getIndexingValue().hashCode()};
-            return new MapEntry<Triple>(value, hashes);
-        }
-
-        @Override
-        protected MapEntry<Triple> createEntry(Triple value, int hashCode) {
-            var hashes = new int[] {
-                    hashCode,
-                    value.getPredicate().getIndexingValue().hashCode(),
-                    value.getObject().getIndexingValue().hashCode()};
-            return new MapEntry<Triple>(value, hashes);
-        }
-
-        @Override
-        protected int getHashIndex() {
-            return 0;
-        }
-
-        @Override
-        protected Predicate<MapEntry<Triple>> getMatcherForObject(final MapEntry<Triple> entry) {
-            if(ObjectEqualizer.isEqualsForObjectOk(entry.value.getObject())) {
-                return e ->compareHashes(entry.hashes, e.hashes)
-                        && entry.value.equals(e.value);
+        protected Predicate<Triple> getMatcherForObject(final Triple triple) {
+            if(ObjectEqualizer.isEqualsForObjectOk(triple.getObject())) {
+                return t -> triple.equals(t);
             }
-            return e ->compareHashes(entry.hashes, e.hashes)
-                    && entry.value.matches(e.value);
+            return t -> triple.matches(t);
         }
     };
 
@@ -95,36 +80,11 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         }
 
         @Override
-        protected MapEntry<Triple> createEntry(Triple value) {
-            var hashes = new int[] {
-                    value.getSubject().getIndexingValue().hashCode(),
-                    value.getPredicate().getIndexingValue().hashCode(),
-                    value.getObject().getIndexingValue().hashCode()};
-            return new MapEntry<Triple>(value, hashes);
-        }
-
-        @Override
-        protected MapEntry<Triple> createEntry(Triple value, int hashCode) {
-            var hashes = new int[] {
-                    value.getSubject().getIndexingValue().hashCode(),
-                    hashCode,
-                    value.getObject().getIndexingValue().hashCode()};
-            return new MapEntry<Triple>(value, hashes);
-        }
-
-        @Override
-        protected int getHashIndex() {
-            return 1;
-        }
-
-        @Override
-        protected Predicate<MapEntry<Triple>> getMatcherForObject(final MapEntry<Triple> entry) {
-            if(ObjectEqualizer.isEqualsForObjectOk(entry.value.getObject())) {
-                return e ->compareHashes(entry.hashes, e.hashes)
-                        && entry.value.equals(e.value);
+        protected Predicate<Triple> getMatcherForObject(final Triple triple) {
+            if(ObjectEqualizer.isEqualsForObjectOk(triple.getObject())) {
+                return t -> triple.equals(t);
             }
-            return e ->compareHashes(entry.hashes, e.hashes)
-                    && entry.value.matches(e.value);
+            return t -> triple.matches(t);
         }
     };
 
@@ -135,36 +95,11 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         }
 
         @Override
-        protected MapEntry<Triple> createEntry(Triple value) {
-            var hashes = new int[] {
-                    value.getSubject().getIndexingValue().hashCode(),
-                    value.getPredicate().getIndexingValue().hashCode(),
-                    value.getObject().getIndexingValue().hashCode()};
-            return new MapEntry<Triple>(value, hashes);
-        }
-
-        @Override
-        protected MapEntry<Triple> createEntry(Triple value, int hashCode) {
-            var hashes = new int[] {
-                    value.getSubject().getIndexingValue().hashCode(),
-                    value.getPredicate().getIndexingValue().hashCode(),
-                    hashCode};
-            return new MapEntry<Triple>(value, hashes);
-        }
-
-        @Override
-        protected int getHashIndex() {
-            return 2;
-        }
-
-        @Override
-        protected Predicate<MapEntry<Triple>> getMatcherForObject(final MapEntry<Triple> entry) {
-            if(ObjectEqualizer.isEqualsForObjectOk(entry.value.getObject())) {
-                return e ->compareHashes(entry.hashes, e.hashes)
-                        && entry.value.equals(e.value);
+        protected Predicate<Triple> getMatcherForObject(final Triple triple) {
+            if(ObjectEqualizer.isEqualsForObjectOk(triple.getObject())) {
+                return t -> triple.equals(t);
             }
-            return e ->compareHashes(entry.hashes, e.hashes)
-                    && entry.value.matches(e.value);
+            return t -> triple.matches(t);
         }
     };
 
@@ -193,7 +128,6 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         if(newSize < 0) {
             return;
         }
-        final var hashIndex = getHashIndex();
         final var newEntries = new Object[newSize];
         for(int i=0; i<entries.length; i++) {
             var entryToMove = (MapEntry<T>) entries[i];
@@ -201,11 +135,11 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
                 continue;
             }
             do {
-                var newIndex = calcIndex(entryToMove.hashes[hashIndex], newEntries.length);
+                var newIndex = calcIndex(entryToMove.value, newEntries.length);
                 var entryInTarget = (MapEntry<T>)newEntries[newIndex];
-                var copyOfNext = entryToMove.nextEntries[hashIndex];
+                var copyOfNext = entryToMove.next;
                 /*insert as first element --> reversing order*/
-                entryToMove.nextEntries[hashIndex] = entryInTarget;
+                entryToMove.next = entryInTarget;
                 newEntries[newIndex] = entryToMove;
                 entryToMove = copyOfNext;
             } while (entryToMove != null);
@@ -228,116 +162,91 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
 //    }
 
     @Override
-    public MapEntry<T> addIfNotExists(T value) {
-        final var newEntry = createEntry(value);
-        final var hashIndex = getHashIndex();
-        final var index = calcIndex(newEntry.hashes[hashIndex]);
+    public boolean addIfNotExists(T value) {
+        final var index = calcIndex(value);
         var existingEntry = (MapEntry<T>)entries[index];
         if(existingEntry == null) {
-            entries[index] = newEntry;
+            entries[index] = new MapEntry(value);
             size++;
             grow();
-            return newEntry;
+            return true;
         }
-        if(hashesAndObjectsEquals(existingEntry, newEntry)) {
-            return null;
+        if(value.equals(existingEntry.value)) {
+            return false;
         }
-        while(existingEntry.nextEntries[hashIndex] != null) {
-            existingEntry = existingEntry.nextEntries[hashIndex];
-            if(hashesAndObjectsEquals(existingEntry, newEntry)) {
-                return null;
+        while(existingEntry.next != null) {
+            existingEntry = existingEntry.next;
+            if(value.equals(existingEntry.value)) {
+                return false;
             }
         }
         /*insert as last element*/
-        existingEntry.nextEntries[hashIndex] = newEntry;
+        existingEntry.next = new MapEntry(value);
         size++;
         grow();
-        return newEntry;
+        return true;
     }
 
     @Override
-    public MapEntry<T> addDefinitetly(T value) {
-        final var newEntry = createEntry(value);
-        final var hashIndex = getHashIndex();
-        final var index = calcIndex(newEntry.hashes[hashIndex]);
+    public void addDefinitetly(T value) {
+        final var newEntry = new MapEntry<>(value);
+        final var index = calcIndex(value);
         var existingEntry = (MapEntry<T>)entries[index];
         if(existingEntry == null) {
             entries[index] = newEntry;
             size++;
             grow();
-            return newEntry;
+            return;
         }
         /*insert as first element*/
-        newEntry.nextEntries[hashIndex] = existingEntry;
+        newEntry.next = existingEntry;
         entries[index] = newEntry;
         size++;
         grow();
-        return newEntry;
     }
 
     @Override
-    public void addDefinitetly(MapEntry<T> entry) {
-        final var hashIndex = getHashIndex();
-        final var index = calcIndex(entry.hashes[hashIndex]);
+    public boolean removeIfExits(T value) {
+        var index = calcIndex(value);
         var existingEntry = (MapEntry<T>)entries[index];
         if(existingEntry == null) {
-            entries[index] = entry;
-            size++;
-            grow();
-            return;
+            return false;
         }
-        /*insert as first element*/
-        entry.nextEntries[hashIndex] = existingEntry;
-        entries[index] = entry;
-        size++;
-        grow();
-    }
-
-    @Override
-    public MapEntry<T> removeIfExits(T value) {
-        var entry = createEntry(value);
-        final var hashIndex = getHashIndex();
-        var index = calcIndex(entry.hashes[hashIndex]);
-        var existingEntry = (MapEntry<T>)entries[index];
-        if(existingEntry == null) {
-            return null;
-        }
-        if(hashesAndObjectsEquals(existingEntry, entry)) {
-            entries[index] = existingEntry.nextEntries[hashIndex];
+        if(value.equals(existingEntry.value)) {
+            entries[index] = existingEntry.next;
             size--;
             grow();
-            return existingEntry;
+            return true;
         }
         var previousEntry = existingEntry;
-        while(existingEntry.nextEntries[hashIndex] != null) {
-            existingEntry = existingEntry.nextEntries[hashIndex];
-            if(hashesAndObjectsEquals(existingEntry, entry)) {
-                previousEntry.nextEntries[hashIndex] = existingEntry.nextEntries[hashIndex];
+        while(existingEntry.next != null) {
+            existingEntry = existingEntry.next;
+            if(value.equals(existingEntry.value)) {
+                previousEntry.next = existingEntry.next;
                 size--;
                 grow();
-                return existingEntry;
+                return true;
             }
             previousEntry = existingEntry;
         }
-        return null;
+        return false;
     }
 
     @Override
-    public void removeExisting(MapEntry<T> entry) {
-        final var hashIndex = getHashIndex();
-        var index = calcIndex(entry.hashes[hashIndex]);
+    public void removeExisting(T value) {
+        var index = calcIndex(value);
         var existingEntry = (MapEntry<T>)entries[index];
-        if(hashesAndObjectsEquals(existingEntry, entry)) {
-            entries[index] = existingEntry.nextEntries[hashIndex];
+        if(value.equals(existingEntry.value)) {
+            entries[index] = existingEntry.next;
             size--;
             grow();
             return;
         }
         var previousEntry = existingEntry;
-        while(existingEntry.nextEntries[hashIndex] != null) {
-            existingEntry = existingEntry.nextEntries[hashIndex];
-            if(hashesAndObjectsEquals(existingEntry, entry)) {
-                previousEntry.nextEntries[hashIndex] = existingEntry.nextEntries[hashIndex];
+        while(existingEntry.next != null) {
+            existingEntry = existingEntry.next;
+            if(value.equals(existingEntry.value)) {
+                previousEntry.next = existingEntry.next;
                 size--;
                 grow();
                 return;
@@ -348,42 +257,18 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
 
     @Override
     public boolean contains(T value) {
-        final var hashCode = getHashCode(value);
-        final var hashIndex = getHashIndex();
-        var index = calcIndex(hashCode);
+        var index = calcIndex(value);
         var existingEntry = (MapEntry<T>)entries[index];
         if(existingEntry == null) {
            return false;
         }
-        var entry = createEntry(value, hashCode);
-        var matcher = getMatcherForObject(entry);
-        if(matcher.test(existingEntry)) {
+        var matcher = getMatcherForObject(value);
+        if(matcher.test(existingEntry.value)) {
             return true;
         }
-        while(existingEntry.nextEntries[hashIndex] != null) {
-            existingEntry = existingEntry.nextEntries[hashIndex];
-            if(matcher.test(existingEntry)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public boolean contains(final MapEntry<T> entry) {
-        final var hashIndex = getHashIndex();
-        var index = calcIndex(entry.hashes[hashIndex]);
-        var existingEntry = (MapEntry<T>)entries[index];
-        if(existingEntry == null) {
-            return false;
-        }
-        var matcher = getMatcherForObject(entry);
-        if(matcher.test(existingEntry)) {
-            return true;
-        }
-        while(existingEntry.nextEntries[hashIndex] != null) {
-            existingEntry = existingEntry.nextEntries[hashIndex];
-            if(matcher.test(existingEntry)) {
+        while(existingEntry.next != null) {
+            existingEntry = existingEntry.next;
+            if(matcher.test(existingEntry.value)) {
                 return true;
             }
         }
@@ -413,7 +298,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
 
     @Override
     public Stream<T> stream() {
-        return StreamSupport.stream(new MapEntriesSpliterator(entries, getHashIndex()), false);
+        return StreamSupport.stream(new MapEntriesSpliterator(entries), false);
     }
 
     @Override
@@ -421,14 +306,13 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         final var hashCode = getHashCode(valueWithSameKey);
         var index = calcIndex(hashCode);
         var existingEntry = (MapEntry<T>)entries[index];
-        var hashIndex = getHashIndex();
-        while(existingEntry != null && existingEntry.hashes[hashIndex] != hashCode) {
-            existingEntry = existingEntry.nextEntries[hashIndex];
+        while(existingEntry != null && hashCode != getHashCode(existingEntry.value)) {
+            existingEntry = existingEntry.next;
         }
         if(existingEntry == null) {
             return Stream.empty();
         }
-        return StreamSupport.stream(new MapEntrySpliterator(existingEntry, getHashIndex()), false);
+        return StreamSupport.stream(new MapEntrySpliterator(existingEntry), false);
     }
 
     @Override
@@ -436,7 +320,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         if(this.isEmpty()) {
             return null;
         }
-        return new MapEntriesIterator(entries, getHashIndex());
+        return new MapEntriesIterator(entries);
     }
 
     @Override
@@ -444,24 +328,21 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         final var hashCode = getHashCode(valueWithSameKey);
         var index = calcIndex(hashCode);
         var existingEntry = (MapEntry<T>)entries[index];
-        var hashIndex = getHashIndex();
-        while(existingEntry != null && existingEntry.hashes[hashIndex] != hashCode) {
-            existingEntry = existingEntry.nextEntries[hashIndex];
+        while(existingEntry != null && hashCode != getHashCode(existingEntry.value)) {
+            existingEntry = existingEntry.next;
         }
         if(existingEntry == null) {
             return null;
         }
-        return new MapEntryIterator(existingEntry, getHashIndex());
+        return new MapEntryIterator(existingEntry);
     }
 
     private static class MapEntryIterator<T> implements Iterator<T> {
 
         private MapEntry<T> mapEntry;
-        private final int hashIndex;
 
-        public MapEntryIterator(MapEntry<T> mapEntry, int hashIndex) {
+        public MapEntryIterator(MapEntry<T> mapEntry) {
             this.mapEntry = mapEntry;
-            this.hashIndex = hashIndex;
         }
 
         /**
@@ -486,7 +367,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         public T next() {
             if(hasNext()) {
                 var next = this.mapEntry.value;
-                this.mapEntry = this.mapEntry.nextEntries[hashIndex];
+                this.mapEntry = this.mapEntry.next;
                 return next;
             }
             throw new NoSuchElementException();
@@ -497,13 +378,11 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
 
         private final Object[] entries;
         private Iterator<T> currentIterator;
-        private final int hashIndex;
         private int pos = 0;
         private boolean hasNext = false;
 
-        public MapEntriesIterator(Object[] entries, int hashIndex) {
+        public MapEntriesIterator(Object[] entries) {
             this.entries = entries;
-            this.hashIndex = hashIndex;
         }
 
 
@@ -524,7 +403,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
                 while(!hasNext && pos < entries.length) {
                     var mapEntry = (MapEntry<T>)entries[pos++];
                     if(mapEntry != null) {
-                        currentIterator = new MapEntryIterator<>(mapEntry, hashIndex);
+                        currentIterator = new MapEntryIterator<>(mapEntry);
                         if(currentIterator.hasNext()) {
                             hasNext = true;
                         }
@@ -556,8 +435,8 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
 
         private MapEntriesIterator<T> entriesIterator;
 
-        public MapEntriesSpliterator(Object[] mapEntries, int hashIndex) {
-            this.entriesIterator = new MapEntriesIterator<>(mapEntries, hashIndex);
+        public MapEntriesSpliterator(Object[] mapEntries) {
+            this.entriesIterator = new MapEntriesIterator<>(mapEntries);
         }
 
 
@@ -591,11 +470,9 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
     private static class MapEntrySpliterator<T> implements Spliterator<T> {
 
         private MapEntry<T> mapEntry;
-        private final int hashIndex;
 
-        public MapEntrySpliterator(MapEntry<T> mapEntry, int hashIndex) {
+        public MapEntrySpliterator(MapEntry<T> mapEntry) {
             this.mapEntry = mapEntry;
-            this.hashIndex = hashIndex;
         }
 
 
@@ -605,7 +482,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
                 return false;
             }
             action.accept(mapEntry.value);
-            mapEntry = mapEntry.nextEntries[hashIndex];
+            mapEntry = mapEntry.next;
             return true;
         }
 

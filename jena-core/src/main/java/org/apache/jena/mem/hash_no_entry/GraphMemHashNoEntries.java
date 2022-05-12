@@ -96,10 +96,9 @@ public class GraphMemHashNoEntries extends GraphMemBase implements GraphWithPerf
     @SuppressWarnings("java:S1199")
     @Override
     public void performAdd(final Triple t) {
-        var entry = bySubjectAndObject.addIfNotExists(t);
-        if(entry != null) {
-            byPredicateAndSubject.addDefinitetly(entry);
-            byObjectAndPredicate.addDefinitetly(entry);
+        if(bySubjectAndObject.addIfNotExists(t)) {
+            byPredicateAndSubject.addDefinitetly(t);
+            byObjectAndPredicate.addDefinitetly(t);
         }
     }
 
@@ -113,10 +112,9 @@ public class GraphMemHashNoEntries extends GraphMemBase implements GraphWithPerf
     @SuppressWarnings("java:S1199")
     @Override
     public void performDelete(final Triple t) {
-        var entry = bySubjectAndObject.removeIfExits(t);
-        if(entry != null) {
-            byPredicateAndSubject.removeExisting(entry);
-            byObjectAndPredicate.removeExisting(entry);
+        if(bySubjectAndObject.removeIfExits(t)) {
+            byPredicateAndSubject.removeExisting(t);
+            byObjectAndPredicate.removeExisting(t);
         }
     }
 
@@ -270,27 +268,36 @@ public class GraphMemHashNoEntries extends GraphMemBase implements GraphWithPerf
         final Node sm = triplePattern.getSubject();
         final Node pm = triplePattern.getPredicate();
         final Node om = triplePattern.getObject();
-        final Iterator<Triple> iterator;
+        Iterator<Triple> iterator;
 
         if (sm.isConcrete()) { // SPO:S??
-            var predicate = IndexedTripleFilter.getFilterForTriplePattern(sm, pm, om);
             if(pm.isConcrete()) { // SPO:SP?
                 if(om.isConcrete()) { // SPO:SPO
-                    iterator = new IteratorFiltering(bySubjectAndObject.iterator(triplePattern), predicate);
+                    iterator = bySubjectAndObject.iterator(triplePattern);
                 } else { // SPO:SP*
-                    iterator = new IteratorFiltering(byPredicateAndSubject.iterator(triplePattern), predicate);
+                    iterator = byPredicateAndSubject.iterator(triplePattern);
                 }
             } else { // SPO:S*?
-                iterator = new IteratorFiltering(bySubjectAndObject.iterator(triplePattern), predicate);
+                iterator = bySubjectAndObject.iterator(triplePattern);
+            }
+            if(iterator != null) {
+                var predicate = IndexedTripleFilter.getFilterForTriplePattern(sm, pm, om);
+                iterator = new IteratorFiltering(iterator, predicate);
             }
         }
         else if (om.isConcrete()) { // SPO:*?O
-            var predicate = IndexedTripleFilter.getFilterForTriplePattern(sm, pm, om);
-            iterator = new IteratorFiltering(byObjectAndPredicate.iterator(triplePattern), predicate);
+            iterator = byObjectAndPredicate.iterator(triplePattern);
+            if(iterator != null) {
+                var predicate = IndexedTripleFilter.getFilterForTriplePattern(sm, pm, om);
+                iterator = new IteratorFiltering(iterator, predicate);
+            }
         }
         else if (pm.isConcrete()) { // SPO:*P*
-            var predicate = IndexedTripleFilter.getFilterForTriplePattern(sm, pm, om);
-            iterator = new IteratorFiltering(byPredicateAndSubject.iterator(triplePattern), predicate);
+            iterator = byPredicateAndSubject.iterator(triplePattern);
+            if(iterator != null) {
+                var predicate = IndexedTripleFilter.getFilterForTriplePattern(sm, pm, om);
+                iterator = new IteratorFiltering(iterator, predicate);
+            }
         }
         else { // SPO:***
             /*use the map with the fewest keys*/

@@ -22,19 +22,15 @@ import java.util.stream.Stream;
 
 public interface ValueMap<T> {
 
-    MapEntry<T> addIfNotExists(final T value);
+    boolean addIfNotExists(final T value);
 
-    MapEntry<T> addDefinitetly(final T value);
+    void addDefinitetly(final T value);
 
-    void addDefinitetly(final MapEntry<T> entry);
+    boolean removeIfExits(final T value);
 
-    MapEntry<T> removeIfExits(final T value);
-
-    void removeExisting(final MapEntry<T> entry);
+    void removeExisting(final T entry);
 
     boolean contains(final T value);
-
-    boolean contains(final MapEntry<T> entry);
 
     boolean isEmpty();
 

@@ -16,20 +16,22 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.hash;
+package org.apache.jena.mem.hash_no_entry;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.hash_no_entry.HashValueMap;
 import org.apache.jena.testing_framework.NodeCreateUtils;
 import org.junit.Assert;
 import org.junit.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.collection.IsIterableContainingInAnyOrder.containsInAnyOrder;
-import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.collection.IsIterableContainingInAnyOrder.containsInAnyOrder;
+import static org.junit.Assert.assertTrue;
 
 
 public class HashValueMapTest {
@@ -46,7 +48,7 @@ public class HashValueMapTest {
 
         var t2 = NodeCreateUtils.createTriple("A x 4711");
         result = sut.addIfNotExists(t2);
-        Assert.assertNull(result);
+        Assert.assertFalse(result);
         Assert.assertEquals(1, sut.size());
     }
 
@@ -78,13 +80,13 @@ public class HashValueMapTest {
         var sut = HashValueMap.forSubject.get();
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4711");
-        var e1 = sut.addIfNotExists(t1);
-        var e2 = sut.addDefinitetly(t2);
+        sut.addIfNotExists(t1);
+        sut.addDefinitetly(t2);
         Assert.assertEquals(2, sut.size());
 
-        sut.removeExisting(e1);
+        sut.removeExisting(t1);
         Assert.assertEquals(1, sut.size());
-        sut.removeExisting(e2);
+        sut.removeExisting(t2);
         Assert.assertEquals(0, sut.size());
     }
 
@@ -93,12 +95,11 @@ public class HashValueMapTest {
         var sut = HashValueMap.forSubject.get();
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
-        var e1 = sut.addIfNotExists(t1);
+        sut.addIfNotExists(t1);
 
         var t2 = NodeCreateUtils.createTriple("B y 4712");
 
         assertTrue(sut.contains(t1));
-        assertTrue(sut.contains(e1));
         Assert.assertFalse(sut.contains(t2));
     }
 

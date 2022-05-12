@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
@@ -538,9 +539,10 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
          */
         @Override
         public Triple removeNext() {
-            Triple result = next();
-            remove();
-            return result;
+            throw new NotImplementedException();
+//            Triple result = next();
+//            remove();
+//            return result;
         }
 
         /**

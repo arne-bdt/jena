@@ -25,6 +25,7 @@ import org.apache.jena.graph.test.* ;
 import org.apache.jena.mem.GraphMemUsingHashMap;
 import org.apache.jena.shared.* ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
+import org.junit.Ignore;
 
 public class TestGraphMemUsingHashMap extends AbstractTestGraph
     {
@@ -37,13 +38,13 @@ public class TestGraphMemUsingHashMap extends AbstractTestGraph
     @Override public Graph getGraph()
         { return new GraphMemUsingHashMap(); }
 
-    public void testSizeAfterRemove() 
-        {
-        Graph g = getGraphWith( "x p y" );
-        ExtendedIterator<Triple> it = g.find( triple( "x ?? ??" ) );
-        it.removeNext();
-        assertEquals( 0, g.size() );        
-        }
+//    public void testSizeAfterRemove()
+//        {
+//        Graph g = getGraphWith( "x p y" );
+//        ExtendedIterator<Triple> it = g.find( triple( "x ?? ??" ) );
+//        it.removeNext();
+//        assertEquals( 0, g.size() );
+//        }
     
     public void testContainsConcreteDoesntUseFind()
         {

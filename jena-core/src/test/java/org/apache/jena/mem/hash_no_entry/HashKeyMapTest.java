@@ -16,27 +16,28 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.hash;
+package org.apache.jena.mem.hash_no_entry;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.hash_no_entry.HashKeyMap;
 import org.apache.jena.testing_framework.NodeCreateUtils;
 import org.junit.Assert;
 import org.junit.Test;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.collection.IsIterableContainingInAnyOrder.containsInAnyOrder;
-import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.collection.IsIterableContainingInAnyOrder.containsInAnyOrder;
 
-public class HashValueMapTest {
+
+public class HashKeyMapTest {
 
     @Test
     public void testAddIfNotExists() {
-        var sut = HashValueMap.forSubject.get();
+        var sut = HashKeyMap.forSubject.get();
         Assert.assertEquals(0, sut.size());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
@@ -46,13 +47,13 @@ public class HashValueMapTest {
 
         var t2 = NodeCreateUtils.createTriple("A x 4711");
         result = sut.addIfNotExists(t2);
-        Assert.assertNull(result);
+        Assert.assertFalse(result);
         Assert.assertEquals(1, sut.size());
     }
 
     @Test
     public void testAddDefinitetly() {
-        var sut = HashValueMap.forSubject.get();
+        var sut = HashKeyMap.forSubject.get();
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4711");
         sut.addDefinitetly(t1);
@@ -63,7 +64,7 @@ public class HashValueMapTest {
 
     @Test
     public void testRemoveIfExits() {
-        var sut = HashValueMap.forSubject.get();
+        var sut = HashKeyMap.forSubject.get();
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         sut.addIfNotExists(t1);
         Assert.assertEquals(1, sut.size());
@@ -75,50 +76,49 @@ public class HashValueMapTest {
 
     @Test
     public void testRemoveExisting() {
-        var sut = HashValueMap.forSubject.get();
+        var sut = HashKeyMap.forSubject.get();
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4711");
-        var e1 = sut.addIfNotExists(t1);
-        var e2 = sut.addDefinitetly(t2);
+        sut.addIfNotExists(t1);
+        sut.addDefinitetly(t2);
         Assert.assertEquals(2, sut.size());
 
-        sut.removeExisting(e1);
+        sut.removeExisting(t1);
         Assert.assertEquals(1, sut.size());
-        sut.removeExisting(e2);
+        sut.removeExisting(t2);
         Assert.assertEquals(0, sut.size());
     }
 
     @Test
     public void testContains() {
-        var sut = HashValueMap.forSubject.get();
+        var sut = HashKeyMap.forSubject.get();
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
-        var e1 = sut.addIfNotExists(t1);
+        sut.addIfNotExists(t1);
 
         var t2 = NodeCreateUtils.createTriple("B y 4712");
 
-        assertTrue(sut.contains(t1));
-        assertTrue(sut.contains(e1));
+        Assert.assertTrue(sut.contains(t1));
         Assert.assertFalse(sut.contains(t2));
     }
 
     @Test
     public void testIsEmpty() {
-        var sut = HashValueMap.forSubject.get();
-        assertTrue(sut.isEmpty());
+        var sut = HashKeyMap.forSubject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         sut.addDefinitetly(t1);
         Assert.assertFalse(sut.isEmpty());
 
         sut.removeIfExits(t1);
-        assertTrue(sut.isEmpty());
+        Assert.assertTrue(sut.isEmpty());
     }
 
     @Test
     public void testStream() {
-        var sut = HashValueMap.forSubject.get();
-        assertTrue(sut.isEmpty());
+        var sut = HashKeyMap.forSubject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4712");
@@ -138,8 +138,8 @@ public class HashValueMapTest {
 
     @Test
     public void testStreamWithTripleMatch_S() {
-        var sut = HashValueMap.forSubject.get();
-        assertTrue(sut.isEmpty());
+        var sut = HashKeyMap.forSubject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4712");
@@ -160,8 +160,8 @@ public class HashValueMapTest {
 
     @Test
     public void testStreamWithTripleMatch_SPO() {
-        var sut = HashValueMap.forSubject.get();
-        assertTrue(sut.isEmpty());
+        var sut = HashKeyMap.forSubject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4712");
@@ -177,13 +177,13 @@ public class HashValueMapTest {
 
         var streamdTriples = sut.stream(new Triple(t5.getSubject(), t5.getPredicate(), t5.getObject()))
                 .collect(Collectors.toList());
-        assertTrue(streamdTriples.contains(t5));
+        assertThat(streamdTriples, containsInAnyOrder(t4, t5, t6));
     }
 
     @Test
     public void testStreamWithTripleMatch_S_O() {
-        var sut = HashValueMap.forSubject.get();
-        assertTrue(sut.isEmpty());
+        var sut = HashKeyMap.forSubject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4712");
@@ -199,14 +199,13 @@ public class HashValueMapTest {
 
         var streamdTriples = sut.stream(new Triple(t4.getSubject(), Node.ANY, t4.getObject()))
                 .collect(Collectors.toList());
-        assertTrue(streamdTriples.contains(t4));
-        assertTrue(streamdTriples.contains(t6));
+        assertThat(streamdTriples, containsInAnyOrder(t4, t5, t6));
     }
 
     @Test
     public void testStreamWithTripleMatch__PO() {
-        var sut = HashValueMap.forObject.get();
-        assertTrue(sut.isEmpty());
+        var sut = HashKeyMap.forObject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4712");
@@ -222,15 +221,13 @@ public class HashValueMapTest {
 
         var streamdTriples = sut.stream(new Triple(Node.ANY, t1.getPredicate(), t1.getObject()))
                 .collect(Collectors.toList());
-        assertTrue(streamdTriples.contains(t1));
-        assertTrue(streamdTriples.contains(t4));
-        assertTrue(streamdTriples.contains(t7));
+        assertThat(streamdTriples, containsInAnyOrder(t1, t3, t4, t6, t7, t9));
     }
 
     @Test
     public void testIterator() {
-        var sut = HashValueMap.forSubject.get();
-        assertTrue(sut.isEmpty());
+        var sut = HashKeyMap.forSubject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4712");
@@ -253,8 +250,8 @@ public class HashValueMapTest {
 
     @Test
     public void testIteratorWithTripleMatch_S() {
-        var sut = HashValueMap.forSubject.get();
-        assertTrue(sut.isEmpty());
+        var sut = HashKeyMap.forSubject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4712");
@@ -277,8 +274,8 @@ public class HashValueMapTest {
 
     @Test
     public void testIteratorWithTripleMatch_SPO() {
-        var sut = HashValueMap.forSubject.get();
-        assertTrue(sut.isEmpty());
+        var sut = HashKeyMap.forSubject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4712");
@@ -296,13 +293,13 @@ public class HashValueMapTest {
         var triplesFound = new ArrayList<>();
         iterator.forEachRemaining(triplesFound::add);
 
-        assertTrue(triplesFound.contains(t5));
+        assertThat(triplesFound, containsInAnyOrder(t4, t5, t6));
     }
 
     @Test
     public void testIteratorWithTripleMatch_S_O() {
-        var sut = HashValueMap.forSubject.get();
-        assertTrue(sut.isEmpty());
+        var sut = org.apache.jena.mem.hash.HashKeyMap.forSubject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4712");
@@ -320,14 +317,13 @@ public class HashValueMapTest {
         var triplesFound = new ArrayList<>();
         iterator.forEachRemaining(triplesFound::add);
 
-        assertTrue(triplesFound.contains(t4));
-        assertTrue(triplesFound.contains(t6));
+        assertThat(triplesFound, containsInAnyOrder(t4, t6));
     }
 
     @Test
     public void testIteratorWithTripleMatch__PO() {
-        var sut = HashValueMap.forObject.get();
-        assertTrue(sut.isEmpty());
+        var sut = HashKeyMap.forObject.get();
+        Assert.assertTrue(sut.isEmpty());
 
         var t1 = NodeCreateUtils.createTriple("A x 4711");
         var t2 = NodeCreateUtils.createTriple("A x 4712");
@@ -345,8 +341,6 @@ public class HashValueMapTest {
         var triplesFound = new ArrayList<>();
         iterator.forEachRemaining(triplesFound::add);
 
-        assertTrue(triplesFound.contains(t1));
-        assertTrue(triplesFound.contains(t4));
-        assertTrue(triplesFound.contains(t7));
+        assertThat(triplesFound, containsInAnyOrder(t1, t3, t4, t6, t7, t9));
     }
 }

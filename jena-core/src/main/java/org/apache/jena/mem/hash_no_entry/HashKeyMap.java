@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.jena.mem.hash_no_entry;
 
 import org.apache.jena.graph.Triple;
@@ -14,7 +32,7 @@ import java.util.stream.StreamSupport;
 public abstract class HashKeyMap<T> implements ValueMap<T> {
 
 
-    //protected final static int SWITCH_TO_MAP_THRESHOLD = 11;
+    protected final static int SWITCH_TO_MAP_THRESHOLD = 20;
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcIndex(final int hashCode) {
@@ -31,32 +49,16 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
     private Object[] entries;
 
     protected abstract int getHashCode(T value);
-    protected abstract int getHashCode(MapEntry<T> value);
     protected abstract KeyEntry<T> createEntry(int hashCode);
-//    protected abstract ValueMap<T> createIndexedMap();
-//    protected abstract boolean matches(final T value1, final T value2);
+    protected abstract ValueMap<T> createIndexedMap();
     protected abstract boolean containsPrimaryIndex(final T value);
     protected abstract boolean containsSecondaryIndex(final T value);
-
-    private static boolean compareHashes(int[] hashes1, int[] hashes2) {
-        for(int i=0; i<hashes1.length; i++) {
-            if(hashes1[i] != hashes2[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
 
     public static Supplier<ValueMap<Triple>> forSubject = () -> new HashKeyMap<Triple>() {
 
         @Override
         protected int getHashCode(Triple value) {
             return value.getSubject().getIndexingValue().hashCode();
-        }
-
-        @Override
-        protected int getHashCode(MapEntry<Triple> value) {
-            return value.hashes[0];
         }
 
         @Override
@@ -71,25 +73,20 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
 
         @Override
         protected KeyEntry<Triple> createEntry(int hashCode) {
-            var map = HashValueMap.forObject.get(); /*nested map has object as key*/
+            var map = ArrayValueMap.forTriples.get(); /*nested map has object as key*/
             return new KeyEntry<Triple>(hashCode, map);
         }
 
-//        @Override
-//        protected ValueMap<Triple> createIndexedMap() {
-//            return HashValueMap.forObject.get();
-//        }
+        @Override
+        protected ValueMap<Triple> createIndexedMap() {
+            return HashValueMap.forObject.get();
+        }
     };
 
     public static Supplier<ValueMap<Triple>> forPredicate = () -> new HashKeyMap<Triple>() {
         @Override
         protected int getHashCode(Triple value) {
             return value.getPredicate().getIndexingValue().hashCode();
-        }
-
-        @Override
-        protected int getHashCode(MapEntry<Triple> value) {
-            return value.hashes[1];
         }
 
         @Override
@@ -104,25 +101,20 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
 
         @Override
         protected KeyEntry<Triple> createEntry(int hashCode) {
-            var map = HashValueMap.forSubject.get(); /*nested map has subject as key*/
+            var map = ArrayValueMap.forTriples.get(); /*nested map has object as key*/
             return new KeyEntry<Triple>(hashCode, map);
         }
 
-//        @Override
-//        protected ValueMap<Triple> createIndexedMap() {
-//            return HashValueMap.forSubject.get();
-//        }
+        @Override
+        protected ValueMap<Triple> createIndexedMap() {
+            return HashValueMap.forSubject.get();
+        }
     };
 
     public static Supplier<ValueMap<Triple>> forObject = () -> new HashKeyMap<Triple>() {
         @Override
         protected int getHashCode(Triple value) {
             return value.getObject().getIndexingValue().hashCode();
-        }
-
-        @Override
-        protected int getHashCode(MapEntry<Triple> value) {
-            return value.hashes[2];
         }
 
         @Override
@@ -137,14 +129,14 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
 
         @Override
         protected KeyEntry<Triple> createEntry(int hashCode) {
-            var map = HashValueMap.forPredicate.get(); /*nested map has predicate as key*/
+            var map = ArrayValueMap.forTriples.get(); /*nested map has object as key*/
             return new KeyEntry<Triple>(hashCode, map);
         }
 
-//        @Override
-//        protected ValueMap<Triple> createIndexedMap() {
-//            return HashValueMap.forPredicate.get();
-//        }
+        @Override
+        protected ValueMap<Triple> createIndexedMap() {
+            return HashValueMap.forPredicate.get();
+        }
     };
 
     protected HashKeyMap() {
@@ -204,14 +196,14 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
 //                }).sum();
 //    }
 
-//    private void replaceValueWithIdexedMap(KeyEntry<T> keyEntry) {
-//        var indexedMap = this.createIndexedMap();
-//        keyEntry.value.iterator().forEachRemaining(indexedMap::addDefinitetly);
-//        keyEntry.value = indexedMap;
-//    }
+    private void replaceValueWithIdexedMap(KeyEntry<T> keyEntry) {
+        var indexedMap = this.createIndexedMap();
+        keyEntry.value.iterator().forEachRemaining(indexedMap::addDefinitetly);
+        keyEntry.value = indexedMap;
+    }
 
     @Override
-    public MapEntry<T> addIfNotExists(T value) {
+    public boolean addIfNotExists(T value) {
         final var hashCode = getHashCode(value);
         final var index = calcIndex(hashCode);
         var existingKeyEntry = (KeyEntry<T>)entries[index];
@@ -220,20 +212,21 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
             entries[index] = newKeyEntry;
             mapSize++;
             grow();
-            return newKeyEntry.value.addDefinitetly(value);
+            newKeyEntry.value.addDefinitetly(value);
+            return true;
         }
         if(existingKeyEntry.hash == hashCode) {
-//            if(existingKeyEntry.value.size() == SWITCH_TO_MAP_THRESHOLD) {
-//                replaceValueWithIdexedMap(existingKeyEntry);
-//            }
+            if(existingKeyEntry.value.size() == SWITCH_TO_MAP_THRESHOLD) {
+                replaceValueWithIdexedMap(existingKeyEntry);
+            }
             return existingKeyEntry.value.addIfNotExists(value);
         }
         while(existingKeyEntry.next != null) {
             existingKeyEntry = existingKeyEntry.next;
             if(existingKeyEntry.hash == hashCode) {
-//                if(existingKeyEntry.value.size() == SWITCH_TO_MAP_THRESHOLD) {
-//                    replaceValueWithIdexedMap(existingKeyEntry);
-//                }
+                if(existingKeyEntry.value.size() == SWITCH_TO_MAP_THRESHOLD) {
+                    replaceValueWithIdexedMap(existingKeyEntry);
+                }
                 return existingKeyEntry.value.addIfNotExists(value);
             }
         }
@@ -242,11 +235,12 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
         existingKeyEntry.next = newKeyEntry;
         mapSize++;
         grow();
-        return newKeyEntry.value.addDefinitetly(value);
+        newKeyEntry.value.addDefinitetly(value);
+        return true;
     }
 
     @Override
-    public MapEntry<T> addDefinitetly(T value) {
+    public void addDefinitetly(T value) {
         final var hashCode = getHashCode(value);
         final var index =  calcIndex(hashCode);
         var existingKeyEntry = (KeyEntry<T>)entries[index];
@@ -255,58 +249,23 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
             entries[index] = newKeyEntry;
             mapSize++;
             grow();
-            return newKeyEntry.value.addDefinitetly(value);
+            newKeyEntry.value.addDefinitetly(value);
+            return;
         }
         if(existingKeyEntry.hash == hashCode) {
-//            if(existingKeyEntry.value.size() == SWITCH_TO_MAP_THRESHOLD) {
-//                replaceValueWithIdexedMap(existingKeyEntry);
-//            }
-            return existingKeyEntry.value.addDefinitetly(value);
-        }
-        while(existingKeyEntry.next != null) {
-            existingKeyEntry = existingKeyEntry.next;
-            if(existingKeyEntry.hash == hashCode) {
-//                if(existingKeyEntry.value.size() == SWITCH_TO_MAP_THRESHOLD) {
-//                    replaceValueWithIdexedMap(existingKeyEntry);
-//                }
-                return existingKeyEntry.value.addDefinitetly(value);
+            if(existingKeyEntry.value.size() == SWITCH_TO_MAP_THRESHOLD) {
+                replaceValueWithIdexedMap(existingKeyEntry);
             }
-        }
-        var newKeyEntry = createEntry(hashCode);
-        /*insert as last element*/
-        existingKeyEntry.next = newKeyEntry;
-        mapSize++;
-        grow();
-        return newKeyEntry.value.addDefinitetly(value);
-    }
-
-    @Override
-    public void addDefinitetly(MapEntry<T> entry) {
-        final var hashCode = getHashCode(entry);
-        final var index =  calcIndex(hashCode);
-        var existingKeyEntry = (KeyEntry<T>)entries[index];
-        if(existingKeyEntry == null) {
-            var newKeyEntry = createEntry(hashCode);
-            entries[index] = newKeyEntry;
-            mapSize++;
-            grow();
-            newKeyEntry.value.addDefinitetly(entry);
-            return;
-        }
-        if(existingKeyEntry.hash == hashCode) {
-//            if(existingKeyEntry.value.size() == SWITCH_TO_MAP_THRESHOLD) {
-//                replaceValueWithIdexedMap(existingKeyEntry);
-//            }
-            existingKeyEntry.value.addDefinitetly(entry);
+            existingKeyEntry.value.addDefinitetly(value);
             return;
         }
         while(existingKeyEntry.next != null) {
             existingKeyEntry = existingKeyEntry.next;
             if(existingKeyEntry.hash == hashCode) {
-//                if(existingKeyEntry.value.size() == SWITCH_TO_MAP_THRESHOLD) {
-//                    replaceValueWithIdexedMap(existingKeyEntry);
-//                }
-                existingKeyEntry.value.addDefinitetly(entry);
+                if(existingKeyEntry.value.size() == SWITCH_TO_MAP_THRESHOLD) {
+                    replaceValueWithIdexedMap(existingKeyEntry);
+                }
+                existingKeyEntry.value.addDefinitetly(value);
                 return;
             }
         }
@@ -315,56 +274,56 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
         existingKeyEntry.next = newKeyEntry;
         mapSize++;
         grow();
-        newKeyEntry.value.addDefinitetly(entry);
+        newKeyEntry.value.addDefinitetly(value);
     }
 
     @Override
-    public MapEntry<T> removeIfExits(T value) {
+    public boolean removeIfExits(T value) {
         final var hashCode = getHashCode(value);
         final var index =  calcIndex(hashCode);
         var existingKeyEntry = (KeyEntry<T>)entries[index];
         if(existingKeyEntry == null) {
-            return null;
+            return false;
         }
         if(existingKeyEntry.hash == hashCode) {
-            var entry = existingKeyEntry.value.removeIfExits(value);
-            if(entry != null) {
-                if(existingKeyEntry.value.size() == 0) {
+            if(existingKeyEntry.value.removeIfExits(value)) {
+                if(existingKeyEntry.value.isEmpty()) {
                     entries[index] = existingKeyEntry.next;
                     mapSize--;
                     grow();
                 }
+                return true;
             }
-            return entry;
+            return false;
         }
         while(existingKeyEntry.next != null) {
             existingKeyEntry = existingKeyEntry.next;
             if(existingKeyEntry.hash == hashCode) {
-                var entry = existingKeyEntry.value.removeIfExits(value);
-                if(entry != null) {
-                    if(existingKeyEntry.value.size() == 0) {
+                if(existingKeyEntry.value.removeIfExits(value)) {
+                    if(existingKeyEntry.value.isEmpty()) {
                         entries[index] = existingKeyEntry.next;
                         mapSize--;
                         grow();
                     }
+                    return true;
                 }
-                return entry;
+                return false;
             }
         }
-        return null;
+        return false;
     }
 
     @Override
-    public void removeExisting(MapEntry<T> entry) {
-        final var hashCode = getHashCode(entry);
+    public void removeExisting(T value) {
+        final var hashCode = getHashCode(value);
         final var index =  calcIndex(hashCode);
         var existingKeyEntry = (KeyEntry<T>)entries[index];
         if(existingKeyEntry == null) {
             return;
         }
         if(existingKeyEntry.hash == hashCode) {
-            existingKeyEntry.value.removeExisting(entry);
-            if(existingKeyEntry.value.size() == 0) {
+            existingKeyEntry.value.removeExisting(value);
+            if(existingKeyEntry.value.isEmpty()) {
                 entries[index] = existingKeyEntry.next;
                 mapSize--;
                 grow();
@@ -374,8 +333,8 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
         while(existingKeyEntry.next != null) {
             existingKeyEntry = existingKeyEntry.next;
             if(existingKeyEntry.hash == hashCode) {
-                existingKeyEntry.value.removeExisting(entry);
-                if(existingKeyEntry.value.size() == 0) {
+                existingKeyEntry.value.removeExisting(value);
+                if(existingKeyEntry.value.isEmpty()) {
                     entries[index] = existingKeyEntry.next;
                     mapSize--;
                     grow();
@@ -400,26 +359,6 @@ public abstract class HashKeyMap<T> implements ValueMap<T> {
             existingEntry = existingEntry.next;
             if(existingEntry.hash == hashCode) {
                 return existingEntry.value.contains(value);
-            }
-        }
-        return false;
-    }
-
-    @Override
-    public boolean contains(final MapEntry<T> entry) {
-        final var hashCode = getHashCode(entry);
-        var index = calcIndex(hashCode);
-        var existingEntry = (KeyEntry<T>)entries[index];
-        if(existingEntry == null) {
-            return false;
-        }
-        if(existingEntry.hash == hashCode) {
-            return existingEntry.value.contains(entry);
-        }
-        while(existingEntry.next != null) {
-            existingEntry = existingEntry.next;
-            if(existingEntry.hash == hashCode) {
-                return existingEntry.value.contains(entry);
             }
         }
         return false;

@@ -1,23 +1,30 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.jena.mem.hash_no_entry;
 
 import org.apache.jena.graph.Triple;
 
 public class MapEntry<T> {
     public final T value;
-    public final int hashes[];
-    public MapEntry nextEntries[];
+    public MapEntry next;
 
-    public MapEntry(T value, int[] hashes) {
+    public MapEntry(final T value) {
         this.value = value;
-        this.hashes = hashes;
-        this.nextEntries = new MapEntry[hashes.length];
-    }
-
-    public static <E extends Triple> MapEntry<E> fromTriple(E t) {
-        var hashes = new int[] {
-                t.getSubject().getIndexingValue().hashCode(),
-                t.getPredicate().getIndexingValue().hashCode(),
-                t.getObject().getIndexingValue().hashCode()};
-        return new MapEntry<E>(t, hashes);
     }
 }
