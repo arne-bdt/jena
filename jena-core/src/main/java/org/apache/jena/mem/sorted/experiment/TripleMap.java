@@ -22,13 +22,43 @@ import org.apache.jena.graph.Triple;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-public class TripleMap {
-    protected static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
+abstract class TripleMap {
 
-    protected final Map<Integer, List<Triple>> map = new HashMap<>();
+    protected final static int SWITCH_TO_HASH_COLLECTION_THRESHOLD = 39;
+
+    protected final Map<Integer, Collection<Triple>> map = new HashMap<>();
     protected final Function<Triple, Node> keyNodeResolver;
+
+    protected abstract Collection<Triple> createTripleCollection();
+    protected abstract Collection<Triple> createTripleHashCollection();
+
+    public static Supplier<TripleMap> forObjects = () -> new TripleMap(Triple::getObject) {
+        @Override
+        protected Collection<Triple> createTripleCollection() {
+            return new GrowingCollection<>(2);
+        }
+
+        @Override
+        protected Collection<Triple> createTripleHashCollection() {
+            return CollectionUsingHashCodesBase.forObjects.get();
+        }
+    };
+
+    public static Supplier<TripleMap> forPredicates = () -> new TripleMap(Triple::getPredicate) {
+        @Override
+        protected Collection<Triple> createTripleCollection() {
+            return new GrowingCollection<>(2);
+        }
+
+        @Override
+        protected Collection<Triple> createTripleHashCollection() {
+            return CollectionUsingHashCodesBase.forPredicates.get();
+        }
+    };
+
 
     public TripleMap(final Function<Triple, Node> keyNodeResolver) {
         this.keyNodeResolver = keyNodeResolver;
@@ -38,7 +68,7 @@ public class TripleMap {
         return keyNodeResolver.apply(t).getIndexingValue().hashCode();
     }
 
-    public List<Triple> get(final Node keyNode) {
+    public Collection<Triple> get(final Node keyNode) {
         var list = map.get(keyNode.getIndexingValue().hashCode());
         return list == null ? null : list;
     }
@@ -53,7 +83,7 @@ public class TripleMap {
         var key = getKey(t);
         var list = map.get(key);
         if(list == null) {
-            list = new ArrayList<>(INITIAL_SIZE_FOR_ARRAY_LISTS);
+            list = createTripleCollection();
             list.add(t);
             map.put(key, list);
             return true;
@@ -61,7 +91,13 @@ public class TripleMap {
         if(list.contains(t)) {
             return false;
         }
+        if(list.size() == SWITCH_TO_HASH_COLLECTION_THRESHOLD) {
+            var newList = createTripleHashCollection();
+            list.forEach(newList::add);
+            list = newList;
+        }
         list.add(t);
+
         return true;
     }
 
@@ -71,10 +107,19 @@ public class TripleMap {
      * @param t
      */
     public void addDefinitetly(final Triple t) {
-        var list = map
-                .computeIfAbsent(getKey(t),
-                        k -> new ArrayList<>(INITIAL_SIZE_FOR_ARRAY_LISTS));
-        list.add(t);
+        map.compute(getKey(t),
+                (k, v) -> {
+                    if(v == null) {
+                        v = createTripleCollection();
+                    }
+                    if(v.size() == SWITCH_TO_HASH_COLLECTION_THRESHOLD) {
+                        var newList = createTripleHashCollection();
+                        v.forEach(newList::add);
+                        v = newList;
+                    }
+                    v.add(t);
+                    return v;
+                });
     }
 
     /**
@@ -133,16 +178,16 @@ public class TripleMap {
     }
 
     public Iterator<Triple> iterator() {
-        return new ListsOfTriplesIterator(map.values().iterator());
+        return new CollectionOfTriplesIterator(map.values().iterator());
     }
 
-    private static class ListsOfTriplesIterator implements Iterator<Triple> {
+    private static class CollectionOfTriplesIterator implements Iterator<Triple> {
 
-        private final Iterator<List<Triple>> baseIterator;
+        private final Iterator<Collection<Triple>> baseIterator;
         private Iterator<Triple> subIterator;
         private boolean hasSubIterator = false;
 
-        public ListsOfTriplesIterator(Iterator<List<Triple>> baseIterator) {
+        public CollectionOfTriplesIterator(Iterator<Collection<Triple>> baseIterator) {
 
             this.baseIterator = baseIterator;
             if (baseIterator.hasNext()) {

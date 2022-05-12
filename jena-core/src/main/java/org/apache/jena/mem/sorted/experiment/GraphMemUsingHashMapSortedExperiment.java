@@ -68,18 +68,9 @@ import java.util.stream.Stream;
  */
 public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implements GraphWithPerform {
 
-    /**
-     * Predicate to match two triples with conditions ordered to fail fast for the given
-     * usage, where subject hashCode is already used as key.
-     */
-    private final static BiPredicate<Triple, Triple> matchesOPS =
-            (t1, t2) -> t1.getObject().sameValueAs(t2.getObject())
-                    && t1.getPredicate().equals(t2.getPredicate())
-                    && t1.getSubject().equals(t2.getSubject());
-
-    private final TripleMapSorted bySubject= new TripleMapSorted(Triple::getSubject, Triple::getObject, Triple::getPredicate, matchesOPS);
-    private final TripleMap byPredicate = new TripleMap(Triple::getPredicate);
-    private final TripleMap byObject = new TripleMap(Triple::getObject);
+    private final TripleMapSorted bySubject= TripleMapSorted.forSubjects.get();
+    private final TripleMap byPredicate = TripleMap.forPredicates.get();
+    private final TripleMap byObject = TripleMap.forObjects.get();
 
     public GraphMemUsingHashMapSortedExperiment() {
         super();

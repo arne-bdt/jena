@@ -33,13 +33,13 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
 
     @Test
     public void pizza_owl_rdf() {
-        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1000,
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 100,
                 "./../jena-examples/src/main/resources/data/pizza.owl.rdf");
     }
 
     @Test
     public void cheeses_ttl() {
-        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 400,
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 50,
                 "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl");
     }
 

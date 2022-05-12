@@ -20,26 +20,53 @@ package org.apache.jena.mem.sorted.experiment;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
-class TripleMapSorted extends TripleMap {
+abstract class TripleMapSorted extends TripleMap {
 
     protected final static int SWITCH_TO_SORTED_THRESHOLD = 40;
-    protected final Comparator<Triple> listComparator;
-    protected final BiPredicate<Triple, Triple> containsPredicate;
 
-    public TripleMapSorted(final Function<Triple, Node> keyNodeResolver,
-                           final Function<Triple, Node> firstSortNodeResolver,
-                           final Function<Triple, Node> secondSortNodeResolver,
-                           final BiPredicate<Triple, Triple> containsPredicate) {
+    protected abstract Comparator<Triple> getListComparator();
+    protected abstract Predicate<Triple> getMatcherForObject(final Triple value);
+
+    protected static Comparator<Triple> listComparatorObjectPredicate =
+            Comparator.comparingInt((Triple t) -> t.getObject().getIndexingValue().hashCode())
+                    .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
+
+
+    static Supplier<TripleMapSorted> forSubjects = () -> new TripleMapSorted(Triple::getSubject) {
+
+
+        @Override
+        protected Collection<Triple> createTripleCollection() {
+            return new ArrayList<>(2);
+        }
+
+        @Override
+        protected Collection<Triple> createTripleHashCollection() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        protected Comparator<Triple> getListComparator() {
+            return listComparatorObjectPredicate;
+        }
+
+        @Override
+        protected Predicate<Triple> getMatcherForObject(Triple triple) {
+            if(ObjectEqualizer.isEqualsForObjectOk(triple.getObject())) {
+                return t -> triple.equals(t);
+            }
+            return t -> triple.matches(t);
+        }
+    };
+
+    public TripleMapSorted(final Function<Triple, Node> keyNodeResolver) {
         super(keyNodeResolver);
-        this.listComparator = Comparator.comparingInt((Triple t) -> firstSortNodeResolver.apply(t).getIndexingValue().hashCode())
-                .thenComparing(t -> secondSortNodeResolver.apply(t).getIndexingValue().hashCode());
-        this.containsPredicate = containsPredicate;
     }
 
     /**
@@ -51,7 +78,7 @@ class TripleMapSorted extends TripleMap {
     @Override
     public boolean addIfNotExists(final Triple t) {
         var key = getKey(t);
-        var list = map.get(key);
+        var list = (List<Triple>)map.get(key);
         if(list != null) {
             if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
                 if (list.contains(t)) {
@@ -59,10 +86,10 @@ class TripleMapSorted extends TripleMap {
                 }
                 list.add(t);
                 if(list.size() == SWITCH_TO_SORTED_THRESHOLD) {
-                    list.sort(listComparator);
+                    list.sort(getListComparator());
                 }
             } else {
-                var index = Collections.binarySearch(list, t, listComparator);
+                var index = Collections.binarySearch(list, t, getListComparator());
                 // < 0 if element is not in the list, see Collections.binarySearch
                 if (index < 0) {
                     index = -(index + 1);
@@ -75,7 +102,7 @@ class TripleMapSorted extends TripleMap {
                         if (t.equals(t1)) {
                             return false;
                         }
-                        if (0 != listComparator.compare(t1, t)) {
+                        if (0 != getListComparator().compare(t1, t)) {
                             break;
                         }
                     }
@@ -87,7 +114,7 @@ class TripleMapSorted extends TripleMap {
                             if (t.equals(t1)) {
                                 return false;
                             }
-                            if (0 != listComparator.compare(t1, t)) {
+                            if (0 != getListComparator().compare(t1, t)) {
                                 break;
                             }
                         }
@@ -100,7 +127,7 @@ class TripleMapSorted extends TripleMap {
                 }
             }
         } else {
-            list = new ArrayList<>(INITIAL_SIZE_FOR_ARRAY_LISTS);
+            list = (List<Triple>) createTripleCollection();
             list.add(t);
             map.put(key, list);
         }
@@ -113,16 +140,16 @@ class TripleMapSorted extends TripleMap {
      */
     @Override
     public void addDefinitetly(final Triple t) {
-        var list = map
+        var list = (List) map
                 .computeIfAbsent(getKey(t),
-                        k -> new ArrayList<>(INITIAL_SIZE_FOR_ARRAY_LISTS));
+                        k -> (List<Triple>) createTripleCollection());
         if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
             list.add(t);
             if(list.size() == SWITCH_TO_SORTED_THRESHOLD) {
-                list.sort(listComparator);
+                list.sort(getListComparator());
             }
         } else {
-            var index = Collections.binarySearch(list, t, listComparator);
+            var index = Collections.binarySearch(list, t, getListComparator());
             // < 0 if element is not in the list, see Collections.binarySearch
             if (index < 0) {
                 index = -(index + 1);
@@ -145,7 +172,7 @@ class TripleMapSorted extends TripleMap {
     @Override
     public boolean removeIfExits(final Triple t) {
         var key = getKey(t);
-        var list = map.get(key);
+        var list = (List<Triple>)map.get(key);
         if (list != null) {
             if (list.size() < SWITCH_TO_SORTED_THRESHOLD) {
                 if (list.remove(t)) {
@@ -155,7 +182,7 @@ class TripleMapSorted extends TripleMap {
                     return true;
                 }
             } else {
-                var index = Collections.binarySearch(list, t, listComparator);
+                var index = Collections.binarySearch(list, t, getListComparator());
                 // < 0 if element is not in the list, see Collections.binarySearch
                 if (index < 0) {
                     return false;
@@ -163,14 +190,14 @@ class TripleMapSorted extends TripleMap {
                     /*search forward*/
                     for (var i = index; i < list.size(); i++) {
                         var t1 = list.get(i);
-                        if (containsPredicate.test(t1, t)) {
+                        if (t.equals(t1)) {
                             list.remove(i);
                             if (list.isEmpty()) {
                                 map.remove(key);
                             }
                             return true;
                         }
-                        if (0 != listComparator.compare(t1, t)) {
+                        if (0 != getListComparator().compare(t1, t)) {
                             break;
                         }
                     }
@@ -179,14 +206,14 @@ class TripleMapSorted extends TripleMap {
                         index--;
                         for (var i = index; i >= 0; i--) {
                             var t1 = list.get(i);
-                            if (containsPredicate.test(t1, t)) {
+                            if (t.equals(t1)) {
                                 list.remove(i);
                                 if (list.isEmpty()) {
                                     map.remove(key);
                                 }
                                 return true;
                             }
-                            if (0 != listComparator.compare(t1, t)) {
+                            if (0 != getListComparator().compare(t1, t)) {
                                 break;
                             }
                         }
@@ -205,9 +232,7 @@ class TripleMapSorted extends TripleMap {
     @Override
     public void removeExisting(final Triple t) {
         var key = getKey(t);
-        var list = map
-                .computeIfAbsent(key,
-                        k -> new ArrayList<>(INITIAL_SIZE_FOR_ARRAY_LISTS));
+        var list = (List<Triple>)map.get(key);
         if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
             if (list.remove(t)) {
                 if (list.isEmpty()) {
@@ -215,18 +240,18 @@ class TripleMapSorted extends TripleMap {
                 }
             }
         } else {
-            var index = Collections.binarySearch(list, t, listComparator);
+            var index = Collections.binarySearch(list, t, getListComparator());
             /*search forward*/
             for (var i = index; i < list.size(); i++) {
                 var t1 = list.get(i);
-                if (containsPredicate.test(t1, t)) {
+                if (t.equals(t1)) {
                     list.remove(i);
                     if (list.isEmpty()) {
                         map.remove(key);
                     }
                     return;
                 }
-                if (0 != listComparator.compare(t1, t)) {
+                if (0 != getListComparator().compare(t1, t)) {
                     break;
                 }
             }
@@ -235,14 +260,14 @@ class TripleMapSorted extends TripleMap {
                 index--;
                 for (var i = index; i >= 0; i--) {
                     var t1 = list.get(i);
-                    if (containsPredicate.test(t1, t)) {
+                    if (t.equals(t1)) {
                         list.remove(i);
                         if (list.isEmpty()) {
                             map.remove(key);
                         }
                         return;
                     }
-                    if (0 != listComparator.compare(t1, t)) {
+                    if (0 != getListComparator().compare(t1, t)) {
                         break;
                     }
                 }
@@ -257,28 +282,29 @@ class TripleMapSorted extends TripleMap {
      */
     public boolean contains(final Triple t) {
         var key = getKey(t);
-        var list = map.get(key);
+        var list = (List<Triple>) map.get(key);
         if(list == null) {
             return false;
         }
+        var matcher = getMatcherForObject(t);
         if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
             for (Triple triple : list) {
-                if(containsPredicate.test(triple, t)) {
+                if(matcher.test(triple)) {
                     return true;
                 }
             }
         } else  {
-            var index = Collections.binarySearch(list, t, listComparator);
+            var index = Collections.binarySearch(list, t, getListComparator());
             if (index < 0) {
                 return false;
             }
             /*search forward*/
             for (var i = index; i < list.size(); i++) {
                 var t1 = list.get(i);
-                if (containsPredicate.test(t1, t)) {
+                if (matcher.test(t1)) {
                     return true;
                 }
-                if (0 != listComparator.compare(t1, t)) {
+                if (0 != getListComparator().compare(t1, t)) {
                     break;
                 }
             }
@@ -287,10 +313,10 @@ class TripleMapSorted extends TripleMap {
                 index--;
                 for (var i = index; i > -1; i--) {
                     var t1 = list.get(i);
-                    if (containsPredicate.test(t1, t)) {
+                    if (matcher.test(t1)) {
                         return true;
                     }
-                    if (0 != listComparator.compare(t1, t)) {
+                    if (0 != getListComparator().compare(t1, t)) {
                         break;
                     }
                 }
