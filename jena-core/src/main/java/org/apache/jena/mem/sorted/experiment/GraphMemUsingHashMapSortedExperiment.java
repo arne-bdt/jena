@@ -72,24 +72,14 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
      * Predicate to match two triples with conditions ordered to fail fast for the given
      * usage, where subject hashCode is already used as key.
      */
-    private final static BiPredicate<Triple, Triple> matchesPOS =
-            (t1, t2) -> t1.getPredicate().equals(t2.getPredicate())
-                    && t1.getObject().sameValueAs(t2.getObject())
+    private final static BiPredicate<Triple, Triple> matchesOPS =
+            (t1, t2) -> t1.getObject().sameValueAs(t2.getObject())
+                    && t1.getPredicate().equals(t2.getPredicate())
                     && t1.getSubject().equals(t2.getSubject());
 
-    private final static BiPredicate<Triple, Triple> matchesSOP =
-            (t1, t2) -> t1.getSubject().equals(t2.getSubject())
-                    && t1.getObject().sameValueAs(t2.getObject())
-                    && t1.getPredicate().equals(t2.getPredicate());
-
-    private final static BiPredicate<Triple, Triple> matchesOSP =
-            (t1, t2) -> t1.getObject().sameValueAs(t2.getObject())
-                    && t1.getSubject().equals(t2.getSubject())
-                    && t1.getPredicate().equals(t2.getPredicate());
-
-    private final TripleMapSorted bySubject= new TripleMapSorted(Triple::getSubject, Triple::getObject, matchesPOS);
-    private final TripleMapSorted byPredicate = new TripleMapSorted(Triple::getPredicate, Triple::getSubject,matchesOSP);
-    private final TripleMapSorted byObject = new TripleMapSorted(Triple::getObject, Triple::getPredicate, matchesSOP);
+    private final TripleMapSorted bySubject= new TripleMapSorted(Triple::getSubject, Triple::getObject, Triple::getPredicate, matchesOPS);
+    private final TripleMap byPredicate = new TripleMap(Triple::getPredicate);
+    private final TripleMap byObject = new TripleMap(Triple::getObject);
 
     public GraphMemUsingHashMapSortedExperiment() {
         super();

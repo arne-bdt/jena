@@ -615,9 +615,10 @@ public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWit
         public boolean hasNext() {
             while(!this.hasCurrent && this.iterator.hasNext()) {
                 var candidate = this.iterator.next();
-                this.hasCurrent = filter.test(candidate);
-                if(this.hasCurrent) {
+                if(filter.test(candidate))
+                {
                     this.current = candidate;
+                    this.hasCurrent = true;
                 }
             }
             return this.hasCurrent;

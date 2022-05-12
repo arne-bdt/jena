@@ -53,7 +53,7 @@ public class TripleMap {
         var key = getKey(t);
         var list = map.get(key);
         if(list == null) {
-            list = new LinkedList<>();
+            list = new ArrayList<>(INITIAL_SIZE_FOR_ARRAY_LISTS);
             list.add(t);
             map.put(key, list);
             return true;
@@ -73,7 +73,7 @@ public class TripleMap {
     public void addDefinitetly(final Triple t) {
         var list = map
                 .computeIfAbsent(getKey(t),
-                        k -> new LinkedList<>());
+                        k -> new ArrayList<>(INITIAL_SIZE_FOR_ARRAY_LISTS));
         list.add(t);
     }
 

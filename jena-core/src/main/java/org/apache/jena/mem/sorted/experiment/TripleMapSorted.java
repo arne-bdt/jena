@@ -34,9 +34,11 @@ class TripleMapSorted extends TripleMap {
 
     public TripleMapSorted(final Function<Triple, Node> keyNodeResolver,
                            final Function<Triple, Node> firstSortNodeResolver,
+                           final Function<Triple, Node> secondSortNodeResolver,
                            final BiPredicate<Triple, Triple> containsPredicate) {
         super(keyNodeResolver);
-        this.listComparator = Comparator.comparingInt((Triple t) -> firstSortNodeResolver.apply(t).getIndexingValue().hashCode());
+        this.listComparator = Comparator.comparingInt((Triple t) -> firstSortNodeResolver.apply(t).getIndexingValue().hashCode())
+                .thenComparing(t -> secondSortNodeResolver.apply(t).getIndexingValue().hashCode());
         this.containsPredicate = containsPredicate;
     }
 
