@@ -18,10 +18,7 @@
 
 package org.apache.jena.mem.sorted.experiment;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.*;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
@@ -29,7 +26,7 @@ import java.util.function.UnaryOperator;
  * ArrayList which is sorted when the size reaches a given size.
  * @param <E>
  */
-public class SortedArrayList<E> extends ArrayList<E> {
+public class SortedArrayList<E> extends ArrayList<E> implements Set<E> {
     private final Comparator<E> comparator;
     private final int sizeToStartSorting;
 
@@ -172,24 +169,103 @@ public class SortedArrayList<E> extends ArrayList<E> {
     @Override
     public boolean add(E e) {
         if(this.size() < this.sizeToStartSorting) {
+            if (super.contains(e)) {
+                return false; /*triple already exists*/
+            }
             super.add(e);
             if(this.size() == this.sizeToStartSorting) {
                 super.sort(this.comparator);
             }
         } else {
-            var insertionIndex = Collections.binarySearch(this, e, this.comparator);
+            var index = Collections.binarySearch(this, e, comparator);
             // < 0 if element is not in the list, see Collections.binarySearch
-            if (insertionIndex < 0) {
-                insertionIndex = -(insertionIndex + 1);
+            if (index < 0) {
+                index = ~index;
+                super.add(index, e);
             }
             else {
+                /*search forward*/
+                for (var i = index; i < super.size(); i++) {
+                    var e1 = super.get(i);
+                    if (e.equals(e1)) {
+                        return false;
+                    }
+                    if (0 != comparator.compare(e, e1)) {
+                        break;
+                    }
+                }
+                if(index > 0) {
+                    /*search backward*/
+                    index--;
+                    for (var i = index; i >= 0; i--) {
+                        var e1 = super.get(i);
+                        if (e.equals(e1)) {
+                            return false;
+                        }
+                        if (0 != comparator.compare(e, e1)) {
+                            break;
+                        }
+                    }
+                    index++;
+                }
                 // Insertion index is index of existing element, to add new element
                 // behind it increase index
-                insertionIndex++;
+                index++;
+                super.add(index, e);
             }
-            super.add(insertionIndex, e);
+
         }
         return true;
+    }
+
+    /**
+     * Removes the first occurrence of the specified element from this list,
+     * if it is present.  If the list does not contain the element, it is
+     * unchanged.  More formally, removes the element with the lowest index
+     * {@code i} such that
+     * {@code Objects.equals(o, get(i))}
+     * (if such an element exists).  Returns {@code true} if this list
+     * contained the specified element (or equivalently, if this list
+     * changed as a result of the call).
+     *
+     * @param o element to be removed from this list, if present
+     * @return {@code true} if this list contained the specified element
+     */
+    @Override
+    public boolean remove(Object o) {
+        var elementToRemove = (E)o;
+        var index = Collections.binarySearch(this, elementToRemove, comparator);
+        // < 0 if element is not in the list, see Collections.binarySearch
+        if (index < 0) {
+            return false;
+        } else {
+            /*search forward*/
+            for (var i = index; i < super.size(); i++) {
+                var e = super.get(i);
+                if (elementToRemove.equals(e)) {
+                    super.remove(i);
+                    return true;
+                }
+                if (0 != comparator.compare(elementToRemove, e)) {
+                    break;
+                }
+            }
+            if (index > 0) {
+                /*search backward*/
+                index--;
+                for (var i = index; i >= 0; i--) {
+                    var e = super.get(i);
+                    if (elementToRemove.equals(e)) {
+                        super.remove(i);
+                        return true;
+                    }
+                    if (0 != comparator.compare(elementToRemove, e)) {
+                        break;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /**

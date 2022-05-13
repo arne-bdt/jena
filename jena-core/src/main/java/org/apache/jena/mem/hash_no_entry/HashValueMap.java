@@ -29,7 +29,7 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public abstract class HashValueMap<T> implements ValueMap<T> {
+public class HashValueMap<T> implements ValueMap<T> {
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcIndex(final int hashCode) {
@@ -49,13 +49,17 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         return calcIndex(getHashCode(value), length);
     }
 
-    private static int MINIMUM_SIZE = 2;
-    private static float loadFactor = 2.5f;
+    private static int MINIMUM_SIZE = 16;
+    private static float loadFactor = 0.75f;
     private int size = 0;
     private Object[] entries;
 
-    protected abstract int getHashCode(T value);
-    protected abstract Predicate<T> getMatcherForObject(final T value);
+    protected int getHashCode(T value) {
+        return value.hashCode();
+    }
+    protected Predicate<T> getMatcherForObject(final T value) {
+        return other -> value.equals(other);
+    }
 
     public static Supplier<ValueMap<Triple>> forSubject = () -> new HashValueMap<Triple>() {
 
@@ -103,7 +107,7 @@ public abstract class HashValueMap<T> implements ValueMap<T> {
         }
     };
 
-    protected HashValueMap() {
+    public HashValueMap() {
         this.entries = new Object[MINIMUM_SIZE]; /*default capacity*/
     }
 

@@ -269,14 +269,19 @@ public class GrowingCollection<T> implements Collection<T> {
      */
     @Override
     public boolean remove(Object o) {
-        var i=size;
-        while (i > 0) {
-            if(o.equals(entries[--i])) {
-                entries[i] = entries[--size];
-                return true;
+        final var e = entries;
+        final var size = this.size;
+        found:
+        {
+            for (var i = 0; i < size; i++) {
+                if (o.equals(e[i])) {
+                    e[i] = e[--this.size];
+                    break found;
+                }
             }
+            return false;
         }
-        return false;
+        return true;
     }
 
     /**

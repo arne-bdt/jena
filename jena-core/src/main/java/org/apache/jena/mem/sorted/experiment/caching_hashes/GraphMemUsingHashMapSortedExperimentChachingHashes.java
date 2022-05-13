@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.sorted.experiment;
+package org.apache.jena.mem.sorted.experiment.caching_hashes;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
@@ -65,13 +65,13 @@ import java.util.stream.Stream;
  * supported this in some cases. The implementation of ModelExpansion.addDomainTypes relayed on this behaviour, but it
  * has been fixed.
  */
-public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implements GraphWithPerform {
+public class GraphMemUsingHashMapSortedExperimentChachingHashes extends GraphMemBase implements GraphWithPerform {
 
     private final SubjectMap bySubject= new SubjectMap();
     private final PredicateMap byPredicate = new PredicateMap();
     private final ObjectMap byObject = new ObjectMap();
 
-    public GraphMemUsingHashMapSortedExperiment() {
+    public GraphMemUsingHashMapSortedExperimentChachingHashes() {
         super();
     }
 
@@ -96,9 +96,10 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
     @SuppressWarnings("java:S1199")
     @Override
     public void performAdd(final Triple t) {
-        if(bySubject.addIfNotExists(t)){
-            byPredicate.addDefinitetly(t);
-            byObject.addDefinitetly(t);
+        var thc = bySubject.addIfNotExists(t);
+        if(null != thc){
+            byPredicate.addDefinitetly(thc);
+            byObject.addDefinitetly(thc);
         }
     }
 
@@ -112,9 +113,10 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
     @SuppressWarnings("java:S1199")
     @Override
     public void performDelete(final Triple t) {
-        if(bySubject.removeIfExits(t)){
-            byPredicate.removeExisting(t);
-            byObject.removeExisting(t);
+        var thc = bySubject.removeIfExits(t);
+        if(null != thc){
+            byPredicate.removeExisting(thc);
+            byObject.removeExisting(thc);
         }
     }
 
@@ -186,15 +188,15 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
                 return false;
             }
             if(pm.isConcrete()) { // SPO:*PO
-                for(Triple t : triples) {
-                    if(pm.equals(t.getPredicate())
-                            && om.sameValueAs(t.getObject())) {
+                for(var t : triples) {
+                    if(pm.equals(t.triple.getPredicate())
+                            && om.sameValueAs(t.triple.getObject())) {
                         return true;
                     }
                 }
             } else { // SPO:**O
-                for(Triple t : triples) {
-                    if(om.sameValueAs(t.getObject())) {
+                for(var t : triples) {
+                    if(om.sameValueAs(t.triple.getObject())) {
                         return true;
                     }
                 }
@@ -205,8 +207,8 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
             if(triples == null) {
                 return false;
             }
-            for(Triple t : triples) {
-                if(pm.equals(t.getPredicate())) {
+            for(var t : triples) {
+                if(pm.equals(t.triple.getPredicate())) {
                     return true;
                 }
             }
@@ -316,12 +318,14 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
             if(p != null && p.isConcrete()) { // SPO:*PO
                 result = triples
                         .stream()
-                        .filter(t -> p.equals(t.getPredicate())
-                                && o.sameValueAs(t.getObject()));
+                        .filter(t -> p.equals(t.triple.getPredicate())
+                                && o.sameValueAs(t.triple.getObject()))
+                        .map(t -> t.triple);
             } else { // SPO:**O
                 result = triples
                         .stream()
-                        .filter(t -> o.sameValueAs(t.getObject()));
+                        .filter(t -> o.sameValueAs(t.triple.getObject()))
+                        .map(t -> t.triple);
             }
         }
         else if (p != null && p.isConcrete()) { // SPO:*P*
@@ -331,7 +335,8 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
             }
             result = triples
                     .stream()
-                    .filter(t -> p.equals(t.getPredicate()));
+                    .filter(t -> p.equals(t.triple.getPredicate()))
+                    .map(t -> t.triple);
         }
         else { // SPO:***
             result = this.stream();
@@ -382,11 +387,11 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
                 return NiceIterator.emptyIterator();
             }
             if(pm.isConcrete()) { // SPO:*PO
-                iterator = new IteratorFiltering(triples.iterator(),
+                iterator = new IteratorFilteringThc(triples.iterator(),
                         t -> pm.equals(t.getPredicate())
                                 && om.sameValueAs(t.getObject()));
             } else { // SPO:**O
-                iterator = new IteratorFiltering(triples.iterator(),
+                iterator = new IteratorFilteringThc(triples.iterator(),
                         t -> om.sameValueAs(t.getObject()));
             }
         }
@@ -395,7 +400,7 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
             if(triples == null) {
                 return NiceIterator.emptyIterator();
             }
-            iterator = new IteratorFiltering(triples.iterator(),
+            iterator = new IteratorFilteringThc(triples.iterator(),
                     t -> pm.equals(t.getPredicate()));
         }
         else { // SPO:***
@@ -414,7 +419,7 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
     private static class IteratorWrapperWithRemove implements ExtendedIterator<Triple> {
 
         private Iterator<Triple> iterator;
-        private final GraphMemUsingHashMapSortedExperiment graphMem;
+        private final GraphMemUsingHashMapSortedExperimentChachingHashes graphMem;
         private boolean isStillIteratorWithNoRemove = true;
 
         /**
@@ -422,7 +427,7 @@ public class GraphMemUsingHashMapSortedExperiment extends GraphMemBase implement
          */
         protected Triple current;
 
-        public IteratorWrapperWithRemove(Iterator<Triple> iteratorWithNoRemove, GraphMemUsingHashMapSortedExperiment graphMem) {
+        public IteratorWrapperWithRemove(Iterator<Triple> iteratorWithNoRemove, GraphMemUsingHashMapSortedExperimentChachingHashes graphMem) {
             this.iterator = iteratorWithNoRemove;
             this.graphMem = graphMem;
         }

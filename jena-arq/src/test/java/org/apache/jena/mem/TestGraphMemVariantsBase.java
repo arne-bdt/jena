@@ -35,11 +35,9 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public abstract class TestGraphMemVariantsBase {
 
@@ -51,14 +49,14 @@ public abstract class TestGraphMemVariantsBase {
             //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
             //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
             Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted())
             //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
             //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
 //            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
 //            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
             //Pair.of("GraphMem", () -> new GraphMem()),
-            Pair.of("GraphMem", () -> new GraphMem()),
-            Pair.of("GraphMem", () -> new GraphMem())
+            //Pair.of("GraphMem", () -> new GraphMem()),
+            //Pair.of("GraphMem", () -> new GraphMem())
             //Pair.of("GraphMemHash", () -> new GraphMemHash()),
             //Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries()),
             //Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries())
@@ -115,12 +113,18 @@ public abstract class TestGraphMemVariantsBase {
                 randomlySelectedTriples.add(Collections.emptyList());
                 continue;
             }
-            var randomlySelectedInGraph = new ArrayList<Triple>(numberOfRandomTriplesToSelect);
-            var intStream = random.ints(numberOfRandomTriplesToSelect, 0, triples.size() - 1);
-            intStream.forEach((i) -> {
-                randomlySelectedInGraph.add(triples.get(i));
-            });
-            randomlySelectedTriples.add(randomlySelectedInGraph);
+            var randomlySelectedInGraph = new HashSet<Triple>(numberOfRandomTriplesToSelect);
+            do {
+                var intStream = random.ints(numberOfRandomTriplesToSelect, 0, triples.size());
+                var i = intStream.iterator();
+                while(i.hasNext()) {
+                    randomlySelectedInGraph.add(triples.get(i.next()));
+                    if(randomlySelectedInGraph.size() == numberOfRandomTriplesToSelect) {
+                        break;
+                    }
+                }
+            } while (randomlySelectedInGraph.size() <= numberOfRandomTriplesToSelect);
+            randomlySelectedTriples.add(randomlySelectedInGraph.stream().collect(Collectors.toList()));
         }
         return randomlySelectedTriples;
     }
@@ -150,12 +154,12 @@ public abstract class TestGraphMemVariantsBase {
         return graphs;
     }
 
-    protected static int runGcAndGetUsedMemoryInMB() {
+    protected static double runGcAndGetUsedMemoryInMB() {
         System.runFinalization();
         System.gc();
         Runtime.getRuntime().runFinalization();
         Runtime.getRuntime().gc();
-        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024l)).divide(BigDecimal.valueOf(1024l)).toBigInteger().intValue();
+        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024l)).divide(BigDecimal.valueOf(1024l)).doubleValue();
     }
 
 }

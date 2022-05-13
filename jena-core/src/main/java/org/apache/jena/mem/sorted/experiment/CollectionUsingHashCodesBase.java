@@ -33,9 +33,11 @@ import java.util.stream.StreamSupport;
  * It´s purpose is to support fast remove operations.
  * @param <T> type of elements in the collection.
  */
-public abstract class CollectionUsingHashCodesBase<T> implements Collection<T> {
+public class CollectionUsingHashCodesBase<T> implements Collection<T> {
 
-    protected abstract int getHashCode(final T value);
+    protected int getHashCode(final T value) {
+        return value.hashCode();
+    }
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByHashCode(final int hashCode) {
@@ -47,7 +49,23 @@ public abstract class CollectionUsingHashCodesBase<T> implements Collection<T> {
         return calcStartIndexByHashCode(getHashCode(value));
     }
 
-    protected abstract Predicate<T> getMatcherForObject(final T value);
+    protected Predicate<T> getContainsMatcher(final T value) {
+        return other -> value.equals(other);
+    }
+
+    public static Supplier<CollectionUsingHashCodesBase<Triple>> forTriples = () -> new CollectionUsingHashCodesBase<Triple>(40) {
+        @Override
+        protected int getHashCode(final Triple t) {
+            return t.hashCode();
+        }
+        @Override
+        protected Predicate<Triple> getContainsMatcher(final Triple triple) {
+            if(ObjectEqualizer.isEqualsForObjectOk(triple.getObject())) {
+                return t -> triple.equals(t);
+            }
+            return t -> triple.matches(t);
+        }
+    };
 
     public static Supplier<CollectionUsingHashCodesBase<Triple>> forObjects = () -> new CollectionUsingHashCodesBase<Triple>(40) {
         @Override
@@ -55,7 +73,7 @@ public abstract class CollectionUsingHashCodesBase<T> implements Collection<T> {
             return (t.getSubject().getIndexingValue().hashCode() >> 1) ^ t.getPredicate().getIndexingValue().hashCode();
         }
         @Override
-        protected Predicate<Triple> getMatcherForObject(final Triple triple) {
+        protected Predicate<Triple> getContainsMatcher(final Triple triple) {
             if(ObjectEqualizer.isEqualsForObjectOk(triple.getObject())) {
                 return t -> triple.equals(t);
             }
@@ -69,7 +87,7 @@ public abstract class CollectionUsingHashCodesBase<T> implements Collection<T> {
             return (t.getSubject().getIndexingValue().hashCode() >> 1) ^ t.getObject().getIndexingValue().hashCode();
         }
         @Override
-        protected Predicate<Triple> getMatcherForObject(final Triple triple) {
+        protected Predicate<Triple> getContainsMatcher(final Triple triple) {
             if(ObjectEqualizer.isEqualsForObjectOk(triple.getObject())) {
                 return t -> triple.equals(t);
             }
@@ -77,8 +95,8 @@ public abstract class CollectionUsingHashCodesBase<T> implements Collection<T> {
         }
     };
 
-    private static int MINIMUM_SIZE = 4;
-    private static float loadFactor = 0.6f;
+    private static int MINIMUM_SIZE = 16;
+    private static float loadFactor = 0.5f;
     protected int size = 0;
     protected Object[] entries;
 
@@ -337,7 +355,7 @@ public abstract class CollectionUsingHashCodesBase<T> implements Collection<T> {
         if(null == valueAtIndex) {
             return ~index;
         }
-        var matcher = getMatcherForObject(t);
+        var matcher = getContainsMatcher(t);
         if(matcher.equals(valueAtIndex)) {
             return index;
         }

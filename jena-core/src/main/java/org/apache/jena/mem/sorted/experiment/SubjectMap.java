@@ -21,52 +21,42 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 
 import java.util.*;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.stream.Stream;
 
-abstract class TripleMapSorted extends TripleMap {
+class SubjectMap implements TripleCollection {
 
     protected final static int SWITCH_TO_SORTED_THRESHOLD = 40;
 
-    protected abstract Comparator<Triple> getListComparator();
-    protected abstract Predicate<Triple> getMatcherForObject(final Triple value);
+    protected final Map<Integer, Collection<Triple>> map = new HashMap<>();
 
-    protected static Comparator<Triple> listComparatorObjectPredicate =
+    protected int getKey(final Triple t) {
+        return t.getSubject().getIndexingValue().hashCode();
+    }
+
+    public Collection<Triple> get(final Node keyNode) {
+        var list = map.get(keyNode.getIndexingValue().hashCode());
+        return list == null ? null : list;
+    }
+
+    protected static Comparator<Triple> comparator =
             Comparator.comparingInt((Triple t) -> t.getObject().getIndexingValue().hashCode())
                     .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
 
 
-    static Supplier<TripleMapSorted> forSubjects = () -> new TripleMapSorted(Triple::getSubject) {
+    protected Collection<Triple> createTripleCollection() {
+        return new ArrayList<>(2);
+    }
 
-
-        @Override
-        protected Collection<Triple> createTripleCollection() {
-            return new ArrayList<>(2);
+    protected Predicate<Triple> getMatcherForObject(Triple triple) {
+        if(ObjectEqualizer.isEqualsForObjectOk(triple.getObject())) {
+            return t -> triple.equals(t);
         }
+        return t -> triple.matches(t);
+    }
 
-        @Override
-        protected Collection<Triple> createTripleHashCollection() {
-            throw new UnsupportedOperationException();
-        }
+    public SubjectMap() {
 
-        @Override
-        protected Comparator<Triple> getListComparator() {
-            return listComparatorObjectPredicate;
-        }
-
-        @Override
-        protected Predicate<Triple> getMatcherForObject(Triple triple) {
-            if(ObjectEqualizer.isEqualsForObjectOk(triple.getObject())) {
-                return t -> triple.equals(t);
-            }
-            return t -> triple.matches(t);
-        }
-    };
-
-    public TripleMapSorted(final Function<Triple, Node> keyNodeResolver) {
-        super(keyNodeResolver);
     }
 
     /**
@@ -75,8 +65,7 @@ abstract class TripleMapSorted extends TripleMap {
      * @param t
      * @return
      */
-    @Override
-    public boolean addIfNotExists(final Triple t) {
+     public boolean addIfNotExists(final Triple t) {
         var key = getKey(t);
         var list = (List<Triple>)map.get(key);
         if(list != null) {
@@ -86,10 +75,10 @@ abstract class TripleMapSorted extends TripleMap {
                 }
                 list.add(t);
                 if(list.size() == SWITCH_TO_SORTED_THRESHOLD) {
-                    list.sort(getListComparator());
+                    list.sort(comparator);
                 }
             } else {
-                var index = Collections.binarySearch(list, t, getListComparator());
+                var index = Collections.binarySearch(list, t, comparator);
                 // < 0 if element is not in the list, see Collections.binarySearch
                 if (index < 0) {
                     index = -(index + 1);
@@ -102,7 +91,7 @@ abstract class TripleMapSorted extends TripleMap {
                         if (t.equals(t1)) {
                             return false;
                         }
-                        if (0 != getListComparator().compare(t1, t)) {
+                        if (0 != comparator.compare(t1, t)) {
                             break;
                         }
                     }
@@ -114,7 +103,7 @@ abstract class TripleMapSorted extends TripleMap {
                             if (t.equals(t1)) {
                                 return false;
                             }
-                            if (0 != getListComparator().compare(t1, t)) {
+                            if (0 != comparator.compare(t1, t)) {
                                 break;
                             }
                         }
@@ -135,41 +124,11 @@ abstract class TripleMapSorted extends TripleMap {
     }
 
     /**
-     * Add with no checks
-     * @param t
-     */
-    @Override
-    public void addDefinitetly(final Triple t) {
-        var list = (List) map
-                .computeIfAbsent(getKey(t),
-                        k -> (List<Triple>) createTripleCollection());
-        if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
-            list.add(t);
-            if(list.size() == SWITCH_TO_SORTED_THRESHOLD) {
-                list.sort(getListComparator());
-            }
-        } else {
-            var index = Collections.binarySearch(list, t, getListComparator());
-            // < 0 if element is not in the list, see Collections.binarySearch
-            if (index < 0) {
-                index = -(index + 1);
-                list.add(index, t);
-            } else {
-                // Insertion index is index of existing element, to add new element
-                // behind it increase index
-                index++;
-                list.add(index, t);
-            }
-        }
-    }
-
-    /**
      * Removes only if exists.
      *
      * @param t
      * @return
      */
-    @Override
     public boolean removeIfExits(final Triple t) {
         var key = getKey(t);
         var list = (List<Triple>)map.get(key);
@@ -182,7 +141,7 @@ abstract class TripleMapSorted extends TripleMap {
                     return true;
                 }
             } else {
-                var index = Collections.binarySearch(list, t, getListComparator());
+                var index = Collections.binarySearch(list, t, comparator);
                 // < 0 if element is not in the list, see Collections.binarySearch
                 if (index < 0) {
                     return false;
@@ -197,7 +156,7 @@ abstract class TripleMapSorted extends TripleMap {
                             }
                             return true;
                         }
-                        if (0 != getListComparator().compare(t1, t)) {
+                        if (0 != comparator.compare(t1, t)) {
                             break;
                         }
                     }
@@ -213,7 +172,7 @@ abstract class TripleMapSorted extends TripleMap {
                                 }
                                 return true;
                             }
-                            if (0 != getListComparator().compare(t1, t)) {
+                            if (0 != comparator.compare(t1, t)) {
                                 break;
                             }
                         }
@@ -222,57 +181,6 @@ abstract class TripleMapSorted extends TripleMap {
             }
         }
         return false;
-    }
-
-    /**
-     * Remove existing triple, without any checks.
-     *
-     * @param t
-     */
-    @Override
-    public void removeExisting(final Triple t) {
-        var key = getKey(t);
-        var list = (List<Triple>)map.get(key);
-        if(list.size() < SWITCH_TO_SORTED_THRESHOLD) {
-            if (list.remove(t)) {
-                if (list.isEmpty()) {
-                    map.remove(key);
-                }
-            }
-        } else {
-            var index = Collections.binarySearch(list, t, getListComparator());
-            /*search forward*/
-            for (var i = index; i < list.size(); i++) {
-                var t1 = list.get(i);
-                if (t.equals(t1)) {
-                    list.remove(i);
-                    if (list.isEmpty()) {
-                        map.remove(key);
-                    }
-                    return;
-                }
-                if (0 != getListComparator().compare(t1, t)) {
-                    break;
-                }
-            }
-            if (index > 0) {
-                /*search backward*/
-                index--;
-                for (var i = index; i >= 0; i--) {
-                    var t1 = list.get(i);
-                    if (t.equals(t1)) {
-                        list.remove(i);
-                        if (list.isEmpty()) {
-                            map.remove(key);
-                        }
-                        return;
-                    }
-                    if (0 != getListComparator().compare(t1, t)) {
-                        break;
-                    }
-                }
-            }
-        }
     }
 
     /**
@@ -294,7 +202,7 @@ abstract class TripleMapSorted extends TripleMap {
                 }
             }
         } else  {
-            var index = Collections.binarySearch(list, t, getListComparator());
+            var index = Collections.binarySearch(list, t, comparator);
             if (index < 0) {
                 return false;
             }
@@ -304,7 +212,7 @@ abstract class TripleMapSorted extends TripleMap {
                 if (matcher.test(t1)) {
                     return true;
                 }
-                if (0 != getListComparator().compare(t1, t)) {
+                if (0 != comparator.compare(t1, t)) {
                     break;
                 }
             }
@@ -316,12 +224,90 @@ abstract class TripleMapSorted extends TripleMap {
                     if (matcher.test(t1)) {
                         return true;
                     }
-                    if (0 != getListComparator().compare(t1, t)) {
+                    if (0 != comparator.compare(t1, t)) {
                         break;
                     }
                 }
             }
         }
         return false;
+    }
+
+    public boolean isEmpty() {
+        return map.isEmpty();
+    }
+
+    public void clear() {
+        map.clear();
+    }
+
+    public int numberOfKeys() {
+        return map.size();
+    }
+
+    public int size() {
+        return map.values().stream().mapToInt(Collection::size).sum();
+    }
+
+    public Stream<Triple> stream() {
+        return map.values().stream().flatMap(Collection::stream);
+    }
+
+    public Iterator<Triple> iterator() {
+        return new CollectionOfTriplesIterator(map.values().iterator());
+    }
+
+    private static class CollectionOfTriplesIterator implements Iterator<Triple> {
+
+        private final Iterator<Collection<Triple>> baseIterator;
+        private Iterator<Triple> subIterator;
+        private boolean hasSubIterator = false;
+
+        public CollectionOfTriplesIterator(Iterator<Collection<Triple>> baseIterator) {
+
+            this.baseIterator = baseIterator;
+            if (baseIterator.hasNext()) {
+                subIterator = baseIterator.next().iterator();
+                hasSubIterator = true;
+            }
+        }
+
+        /**
+         * Returns {@code true} if the iteration has more elements.
+         * (In other words, returns {@code true} if {@link #next} would
+         * return an element rather than throwing an exception.)
+         *
+         * @return {@code true} if the iteration has more elements
+         */
+        @Override
+        public boolean hasNext() {
+            if (hasSubIterator) {
+                if (subIterator.hasNext()) {
+                    return true;
+                }
+                while (baseIterator.hasNext()) {
+                    subIterator = baseIterator.next().iterator();
+                    if (subIterator.hasNext()) {
+                        return true;
+                    }
+                }
+                hasSubIterator = false;
+            }
+            return false;
+        }
+
+        /**
+         * Returns the next element in the iteration.
+         *
+         * @return the next element in the iteration
+         * @throws NoSuchElementException if the iteration has no more elements
+         */
+        @Override
+        public Triple next() {
+            if (!hasSubIterator || !this.hasNext()) {
+                throw new NoSuchElementException();
+            }
+            return subIterator.next();
+        }
     }
 }
