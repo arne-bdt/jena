@@ -32,7 +32,6 @@ import org.junit.Test;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public class TestGraphMemVariants_collections extends TestGraphMemVariantsBase {
 
@@ -137,45 +136,43 @@ public class TestGraphMemVariants_collections extends TestGraphMemVariantsBase {
 //                    }));
             collections.add(Pair.of(() ->new CollectionUsingHashCodesBase<Triple>(),
                     (c, t) -> {
-                        c.add(t);
+                        Assert.assertTrue(c.add(t));
                     }));
             collections.add(Pair.of(() ->new SortedArrayList<Triple>(comparator, 2),
                     (c, t) -> {
-                        c.add(t);
+                        Assert.assertTrue(c.add(t));
                     }));
             collections.add(Pair.of(() -> new HashSet<>(),
                     (c, t) -> {
-                        c.add(t);
+                        Assert.assertTrue(c.add(t));
                     }));
 
             for (Pair<Supplier<Collection<Triple>>, BiConsumer<Collection<Triple>, Triple>> pair : collections) {
                 var stopAdditions = StopWatch.createStarted();
                 stopAdditions.suspend();
+                var stopContains = StopWatch.createStarted();
+                stopContains.suspend();
                 var stopIterator = StopWatch.createStarted();
                 stopIterator.suspend();
-                var stopStreamIterator = StopWatch.createStarted();
-                stopStreamIterator.suspend();
                 var stopStream = StopWatch.createStarted();
                 stopStream.suspend();
+                var stopParallelStream = StopWatch.createStarted();
+                stopParallelStream.suspend();
                 var stopDeletions = StopWatch.createStarted();
                 stopDeletions.suspend();
                 for(var i=0; i<1000; i++) {
                     var collection = pair.getKey().get();
                     for (List<Triple> triples : randomTriple) {
                         stopAdditions.resume();
-                        triples.forEach(t -> pair.getValue().accept(collection, t));
+                        triples.forEach(t -> pair.getValue().accept(collection, Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
                         stopAdditions.suspend();
                     }
-                    Assert.assertEquals(randomTriple.stream().mapToInt(List::size).sum(), collection.size());
-                    streamIterator: {
-                        var concrete = false;
-                        stopStreamIterator.resume();
-                        var it = collection.stream().iterator();
-                        while(it.hasNext()){
-                            concrete = it.next().isConcrete();
-                        }
-                        stopStreamIterator.suspend();
+                    for (List<Triple> triples : randomTriple) {
+                        stopContains.resume();
+                        triples.forEach(t -> collection.contains(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
+                        stopContains.suspend();
                     }
+                    Assert.assertEquals(randomTriple.stream().mapToInt(List::size).sum(), collection.size());
                     iterator: {
                         var concrete = false;
                         stopIterator.resume();
@@ -191,6 +188,12 @@ public class TestGraphMemVariants_collections extends TestGraphMemVariantsBase {
                         collection.stream().forEach(t -> { concrete[0] = t.isConcrete(); });
                         stopStream.suspend();
                     }
+                    parallelStream: {
+                        final boolean[] concrete = {false};
+                        stopParallelStream.resume();
+                        collection.parallelStream().forEach(t -> { concrete[0] = t.isConcrete(); });
+                        stopParallelStream.suspend();
+                    }
                     for (List<Triple> triples : randomTriple) {
                         stopDeletions.resume();
                         var mid = (int)triples.size() /2;
@@ -202,28 +205,30 @@ public class TestGraphMemVariants_collections extends TestGraphMemVariantsBase {
                         for(int k=mid-1; k>=0; k--) {
                             var t = triples.get(k);
                             t = Triple.create(t.getSubject(), t.getPredicate(), t.getObject()); /*important to avoid identity equality*/
-                            collection.remove(t);
+                            Assert.assertTrue(collection.remove(t));
                         }
                         stopDeletions.suspend();
                     }
-                    //Assert.assertTrue(collection.isEmpty());
+                    Assert.assertTrue(collection.isEmpty());
                 }
                 stopAdditions.stop();
                 stopDeletions.stop();
-                System.out.println(String.format("type: '%50s' \t with %6d triples - add: %s delete: %s iterator: %s stream.iterator: %s stream: %s - combined: %s",
+                System.out.println(String.format("type: '%50s' \t with %6d triples - add: %s delete: %s contains: %s iterator: %s stream: %s parallelStream: %s - combined: %s",
                         pair.getKey().get().getClass().getSimpleName(),
                         numberOfTriples,
                         stopAdditions.formatTime(),
                         stopDeletions.formatTime(),
+                        stopContains.formatTime(),
                         stopIterator.formatTime(),
-                        stopStreamIterator.formatTime(),
                         stopStream.formatTime(),
+                        stopParallelStream.formatTime(),
                         DurationFormatUtils.formatDurationHMS(
-                                stopAdditions.getTime()
+                                (5*stopAdditions.getTime())
                                         + stopDeletions.getTime()
-                                        + (10 *(stopIterator.getTime()
-                                        + stopStreamIterator.getTime()
-                                        + stopStream.getTime())))));
+                                        + (5*stopContains.getTime())
+                                        + (3*stopIterator.getTime())
+                                        + (3*stopParallelStream.getTime())
+                                        + (3*stopStream.getTime()))));
             }
             System.out.println("");
         }

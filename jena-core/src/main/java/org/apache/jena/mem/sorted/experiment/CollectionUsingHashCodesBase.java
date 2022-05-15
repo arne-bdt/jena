@@ -326,27 +326,59 @@ public class CollectionUsingHashCodesBase<T> implements Collection<T> {
         if(t.equals(valueAtIndex)) {
             return index;
         }
-        var i=index;
-        while (0 < i--) {
-            valueAtIndex = entries[i];
-            if(null == valueAtIndex) {
-                return ~i;
+        int emptyIndex = -1;
+        var lowerIndex = index-1;
+        var upperIndex = index+1;
+        while (0 < lowerIndex || upperIndex < entries.length) {
+            if(0 < lowerIndex) {
+                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
+                    emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
+                } else if (t.equals(entries[lowerIndex])) {
+                    return lowerIndex;            /*found equal element*/
+                }
+                lowerIndex--;
             }
-            if(t.equals(valueAtIndex)) {
-                return i;
+            if(upperIndex < entries.length) {
+                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
+                    if(emptyIndex < 0) {          /*this index is only relevant if slot with same distance in backward direction was not also empty*/
+                        emptyIndex = upperIndex;
+                    }
+                } else if (t.equals(entries[upperIndex])) {
+                    return upperIndex;           /*found equal element*/
+                }
+                upperIndex++;
             }
-        }
-        i = index;
-        while(++i < entries.length) {
-            valueAtIndex = entries[i];
-            if(null == valueAtIndex) {
-                return ~i;
-            }
-            if(t.equals(valueAtIndex)) {
-                return i;
+            if(emptyIndex >= 0) { /*found empty slot in any direction*/
+                return ~emptyIndex;
             }
         }
         throw new IllegalStateException();
+//        var i=index;
+//        var lowerEmptySlot = Integer.MAX_VALUE;
+//        while (0 < i--) {
+//            valueAtIndex = entries[i];
+//            if(null == valueAtIndex) {
+//                lowerEmptySlot = i;
+//                break;
+//            }
+//            if(t.equals(valueAtIndex)) {
+//                return i;
+//            }
+//        }
+//        i = index;
+//        var upperEmptySlot = Integer.MAX_VALUE;
+//        while(++i < entries.length) {
+//            valueAtIndex = entries[i];
+//            if(null == valueAtIndex) {
+//                upperEmptySlot = i;
+//                break;
+//            }
+//            if(t.equals(valueAtIndex)) {
+//                return i;
+//            }
+//        }
+//        return (index - lowerEmptySlot) <= (upperEmptySlot - index) ? ~lowerEmptySlot : ~upperEmptySlot;
+//        throw new IllegalStateException();
     }
 
     private int findIndexOfMatch(final T t) {
@@ -362,15 +394,16 @@ public class CollectionUsingHashCodesBase<T> implements Collection<T> {
         var i=index;
         while (0 < i--) {
             valueAtIndex = entries[i];
-            if(null == valueAtIndex) {
+            if (null == valueAtIndex) {
                 return ~i;
             }
-            if(matcher.equals(valueAtIndex)) {
+            if (matcher.equals(valueAtIndex)) {
                 return i;
             }
+            i--;
         }
         i = index;
-        while(--i < entries.length) {
+        while(++i < entries.length) {
             valueAtIndex = entries[i];
             if(null == valueAtIndex) {
                 return ~i;
@@ -406,23 +439,34 @@ public class CollectionUsingHashCodesBase<T> implements Collection<T> {
     public boolean remove(Object o) {
         var index = findIndex((T) o);
         if (index < 0) {
+            index = findIndex((T)o);
             return false;
         }
         entries[index] = null;
         size--;
         /*rearrange neighbours*/
         var neighbours = getNeighbours(index);
+        if(neighbours.isEmpty()) {
+            return true;
+        }
         var distanceComparator
                 = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
         neighbours.sort(distanceComparator);
-        boolean elementsHaveBeenSwitched = false;
+        boolean elementsHaveBeenSwitched;
         do {
+            elementsHaveBeenSwitched = false;
             for (ObjectsWithStartIndexIndexAndDistance neighbour : neighbours) {
                 if (neighbour.isTargetIndexNearerToStartIndex(index)){
                     var oldIndexOfNeighbour = neighbour.currentIndex;
-                    entries[index] = entries[neighbour.currentIndex];
-                    entries[neighbour.currentIndex] = null;
+                    entries[index] = entries[oldIndexOfNeighbour];
+                    entries[oldIndexOfNeighbour] = null;
                     neighbour.setCurrentIndex(index);
+                    if(0 == neighbour.distance) {
+                        neighbours.remove(neighbour);
+                        if(neighbours.isEmpty()) {
+                            return true;
+                        }
+                    }
                     index = oldIndexOfNeighbour;
                     neighbours.sort(distanceComparator);
                     elementsHaveBeenSwitched = true;
@@ -436,18 +480,25 @@ public class CollectionUsingHashCodesBase<T> implements Collection<T> {
     private List<ObjectsWithStartIndexIndexAndDistance> getNeighbours(int index) {
         var neighbours = new ArrayList<ObjectsWithStartIndexIndexAndDistance>();
         var i=index;
+        ObjectsWithStartIndexIndexAndDistance neighbour;
         while (--i > 0) {
             if(null == entries[i]) {
                 break;
             }
-            neighbours.add(new ObjectsWithStartIndexIndexAndDistance((T)entries[i], i));
+            neighbour = new ObjectsWithStartIndexIndexAndDistance((T)entries[i], i);
+            if(neighbour.distance > 0) {
+                neighbours.add(neighbour);
+            }
         }
         i = index;
         while(++i < entries.length) {
             if(null == entries[i]) {
                 break;
             }
-            neighbours.add(new ObjectsWithStartIndexIndexAndDistance((T)entries[i], i));
+            neighbour = new ObjectsWithStartIndexIndexAndDistance((T)entries[i], i);
+            if(neighbour.distance > 0) {
+                neighbours.add(neighbour);
+            }
         }
         return neighbours;
     }
@@ -461,6 +512,7 @@ public class CollectionUsingHashCodesBase<T> implements Collection<T> {
         public ObjectsWithStartIndexIndexAndDistance(final T object, final int currentIndex) {
             this.object = object;
             this.startIndex = calcStartIndexByHashCode(object);
+            this.setCurrentIndex(currentIndex);
         }
 
         void setCurrentIndex(final int currentIndex) {
