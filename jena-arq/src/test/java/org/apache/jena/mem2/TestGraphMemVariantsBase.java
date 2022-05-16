@@ -101,7 +101,7 @@ public abstract class TestGraphMemVariantsBase {
         return triplesPerGraph;
     }
 
-    protected static List<List<Triple>> selectRandomTriples(final List<List<Triple>> triplesPerGraph, final int numberOfRandomTriplesToSelect) {
+    protected static List<List<Triple>> selectRandomTriples(final List<List<Triple>> triplesPerGraph, int numberOfRandomTriplesToSelect) {
         var randomlySelectedTriples = new ArrayList<List<Triple>>(triplesPerGraph.size());
         /*find random triples*/
         for (List<Triple> triples : triplesPerGraph) {
@@ -109,18 +109,9 @@ public abstract class TestGraphMemVariantsBase {
                 randomlySelectedTriples.add(Collections.emptyList());
                 continue;
             }
-            var randomlySelectedInGraph = new HashSet<Triple>(numberOfRandomTriplesToSelect);
-            do {
-                var intStream = random.ints(numberOfRandomTriplesToSelect, 0, triples.size());
-                var i = intStream.iterator();
-                while(i.hasNext()) {
-                    randomlySelectedInGraph.add(triples.get(i.next()));
-                    if(randomlySelectedInGraph.size() == numberOfRandomTriplesToSelect) {
-                        break;
-                    }
-                }
-            } while (randomlySelectedInGraph.size() <= numberOfRandomTriplesToSelect);
-            randomlySelectedTriples.add(randomlySelectedInGraph.stream().collect(Collectors.toList()));
+            triples = new ArrayList<>(triples);
+            Collections.shuffle(triples);
+            randomlySelectedTriples.add(triples.subList(0, Math.min(numberOfRandomTriplesToSelect, triples.size())));
         }
         return randomlySelectedTriples;
     }

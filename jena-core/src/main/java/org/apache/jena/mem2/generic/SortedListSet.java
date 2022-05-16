@@ -18,6 +18,8 @@
 
 package org.apache.jena.mem2.generic;
 
+import org.apache.commons.lang3.NotImplementedException;
+
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
@@ -339,7 +341,9 @@ public class SortedListSet<E> extends ArrayList<E> implements Set<E> {
      */
     @Override
     public boolean addAll(Collection<? extends E> c) {
-        throw new UnsupportedOperationException();
+        var modified = super.addAll(c);
+        super.sort(comparator);
+        return modified;
     }
 
     /**
@@ -359,13 +363,7 @@ public class SortedListSet<E> extends ArrayList<E> implements Set<E> {
      */
     @Override
     public boolean addAll(int index, Collection<? extends E> c) {
-        boolean modified = false;
-        for (E e : c) {
-            if(this.add(e)) {
-                modified = true;
-            }
-        }
-        return modified;
+        throw new UnsupportedOperationException();
     }
 
     /**

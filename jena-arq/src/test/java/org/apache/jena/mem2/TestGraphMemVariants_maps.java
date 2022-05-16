@@ -36,44 +36,44 @@ import java.util.function.Supplier;
 
 public class TestGraphMemVariants_maps extends TestGraphMemVariantsBase {
 
-//    @Test
-//    public void pizza_owl_rdf() {
-//        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 100,
-//                "./../jena-examples/src/main/resources/data/pizza.owl.rdf");
-//    }
-//
-//    @Test
-//    public void cheeses_ttl() {
-//        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 50,
-//                "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl");
-//    }
-//
-//    /**
-//     * Generated large dataset.
-//     * Tool:
-//     * http://wbsg.informatik.uni-mannheim.de/bizer/berlinsparqlbenchmark/spec/BenchmarkRules/index.html#datagenerator
-//     * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
-//     */
-//    @Test
-//    @Ignore
-//    public void BSBM_50000() {
-//        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
-//                "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
-//    }
-//
-//    /**
-//     * Due to copyright, data cannot be added to the repository.
-//     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
-//     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
-//     */
-//    @Test
-//    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ_SSH_SV_and_TP() {
-//        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
-//    }
+    @Test
+    public void pizza_owl_rdf() {
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, Triple::getSubject,
+                "./../jena-examples/src/main/resources/data/pizza.owl.rdf");
+    }
+
+    @Test
+    public void cheeses_ttl() {
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, Triple::getSubject,
+                "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl");
+    }
+
+    /**
+     * Generated large dataset.
+     * Tool:
+     * http://wbsg.informatik.uni-mannheim.de/bizer/berlinsparqlbenchmark/spec/BenchmarkRules/index.html#datagenerator
+     * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
+     */
+    @Test
+    @Ignore
+    public void BSBM_50000() {
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, Triple::getSubject,
+                "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
+    }
+
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ_SSH_SV_and_TP() {
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, Triple::getSubject,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
+    }
 
     /**
      * Due to copyright, data cannot be added to the repository.
@@ -82,45 +82,45 @@ public class TestGraphMemVariants_maps extends TestGraphMemVariantsBase {
      */
     @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() {
-        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1, Triple::getSubject,
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, Triple::getSubject,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
     }
-//
-//    /**
-//     * Due to copyright, data cannot be added to the repository.
-//     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
-//     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
-//     */
-//    @Test
-//    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SSH() {
-//        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml");
-//    }
-//
-//    /**
-//     * Due to copyright, data cannot be added to the repository.
-//     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
-//     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
-//     */
-//    @Test
-//    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SV() {
-//        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
-//    }
-//
-//    /**
-//     * Due to copyright, data cannot be added to the repository.
-//     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
-//     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
-//     */
-//    @Test
-//    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_TP() {
-//        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
-//    }
 
-    private void loadGraphsMeasureTimeAndMemory_load(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, Function<Triple, Node> keyNodeResolver, String... graphUris) {
-        final var triplesPerGraph = loadTriples(graphMultiplier, graphUris);
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SSH() {
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, Triple::getSubject,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml");
+    }
+
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SV() {
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, Triple::getSubject,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
+    }
+
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_TP() {
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, Triple::getSubject,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
+    }
+
+    private void loadGraphsMeasureTimeAndMemory_load(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, Function<Triple, Node> keyNodeResolver, String... graphUris) {
+        final var triplesPerGraph = loadTriples(1, graphUris);
         //for(var numberOfTriples : Arrays.asList(50, 100, 250, 500, 1000, 2000, 5000, 10000, 25000, 50000, 75000, 100000, 150000)) {
         for(var numberOfTriples : Arrays.asList(1000, 2000, 5000, 10000, 25000, 50000, 75000, 100000, 110000, 120000, 130000, 140000, 150000, 160000, 170000, 180000, 190000, 200000)) {
         //for(var numberOfTriples : Arrays.asList(50, 100, 125, 150, 175, 200, 225, 250, 275, 300, 400, 500, 600, 700, 800, 900, 1000, 1200)) {
@@ -130,8 +130,8 @@ public class TestGraphMemVariants_maps extends TestGraphMemVariantsBase {
             var randomTriple = selectRandomTriples(triplesPerGraph, numberOfTriples);
 
             var maps = new ArrayList<Supplier<Map<Integer, ArrayList<Triple>>>>();
-            maps.add(() -> new LeanHashMap<Integer, ArrayList<Triple>>(16, 2.5f));
-            maps.add(() -> new HashMap<Integer, ArrayList<Triple>>(16, 2.5f));
+            //maps.add(() -> new LeanHashMap<Integer, ArrayList<Triple>>(16, 2.5f));
+            maps.add(() -> new HashMap<Integer, ArrayList<Triple>>());
 
 
             for (var supplier  : maps) {

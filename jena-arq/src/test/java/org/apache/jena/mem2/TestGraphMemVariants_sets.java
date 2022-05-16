@@ -23,6 +23,7 @@ import org.apache.commons.lang3.time.StopWatch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.specialized.HybridTripleSet;
 import org.apache.jena.mem2.specialized.LowMemoryTripleHashSet;
 import org.apache.jena.mem2.specialized.SortedTripleListSet;
 import org.apache.jena.mem2.specialized.TripleHashSet;
@@ -33,18 +34,19 @@ import org.junit.Test;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
 
     @Test
     public void pizza_owl_rdf() {
-        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 100,
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest,
                 "./../jena-examples/src/main/resources/data/pizza.owl.rdf");
     }
 
     @Test
     public void cheeses_ttl() {
-        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 50,
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest,
                 "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl");
     }
 
@@ -57,7 +59,7 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
     @Test
     @Ignore
     public void BSBM_50000() {
-        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest,
                 "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
     }
 
@@ -68,7 +70,7 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
      */
     @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ_SSH_SV_and_TP() {
-        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
@@ -82,7 +84,7 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
      */
     @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() {
-        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
     }
 
@@ -93,7 +95,7 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
      */
     @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SSH() {
-        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml");
     }
 
@@ -104,7 +106,7 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
      */
     @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SV() {
-        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
     }
 
@@ -115,12 +117,25 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
      */
     @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_TP() {
-        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest, 1,
+        loadGraphsMeasureTimeAndMemory_load(graphImplementationsToTest,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
     }
 
-    private void loadGraphsMeasureTimeAndMemory_load(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, String... graphUris) {
-        final var triplesPerGraph = loadTriples(graphMultiplier, graphUris);
+    protected static List<List<Triple>> selectFistXTriples(final List<List<Triple>> triplesPerGraph, final int numerOfTriplesToSelectPerGraph) {
+        var randomlySelectedTriples = new ArrayList<List<Triple>>(triplesPerGraph.size());
+        /*find random triples*/
+        for (List<Triple> triples : triplesPerGraph) {
+            if(numerOfTriplesToSelectPerGraph < 1) {
+                randomlySelectedTriples.add(Collections.emptyList());
+                continue;
+            }
+            randomlySelectedTriples.add(triples.subList(0, Math.min(numerOfTriplesToSelectPerGraph, triples.size())));
+        }
+        return randomlySelectedTriples;
+    }
+
+    private void loadGraphsMeasureTimeAndMemory_load(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, String... graphUris) {
+        final var triplesPerGraph = loadTriples(1, graphUris);
         //for(var numberOfTriples : Arrays.asList(50, 100, 250, 500, 1000, 2000, 5000, 10000, 25000, 50000, 75000, 100000, 150000)) {
         for(var numberOfTriples : Arrays.asList(50, 100, 250, 500, 1000, 2000, 5000, 10000, 25000, 50000, 75000, 100000, 110000, 120000, 130000, 140000, 150000, 160000, 170000, 180000, 190000, 200000)) {
         //for(var numberOfTriples : Arrays.asList(50, 100, 125, 150, 175, 200, 225, 250, 275, 300, 400, 500, 600, 700, 800, 900, 1000, 1200)) {
@@ -131,6 +146,7 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
             sets.add(() -> new SortedTripleListSet(2, 15));
             sets.add(() -> new LowMemoryTripleHashSet());
             sets.add(() -> new TripleHashSet());
+            sets.add(() -> new HybridTripleSet());
 
             for (Supplier<Set<Triple>> supplier : sets) {
                 var stopAdditions = StopWatch.createStarted();
@@ -151,7 +167,12 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
                     var collection = supplier.get();
                     stopAdditions.resume();
                     for (List<Triple> triples : randomTriple) {
-                        triples.forEach(t -> Assert.assertTrue(collection.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject()))));
+                        for (var k=0; k<triples.size(); k++) {
+                            var t = triples.get(k);
+                            if(!collection.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject()))) {
+                                Assert.fail();
+                            }
+                        }
                     }
                     stopAdditions.suspend();
                     var memAfterAdd = runGcAndGetUsedMemoryInMB();
@@ -189,12 +210,16 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
                         for(int k=mid; k<triples.size(); k++) {
                             var t = triples.get(k);
                             t = Triple.create(t.getSubject(), t.getPredicate(), t.getObject()); /*important to avoid identity equality*/
-                            Assert.assertTrue(collection.remove(t));
+                            if(!collection.remove(t)) {
+                                Assert.fail();
+                            }
                         }
                         for(int k=mid-1; k>=0; k--) {
                             var t = triples.get(k);
                             t = Triple.create(t.getSubject(), t.getPredicate(), t.getObject()); /*important to avoid identity equality*/
-                            Assert.assertTrue(collection.remove(t));
+                            if(!collection.remove(t)) {
+                                Assert.fail();
+                            }
                         }
                     }
                     stopDeletions.suspend();

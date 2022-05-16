@@ -42,7 +42,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
     }
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
-    public int calcStartIndexByHashCode(final T value) {
+    protected int calcStartIndexByHashCode(final T value) {
         return calcStartIndexByHashCode(getHashCode(value));
     }
 
@@ -54,7 +54,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
     private static int MINIMUM_SIZE = 16;
     private static float loadFactor = 0.5f;
     protected int size = 0;
-    public Object[] entries;
+    protected Object[] entries;
 
     public LowMemoryHashSet() {
         this.entries = new Object[MINIMUM_SIZE];
@@ -69,6 +69,17 @@ public class LowMemoryHashSet<T> implements Set<T> {
             return entries.length << 1;
         }
         return -1;
+    }
+
+    private void grow(final int minCapacity) {
+        final var newSize = Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1;
+        final var oldEntries = this.entries;
+        this.entries = new Object[newSize];
+        for(int i=0; i<oldEntries.length; i++) {
+            if(null != oldEntries[i]) {
+                this.entries[~findIndex((T)oldEntries[i])] = oldEntries[i];
+            }
+        }
     }
 
     private void grow() {
@@ -513,6 +524,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
      */
     @Override
     public boolean addAll(Collection<? extends T> c) {
+        grow(size + c.size());
         boolean modified = false;
         for (T t : c) {
             var index = findIndex(t);

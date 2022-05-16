@@ -26,6 +26,14 @@ import java.util.function.Predicate;
 
 public class LowMemoryTripleHashSet extends LowMemoryHashSet<Triple> {
 
+    public LowMemoryTripleHashSet() {
+        super();
+    }
+
+    public LowMemoryTripleHashSet(int initialCapacity) {
+        super(initialCapacity);
+    }
+
     @Override
     protected int getHashCode(Triple value) {
         return (value.getSubject().getIndexingValue().hashCode() >> 1)
