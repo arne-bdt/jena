@@ -42,7 +42,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
     }
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
-    private int calcStartIndexByHashCode(final T value) {
+    public int calcStartIndexByHashCode(final T value) {
         return calcStartIndexByHashCode(getHashCode(value));
     }
 
@@ -54,7 +54,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
     private static int MINIMUM_SIZE = 16;
     private static float loadFactor = 0.5f;
     protected int size = 0;
-    protected Object[] entries;
+    public Object[] entries;
 
     public LowMemoryHashSet() {
         this.entries = new Object[MINIMUM_SIZE];
@@ -284,8 +284,8 @@ public class LowMemoryHashSet<T> implements Set<T> {
         int emptyIndex = -1;
         var lowerIndex = index-1;
         var upperIndex = index+1;
-        while (0 < lowerIndex || upperIndex < entries.length) {
-            if(0 < lowerIndex) {
+        while (0 <= lowerIndex || upperIndex < entries.length) {
+            if(0 <= lowerIndex) {
                 if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
                     emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
                 } else if (t.equals(entries[lowerIndex])) {
@@ -323,8 +323,8 @@ public class LowMemoryHashSet<T> implements Set<T> {
         int emptyIndex = -1;
         var lowerIndex = index-1;
         var upperIndex = index+1;
-        while (0 < lowerIndex || upperIndex < entries.length) {
-            if(0 < lowerIndex) {
+        while (0 <= lowerIndex || upperIndex < entries.length) {
+            if(0 <= lowerIndex) {
                 if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
                     emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
                 } else if (predicate.test(entries[lowerIndex])) {
@@ -373,7 +373,6 @@ public class LowMemoryHashSet<T> implements Set<T> {
     public boolean remove(Object o) {
         var index = findIndex((T) o);
         if (index < 0) {
-            index = findIndex((T)o);
             return false;
         }
         entries[index] = null;
@@ -415,7 +414,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
         var neighbours = new ArrayList<ObjectsWithStartIndexIndexAndDistance>();
         var i=index;
         ObjectsWithStartIndexIndexAndDistance neighbour;
-        while (--i > 0) {
+        while (i-- > 0) {
             if(null == entries[i]) {
                 break;
             }
