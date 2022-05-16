@@ -359,7 +359,13 @@ public class SortedListSet<E> extends ArrayList<E> implements Set<E> {
      */
     @Override
     public boolean addAll(int index, Collection<? extends E> c) {
-        throw new UnsupportedOperationException();
+        boolean modified = false;
+        for (E e : c) {
+            if(this.add(e)) {
+                modified = true;
+            }
+        }
+        return modified;
     }
 
     /**

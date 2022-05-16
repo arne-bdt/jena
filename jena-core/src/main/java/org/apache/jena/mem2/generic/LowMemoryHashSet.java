@@ -60,9 +60,8 @@ public class LowMemoryHashSet<T> implements Set<T> {
         this.entries = new Object[MINIMUM_SIZE];
     }
 
-    public LowMemoryHashSet(int initialSize) {
-        this.entries = new Object[Integer.highestOneBit(initialSize) << 1];
-        grow();
+    public LowMemoryHashSet(int initialCapacity) {
+        this.entries = new Object[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
     }
 
     private int calcNewSize() {
@@ -515,7 +514,16 @@ public class LowMemoryHashSet<T> implements Set<T> {
      */
     @Override
     public boolean addAll(Collection<? extends T> c) {
-        throw new UnsupportedOperationException();
+        boolean modified = false;
+        for (T t : c) {
+            var index = findIndex(t);
+            if(index < 0) {
+                entries[~index] = t;
+                size++;
+                modified = true;
+            }
+        }
+        return modified;
     }
 
     /**
