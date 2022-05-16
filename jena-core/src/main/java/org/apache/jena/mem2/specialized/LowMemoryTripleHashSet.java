@@ -16,22 +16,28 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.sorted.experiment;
+package org.apache.jena.mem2.specialized;
 
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.generic.LowMemoryHashSet;
+import org.apache.jena.mem2.helper.TripleEqualsOrMatches;
 
-public class ObjectEqualizer {
+import java.util.function.Predicate;
 
-    public static boolean isEqualsForObjectOk( Triple t )
-    {
-        return isEqualsForObjectOk(t.getObject());
+public class LowMemoryTripleHashSet extends LowMemoryHashSet<Triple> {
+
+    @Override
+    protected int getHashCode(Triple value) {
+        return (value.getSubject().getIndexingValue().hashCode() >> 1)
+                ^ value.getPredicate().getIndexingValue().hashCode()
+                ^ (value.getObject().getIndexingValue().hashCode() << 1);
     }
-    public static boolean isEqualsForObjectOk( Node objectNode )
-    {
-        if(objectNode.isLiteral() && objectNode.getLiteralDatatype() == null) { /*slow equals*/
-            return false;
+
+    @Override
+    protected Predicate<Object> getContainsPredicate(Triple value) {
+        if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
+            return t -> value.equals(t);
         }
-        return true;
+        return t -> value.matches((Triple) t);
     }
 }

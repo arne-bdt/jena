@@ -20,8 +20,6 @@ package org.apache.jena.mem.simple;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.simple.TripleMapWithOneKey;
-import org.apache.jena.mem.simple.TripleMapWithTwoKeys;
 
 import java.util.HashMap;
 import java.util.Iterator;

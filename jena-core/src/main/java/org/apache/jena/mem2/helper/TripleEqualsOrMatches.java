@@ -16,12 +16,12 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.sorted.experiment;
+package org.apache.jena.mem2.helper;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 
-public class ObjectEqualizer {
+public class TripleEqualsOrMatches {
 
     public static boolean isEqualsForObjectOk( Triple t )
     {
