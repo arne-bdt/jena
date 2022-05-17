@@ -46,7 +46,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
         return calcStartIndexByHashCode(getHashCode(value));
     }
 
-    protected Predicate<Object> getContainsPredicate(final T value) {
+    protected Predicate<T> getContainsPredicate(final T value) {
         return other -> value.equals(other);
     }
 
@@ -62,6 +62,17 @@ public class LowMemoryHashSet<T> implements Set<T> {
 
     public LowMemoryHashSet(int initialCapacity) {
         this.entries = new Object[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
+    }
+
+    public LowMemoryHashSet(Set<? extends T> set) {
+        this.entries = new Object[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
+        for (T t : set) {
+            var index = findIndex(t);
+            if(index < 0) {
+                entries[~index] = t;
+                size++;
+            }
+        }
     }
 
     private int calcNewSize() {
@@ -283,6 +294,25 @@ public class LowMemoryHashSet<T> implements Set<T> {
         return false;
     }
 
+    public T addIfAbsent(T t) {
+        grow();
+        var index = findIndex(t);
+        if(index < 0) {
+            entries[~index] = t;
+            size++;
+            return t;
+        }
+        return (T)entries[index];
+    }
+
+    public T getIfPresent(T t) {
+        var index = findIndex(t);
+        if(index < 0) {
+            return null;
+        }
+        return (T)entries[index];
+    }
+
     private int findIndex(final T t) {
         final var index = calcStartIndexByHashCode(t);
         var valueAtIndex = entries[index];
@@ -328,7 +358,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
             return ~index;
         }
         var predicate = getContainsPredicate(t);
-        if(predicate.test(valueAtIndex)) {
+        if(predicate.test((T)valueAtIndex)) {
             return index;
         }
         int emptyIndex = -1;
@@ -338,7 +368,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
             if(0 <= lowerIndex) {
                 if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
                     emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
-                } else if (predicate.test(entries[lowerIndex])) {
+                } else if (predicate.test((T)entries[lowerIndex])) {
                     return lowerIndex;            /*found equal element*/
                 }
                 lowerIndex--;
@@ -348,7 +378,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
                     if(emptyIndex < 0) {          /*this index is only relevant if slot with same distance in backward direction was not also empty*/
                         emptyIndex = upperIndex;
                     }
-                } else if (predicate.test(entries[upperIndex])) {
+                } else if (predicate.test((T)entries[upperIndex])) {
                     return upperIndex;           /*found equal element*/
                 }
                 upperIndex++;

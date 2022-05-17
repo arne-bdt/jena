@@ -22,6 +22,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.generic.LowMemoryHashSet;
 import org.apache.jena.mem2.helper.TripleEqualsOrMatches;
 
+import java.util.Set;
 import java.util.function.Predicate;
 
 public class LowMemoryTripleHashSet extends LowMemoryHashSet<Triple> {
@@ -34,6 +35,10 @@ public class LowMemoryTripleHashSet extends LowMemoryHashSet<Triple> {
         super(initialCapacity);
     }
 
+    public LowMemoryTripleHashSet(Set<? extends Triple> set) {
+        super(set);
+    }
+
     @Override
     protected int getHashCode(Triple value) {
         return (value.getSubject().getIndexingValue().hashCode() >> 1)
@@ -42,10 +47,10 @@ public class LowMemoryTripleHashSet extends LowMemoryHashSet<Triple> {
     }
 
     @Override
-    protected Predicate<Object> getContainsPredicate(Triple value) {
+    protected Predicate<Triple> getContainsPredicate(Triple value) {
         if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
             return t -> value.equals(t);
         }
-        return t -> value.matches((Triple) t);
+        return t -> value.matches(t);
     }
 }

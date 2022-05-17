@@ -24,8 +24,10 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
+import org.apache.jena.mem2.generic.LowMemoryHashSet;
+import org.apache.jena.mem2.generic.SortedListSetBase;
 import org.apache.jena.mem2.helper.TripleEqualsOrMatches;
-import org.apache.jena.mem2.specialized.HybridTripleSet;
+import org.apache.jena.mem2.specialized.TripleHashSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -34,6 +36,7 @@ import org.apache.jena.util.iterator.NiceIterator;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -70,9 +73,153 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
 
-    private final Map<Integer, Set<Triple>> triplesBySubject = new HashMap<>();
-    private final Map<Integer, Set<Triple>> triplesByPredicate = new HashMap<>();
-    private final Map<Integer, Set<Triple>> triplesByObject = new HashMap<>();
+    private final LowMemoryHashSet<TriplesByNodeIndex> triplesBySubject = new LowMemoryHashSet<>();
+    private final LowMemoryHashSet<TriplesByNodeIndex> triplesByPredicate = new LowMemoryHashSet<>();
+    private final LowMemoryHashSet<TriplesByNodeIndex> triplesByObject = new LowMemoryHashSet<>();
+
+    private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 70;//350;
+    private static int THRESHOLD_FOR_JAVA_HASH_SET = 500000; //2000 oder 140000?
+
+//    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES =
+//            Comparator.comparingInt(t -> t.hashCode());
+
+    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_SUBJECT =
+            Comparator.comparingInt((Triple t) -> t.getObject().getIndexingValue().hashCode())
+                    .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
+                    //.thenComparing(t -> t.getSubject().getIndexingValue().hashCode());
+
+    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_PREDICATE =
+            Comparator.comparingInt((Triple t) -> t.getSubject().getIndexingValue().hashCode())
+                    .thenComparing(t -> t.getObject().getIndexingValue().hashCode());
+                    //.thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
+
+    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_OBJECT =
+            Comparator.comparingInt((Triple t) -> t.getSubject().getIndexingValue().hashCode())
+                    .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
+                    //.thenComparing(t -> t.getObject().getIndexingValue().hashCode());
+
+    private static class TriplesByNodeIndex {
+        public final int indexingHashCode;
+        public Set<Triple> triples;
+
+        public TriplesByNodeIndex(int indexingHashCode) {
+            this.indexingHashCode = indexingHashCode;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            TriplesByNodeIndex that = (TriplesByNodeIndex) o;
+
+            return indexingHashCode == that.indexingHashCode;
+        }
+
+        @Override
+        public int hashCode() {
+            return indexingHashCode;
+        }
+    }
+
+    private static Supplier<Set<Triple>> createSortedListSetForTriplesBySubject = () -> new SortedListSetBase<Triple>(INITIAL_SIZE_FOR_ARRAY_LISTS) {
+        @Override
+        protected Comparator<Triple> getComparator() {
+            return TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_SUBJECT;
+        }
+
+        @Override
+        protected int getSizeToStartSorting() {
+            return 15;
+        }
+    };
+
+    private static Supplier<Set<Triple>> createSortedListSetForTriplesByPredicate = () -> new SortedListSetBase<Triple>(INITIAL_SIZE_FOR_ARRAY_LISTS) {
+        @Override
+        protected Comparator<Triple> getComparator() {
+            return TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_PREDICATE;
+        }
+
+        @Override
+        protected int getSizeToStartSorting() {
+            return 15;
+        }
+    };
+
+    private static Supplier<Set<Triple>> createSortedListSetForTriplesByObject = () -> new SortedListSetBase<Triple>(INITIAL_SIZE_FOR_ARRAY_LISTS) {
+        @Override
+        protected Comparator<Triple> getComparator() {
+            return TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_OBJECT;
+        }
+
+        @Override
+        protected int getSizeToStartSorting() {
+            return 15;
+        }
+    };
+
+    private static Function<Set<Triple>, Set<Triple>> createLowMemoryHashSetForTriplesBySubject = (Set<Triple> tripleSet) -> new LowMemoryHashSet<Triple>(tripleSet) {
+
+        @Override
+        protected int getHashCode(Triple value) {
+            return (value.getObject().getIndexingValue().hashCode() >> 1)
+                    ^ value.getPredicate().getIndexingValue().hashCode();
+        }
+
+        @Override
+        protected Predicate<Triple> getContainsPredicate(Triple value) {
+            if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
+                return t -> value.getObject().equals(t.getObject())
+                        && value.getPredicate().equals(t.getPredicate())
+                        && value.getSubject().equals(t.getSubject());
+            }
+            return t -> value.getObject().sameValueAs(t.getObject())
+                    && value.getPredicate().equals(t.getPredicate())
+                    && value.getSubject().equals(t.getSubject());
+        }
+    };
+
+    private static Function<Set<Triple>, Set<Triple>> createLowMemoryHashSetForTriplesByPredicate = (Set<Triple> tripleSet) -> new LowMemoryHashSet<Triple>(tripleSet) {
+
+        @Override
+        protected int getHashCode(Triple value) {
+            return (value.getSubject().getIndexingValue().hashCode() >> 1)
+                    ^ value.getObject().getIndexingValue().hashCode();
+        }
+
+        @Override
+        protected Predicate<Triple> getContainsPredicate(Triple value) {
+            if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
+                return t -> value.getSubject().equals(t.getSubject())
+                        && value.getObject().equals(t.getObject())
+                        && value.getPredicate().equals(t.getPredicate());
+            }
+            return t -> value.getSubject().equals(t.getSubject())
+                    && value.getObject().sameValueAs(t.getObject())
+                    && value.getPredicate().equals(t.getPredicate());
+        }
+    };
+
+    private static Function<Set<Triple>, Set<Triple>> createLowMemoryHashSetForTriplesByObject = (Set<Triple> tripleSet) -> new LowMemoryHashSet<Triple>(tripleSet) {
+
+        @Override
+        protected int getHashCode(Triple value) {
+            return (value.getSubject().getIndexingValue().hashCode() >> 1)
+                    ^ value.getPredicate().getIndexingValue().hashCode();
+        }
+
+        @Override
+        protected Predicate<Triple> getContainsPredicate(Triple value) {
+            if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
+                return t -> value.getSubject().equals(t.getSubject())
+                        && value.getPredicate().equals(t.getPredicate())
+                        && value.getObject().equals(t.getObject());
+            }
+            return t -> value.getSubject().equals(t.getSubject())
+                    && value.getPredicate().equals(t.getPredicate())
+                    && value.getObject().sameValueAs(t.getObject());
+        }
+    };
 
     public GraphMem2() {
         super();
@@ -96,6 +243,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         return b.size() < c.size() ? b : c;
     }
 
+
     /**
      * Add a triple to the triple store. The default implementation throws an
      * AddDeniedException; subclasses must override if they want to be able to
@@ -106,18 +254,57 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     @SuppressWarnings("java:S1199")
     @Override
     public void performAdd(final Triple t) {
-        var sIdx = t.getSubject().getIndexingValue().hashCode();
-        var pIdx = t.getPredicate().getIndexingValue().hashCode();
-        var oIdx = t.getObject().getIndexingValue().hashCode();
-        var sSet = this.triplesBySubject.computeIfAbsent(sIdx, key -> new HybridTripleSet());
-        var pSet = this.triplesByPredicate.computeIfAbsent(pIdx, key -> new HybridTripleSet());
-        var oSet = this.triplesByObject.computeIfAbsent(oIdx, key -> new HybridTripleSet());
-        if(getSmallestSet(sSet, pSet, oSet).contains(t)) {
-            return;
+        subject:
+        {
+            var withSameSubjectIndex = this.triplesBySubject
+                    .addIfAbsent(new TriplesByNodeIndex(t.getSubject().getIndexingValue().hashCode()));
+            if (withSameSubjectIndex.triples != null) {
+                if (withSameSubjectIndex.triples.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+                    withSameSubjectIndex.triples = createLowMemoryHashSetForTriplesBySubject
+                            .apply(withSameSubjectIndex.triples);
+                } else if (withSameSubjectIndex.triples.size() == THRESHOLD_FOR_JAVA_HASH_SET) {
+                    withSameSubjectIndex.triples = new TripleHashSet(withSameSubjectIndex.triples);
+                }
+                if (!withSameSubjectIndex.triples.add(t)) {
+                    return;
+                }
+            } else {
+                withSameSubjectIndex.triples = createSortedListSetForTriplesBySubject.get();
+                withSameSubjectIndex.triples.add(t);
+            }
         }
-        sSet.add(t);
-        pSet.add(t);
-        oSet.add(t);
+        predicate:
+        {
+            var withSamePredicateIndex = this.triplesByPredicate
+                    .addIfAbsent(new TriplesByNodeIndex(t.getPredicate().getIndexingValue().hashCode()));
+            if (withSamePredicateIndex.triples != null) {
+                if (withSamePredicateIndex.triples.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+                    withSamePredicateIndex.triples = createLowMemoryHashSetForTriplesByPredicate
+                            .apply(withSamePredicateIndex.triples);
+                } else if (withSamePredicateIndex.triples.size() == THRESHOLD_FOR_JAVA_HASH_SET) {
+                    withSamePredicateIndex.triples = new TripleHashSet(withSamePredicateIndex.triples);
+                }
+            } else {
+                withSamePredicateIndex.triples = createSortedListSetForTriplesByPredicate.get();
+            }
+            withSamePredicateIndex.triples.add(t);
+        }
+        object:
+        {
+            var withSameObjectIndex = this.triplesByObject
+                    .addIfAbsent(new TriplesByNodeIndex(t.getObject().getIndexingValue().hashCode()));
+            if (withSameObjectIndex.triples != null) {
+                if (withSameObjectIndex.triples.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+                    withSameObjectIndex.triples = createLowMemoryHashSetForTriplesByObject
+                            .apply(withSameObjectIndex.triples);
+                } else if (withSameObjectIndex.triples.size() == THRESHOLD_FOR_JAVA_HASH_SET) {
+                    withSameObjectIndex.triples = new TripleHashSet(withSameObjectIndex.triples);
+                }
+            } else {
+                withSameObjectIndex.triples = createSortedListSetForTriplesByObject.get();
+            }
+            withSameObjectIndex.triples.add(t);
+        }
     }
 
     /**
@@ -130,24 +317,28 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     @SuppressWarnings("java:S1199")
     @Override
     public void performDelete(Triple t) {
-        var sIdx = t.getSubject().getIndexingValue().hashCode();
-        var pIdx = t.getPredicate().getIndexingValue().hashCode();
-        var oIdx = t.getObject().getIndexingValue().hashCode();
-        var sSet = this.triplesBySubject.computeIfAbsent(sIdx, key -> new HybridTripleSet());
-        var pSet = this.triplesByPredicate.computeIfAbsent(pIdx, key -> new HybridTripleSet());
-        var oSet = this.triplesByObject.computeIfAbsent(oIdx, key -> new HybridTripleSet());
-        if(sSet.remove(t)) {
-            pSet.remove(t);
-            oSet.remove(t);
+        var withSameSubjectIndex = this.triplesBySubject
+                .getIfPresent(new TriplesByNodeIndex(t.getSubject().getIndexingValue().hashCode()));
+        if(withSameSubjectIndex == null) {
+            return;
+        }
+        if(withSameSubjectIndex.triples.remove(t)) {
+            var withSamePredicateIndex = this.triplesByPredicate
+                    .getIfPresent(new TriplesByNodeIndex(t.getPredicate().getIndexingValue().hashCode()));
+            var withSameObjectIndex = this.triplesByObject
+                    .getIfPresent(new TriplesByNodeIndex(t.getObject().getIndexingValue().hashCode()));
 
-            if(sSet.isEmpty()) {
-                triplesBySubject.remove(sIdx);
+            withSamePredicateIndex.triples.remove(t);
+            withSameObjectIndex.triples.remove(t);
+
+            if(withSameSubjectIndex.triples.isEmpty()) {
+                triplesBySubject.remove(withSameSubjectIndex);
             }
-            if(pSet.isEmpty()) {
-                triplesByPredicate.remove(pIdx);
+            if(withSamePredicateIndex.triples.isEmpty()) {
+                triplesByPredicate.remove(withSamePredicateIndex);
             }
-            if(oSet.isEmpty()) {
-                triplesByObject.remove(oIdx);
+            if(withSameObjectIndex.triples.isEmpty()) {
+                triplesByObject.remove(withSameObjectIndex);
             }
         }
     }
@@ -165,29 +356,33 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     public Pair<Set<Triple>, Predicate<Triple>> getOptimalSetAndPredicate(final Node sm, final Node pm, final Node om) {
         if (sm.isConcrete()) { // SPO:S??
-            var sSet = this.triplesBySubject.get(sm.getIndexingValue().hashCode());
-            if(sSet == null) {
+            var bySubjectIndex = this.triplesBySubject
+                    .getIfPresent(new TriplesByNodeIndex(sm.getIndexingValue().hashCode()));
+            if(bySubjectIndex == null) {
                 return null;
             }
             if(pm.isConcrete()) { // SPO:SP?
-                var pSet = this.triplesByPredicate.get(pm.getIndexingValue().hashCode());
-                if(pSet == null) {
+                var byPredicateIndex = this.triplesByPredicate
+                        .getIfPresent(new TriplesByNodeIndex(pm.getIndexingValue().hashCode()));
+                if(byPredicateIndex == null) {
                     return null;
                 }
                 if(om.isConcrete()) { // SPO:SPO
-                    var oSet = this.triplesByObject.get(om.getIndexingValue().hashCode());
-                    if(oSet == null) {
+                    var byObjectIndex = this.triplesByObject
+                            .getIfPresent(new TriplesByNodeIndex(om.getIndexingValue().hashCode()));
+                    if(byObjectIndex == null) {
                         return null;
                     }
-                    var smallestSet = getSmallestSet(sSet, pSet, oSet);
+                    var smallestSet = getSmallestSet(
+                            bySubjectIndex.triples, byPredicateIndex.triples, byObjectIndex.triples);
                     if(TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                        if(smallestSet == sSet) {
+                        if(smallestSet == bySubjectIndex.triples) {
                             return Pair.of(smallestSet,
                                     t -> om.equals(t.getObject())
                                             && pm.equals(t.getPredicate())
                                             && sm.equals(t.getSubject()));
                         }
-                        if(smallestSet == pSet) {
+                        if(smallestSet == byPredicateIndex.triples) {
                             return Pair.of(smallestSet,
                                     t -> sm.equals(t.getSubject())
                                             && om.equals(t.getObject())
@@ -198,13 +393,13 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                                         && pm.equals(t.getPredicate())
                                         && om.equals(t.getObject()));
                     } else {
-                        if(smallestSet == sSet) {
+                        if(smallestSet == bySubjectIndex.triples) {
                             return Pair.of(smallestSet,
                                     t -> om.sameValueAs(t.getObject())
                                             && pm.equals(t.getPredicate())
                                             && sm.equals(t.getSubject()));
                         }
-                        if(smallestSet == pSet) {
+                        if(smallestSet == byPredicateIndex.triples) {
                             return Pair.of(smallestSet,
                                     t -> sm.equals(t.getSubject())
                                             && om.sameValueAs(t.getObject())
@@ -216,95 +411,100 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                                         && om.sameValueAs(t.getObject()));
                     }
                 } else { // SPO:SP*
-                    if(sSet.size() <= pSet.size()) {
-                        return Pair.of(sSet,
+                    if(bySubjectIndex.triples.size() <= byPredicateIndex.triples.size()) {
+                        return Pair.of(bySubjectIndex.triples,
                                 t -> pm.equals(t.getPredicate())
                                         && sm.equals(t.getSubject()));
                     }
-                    return Pair.of(pSet,
+                    return Pair.of(byPredicateIndex.triples,
                             t -> sm.equals(t.getSubject())
                                 && pm.equals(t.getPredicate()));
                 }
             } else { // SPO:S*?
                 if(om.isConcrete()) { // SPO:S*O
-                    var oSet = this.triplesByObject.get(om.getIndexingValue().hashCode());
-                    if(oSet == null) {
+                    var byObjectIndex = this.triplesByObject
+                            .getIfPresent(new TriplesByNodeIndex(om.getIndexingValue().hashCode()));
+                    if(byObjectIndex == null) {
                         return null;
                     }
                     if(TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                        if(sSet.size() <= oSet.size()) {
-                            return Pair.of(sSet,
+                        if(bySubjectIndex.triples.size() <= byObjectIndex.triples.size()) {
+                            return Pair.of(bySubjectIndex.triples,
                                     t -> om.equals(t.getObject())
                                             && sm.equals(t.getSubject()));
                         }
-                        return Pair.of(oSet,
+                        return Pair.of(byObjectIndex.triples,
                                 t -> sm.equals(t.getSubject())
                                     && om.equals(t.getObject()));
                     } else {
-                        if(sSet.size() <= oSet.size()) {
-                            return Pair.of(sSet,
+                        if(bySubjectIndex.triples.size() <= byObjectIndex.triples.size()) {
+                            return Pair.of(bySubjectIndex.triples,
                                     t -> om.sameValueAs(t.getObject())
                                             && sm.equals(t.getSubject()));
                         }
-                        return Pair.of(oSet,
+                        return Pair.of(byObjectIndex.triples,
                                 t -> sm.equals(t.getSubject())
                                         && om.sameValueAs(t.getObject()));
                     }
                 } else { // SPO:S**
-                    return Pair.of(sSet,
+                    return Pair.of(bySubjectIndex.triples,
                             t -> sm.equals(t.getSubject()));
                 }
             }
         }
         else if (om.isConcrete()) { // SPO:*?O
-            var oSet = this.triplesByObject.get(om.getIndexingValue().hashCode());
-            if(oSet == null) {
+            var byObjectIndex = this.triplesByObject
+                    .getIfPresent(new TriplesByNodeIndex(om.getIndexingValue().hashCode()));
+            if(byObjectIndex == null) {
                 return null;
             }
             if(TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
                 if (pm.isConcrete()) { // SPO:*PO
-                    var pSet = this.triplesByPredicate.get(pm.getIndexingValue().hashCode());
-                    if(pSet == null) {
+                    var byPredicateIndex = this.triplesByPredicate
+                            .getIfPresent(new TriplesByNodeIndex(pm.getIndexingValue().hashCode()));
+                    if(byPredicateIndex == null) {
                         return null;
                     }
-                    if(oSet.size() <= pSet.size()) {
-                        return Pair.of(oSet,
+                    if(byObjectIndex.triples.size() <= byPredicateIndex.triples.size()) {
+                        return Pair.of(byObjectIndex.triples,
                                 t -> pm.equals(t.getPredicate())
                                         && om.equals(t.getObject()));
                     }
-                    return Pair.of(pSet,
+                    return Pair.of(byPredicateIndex.triples,
                             t -> om.equals(t.getObject())
                                 && pm.equals(t.getPredicate()));
                 } else { // SPO:**O
-                    return Pair.of(oSet,
+                    return Pair.of(byObjectIndex.triples,
                             t -> om.equals(t.getObject()));
                 }
             } else {
                 if (pm.isConcrete()) { // SPO:*PO
-                    var pSet = this.triplesByPredicate.get(pm.getIndexingValue().hashCode());
-                    if(pSet == null) {
+                    var byPredicateIndex = this.triplesByPredicate
+                            .getIfPresent(new TriplesByNodeIndex(pm.getIndexingValue().hashCode()));
+                    if(byPredicateIndex == null) {
                         return null;
                     }
-                    if(oSet.size() <= pSet.size()) {
-                        return Pair.of(oSet,
+                    if(byObjectIndex.triples.size() <= byPredicateIndex.triples.size()) {
+                        return Pair.of(byObjectIndex.triples,
                                 t -> pm.equals(t.getPredicate())
                                         && om.sameValueAs(t.getObject()));
                     }
-                    return Pair.of(pSet,
+                    return Pair.of(byPredicateIndex.triples,
                             t -> om.sameValueAs(t.getObject())
                                 && pm.equals(t.getPredicate()));
                 } else { // SPO:**O
-                    return Pair.of(oSet,
+                    return Pair.of(byObjectIndex.triples,
                             t -> om.sameValueAs(t.getObject()));
                 }
             }
         }
         else if (pm.isConcrete()) { // SPO:*P*
-            var pSet = this.triplesByPredicate.get(pm.getIndexingValue().hashCode());
-            if(pSet == null) {
+            var byPredicateIndex = this.triplesByPredicate
+                    .getIfPresent(new TriplesByNodeIndex(pm.getIndexingValue().hashCode()));
+            if(byPredicateIndex == null) {
                 return null;
             }
-            return Pair.of(pSet,
+            return Pair.of(byPredicateIndex.triples,
                     t -> pm.equals(t.getPredicate()));
         }
         else { // SPO:***
@@ -352,10 +552,10 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
      * fewer predicates than subjects or objects.
      * @return
      */
-    private Map<Integer, Set<Triple>> getMapWithFewestKeys() {
-        var subjectCount = this.triplesBySubject.keySet().size();
-        var predicateCount = this.triplesByPredicate.keySet().size();
-        var objectCount = this.triplesByObject.keySet().size();
+    private LowMemoryHashSet<TriplesByNodeIndex> getMapWithFewestKeys() {
+        var subjectCount = this.triplesBySubject.size();
+        var predicateCount = this.triplesByPredicate.size();
+        var objectCount = this.triplesByObject.size();
         if(subjectCount < predicateCount) {
             if(subjectCount < objectCount) {
                 return this.triplesBySubject;
@@ -379,7 +579,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     @Override
     protected int graphBaseSize() {
         /*use the map with the fewest keys*/
-        return this.getMapWithFewestKeys().values().stream().mapToInt(Set::size).sum();
+        return this.getMapWithFewestKeys().stream().mapToInt(triplesByNodeIndex -> triplesByNodeIndex.triples.size()).sum();
     }
 
     /**
@@ -391,7 +591,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     @Override
     public Stream<Triple> stream() {
         /*use the map with the fewest keys*/
-        return this.getMapWithFewestKeys().values().stream().flatMap(Collection::stream);
+        return this.getMapWithFewestKeys().stream().flatMap(triplesByNodeIndex -> triplesByNodeIndex.triples.stream());
     }
 
     /**
@@ -441,22 +641,22 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             iterator = new IteratorFiltering(setAndPredicatePair.getKey().iterator(), setAndPredicatePair.getValue());
         } else {
             /*use the map with the fewest keys*/
-            iterator = new ListsOfTriplesIterator(this.getMapWithFewestKeys().values().iterator());
+            iterator = new ListsOfTriplesIterator(this.getMapWithFewestKeys().iterator());
         }
         return new IteratorWrapperWithRemove(iterator, this);
     }
 
     private static class ListsOfTriplesIterator implements Iterator<Triple> {
 
-        private final Iterator<Set<Triple>> baseIterator;
+        private final Iterator<TriplesByNodeIndex> baseIterator;
         private Iterator<Triple> subIterator;
         private boolean hasSubIterator = false;
 
-        public ListsOfTriplesIterator(Iterator<Set<Triple>> baseIterator) {
+        public ListsOfTriplesIterator(Iterator<TriplesByNodeIndex> baseIterator) {
 
             this.baseIterator = baseIterator;
             if(baseIterator.hasNext()) {
-                subIterator = baseIterator.next().iterator();
+                subIterator = baseIterator.next().triples.iterator();
                 hasSubIterator = true;
             }
         }
@@ -475,7 +675,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     return true;
                 }
                 while(baseIterator.hasNext()) {
-                    subIterator = baseIterator.next().iterator();
+                    subIterator = baseIterator.next().triples.iterator();
                     if(subIterator.hasNext()) {
                         return true;
                     }

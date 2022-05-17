@@ -28,13 +28,15 @@ import java.util.stream.Stream;
 
 public class HybridTripleSet implements Set<Triple> {
 
-    private Set<Triple> wrappedSet = new SortedTripleListSet(2, 15);
+    private Set<Triple> wrappedSet = new SortedTripleListSet(2);
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 350;
     private static int THRESHOLD_FOR_JAVA_HASH_SET = 150000; //2000 oder 140000?
 
     public HybridTripleSet() {
 
     }
+
+
 
     /**
      * Returns the number of elements in this set (its cardinality).  If this

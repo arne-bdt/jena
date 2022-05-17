@@ -143,7 +143,7 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
             var randomTriple = selectRandomTriples(triplesPerGraph, numberOfTriples);
 
             var sets = new ArrayList<Supplier<Set<Triple>>>();
-            sets.add(() -> new SortedTripleListSet(2, 15));
+            sets.add(() -> new SortedTripleListSet(2));
             sets.add(() -> new LowMemoryTripleHashSet());
             sets.add(() -> new TripleHashSet());
             sets.add(() -> new HybridTripleSet());

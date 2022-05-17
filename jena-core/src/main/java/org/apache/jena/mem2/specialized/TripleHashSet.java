@@ -25,7 +25,7 @@ public class TripleHashSet extends HashSet<Triple> {
      * @param c the collection whose elements are to be placed into this set
      * @throws NullPointerException if the specified collection is null
      */
-    public TripleHashSet(Collection<? extends Triple> c) {
+    public TripleHashSet(Set<? extends Triple> c) {
         super(c);
     }
 

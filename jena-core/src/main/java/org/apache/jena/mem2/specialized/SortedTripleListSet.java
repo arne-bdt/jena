@@ -19,18 +19,15 @@
 package org.apache.jena.mem2.specialized;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.generic.SortedListSet;
+import org.apache.jena.mem2.generic.SortedListSetBase;
 import org.apache.jena.mem2.helper.TripleEqualsOrMatches;
 
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.Set;
 import java.util.function.Predicate;
 
-public class SortedTripleListSet extends SortedListSet<Triple> {
-
-    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR =
-            Comparator.comparingInt((Triple t) -> t.getSubject().getIndexingValue().hashCode())
-            .thenComparing(t -> t.getObject().getIndexingValue().hashCode())
-            .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
+public class SortedTripleListSet extends SortedListSetBase<Triple> {
 
     /**
      * Constructs an empty list with the specified initial capacity.
@@ -40,22 +37,45 @@ public class SortedTripleListSet extends SortedListSet<Triple> {
      *                                  is negative
      */
     public SortedTripleListSet(int initialCapacity) {
-        super(initialCapacity, TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR);
+        super(initialCapacity);
     }
 
     /**
-     * Constructs an empty list with the specified initial capacity.
+     * Constructs a list containing the elements of the specified
+     * collection, in the order they are returned by the collection's
+     * iterator.
      *
-     * @param initialCapacity    the initial capacity of the list
-     * @param sizeToStartSorting
-     * @throws IllegalArgumentException if the specified initial capacity
-     *                                  is negative
+     * @param c the collection whose elements are to be placed into this list
+     * @throws NullPointerException if the specified collection is null
      */
-    public SortedTripleListSet(int initialCapacity, int sizeToStartSorting) {
-        super(initialCapacity, TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR, sizeToStartSorting);
+    public SortedTripleListSet(Set<? extends Triple> c) {
+        super(c);
     }
 
+    /**
+     * Constructs an empty list with an initial capacity of ten.
+     */
+    public SortedTripleListSet() {
+    }
 
+    private static int DEFAULT_SIZE_TO_START_SORTING = 15;
+
+    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR =
+            Comparator.comparingInt((Triple t) -> t.getSubject().getIndexingValue().hashCode())
+            .thenComparing(t -> t.getObject().getIndexingValue().hashCode())
+            .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
+
+
+
+    @Override
+    protected int getSizeToStartSorting() {
+        return DEFAULT_SIZE_TO_START_SORTING;
+    }
+
+    @Override
+    protected Comparator<Triple> getComparator() {
+        return TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR;
+    }
 
     @Override
     protected Predicate<Object> getContainsPredicate(Triple value) {
