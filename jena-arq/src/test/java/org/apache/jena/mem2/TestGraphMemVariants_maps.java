@@ -24,7 +24,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.generic.LeanHashMap;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;

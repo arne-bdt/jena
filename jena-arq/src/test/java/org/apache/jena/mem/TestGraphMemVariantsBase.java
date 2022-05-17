@@ -26,6 +26,7 @@ import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.sorted.GraphMemUsingHashMapSorted;
 import org.apache.jena.mem.sorted.experiment.GraphMemUsingHashMapSortedExperiment;
+import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
@@ -39,19 +40,21 @@ public abstract class TestGraphMemVariantsBase {
 
 
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
-            Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-            Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
+            Pair.of("GraphMem2", () -> new GraphMem2()),
+            Pair.of("GraphMem2", () -> new GraphMem2()),
+//            Pair.of("GraphMem2", () -> new GraphMem2()),
             //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
             //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
             Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted())
+            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
             //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
             //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
 //            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
 //            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
             //Pair.of("GraphMem", () -> new GraphMem()),
-            //Pair.of("GraphMem", () -> new GraphMem()),
-            //Pair.of("GraphMem", () -> new GraphMem())
+//            Pair.of("GraphMem", () -> new GraphMem()),
+            Pair.of("GraphMem", () -> new GraphMem()),
+            Pair.of("GraphMem", () -> new GraphMem())
             //Pair.of("GraphMemHash", () -> new GraphMemHash()),
             //Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries()),
             //Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries())
@@ -144,7 +147,10 @@ public abstract class TestGraphMemVariantsBase {
             }
             stopwatch.stop();
             var memoryAfter = runGcAndGetUsedMemoryInMB();
-            System.out.println("graphs: " + graphs.size() + " time to fill graphs: " + stopwatch.formatTime() + " additional memory: " + (memoryAfter - memoryBefore) + " MB");
+            System.out.println(String.format("graphs: %d time to fill graphs: %s additional memory: %5.3f MB",
+                    graphs.size(),
+                    stopwatch.formatTime(),
+                    (memoryAfter - memoryBefore)));
         }
         return graphs;
     }

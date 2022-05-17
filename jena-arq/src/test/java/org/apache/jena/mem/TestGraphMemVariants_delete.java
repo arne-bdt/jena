@@ -50,7 +50,6 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
     @Test
-    @Ignore
     public void BSBM_50000() {
         loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
@@ -150,7 +149,7 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
                 }
                 var memAfterDeletingSecondHalf = runGcAndGetUsedMemoryInMB();
                 stopwatchDelete.stop();
-                System.out.println(String.format("delete: %s - mem diff after deleting half of the triples: %d MB - mem diff after deleting all: %d MB",
+                System.out.println(String.format("delete: %s - mem diff after deleting half of the triples: %5.3f MB - mem diff after deleting all: %5.3f MB",
                         stopwatchDelete.formatTime(),
                         (memBeforeDelete-memAfterDeletingFirstHalf),
                         (memBeforeDelete-memAfterDeletingSecondHalf)));

@@ -18,8 +18,6 @@
 
 package org.apache.jena.mem2.generic;
 
-import org.apache.commons.lang3.NotImplementedException;
-
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
@@ -31,7 +29,7 @@ import java.util.function.UnaryOperator;
 public class SortedListSet<E> extends ArrayList<E> implements Set<E> {
     private final Comparator<E> comparator;
     private final int sizeToStartSorting;
-    private static int DEFAULT_SIZE_TO_SART_SORTING = 15;
+    private static int DEFAULT_SIZE_TO_START_SORTING = 15;
 
     /**
      * Constructs an empty list with the specified initial capacity.
@@ -41,14 +39,14 @@ public class SortedListSet<E> extends ArrayList<E> implements Set<E> {
      *                                  is negative
      */
     public SortedListSet(int initialCapacity, Comparator<E> comparator) {
-        this(initialCapacity, comparator, DEFAULT_SIZE_TO_SART_SORTING);
+        this(initialCapacity, comparator, DEFAULT_SIZE_TO_START_SORTING);
     }
 
     /**
      * Constructs an empty list with an initial capacity of ten.
      */
     public SortedListSet(Comparator<E> comparator) {
-       this(comparator, DEFAULT_SIZE_TO_SART_SORTING);
+       this(comparator, DEFAULT_SIZE_TO_START_SORTING);
     }
 
     /**

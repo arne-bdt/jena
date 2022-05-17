@@ -24,41 +24,16 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Spliterator;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 public class HybridTripleSet implements Set<Triple> {
 
     private Set<Triple> wrappedSet = new SortedTripleListSet(2, 15);
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 350;
-    private static int THRESHOLD_FOR_JAVA_HASH_SET = 2000; //2000 oder 140000?
+    private static int THRESHOLD_FOR_JAVA_HASH_SET = 150000; //2000 oder 140000?
 
     public HybridTripleSet() {
-        this.addTripleFunction = this::addToFirstThreshold;
-    }
 
-    private boolean addToFirstThreshold(Triple triple) {
-        if (wrappedSet.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
-            var oldSet = wrappedSet;
-            this.wrappedSet = new LowMemoryTripleHashSet(wrappedSet.size()+1);
-            this.wrappedSet.addAll(oldSet);
-            this.addTripleFunction = this::addToSecondThreshold;
-        }
-        return wrappedSet.add(triple);
-    }
-
-    private boolean addToSecondThreshold(Triple triple) {
-        if (wrappedSet.size() == THRESHOLD_FOR_JAVA_HASH_SET) {
-            var oldSet = wrappedSet;
-            this.wrappedSet = new TripleHashSet(wrappedSet.size()+1);
-            this.wrappedSet.addAll(oldSet);
-            this.addTripleFunction = this::addAfterSecondThreshold;
-        }
-        return wrappedSet.add(triple);
-    }
-
-    private boolean addAfterSecondThreshold(Triple triple) {
-        return wrappedSet.add(triple);
     }
 
     /**
@@ -183,8 +158,6 @@ public class HybridTripleSet implements Set<Triple> {
         return wrappedSet.toArray(a);
     }
 
-    private Function<Triple, Boolean> addTripleFunction;
-
     /**
      * Adds the specified element to this set if it is not already present
      * (optional operation).  More formally, adds the specified element
@@ -217,7 +190,16 @@ public class HybridTripleSet implements Set<Triple> {
      */
     @Override
     public boolean add(Triple triple) {
-        return addTripleFunction.apply(triple);
+        if (wrappedSet.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+            var oldSet = wrappedSet;
+            this.wrappedSet = new LowMemoryTripleHashSet(wrappedSet.size()+1);
+            this.wrappedSet.addAll(oldSet);
+        } else if (wrappedSet.size() == THRESHOLD_FOR_JAVA_HASH_SET) {
+            var oldSet = wrappedSet;
+            this.wrappedSet = new TripleHashSet(wrappedSet.size()+1);
+            this.wrappedSet.addAll(oldSet);
+        }
+        return wrappedSet.add(triple);
     }
 
     /**
