@@ -191,8 +191,7 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
             var index = Collections.binarySearch(this, e, getComparator());
             // < 0 if element is not in the list, see Collections.binarySearch
             if (index < 0) {
-                index = ~index;
-                super.add(index, e);
+                super.add(~index, e);
             }
             else {
                 /*search forward*/
@@ -220,13 +219,32 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
                     index++;
                 }
                 // Insertion index is index of existing element, to add new element
-                // behind it increase index
-                index++;
-                super.add(index, e);
+                // behind it increase index+
+                super.add(++index, e);
             }
 
         }
         return true;
+    }
+
+    public void addUnsafe(E e) {
+        if(this.size() < this.getSizeToStartSorting()) {
+            super.add(e);
+            if(this.size() == this.getSizeToStartSorting()) {
+                super.sort(this.getComparator());
+            }
+        } else {
+            var index = Collections.binarySearch(this, e, getComparator());
+            // < 0 if element is not in the list, see Collections.binarySearch
+            if (index < 0) {
+                super.add(~index, e);
+            }
+            else {
+                // Insertion index is index of existing element, to add new element
+                // behind it increase index
+                super.add(++index, e);
+            }
+        }
     }
 
     /**
@@ -245,17 +263,55 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
     @Override
     public boolean remove(Object o) {
         var elementToRemove = (E)o;
-        var index = Collections.binarySearch(this, elementToRemove, getComparator());
-        // < 0 if element is not in the list, see Collections.binarySearch
-        if (index < 0) {
-            return false;
+        if(this.size() < this.getSizeToStartSorting()) {
+            return super.remove(o);
         } else {
+            var index = Collections.binarySearch(this, elementToRemove, getComparator());
+            // < 0 if element is not in the list, see Collections.binarySearch
+            if (index < 0) {
+                return false;
+            } else {
+                /*search forward*/
+                for (var i = index; i < super.size(); i++) {
+                    var e = super.get(i);
+                    if (elementToRemove.equals(e)) {
+                        super.remove(i);
+                        return true;
+                    }
+                    if (0 != getComparator().compare(elementToRemove, e)) {
+                        break;
+                    }
+                }
+                if (index > 0) {
+                    /*search backward*/
+                    index--;
+                    for (var i = index; i >= 0; i--) {
+                        var e = super.get(i);
+                        if (elementToRemove.equals(e)) {
+                            super.remove(i);
+                            return true;
+                        }
+                        if (0 != getComparator().compare(elementToRemove, e)) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    public void removeUnsafe(E elementToRemove) {
+        if(this.size() < this.getSizeToStartSorting()) {
+            super.remove(elementToRemove);
+        } else {
+            var index = Collections.binarySearch(this, elementToRemove, getComparator());
             /*search forward*/
             for (var i = index; i < super.size(); i++) {
                 var e = super.get(i);
                 if (elementToRemove.equals(e)) {
                     super.remove(i);
-                    return true;
+                    return;
                 }
                 if (0 != getComparator().compare(elementToRemove, e)) {
                     break;
@@ -268,7 +324,7 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
                     var e = super.get(i);
                     if (elementToRemove.equals(e)) {
                         super.remove(i);
-                        return true;
+                        return;
                     }
                     if (0 != getComparator().compare(elementToRemove, e)) {
                         break;
@@ -276,7 +332,6 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
                 }
             }
         }
-        return false;
     }
 
     /**

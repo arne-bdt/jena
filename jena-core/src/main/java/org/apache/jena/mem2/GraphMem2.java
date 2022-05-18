@@ -86,17 +86,14 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_SUBJECT =
             Comparator.comparingInt((Triple t) -> t.getObject().getIndexingValue().hashCode())
                     .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
-                    //.thenComparing(t -> t.getSubject().getIndexingValue().hashCode());
 
     private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_PREDICATE =
             Comparator.comparingInt((Triple t) -> t.getSubject().getIndexingValue().hashCode())
                     .thenComparing(t -> t.getObject().getIndexingValue().hashCode());
-                    //.thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
 
     private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_OBJECT =
             Comparator.comparingInt((Triple t) -> t.getSubject().getIndexingValue().hashCode())
                     .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
-                    //.thenComparing(t -> t.getObject().getIndexingValue().hashCode());
 
     private interface TripleSetWithKey extends Set<Triple> {
 
@@ -105,6 +102,14 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         boolean equals(Object o);
 
         int hashCode();
+
+        default void addUnsafe(Triple t) {
+            this.add(t);
+        }
+
+        default void removeUnsafe(Triple t) {
+            this.removeUnsafe(t);
+        }
     }
 
     private static class LookupObjectForTripleSetWithKey implements TripleSetWithKey {
@@ -663,7 +668,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                         }
                         return ts;
                     });
-            withSamePredicateKey.add(t);
+            withSamePredicateKey.addUnsafe(t);
         }
         object:
         {
@@ -680,7 +685,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                         }
                         return ts;
                     });
-            withSameObjectKey.add(t);
+            withSameObjectKey.addUnsafe(t);
         }
     }
 
@@ -723,7 +728,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             this.triplesByPredicate.compute(
                     new LookupObjectForTripleSetWithKey(pKey),
                     ts -> {
-                        ts.remove(t);
+                        ts.removeUnsafe(t);
                         return ts.isEmpty() ? null : ts;
                     });
         }
@@ -733,7 +738,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             this.triplesByObject.compute(
                     new LookupObjectForTripleSetWithKey(oKey),
                     ts -> {
-                        ts.remove(t);
+                        ts.removeUnsafe(t);
                         return ts.isEmpty() ? null : ts;
                     });
         }

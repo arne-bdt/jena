@@ -296,6 +296,13 @@ public class LowMemoryHashSet<T> implements Set<T> {
         return false;
     }
 
+    public void addUnsafe(T value) {
+        grow();
+        var index = findIndex(value);
+        entries[~index] = value;
+        size++;
+    }
+
     public T addIfAbsent(T value) {
         grow();
         var index = findIndex(value);
@@ -458,6 +465,13 @@ public class LowMemoryHashSet<T> implements Set<T> {
         size--;
         rearrangeNeighbours(index);
         return true;
+    }
+
+    public void removeUnsafe(T e) {
+        var index = findIndex(e);
+        entries[index] = null;
+        size--;
+        rearrangeNeighbours(index);
     }
 
     private void rearrangeNeighbours(int index) {
