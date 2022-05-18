@@ -20,6 +20,7 @@ package org.apache.jena.mem2.generic;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -93,10 +94,10 @@ public class LowMemoryHashSet<T> implements Set<T> {
         }
     }
 
-    private void grow() {
+    private boolean grow() {
         final var newSize = calcNewSize();
         if(newSize < 0) {
-            return;
+            return false;
         }
         final var oldEntries = this.entries;
         this.entries = new Object[newSize];
@@ -105,6 +106,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
                 this.entries[~findIndex((T)oldEntries[i])] = oldEntries[i];
             }
         }
+        return true;
     }
 
     /**
@@ -268,7 +270,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
      * the invariant that a collection always contains the specified element
      * after this call returns.
      *
-     * @param t element whose presence in this collection is to be ensured
+     * @param value element whose presence in this collection is to be ensured
      * @return {@code true} if this collection changed as a result of the
      * call
      * @throws UnsupportedOperationException if the {@code add} operation
@@ -283,34 +285,70 @@ public class LowMemoryHashSet<T> implements Set<T> {
      *                                       time due to insertion restrictions
      */
     @Override
-    public boolean add(T t) {
+    public boolean add(T value) {
         grow();
-        var index = findIndex(t);
+        var index = findIndex(value);
         if(index < 0) {
-            entries[~index] = t;
+            entries[~index] = value;
             size++;
             return true;
         }
         return false;
     }
 
-    public T addIfAbsent(T t) {
+    public T addIfAbsent(T value) {
         grow();
-        var index = findIndex(t);
+        var index = findIndex(value);
         if(index < 0) {
-            entries[~index] = t;
+            entries[~index] = value;
             size++;
-            return t;
+            return value;
         }
         return (T)entries[index];
     }
 
-    public T getIfPresent(T t) {
-        var index = findIndex(t);
+    public T getIfPresent(T value) {
+        var index = findIndex(value);
         if(index < 0) {
             return null;
         }
         return (T)entries[index];
+    }
+
+    public T compute(T value, Function<T, T> remappingFunction) {
+        var index = findIndex(value);
+        if(index < 0) { /*value does not exist yet*/
+            var newValue = remappingFunction.apply(null);
+            if(newValue == null) {
+                return null;
+            }
+            if(!value.equals(newValue)) {
+                throw new IllegalArgumentException("remapped value is not equal to value");
+            }
+            if(grow()) {
+                index = findIndex(value);
+            }
+            entries[~index] = newValue;
+            size++;
+            return newValue;
+        } else { /*existing value found*/
+            var newValue = remappingFunction.apply((T)entries[index]);
+            if(newValue == null) {
+                entries[index] = null;
+                size--;
+                rearrangeNeighbours(index);
+                return null;
+            } else {
+                if(value == newValue) {
+                    return newValue;
+                }
+                if(!value.equals(newValue)) {
+                    throw new IllegalArgumentException("remapped value is not equal to value");
+                }
+                entries[index] = newValue;
+                return newValue;
+            }
+        }
     }
 
     private int findIndex(final T t) {
@@ -418,10 +456,15 @@ public class LowMemoryHashSet<T> implements Set<T> {
         }
         entries[index] = null;
         size--;
+        rearrangeNeighbours(index);
+        return true;
+    }
+
+    private void rearrangeNeighbours(int index) {
         /*rearrange neighbours*/
         var neighbours = getNeighbours(index);
         if(neighbours.isEmpty()) {
-            return true;
+            return;
         }
         var distanceComparator
                 = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
@@ -438,7 +481,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
                     if(0 == neighbour.distance) {
                         neighbours.remove(neighbour);
                         if(neighbours.isEmpty()) {
-                            return true;
+                            return;
                         }
                     }
                     index = oldIndexOfNeighbour;
@@ -448,7 +491,6 @@ public class LowMemoryHashSet<T> implements Set<T> {
                 }
             }
         } while(elementsHaveBeenSwitched);
-        return true;
     }
 
     private List<ObjectsWithStartIndexIndexAndDistance> getNeighbours(int index) {

@@ -34,6 +34,7 @@ import org.apache.jena.util.iterator.Map1Iterator;
 import org.apache.jena.util.iterator.NiceIterator;
 
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -73,12 +74,11 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
 
-    private final LowMemoryHashSet<TriplesByNodeIndex> triplesBySubject = new LowMemoryHashSet<>();
-    private final LowMemoryHashSet<TriplesByNodeIndex> triplesByPredicate = new LowMemoryHashSet<>();
-    private final LowMemoryHashSet<TriplesByNodeIndex> triplesByObject = new LowMemoryHashSet<>();
+    private final LowMemoryHashSet<TripleSetWithKey> triplesBySubject = new LowMemoryHashSet<>();
+    private final LowMemoryHashSet<TripleSetWithKey> triplesByPredicate = new LowMemoryHashSet<>();
+    private final LowMemoryHashSet<TripleSetWithKey> triplesByObject = new LowMemoryHashSet<>();
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 70;//350;
-    private static int THRESHOLD_FOR_JAVA_HASH_SET = 500000; //2000 oder 140000?
 
 //    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES =
 //            Comparator.comparingInt(t -> t.hashCode());
@@ -98,43 +98,413 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
                     //.thenComparing(t -> t.getObject().getIndexingValue().hashCode());
 
-    private static class TriplesByNodeIndex {
-        public final int indexingHashCode;
-        public Set<Triple> triples;
+    private interface TripleSetWithKey extends Set<Triple> {
 
-        public TriplesByNodeIndex(int indexingHashCode) {
-            this.indexingHashCode = indexingHashCode;
+        int getKeyOfSet();
+
+        boolean equals(Object o);
+
+        int hashCode();
+    }
+
+    private static class LookupObjectForTripleSetWithKey implements TripleSetWithKey {
+
+        private final int keyOfSet;
+
+        private LookupObjectForTripleSetWithKey(int keyOfSet) {
+            this.keyOfSet = keyOfSet;
+        }
+
+        @Override
+        public int getKeyOfSet() {
+            return keyOfSet;
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (o == null || (!(o instanceof TripleSetWithKey))) return false;
 
-            TriplesByNodeIndex that = (TriplesByNodeIndex) o;
+            TripleSetWithKey that = (TripleSetWithKey) o;
 
-            return indexingHashCode == that.indexingHashCode;
+            return this.getKeyOfSet() == that.getKeyOfSet();
         }
 
         @Override
         public int hashCode() {
-            return indexingHashCode;
+            return this.getKeyOfSet();
+        }
+
+        /**
+         * Returns the number of elements in this set (its cardinality).  If this
+         * set contains more than {@code Integer.MAX_VALUE} elements, returns
+         * {@code Integer.MAX_VALUE}.
+         *
+         * @return the number of elements in this set (its cardinality)
+         */
+        @Override
+        public int size() {
+            return 0;
+        }
+
+        /**
+         * Returns {@code true} if this set contains no elements.
+         *
+         * @return {@code true} if this set contains no elements
+         */
+        @Override
+        public boolean isEmpty() {
+            return false;
+        }
+
+        /**
+         * Returns {@code true} if this set contains the specified element.
+         * More formally, returns {@code true} if and only if this set
+         * contains an element {@code e} such that
+         * {@code Objects.equals(o, e)}.
+         *
+         * @param o element whose presence in this set is to be tested
+         * @return {@code true} if this set contains the specified element
+         * @throws ClassCastException   if the type of the specified element
+         *                              is incompatible with this set
+         *                              (<a href="Collection.html#optional-restrictions">optional</a>)
+         * @throws NullPointerException if the specified element is null and this
+         *                              set does not permit null elements
+         *                              (<a href="Collection.html#optional-restrictions">optional</a>)
+         */
+        @Override
+        public boolean contains(Object o) {
+            return false;
+        }
+
+        /**
+         * Returns an iterator over the elements in this set.  The elements are
+         * returned in no particular order (unless this set is an instance of some
+         * class that provides a guarantee).
+         *
+         * @return an iterator over the elements in this set
+         */
+        @Override
+        public Iterator<Triple> iterator() {
+            return null;
+        }
+
+        /**
+         * Returns an array containing all of the elements in this set.
+         * If this set makes any guarantees as to what order its elements
+         * are returned by its iterator, this method must return the
+         * elements in the same order.
+         *
+         * <p>The returned array will be "safe" in that no references to it
+         * are maintained by this set.  (In other words, this method must
+         * allocate a new array even if this set is backed by an array).
+         * The caller is thus free to modify the returned array.
+         *
+         * <p>This method acts as bridge between array-based and collection-based
+         * APIs.
+         *
+         * @return an array containing all the elements in this set
+         */
+        @Override
+        public Object[] toArray() {
+            return new Object[0];
+        }
+
+        /**
+         * Returns an array containing all of the elements in this set; the
+         * runtime type of the returned array is that of the specified array.
+         * If the set fits in the specified array, it is returned therein.
+         * Otherwise, a new array is allocated with the runtime type of the
+         * specified array and the size of this set.
+         *
+         * <p>If this set fits in the specified array with room to spare
+         * (i.e., the array has more elements than this set), the element in
+         * the array immediately following the end of the set is set to
+         * {@code null}.  (This is useful in determining the length of this
+         * set <i>only</i> if the caller knows that this set does not contain
+         * any null elements.)
+         *
+         * <p>If this set makes any guarantees as to what order its elements
+         * are returned by its iterator, this method must return the elements
+         * in the same order.
+         *
+         * <p>Like the {@link #toArray()} method, this method acts as bridge between
+         * array-based and collection-based APIs.  Further, this method allows
+         * precise control over the runtime type of the output array, and may,
+         * under certain circumstances, be used to save allocation costs.
+         *
+         * <p>Suppose {@code x} is a set known to contain only strings.
+         * The following code can be used to dump the set into a newly allocated
+         * array of {@code String}:
+         *
+         * <pre>
+         *     String[] y = x.toArray(new String[0]);</pre>
+         * <p>
+         * Note that {@code toArray(new Object[0])} is identical in function to
+         * {@code toArray()}.
+         *
+         * @param a the array into which the elements of this set are to be
+         *          stored, if it is big enough; otherwise, a new array of the same
+         *          runtime type is allocated for this purpose.
+         * @return an array containing all the elements in this set
+         * @throws ArrayStoreException  if the runtime type of the specified array
+         *                              is not a supertype of the runtime type of every element in this
+         *                              set
+         * @throws NullPointerException if the specified array is null
+         */
+        @Override
+        public <T> T[] toArray(T[] a) {
+            return null;
+        }
+
+        /**
+         * Adds the specified element to this set if it is not already present
+         * (optional operation).  More formally, adds the specified element
+         * {@code e} to this set if the set contains no element {@code e2}
+         * such that
+         * {@code Objects.equals(e, e2)}.
+         * If this set already contains the element, the call leaves the set
+         * unchanged and returns {@code false}.  In combination with the
+         * restriction on constructors, this ensures that sets never contain
+         * duplicate elements.
+         *
+         * <p>The stipulation above does not imply that sets must accept all
+         * elements; sets may refuse to add any particular element, including
+         * {@code null}, and throw an exception, as described in the
+         * specification for {@link Collection#add Collection.add}.
+         * Individual set implementations should clearly document any
+         * restrictions on the elements that they may contain.
+         *
+         * @param triple element to be added to this set
+         * @return {@code true} if this set did not already contain the specified
+         * element
+         * @throws UnsupportedOperationException if the {@code add} operation
+         *                                       is not supported by this set
+         * @throws ClassCastException            if the class of the specified element
+         *                                       prevents it from being added to this set
+         * @throws NullPointerException          if the specified element is null and this
+         *                                       set does not permit null elements
+         * @throws IllegalArgumentException      if some property of the specified element
+         *                                       prevents it from being added to this set
+         */
+        @Override
+        public boolean add(Triple triple) {
+            return false;
+        }
+
+        /**
+         * Removes the specified element from this set if it is present
+         * (optional operation).  More formally, removes an element {@code e}
+         * such that
+         * {@code Objects.equals(o, e)}, if
+         * this set contains such an element.  Returns {@code true} if this set
+         * contained the element (or equivalently, if this set changed as a
+         * result of the call).  (This set will not contain the element once the
+         * call returns.)
+         *
+         * @param o object to be removed from this set, if present
+         * @return {@code true} if this set contained the specified element
+         * @throws ClassCastException            if the type of the specified element
+         *                                       is incompatible with this set
+         *                                       (<a href="Collection.html#optional-restrictions">optional</a>)
+         * @throws NullPointerException          if the specified element is null and this
+         *                                       set does not permit null elements
+         *                                       (<a href="Collection.html#optional-restrictions">optional</a>)
+         * @throws UnsupportedOperationException if the {@code remove} operation
+         *                                       is not supported by this set
+         */
+        @Override
+        public boolean remove(Object o) {
+            return false;
+        }
+
+        /**
+         * Returns {@code true} if this set contains all of the elements of the
+         * specified collection.  If the specified collection is also a set, this
+         * method returns {@code true} if it is a <i>subset</i> of this set.
+         *
+         * @param c collection to be checked for containment in this set
+         * @return {@code true} if this set contains all of the elements of the
+         * specified collection
+         * @throws ClassCastException   if the types of one or more elements
+         *                              in the specified collection are incompatible with this
+         *                              set
+         *                              (<a href="Collection.html#optional-restrictions">optional</a>)
+         * @throws NullPointerException if the specified collection contains one
+         *                              or more null elements and this set does not permit null
+         *                              elements
+         *                              (<a href="Collection.html#optional-restrictions">optional</a>),
+         *                              or if the specified collection is null
+         * @see #contains(Object)
+         */
+        @Override
+        public boolean containsAll(Collection<?> c) {
+            return false;
+        }
+
+        /**
+         * Adds all of the elements in the specified collection to this set if
+         * they're not already present (optional operation).  If the specified
+         * collection is also a set, the {@code addAll} operation effectively
+         * modifies this set so that its value is the <i>union</i> of the two
+         * sets.  The behavior of this operation is undefined if the specified
+         * collection is modified while the operation is in progress.
+         *
+         * @param c collection containing elements to be added to this set
+         * @return {@code true} if this set changed as a result of the call
+         * @throws UnsupportedOperationException if the {@code addAll} operation
+         *                                       is not supported by this set
+         * @throws ClassCastException            if the class of an element of the
+         *                                       specified collection prevents it from being added to this set
+         * @throws NullPointerException          if the specified collection contains one
+         *                                       or more null elements and this set does not permit null
+         *                                       elements, or if the specified collection is null
+         * @throws IllegalArgumentException      if some property of an element of the
+         *                                       specified collection prevents it from being added to this set
+         * @see #add(Object)
+         */
+        @Override
+        public boolean addAll(Collection<? extends Triple> c) {
+            return false;
+        }
+
+        /**
+         * Retains only the elements in this set that are contained in the
+         * specified collection (optional operation).  In other words, removes
+         * from this set all of its elements that are not contained in the
+         * specified collection.  If the specified collection is also a set, this
+         * operation effectively modifies this set so that its value is the
+         * <i>intersection</i> of the two sets.
+         *
+         * @param c collection containing elements to be retained in this set
+         * @return {@code true} if this set changed as a result of the call
+         * @throws UnsupportedOperationException if the {@code retainAll} operation
+         *                                       is not supported by this set
+         * @throws ClassCastException            if the class of an element of this set
+         *                                       is incompatible with the specified collection
+         *                                       (<a href="Collection.html#optional-restrictions">optional</a>)
+         * @throws NullPointerException          if this set contains a null element and the
+         *                                       specified collection does not permit null elements
+         *                                       (<a href="Collection.html#optional-restrictions">optional</a>),
+         *                                       or if the specified collection is null
+         * @see #remove(Object)
+         */
+        @Override
+        public boolean retainAll(Collection<?> c) {
+            return false;
+        }
+
+        /**
+         * Removes from this set all of its elements that are contained in the
+         * specified collection (optional operation).  If the specified
+         * collection is also a set, this operation effectively modifies this
+         * set so that its value is the <i>asymmetric set difference</i> of
+         * the two sets.
+         *
+         * @param c collection containing elements to be removed from this set
+         * @return {@code true} if this set changed as a result of the call
+         * @throws UnsupportedOperationException if the {@code removeAll} operation
+         *                                       is not supported by this set
+         * @throws ClassCastException            if the class of an element of this set
+         *                                       is incompatible with the specified collection
+         *                                       (<a href="Collection.html#optional-restrictions">optional</a>)
+         * @throws NullPointerException          if this set contains a null element and the
+         *                                       specified collection does not permit null elements
+         *                                       (<a href="Collection.html#optional-restrictions">optional</a>),
+         *                                       or if the specified collection is null
+         * @see #remove(Object)
+         * @see #contains(Object)
+         */
+        @Override
+        public boolean removeAll(Collection<?> c) {
+            return false;
+        }
+
+        /**
+         * Removes all of the elements from this set (optional operation).
+         * The set will be empty after this call returns.
+         *
+         * @throws UnsupportedOperationException if the {@code clear} method
+         *                                       is not supported by this set
+         */
+        @Override
+        public void clear() {
+
         }
     }
 
-    private static Supplier<Set<Triple>> createSortedListSetForTriplesBySubject = () -> new SortedListSetBase<Triple>(INITIAL_SIZE_FOR_ARRAY_LISTS) {
+    private static abstract class AbstractSortedTriplesSet extends SortedListSetBase<Triple> implements TripleSetWithKey {
+
+        private final int keyOfSet;
+
+        public AbstractSortedTriplesSet(final int initialCapacity, final int keyOfSet) {
+            super(initialCapacity);
+            this.keyOfSet = keyOfSet;
+        }
+
+        @Override
+        public int getKeyOfSet() {
+            return this.keyOfSet;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || (!(o instanceof TripleSetWithKey))) return false;
+
+            TripleSetWithKey that = (TripleSetWithKey) o;
+
+            return this.getKeyOfSet() == that.getKeyOfSet();
+        }
+
+        @Override
+        public int hashCode() {
+            return this.getKeyOfSet();
+        }
+    }
+
+    private static abstract class AbstractLowMemoryTripleHashSet extends LowMemoryHashSet<Triple> implements TripleSetWithKey {
+        private final int keyOfSet;
+
+        public AbstractLowMemoryTripleHashSet(TripleSetWithKey setWithKey) {
+            super(setWithKey);
+            this.keyOfSet = setWithKey.getKeyOfSet();
+        }
+
+        @Override
+        public int getKeyOfSet() {
+            return this.keyOfSet;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || (!(o instanceof TripleSetWithKey))) return false;
+
+            TripleSetWithKey that = (TripleSetWithKey) o;
+
+            return this.getKeyOfSet() == that.getKeyOfSet();
+        }
+
+        @Override
+        public int hashCode() {
+            return this.getKeyOfSet();
+        }
+    }
+
+    private static Function<Integer, TripleSetWithKey> createSortedListSetForTriplesBySubject
+            = keyOfSet -> new AbstractSortedTriplesSet(INITIAL_SIZE_FOR_ARRAY_LISTS, keyOfSet)  {
         @Override
         protected Comparator<Triple> getComparator() {
             return TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_SUBJECT;
         }
 
         @Override
-        protected int getSizeToStartSorting() {
-            return 15;
-        }
+        protected int getSizeToStartSorting() { return 15; }
     };
 
-    private static Supplier<Set<Triple>> createSortedListSetForTriplesByPredicate = () -> new SortedListSetBase<Triple>(INITIAL_SIZE_FOR_ARRAY_LISTS) {
+    private static Function<Integer, TripleSetWithKey> createSortedListSetForTriplesByPredicate
+            = keyOfSet -> new AbstractSortedTriplesSet(INITIAL_SIZE_FOR_ARRAY_LISTS, keyOfSet) {
         @Override
         protected Comparator<Triple> getComparator() {
             return TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_PREDICATE;
@@ -146,7 +516,9 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
     };
 
-    private static Supplier<Set<Triple>> createSortedListSetForTriplesByObject = () -> new SortedListSetBase<Triple>(INITIAL_SIZE_FOR_ARRAY_LISTS) {
+    private static Function<Integer, TripleSetWithKey> createSortedListSetForTriplesByObject
+            = keyOfSet -> new AbstractSortedTriplesSet(INITIAL_SIZE_FOR_ARRAY_LISTS, keyOfSet) {
+
         @Override
         protected Comparator<Triple> getComparator() {
             return TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_OBJECT;
@@ -158,7 +530,8 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
     };
 
-    private static Function<Set<Triple>, Set<Triple>> createLowMemoryHashSetForTriplesBySubject = (Set<Triple> tripleSet) -> new LowMemoryHashSet<Triple>(tripleSet) {
+    private static Function<TripleSetWithKey, TripleSetWithKey> createLowMemoryHashSetForTriplesBySubject
+            = (tripleSet) -> new AbstractLowMemoryTripleHashSet(tripleSet) {
 
         @Override
         protected int getHashCode(Triple value) {
@@ -179,7 +552,8 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
     };
 
-    private static Function<Set<Triple>, Set<Triple>> createLowMemoryHashSetForTriplesByPredicate = (Set<Triple> tripleSet) -> new LowMemoryHashSet<Triple>(tripleSet) {
+    private static Function<TripleSetWithKey, TripleSetWithKey> createLowMemoryHashSetForTriplesByPredicate
+            = (tripleSet) -> new AbstractLowMemoryTripleHashSet(tripleSet) {
 
         @Override
         protected int getHashCode(Triple value) {
@@ -200,7 +574,8 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
     };
 
-    private static Function<Set<Triple>, Set<Triple>> createLowMemoryHashSetForTriplesByObject = (Set<Triple> tripleSet) -> new LowMemoryHashSet<Triple>(tripleSet) {
+    private static Function<TripleSetWithKey, TripleSetWithKey> createLowMemoryHashSetForTriplesByObject
+            = (tripleSet) -> new AbstractLowMemoryTripleHashSet(tripleSet) {
 
         @Override
         protected int getHashCode(Triple value) {
@@ -256,54 +631,56 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     public void performAdd(final Triple t) {
         subject:
         {
-            var withSameSubjectIndex = this.triplesBySubject
-                    .addIfAbsent(new TriplesByNodeIndex(t.getSubject().getIndexingValue().hashCode()));
-            if (withSameSubjectIndex.triples != null) {
-                if (withSameSubjectIndex.triples.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
-                    withSameSubjectIndex.triples = createLowMemoryHashSetForTriplesBySubject
-                            .apply(withSameSubjectIndex.triples);
-                } else if (withSameSubjectIndex.triples.size() == THRESHOLD_FOR_JAVA_HASH_SET) {
-                    withSameSubjectIndex.triples = new TripleHashSet(withSameSubjectIndex.triples);
-                }
-                if (!withSameSubjectIndex.triples.add(t)) {
-                    return;
-                }
-            } else {
-                withSameSubjectIndex.triples = createSortedListSetForTriplesBySubject.get();
-                withSameSubjectIndex.triples.add(t);
+            var sKey = t.getSubject().getIndexingValue().hashCode();
+            var withSameSubjectKey = this.triplesBySubject.compute(
+                    new LookupObjectForTripleSetWithKey(sKey),
+                    ts -> {
+                        if(ts == null) {
+                            ts = createSortedListSetForTriplesBySubject.apply(sKey);
+                        } else {
+                            if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+                                ts = createLowMemoryHashSetForTriplesBySubject.apply(ts);
+                            }
+                        }
+                        return ts;
+                    });
+            if(!withSameSubjectKey.add(t)) {
+                return;
             }
         }
         predicate:
         {
-            var withSamePredicateIndex = this.triplesByPredicate
-                    .addIfAbsent(new TriplesByNodeIndex(t.getPredicate().getIndexingValue().hashCode()));
-            if (withSamePredicateIndex.triples != null) {
-                if (withSamePredicateIndex.triples.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
-                    withSamePredicateIndex.triples = createLowMemoryHashSetForTriplesByPredicate
-                            .apply(withSamePredicateIndex.triples);
-                } else if (withSamePredicateIndex.triples.size() == THRESHOLD_FOR_JAVA_HASH_SET) {
-                    withSamePredicateIndex.triples = new TripleHashSet(withSamePredicateIndex.triples);
-                }
-            } else {
-                withSamePredicateIndex.triples = createSortedListSetForTriplesByPredicate.get();
-            }
-            withSamePredicateIndex.triples.add(t);
+            var pKey = t.getPredicate().getIndexingValue().hashCode();
+            var withSamePredicateKey = this.triplesByPredicate.compute(
+                new LookupObjectForTripleSetWithKey(pKey),
+                    ts -> {
+                        if(ts == null) {
+                            ts = createSortedListSetForTriplesByPredicate.apply(pKey);
+                        } else {
+                            if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+                                ts = createLowMemoryHashSetForTriplesByPredicate.apply(ts);
+                            }
+                        }
+                        return ts;
+                    });
+            withSamePredicateKey.add(t);
         }
         object:
         {
-            var withSameObjectIndex = this.triplesByObject
-                    .addIfAbsent(new TriplesByNodeIndex(t.getObject().getIndexingValue().hashCode()));
-            if (withSameObjectIndex.triples != null) {
-                if (withSameObjectIndex.triples.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
-                    withSameObjectIndex.triples = createLowMemoryHashSetForTriplesByObject
-                            .apply(withSameObjectIndex.triples);
-                } else if (withSameObjectIndex.triples.size() == THRESHOLD_FOR_JAVA_HASH_SET) {
-                    withSameObjectIndex.triples = new TripleHashSet(withSameObjectIndex.triples);
-                }
-            } else {
-                withSameObjectIndex.triples = createSortedListSetForTriplesByObject.get();
-            }
-            withSameObjectIndex.triples.add(t);
+            var oKey = t.getObject().getIndexingValue().hashCode();
+            var withSameObjectKey = this.triplesByObject.compute(
+                    new LookupObjectForTripleSetWithKey(oKey),
+                    ts -> {
+                        if(ts == null) {
+                            ts = createSortedListSetForTriplesByObject.apply(oKey);
+                        } else {
+                            if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+                                ts = createLowMemoryHashSetForTriplesByObject.apply(ts);
+                            }
+                        }
+                        return ts;
+                    });
+            withSameObjectKey.add(t);
         }
     }
 
@@ -317,29 +694,48 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     @SuppressWarnings("java:S1199")
     @Override
     public void performDelete(Triple t) {
-        var withSameSubjectIndex = this.triplesBySubject
-                .getIfPresent(new TriplesByNodeIndex(t.getSubject().getIndexingValue().hashCode()));
-        if(withSameSubjectIndex == null) {
-            return;
+        subject:
+        {
+            final boolean[] removed = {false};
+            var sKey = t.getSubject().getIndexingValue().hashCode();
+            this.triplesBySubject.compute(
+                    new LookupObjectForTripleSetWithKey(sKey),
+                    ts -> {
+                        if(ts == null) {
+                            return null;
+                        } else {
+                            if(ts.remove(t)) {
+                                removed[0] = true;
+                                if(ts.isEmpty()) {
+                                    return null; /*thereby remove key*/
+                                }
+                            }
+                        }
+                        return ts;
+                    });
+            if(!removed[0]) {
+                return;
+            }
         }
-        if(withSameSubjectIndex.triples.remove(t)) {
-            var withSamePredicateIndex = this.triplesByPredicate
-                    .getIfPresent(new TriplesByNodeIndex(t.getPredicate().getIndexingValue().hashCode()));
-            var withSameObjectIndex = this.triplesByObject
-                    .getIfPresent(new TriplesByNodeIndex(t.getObject().getIndexingValue().hashCode()));
-
-            withSamePredicateIndex.triples.remove(t);
-            withSameObjectIndex.triples.remove(t);
-
-            if(withSameSubjectIndex.triples.isEmpty()) {
-                triplesBySubject.remove(withSameSubjectIndex);
-            }
-            if(withSamePredicateIndex.triples.isEmpty()) {
-                triplesByPredicate.remove(withSamePredicateIndex);
-            }
-            if(withSameObjectIndex.triples.isEmpty()) {
-                triplesByObject.remove(withSameObjectIndex);
-            }
+        predicate:
+        {
+            var pKey = t.getPredicate().getIndexingValue().hashCode();
+            this.triplesByPredicate.compute(
+                    new LookupObjectForTripleSetWithKey(pKey),
+                    ts -> {
+                        ts.remove(t);
+                        return ts.isEmpty() ? null : ts;
+                    });
+        }
+        object:
+        {
+            var oKey = t.getObject().getIndexingValue().hashCode();
+            this.triplesByObject.compute(
+                    new LookupObjectForTripleSetWithKey(oKey),
+                    ts -> {
+                        ts.remove(t);
+                        return ts.isEmpty() ? null : ts;
+                    });
         }
     }
 
@@ -357,32 +753,32 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     public Pair<Set<Triple>, Predicate<Triple>> getOptimalSetAndPredicate(final Node sm, final Node pm, final Node om) {
         if (sm.isConcrete()) { // SPO:S??
             var bySubjectIndex = this.triplesBySubject
-                    .getIfPresent(new TriplesByNodeIndex(sm.getIndexingValue().hashCode()));
+                    .getIfPresent(new LookupObjectForTripleSetWithKey(sm.getIndexingValue().hashCode()));
             if(bySubjectIndex == null) {
                 return null;
             }
             if(pm.isConcrete()) { // SPO:SP?
                 var byPredicateIndex = this.triplesByPredicate
-                        .getIfPresent(new TriplesByNodeIndex(pm.getIndexingValue().hashCode()));
+                        .getIfPresent(new LookupObjectForTripleSetWithKey(pm.getIndexingValue().hashCode()));
                 if(byPredicateIndex == null) {
                     return null;
                 }
                 if(om.isConcrete()) { // SPO:SPO
                     var byObjectIndex = this.triplesByObject
-                            .getIfPresent(new TriplesByNodeIndex(om.getIndexingValue().hashCode()));
+                            .getIfPresent(new LookupObjectForTripleSetWithKey(om.getIndexingValue().hashCode()));
                     if(byObjectIndex == null) {
                         return null;
                     }
                     var smallestSet = getSmallestSet(
-                            bySubjectIndex.triples, byPredicateIndex.triples, byObjectIndex.triples);
+                            bySubjectIndex, byPredicateIndex, byObjectIndex);
                     if(TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                        if(smallestSet == bySubjectIndex.triples) {
+                        if(smallestSet == bySubjectIndex) {
                             return Pair.of(smallestSet,
                                     t -> om.equals(t.getObject())
                                             && pm.equals(t.getPredicate())
                                             && sm.equals(t.getSubject()));
                         }
-                        if(smallestSet == byPredicateIndex.triples) {
+                        if(smallestSet == byPredicateIndex) {
                             return Pair.of(smallestSet,
                                     t -> sm.equals(t.getSubject())
                                             && om.equals(t.getObject())
@@ -393,13 +789,13 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                                         && pm.equals(t.getPredicate())
                                         && om.equals(t.getObject()));
                     } else {
-                        if(smallestSet == bySubjectIndex.triples) {
+                        if(smallestSet == bySubjectIndex) {
                             return Pair.of(smallestSet,
                                     t -> om.sameValueAs(t.getObject())
                                             && pm.equals(t.getPredicate())
                                             && sm.equals(t.getSubject()));
                         }
-                        if(smallestSet == byPredicateIndex.triples) {
+                        if(smallestSet == byPredicateIndex) {
                             return Pair.of(smallestSet,
                                     t -> sm.equals(t.getSubject())
                                             && om.sameValueAs(t.getObject())
@@ -411,100 +807,100 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                                         && om.sameValueAs(t.getObject()));
                     }
                 } else { // SPO:SP*
-                    if(bySubjectIndex.triples.size() <= byPredicateIndex.triples.size()) {
-                        return Pair.of(bySubjectIndex.triples,
+                    if(bySubjectIndex.size() <= byPredicateIndex.size()) {
+                        return Pair.of(bySubjectIndex,
                                 t -> pm.equals(t.getPredicate())
                                         && sm.equals(t.getSubject()));
                     }
-                    return Pair.of(byPredicateIndex.triples,
+                    return Pair.of(byPredicateIndex,
                             t -> sm.equals(t.getSubject())
                                 && pm.equals(t.getPredicate()));
                 }
             } else { // SPO:S*?
                 if(om.isConcrete()) { // SPO:S*O
                     var byObjectIndex = this.triplesByObject
-                            .getIfPresent(new TriplesByNodeIndex(om.getIndexingValue().hashCode()));
+                            .getIfPresent(new LookupObjectForTripleSetWithKey(om.getIndexingValue().hashCode()));
                     if(byObjectIndex == null) {
                         return null;
                     }
                     if(TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                        if(bySubjectIndex.triples.size() <= byObjectIndex.triples.size()) {
-                            return Pair.of(bySubjectIndex.triples,
+                        if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                            return Pair.of(bySubjectIndex,
                                     t -> om.equals(t.getObject())
                                             && sm.equals(t.getSubject()));
                         }
-                        return Pair.of(byObjectIndex.triples,
+                        return Pair.of(byObjectIndex,
                                 t -> sm.equals(t.getSubject())
                                     && om.equals(t.getObject()));
                     } else {
-                        if(bySubjectIndex.triples.size() <= byObjectIndex.triples.size()) {
-                            return Pair.of(bySubjectIndex.triples,
+                        if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                            return Pair.of(bySubjectIndex,
                                     t -> om.sameValueAs(t.getObject())
                                             && sm.equals(t.getSubject()));
                         }
-                        return Pair.of(byObjectIndex.triples,
+                        return Pair.of(byObjectIndex,
                                 t -> sm.equals(t.getSubject())
                                         && om.sameValueAs(t.getObject()));
                     }
                 } else { // SPO:S**
-                    return Pair.of(bySubjectIndex.triples,
+                    return Pair.of(bySubjectIndex,
                             t -> sm.equals(t.getSubject()));
                 }
             }
         }
         else if (om.isConcrete()) { // SPO:*?O
             var byObjectIndex = this.triplesByObject
-                    .getIfPresent(new TriplesByNodeIndex(om.getIndexingValue().hashCode()));
+                    .getIfPresent(new LookupObjectForTripleSetWithKey(om.getIndexingValue().hashCode()));
             if(byObjectIndex == null) {
                 return null;
             }
             if(TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
                 if (pm.isConcrete()) { // SPO:*PO
                     var byPredicateIndex = this.triplesByPredicate
-                            .getIfPresent(new TriplesByNodeIndex(pm.getIndexingValue().hashCode()));
+                            .getIfPresent(new LookupObjectForTripleSetWithKey(pm.getIndexingValue().hashCode()));
                     if(byPredicateIndex == null) {
                         return null;
                     }
-                    if(byObjectIndex.triples.size() <= byPredicateIndex.triples.size()) {
-                        return Pair.of(byObjectIndex.triples,
+                    if(byObjectIndex.size() <= byPredicateIndex.size()) {
+                        return Pair.of(byObjectIndex,
                                 t -> pm.equals(t.getPredicate())
                                         && om.equals(t.getObject()));
                     }
-                    return Pair.of(byPredicateIndex.triples,
+                    return Pair.of(byPredicateIndex,
                             t -> om.equals(t.getObject())
                                 && pm.equals(t.getPredicate()));
                 } else { // SPO:**O
-                    return Pair.of(byObjectIndex.triples,
+                    return Pair.of(byObjectIndex,
                             t -> om.equals(t.getObject()));
                 }
             } else {
                 if (pm.isConcrete()) { // SPO:*PO
                     var byPredicateIndex = this.triplesByPredicate
-                            .getIfPresent(new TriplesByNodeIndex(pm.getIndexingValue().hashCode()));
+                            .getIfPresent(new LookupObjectForTripleSetWithKey(pm.getIndexingValue().hashCode()));
                     if(byPredicateIndex == null) {
                         return null;
                     }
-                    if(byObjectIndex.triples.size() <= byPredicateIndex.triples.size()) {
-                        return Pair.of(byObjectIndex.triples,
+                    if(byObjectIndex.size() <= byPredicateIndex.size()) {
+                        return Pair.of(byObjectIndex,
                                 t -> pm.equals(t.getPredicate())
                                         && om.sameValueAs(t.getObject()));
                     }
-                    return Pair.of(byPredicateIndex.triples,
+                    return Pair.of(byPredicateIndex,
                             t -> om.sameValueAs(t.getObject())
                                 && pm.equals(t.getPredicate()));
                 } else { // SPO:**O
-                    return Pair.of(byObjectIndex.triples,
+                    return Pair.of(byObjectIndex,
                             t -> om.sameValueAs(t.getObject()));
                 }
             }
         }
         else if (pm.isConcrete()) { // SPO:*P*
             var byPredicateIndex = this.triplesByPredicate
-                    .getIfPresent(new TriplesByNodeIndex(pm.getIndexingValue().hashCode()));
+                    .getIfPresent(new LookupObjectForTripleSetWithKey(pm.getIndexingValue().hashCode()));
             if(byPredicateIndex == null) {
                 return null;
             }
-            return Pair.of(byPredicateIndex.triples,
+            return Pair.of(byPredicateIndex,
                     t -> pm.equals(t.getPredicate()));
         }
         else { // SPO:***
@@ -552,7 +948,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
      * fewer predicates than subjects or objects.
      * @return
      */
-    private LowMemoryHashSet<TriplesByNodeIndex> getMapWithFewestKeys() {
+    private LowMemoryHashSet<TripleSetWithKey> getMapWithFewestKeys() {
         var subjectCount = this.triplesBySubject.size();
         var predicateCount = this.triplesByPredicate.size();
         var objectCount = this.triplesByObject.size();
@@ -579,7 +975,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     @Override
     protected int graphBaseSize() {
         /*use the map with the fewest keys*/
-        return this.getMapWithFewestKeys().stream().mapToInt(triplesByNodeIndex -> triplesByNodeIndex.triples.size()).sum();
+        return this.getMapWithFewestKeys().stream().mapToInt(Set::size).sum();
     }
 
     /**
@@ -591,7 +987,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     @Override
     public Stream<Triple> stream() {
         /*use the map with the fewest keys*/
-        return this.getMapWithFewestKeys().stream().flatMap(triplesByNodeIndex -> triplesByNodeIndex.triples.stream());
+        return this.getMapWithFewestKeys().stream().flatMap(Collection::stream);
     }
 
     /**
@@ -648,15 +1044,15 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     private static class ListsOfTriplesIterator implements Iterator<Triple> {
 
-        private final Iterator<TriplesByNodeIndex> baseIterator;
+        private final Iterator<TripleSetWithKey> baseIterator;
         private Iterator<Triple> subIterator;
         private boolean hasSubIterator = false;
 
-        public ListsOfTriplesIterator(Iterator<TriplesByNodeIndex> baseIterator) {
+        public ListsOfTriplesIterator(Iterator<TripleSetWithKey> baseIterator) {
 
             this.baseIterator = baseIterator;
             if(baseIterator.hasNext()) {
-                subIterator = baseIterator.next().triples.iterator();
+                subIterator = baseIterator.next().iterator();
                 hasSubIterator = true;
             }
         }
@@ -675,7 +1071,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     return true;
                 }
                 while(baseIterator.hasNext()) {
-                    subIterator = baseIterator.next().triples.iterator();
+                    subIterator = baseIterator.next().iterator();
                     if(subIterator.hasNext()) {
                         return true;
                     }
