@@ -732,12 +732,14 @@ public class LowMemoryHashSet<T> implements Set<T> {
     private static class ArrayWithNullsSpliteratorSized<T> implements Spliterator<T> {
 
         private final Object[] entries;
-        private int pos = 0;
+        private final int maxPos;
+        private int pos = -1;
         private int maxRemaining;
         private boolean hasBeenSplit = false;
 
         public ArrayWithNullsSpliteratorSized(final Object[] entries, final int size) {
             this.entries = entries;
+            this.maxPos = entries.length - 1;
             this.maxRemaining = size;
         }
 
@@ -755,13 +757,12 @@ public class LowMemoryHashSet<T> implements Set<T> {
          */
         @Override
         public boolean tryAdvance(Consumer<? super T> action) {
-            while(0 < maxRemaining && pos < entries.length) {
-                if(null != entries[pos]) {
+            while(0 < maxRemaining && pos < maxPos) {
+                if(null != entries[++pos]) {
                     maxRemaining--;
-                    action.accept((T) entries[pos++]);
+                    action.accept((T) entries[pos]);
                     return true;
                 }
-                pos++;
             }
             return false;
         }
@@ -780,12 +781,11 @@ public class LowMemoryHashSet<T> implements Set<T> {
          */
         @Override
         public void forEachRemaining(Consumer<? super T> action) {
-            while(0 < maxRemaining && pos < entries.length) {
-                if(null != entries[pos]) {
+            while(0 < maxRemaining && pos < maxPos) {
+                if(null != entries[++pos]) {
                     maxRemaining--;
                     action.accept((T) entries[pos]);
                 }
-                pos++;
             }
         }
 
@@ -830,14 +830,14 @@ public class LowMemoryHashSet<T> implements Set<T> {
          */
         @Override
         public Spliterator<T> trySplit() {
-            if(entries.length - pos < 3) {
+            if(entries.length - pos < 10) {
                 return null;
             }
-            var mid = (pos + entries.length) >>> 1;
+            var mid = (pos + 1 + entries.length) >>> 1;
             var remainingInSubSpliterator = this.maxRemaining;
-            var fromIndexForSubSpliterator = pos;
-            this.pos = mid;
-            this.maxRemaining = Math.min(this.maxRemaining, entries.length-pos);
+            var fromIndexForSubSpliterator = pos + 1;
+            this.pos = mid - 1;
+            this.maxRemaining = Math.min(this.maxRemaining, entries.length- pos);
             remainingInSubSpliterator = Math.min(remainingInSubSpliterator, mid-fromIndexForSubSpliterator);
             this.hasBeenSplit = true;
             return new ArrayWithNullsSubSpliteratorUnSized(entries, fromIndexForSubSpliterator, mid, remainingInSubSpliterator);
@@ -902,20 +902,20 @@ public class LowMemoryHashSet<T> implements Set<T> {
     private static class ArrayWithNullsSubSpliteratorUnSized<T> implements Spliterator<T> {
 
         private final Object[] entries;
-        private int fromIndex;
-        private final int toIndex;
+        private int pos;
+        private final int maxPos;
         private int maxRemaining;
 
         public ArrayWithNullsSubSpliteratorUnSized(final Object[] entries, final int fromIndex, final int toIndex, final int maxSize) {
             this.entries = entries;
             this.maxRemaining = maxSize;
-            this.fromIndex = fromIndex;
-            this.toIndex = toIndex;
+            this.pos = fromIndex - 1;
+            this.maxPos = toIndex - 1;
             this.updateMaxRemaining();
         }
 
         private void updateMaxRemaining() {
-            this.maxRemaining = Math.min(this.maxRemaining, entries.length-(toIndex-fromIndex));
+            this.maxRemaining = Math.min(this.maxRemaining, entries.length-(maxPos - pos));
         }
 
         /**
@@ -932,13 +932,12 @@ public class LowMemoryHashSet<T> implements Set<T> {
          */
         @Override
         public boolean tryAdvance(Consumer<? super T> action) {
-            while(0 < maxRemaining && fromIndex < toIndex) {
-                if(null != entries[fromIndex]) {
+            while(0 < maxRemaining && pos < maxPos) {
+                if(null != entries[++pos]) {
                     maxRemaining--;
-                    action.accept((T) entries[fromIndex++]);
+                    action.accept((T) entries[pos]);
                     return true;
                 }
-                fromIndex++;
             }
             return false;
         }
@@ -957,12 +956,11 @@ public class LowMemoryHashSet<T> implements Set<T> {
          */
         @Override
         public void forEachRemaining(Consumer<? super T> action) {
-            while(0 < maxRemaining && fromIndex < toIndex) {
-                if(null != entries[fromIndex]) {
+            while(0 < maxRemaining && pos < maxPos) {
+                if(null != entries[++pos]) {
                     maxRemaining--;
-                    action.accept((T) entries[fromIndex]);
+                    action.accept((T) entries[pos]);
                 }
-                fromIndex++;
             }
         }
 
@@ -1007,13 +1005,13 @@ public class LowMemoryHashSet<T> implements Set<T> {
          */
         @Override
         public Spliterator<T> trySplit() {
-            if(toIndex - fromIndex < 3) {
+            if(maxPos - pos < 10) {
                 return null;
             }
-            var mid = (fromIndex + toIndex) >>> 1;
+            var mid = (pos + maxPos + 2) >>> 1;
             var remainingInSubSpliterator = this.maxRemaining;
-            var fromIndexForSubSpliterator = fromIndex;
-            this.fromIndex = mid;
+            var fromIndexForSubSpliterator = pos +1;
+            this.pos = mid - 1;
             this.updateMaxRemaining();
             remainingInSubSpliterator = Math.min(remainingInSubSpliterator, mid-fromIndexForSubSpliterator);
             return new ArrayWithNullsSubSpliteratorUnSized(entries, fromIndexForSubSpliterator, mid, remainingInSubSpliterator);
@@ -1074,8 +1072,8 @@ public class LowMemoryHashSet<T> implements Set<T> {
     private static class ArrayWithNullsIterator<T> implements Iterator<T> {
 
         private final Object[] entries;
-        private int pos = 0;
         private int remaining;
+        private int pos = -1;
 
         private ArrayWithNullsIterator(final Object[] entries, final int size) {
             this.entries = entries;
@@ -1091,7 +1089,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
          */
         @Override
         public boolean hasNext() {
-            return 0< remaining;
+            return 0 < remaining;
         }
 
         /**
@@ -1102,51 +1100,11 @@ public class LowMemoryHashSet<T> implements Set<T> {
          */
         @Override
         public T next() {
-            while (0 < remaining && pos < entries.length) {
-                if(null != entries[pos]) {
+            while (0 < remaining) {
+                if(null != entries[++pos]) {
                     remaining--;
-                    return (T) entries[pos++];
+                    return (T) entries[pos];
                 }
-                pos++;
-            }
-            throw new NoSuchElementException();
-        }
-    }
-
-    private static class ArrayWithNullsIterator2<T> implements Iterator<T> {
-
-        private final Object[] entries;
-        private int pos = 0;
-
-        private ArrayWithNullsIterator2(final Object[] entries) {
-            this.entries = entries;
-        }
-
-        /**
-         * Returns {@code true} if the iteration has more elements.
-         * (In other words, returns {@code true} if {@link #next} would
-         * return an element rather than throwing an exception.)
-         *
-         * @return {@code true} if the iteration has more elements
-         */
-        @Override
-        public boolean hasNext() {
-            return pos < entries.length;
-        }
-
-        /**
-         * Returns the next element in the iteration.
-         *
-         * @return the next element in the iteration
-         * @throws NoSuchElementException if the iteration has no more elements
-         */
-        @Override
-        public T next() {
-            while (pos < entries.length) {
-                if(null != entries[pos]) {
-                    return (T) entries[pos++];
-                }
-                pos++;
             }
             throw new NoSuchElementException();
         }
