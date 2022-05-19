@@ -368,18 +368,17 @@ public class LowMemoryHashSet<T> implements Set<T> {
             return index;
         }
         int emptyIndex = -1;
-        var lowerIndex = index-1;
-        var upperIndex = index+1;
+        var lowerIndex = index;
+        var upperIndex = index;
         while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= lowerIndex) {
+            if(0 <= --lowerIndex) {
                 if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
                     emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
                 } else if (t.equals(entries[lowerIndex])) {
                     return lowerIndex;            /*found equal element*/
                 }
-                lowerIndex--;
             }
-            if(upperIndex < entries.length) {
+            if(++upperIndex < entries.length) {
                 if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                     if(emptyIndex < 0) {          /*this index is only relevant if slot with same distance in backward direction was not also empty*/
                         emptyIndex = upperIndex;
@@ -387,7 +386,6 @@ public class LowMemoryHashSet<T> implements Set<T> {
                 } else if (t.equals(entries[upperIndex])) {
                     return upperIndex;           /*found equal element*/
                 }
-                upperIndex++;
             }
             if(emptyIndex >= 0) { /*found empty slot in any direction*/
                 return ~emptyIndex;
@@ -407,18 +405,17 @@ public class LowMemoryHashSet<T> implements Set<T> {
             return index;
         }
         int emptyIndex = -1;
-        var lowerIndex = index-1;
-        var upperIndex = index+1;
+        var lowerIndex = index;
+        var upperIndex = index;
         while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= lowerIndex) {
+            if(0 <= --lowerIndex) {
                 if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
                     emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
                 } else if (predicate.test((T)entries[lowerIndex])) {
                     return lowerIndex;            /*found equal element*/
                 }
-                lowerIndex--;
             }
-            if(upperIndex < entries.length) {
+            if(++upperIndex < entries.length) {
                 if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                     if(emptyIndex < 0) {          /*this index is only relevant if slot with same distance in backward direction was not also empty*/
                         emptyIndex = upperIndex;
@@ -426,7 +423,6 @@ public class LowMemoryHashSet<T> implements Set<T> {
                 } else if (predicate.test((T)entries[upperIndex])) {
                     return upperIndex;           /*found equal element*/
                 }
-                upperIndex++;
             }
             if(emptyIndex >= 0) { /*found empty slot in any direction*/
                 return ~emptyIndex;
