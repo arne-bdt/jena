@@ -360,11 +360,10 @@ public class LowMemoryHashSet<T> implements Set<T> {
 
     private int findIndex(final T t) {
         final var index = calcStartIndexByHashCode(t);
-        var valueAtIndex = entries[index];
-        if(null == valueAtIndex) {
+        if(null == entries[index]) {
             return ~index;
         }
-        if(t.equals(valueAtIndex)) {
+        if(t.equals(entries[index])) {
             return index;
         }
         int emptyIndex = -1;
@@ -396,12 +395,11 @@ public class LowMemoryHashSet<T> implements Set<T> {
 
     private int findIndexOfMatch(final T t) {
         final var index = calcStartIndexByHashCode(t);
-        var valueAtIndex = entries[index];
-        if(null == valueAtIndex) {
+        if(null == entries[index]) {
             return ~index;
         }
         var predicate = getContainsPredicate(t);
-        if(predicate.test((T)valueAtIndex)) {
+        if(predicate.test((T)entries[index])) {
             return index;
         }
         int emptyIndex = -1;
