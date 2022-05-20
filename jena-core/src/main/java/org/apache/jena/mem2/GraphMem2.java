@@ -73,15 +73,13 @@ import java.util.stream.Stream;
 public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
+    private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 100; /*rough guess, should be evaluated*/
 
     private final LowMemoryHashSet<TripleSetWithKey> triplesBySubject = new LowMemoryHashSet<>();
     private final LowMemoryHashSet<TripleSetWithKey> triplesByPredicate = new LowMemoryHashSet<>();
     private final LowMemoryHashSet<TripleSetWithKey> triplesByObject = new LowMemoryHashSet<>();
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 70;//350;
-
-//    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES =
-//            Comparator.comparingInt(t -> t.hashCode());
 
     private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_SUBJECT =
             Comparator.comparingInt((Triple t) -> t.getObject().getIndexingValue().hashCode())
@@ -762,144 +760,150 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             if(bySubjectIndex == null) {
                 return null;
             }
-            if(pm.isConcrete()) { // SPO:SP?
-                var byPredicateIndex = this.triplesByPredicate
-                        .getIfPresent(new LookupObjectForTripleSetWithKey(pm.getIndexingValue().hashCode()));
-                if(byPredicateIndex == null) {
-                    return null;
-                }
-                if(om.isConcrete()) { // SPO:SPO
-                    var byObjectIndex = this.triplesByObject
-                            .getIfPresent(new LookupObjectForTripleSetWithKey(om.getIndexingValue().hashCode()));
-                    if(byObjectIndex == null) {
-                        return null;
-                    }
-                    var smallestSet = getSmallestSet(
-                            bySubjectIndex, byPredicateIndex, byObjectIndex);
-                    if(TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                        if(smallestSet == bySubjectIndex) {
-                            return Pair.of(smallestSet,
+            if(om.isConcrete()) { //SPO:S?0
+                if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    if(pm.isConcrete()) { // SPO:SPO
+                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                            return Pair.of(bySubjectIndex,
                                     t -> om.equals(t.getObject())
                                             && pm.equals(t.getPredicate())
                                             && sm.equals(t.getSubject()));
-                        }
-                        if(smallestSet == byPredicateIndex) {
-                            return Pair.of(smallestSet,
-                                    t -> sm.equals(t.getSubject())
-                                            && om.equals(t.getObject())
-                                            && pm.equals(t.getPredicate()));
-                        }
-                        return Pair.of(smallestSet,
-                                t -> sm.equals(t.getSubject())
-                                        && pm.equals(t.getPredicate())
-                                        && om.equals(t.getObject()));
-                    } else {
-                        if(smallestSet == bySubjectIndex) {
-                            return Pair.of(smallestSet,
+                        } else {
+                            return Pair.of(bySubjectIndex,
                                     t -> om.sameValueAs(t.getObject())
                                             && pm.equals(t.getPredicate())
                                             && sm.equals(t.getSubject()));
                         }
-                        if(smallestSet == byPredicateIndex) {
-                            return Pair.of(smallestSet,
-                                    t -> sm.equals(t.getSubject())
-                                            && om.sameValueAs(t.getObject())
-                                            && pm.equals(t.getPredicate()));
-                        }
-                        return Pair.of(smallestSet,
-                                t -> sm.equals(t.getSubject())
-                                        && pm.equals(t.getPredicate())
-                                        && om.sameValueAs(t.getObject()));
-                    }
-                } else { // SPO:SP*
-                    if(bySubjectIndex.size() <= byPredicateIndex.size()) {
-                        return Pair.of(bySubjectIndex,
-                                t -> pm.equals(t.getPredicate())
-                                        && sm.equals(t.getSubject()));
-                    }
-                    return Pair.of(byPredicateIndex,
-                            t -> sm.equals(t.getSubject())
-                                    && pm.equals(t.getPredicate()));
-                }
-            } else { // SPO:S*?
-                if(om.isConcrete()) { // SPO:S*O
-                    var byObjectIndex = this.triplesByObject
-                            .getIfPresent(new LookupObjectForTripleSetWithKey(om.getIndexingValue().hashCode()));
-                    if(byObjectIndex == null) {
-                        return null;
-                    }
-                    if(TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                        if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                    } else { // SPO:S*O
+                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
                             return Pair.of(bySubjectIndex,
                                     t -> om.equals(t.getObject())
                                             && sm.equals(t.getSubject()));
-                        }
-                        return Pair.of(byObjectIndex,
-                                t -> sm.equals(t.getSubject())
-                                        && om.equals(t.getObject()));
-                    } else {
-                        if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                        } else {
                             return Pair.of(bySubjectIndex,
                                     t -> om.sameValueAs(t.getObject())
                                             && sm.equals(t.getSubject()));
                         }
-                        return Pair.of(byObjectIndex,
-                                t -> sm.equals(t.getSubject())
-                                        && om.sameValueAs(t.getObject()));
                     }
-                } else { // SPO:S**
-                    return Pair.of(bySubjectIndex,
-                            t -> sm.equals(t.getSubject()));
+                } else {
+                    var byObjectIndex = this.triplesByObject
+                            .getIfPresent(new LookupObjectForTripleSetWithKey(om.getIndexingValue().hashCode()));
+                    if (byObjectIndex == null) {
+                        return null;
+                    }
+                    if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                                return Pair.of(bySubjectIndex,
+                                        t -> om.equals(t.getObject())
+                                                && pm.equals(t.getPredicate())
+                                                && sm.equals(t.getSubject()));
+                            } else {
+                                return Pair.of(bySubjectIndex,
+                                        t -> om.sameValueAs(t.getObject())
+                                                && pm.equals(t.getPredicate())
+                                                && sm.equals(t.getSubject()));
+                            }
+                        } else { // SPO:S*O
+                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                                return Pair.of(bySubjectIndex,
+                                        t -> om.equals(t.getObject())
+                                                && sm.equals(t.getSubject()));
+                            } else {
+                                return Pair.of(bySubjectIndex,
+                                        t -> om.sameValueAs(t.getObject())
+                                                && sm.equals(t.getSubject()));
+                            }
+                        }
+                    } else {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                                return Pair.of(byObjectIndex,
+                                        t -> sm.equals(t.getSubject())
+                                                && pm.equals(t.getPredicate())
+                                                && om.equals(t.getObject()));
+                            } else {
+                                return Pair.of(byObjectIndex,
+                                        t ->  sm.equals(t.getSubject())
+                                                && pm.equals(t.getPredicate())
+                                                && om.sameValueAs(t.getObject()));
+                            }
+                        } else { // SPO:S*O
+                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                                return Pair.of(byObjectIndex,
+                                        t -> sm.equals(t.getSubject())
+                                                && om.equals(t.getObject()));
+                            } else {
+                                return Pair.of(byObjectIndex,
+                                        t -> sm.equals(t.getSubject())
+                                                && om.sameValueAs(t.getObject()));
+                            }
+                        }
+                    }
                 }
+            } else if(pm.isConcrete()) { //SPO: SP*
+                return Pair.of(bySubjectIndex,
+                        t -> pm.equals(t.getPredicate())
+                                && sm.equals(t.getSubject()));
+            } else { // SPO:S**
+                return Pair.of(bySubjectIndex,
+                        t -> sm.equals(t.getSubject()));
             }
-        }
-        else if (om.isConcrete()) { // SPO:*?O
+        } else if(om.isConcrete()) { // SPO:*?O
             var byObjectIndex = this.triplesByObject
                     .getIfPresent(new LookupObjectForTripleSetWithKey(om.getIndexingValue().hashCode()));
             if(byObjectIndex == null) {
                 return null;
             }
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                if (pm.isConcrete()) { // SPO:*PO
-                    var byPredicateIndex = this.triplesByPredicate
-                            .getIfPresent(new LookupObjectForTripleSetWithKey(pm.getIndexingValue().hashCode()));
-                    if(byPredicateIndex == null) {
-                        return null;
-                    }
-                    if(byObjectIndex.size() <= byPredicateIndex.size()) {
+            if(pm.isConcrete()) { // SPO:*PO
+                if(byObjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
                         return Pair.of(byObjectIndex,
                                 t -> pm.equals(t.getPredicate())
                                         && om.equals(t.getObject()));
+                    } else {
+                        return Pair.of(byObjectIndex,
+                                t ->  pm.equals(t.getPredicate())
+                                        && om.sameValueAs(t.getObject()));
                     }
-                    return Pair.of(byPredicateIndex,
-                            t -> om.equals(t.getObject())
-                                    && pm.equals(t.getPredicate()));
-                } else { // SPO:**O
-                    return Pair.of(byObjectIndex,
-                            t -> om.equals(t.getObject()));
-                }
-            } else {
-                if (pm.isConcrete()) { // SPO:*PO
+                } else {
                     var byPredicateIndex = this.triplesByPredicate
                             .getIfPresent(new LookupObjectForTripleSetWithKey(pm.getIndexingValue().hashCode()));
                     if(byPredicateIndex == null) {
                         return null;
                     }
                     if(byObjectIndex.size() <= byPredicateIndex.size()) {
-                        return Pair.of(byObjectIndex,
-                                t -> pm.equals(t.getPredicate())
-                                        && om.sameValueAs(t.getObject()));
+                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                            return Pair.of(byObjectIndex,
+                                    t -> pm.equals(t.getPredicate())
+                                            && om.equals(t.getObject()));
+                        } else {
+                            return Pair.of(byObjectIndex,
+                                    t ->  pm.equals(t.getPredicate())
+                                            && om.sameValueAs(t.getObject()));
+                        }
+                    } else {
+                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                            return Pair.of(byPredicateIndex,
+                                    t -> om.equals(t.getObject())
+                                            && pm.equals(t.getPredicate()));
+                        } else {
+                            return Pair.of(byPredicateIndex,
+                                    t ->  om.sameValueAs(t.getObject())
+                                            && pm.equals(t.getPredicate()));
+                        }
                     }
-                    return Pair.of(byPredicateIndex,
-                            t -> om.sameValueAs(t.getObject())
-                                    && pm.equals(t.getPredicate()));
-                } else { // SPO:**O
+                }
+            } else {    // SPO:**O
+                if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                    return Pair.of(byObjectIndex,
+                            t -> om.equals(t.getObject()));
+                } else {
                     return Pair.of(byObjectIndex,
                             t -> om.sameValueAs(t.getObject()));
                 }
             }
-        }
-        else if (pm.isConcrete()) { // SPO:*P*
+        } else if(pm.isConcrete()) { //SPO:*P*
             var byPredicateIndex = this.triplesByPredicate
                     .getIfPresent(new LookupObjectForTripleSetWithKey(pm.getIndexingValue().hashCode()));
             if(byPredicateIndex == null) {
@@ -907,8 +911,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             }
             return Pair.of(byPredicateIndex,
                     t -> pm.equals(t.getPredicate()));
-        }
-        else { // SPO:***
+        } else { // SPO:***
             throw new IllegalArgumentException("All node are Node.ANY, which is not allowed here.");
         }
     }
