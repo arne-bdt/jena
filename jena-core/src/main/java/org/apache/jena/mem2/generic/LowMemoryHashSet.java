@@ -67,9 +67,9 @@ public class LowMemoryHashSet<T> implements Set<T> {
 
     public LowMemoryHashSet(Set<? extends T> set) {
         this.entries = new Object[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
+        int index;
         for (T t : set) {
-            var index = findIndex(t);
-            if(index < 0) {
+            if((index = findIndex(t)) < 0) {
                 entries[~index] = t;
                 size++;
             }
@@ -84,9 +84,8 @@ public class LowMemoryHashSet<T> implements Set<T> {
     }
 
     private void grow(final int minCapacity) {
-        final var newSize = Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1;
         final var oldEntries = this.entries;
-        this.entries = new Object[newSize];
+        this.entries = new Object[Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
                 this.entries[~findIndex((T)oldEntries[i])] = oldEntries[i];
@@ -103,7 +102,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
         this.entries = new Object[newSize];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                this.entries[~findIndex((T)oldEntries[i])] = oldEntries[i];
+                this.entries[findEmptySlotWithoutEqualityCheck((T)oldEntries[i])] = oldEntries[i];
             }
         }
         return true;
@@ -131,114 +130,24 @@ public class LowMemoryHashSet<T> implements Set<T> {
         return size == 0;
     }
 
-    /**
-     * Returns {@code true} if this collection contains the specified element.
-     * More formally, returns {@code true} if and only if this collection
-     * contains at least one element {@code e} such that
-     * {@code Objects.equals(o, e)}.
-     *
-     * @param o element whose presence in this collection is to be tested
-     * @return {@code true} if this collection contains the specified
-     * element
-     * @throws ClassCastException   if the type of the specified element
-     *                              is incompatible with this collection
-     *                              (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException if the specified element is null and this
-     *                              collection does not permit null elements
-     *                              (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     */
     @Override
     public boolean contains(Object o) {
-        var index = findIndexOfMatch((T)o);
-        return index >= 0;
+        return findIndexOfMatch((T)o) >= 0;
     }
 
-    /**
-     * Returns an iterator over the elements in this collection.  There are no
-     * guarantees concerning the order in which the elements are returned
-     * (unless this collection is an instance of some class that provides a
-     * guarantee).
-     *
-     * @return an {@code Iterator} over the elements in this collection
-     */
+
     @Override
     public Iterator<T> iterator() {
         return new ArrayWithNullsIterator(entries, size);
     }
 
-    /**
-     * Returns an array containing all of the elements in this collection.
-     * If this collection makes any guarantees as to what order its elements
-     * are returned by its iterator, this method must return the elements in
-     * the same order. The returned array's {@linkplain Class#getComponentType
-     * runtime component type} is {@code Object}.
-     *
-     * <p>The returned array will be "safe" in that no references to it are
-     * maintained by this collection.  (In other words, this method must
-     * allocate a new array even if this collection is backed by an array).
-     * The caller is thus free to modify the returned array.
-     *
-     * @return an array, whose {@linkplain Class#getComponentType runtime component
-     * type} is {@code Object}, containing all of the elements in this collection
-     * @apiNote This method acts as a bridge between array-based and collection-based APIs.
-     * It returns an array whose runtime type is {@code Object[]}.
-     * Use {@link #toArray(Object[]) toArray(T[])} to reuse an existing
-     * array, or use {@link #toArray(IntFunction)} to control the runtime type
-     * of the array.
-     */
+
     @Override
     public Object[] toArray() {
         return this.stream().toArray();
     }
 
-    /**
-     * Returns an array containing all of the elements in this collection;
-     * the runtime type of the returned array is that of the specified array.
-     * If the collection fits in the specified array, it is returned therein.
-     * Otherwise, a new array is allocated with the runtime type of the
-     * specified array and the size of this collection.
-     *
-     * <p>If this collection fits in the specified array with room to spare
-     * (i.e., the array has more elements than this collection), the element
-     * in the array immediately following the end of the collection is set to
-     * {@code null}.  (This is useful in determining the length of this
-     * collection <i>only</i> if the caller knows that this collection does
-     * not contain any {@code null} elements.)
-     *
-     * <p>If this collection makes any guarantees as to what order its elements
-     * are returned by its iterator, this method must return the elements in
-     * the same order.
-     *
-     * @param a the array into which the elements of this collection are to be
-     *          stored, if it is big enough; otherwise, a new array of the same
-     *          runtime type is allocated for this purpose.
-     * @return an array containing all of the elements in this collection
-     * @throws ArrayStoreException  if the runtime type of any element in this
-     *                              collection is not assignable to the {@linkplain Class#getComponentType
-     *                              runtime component type} of the specified array
-     * @throws NullPointerException if the specified array is null
-     * @apiNote This method acts as a bridge between array-based and collection-based APIs.
-     * It allows an existing array to be reused under certain circumstances.
-     * Use {@link #toArray()} to create an array whose runtime type is {@code Object[]},
-     * or use {@link #toArray(IntFunction)} to control the runtime type of
-     * the array.
-     *
-     * <p>Suppose {@code x} is a collection known to contain only strings.
-     * The following code can be used to dump the collection into a previously
-     * allocated {@code String} array:
-     *
-     * <pre>
-     *     String[] y = new String[SIZE];
-     *     ...
-     *     y = x.toArray(y);</pre>
-     *
-     * <p>The return value is reassigned to the variable {@code y}, because a
-     * new array will be allocated and returned if the collection {@code x} has
-     * too many elements to fit into the existing array {@code y}.
-     *
-     * <p>Note that {@code toArray(new Object[0])} is identical in function to
-     * {@code toArray()}.
-     */
+
     @Override
     public <T1> T1[] toArray(T1[] a) {
         var asArray = this.stream().toArray();
@@ -251,39 +160,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
         return a;
     }
 
-    /**
-     * Ensures that this collection contains the specified element (optional
-     * operation).  Returns {@code true} if this collection changed as a
-     * result of the call.  (Returns {@code false} if this collection does
-     * not permit duplicates and already contains the specified element.)<p>
-     * <p>
-     * Collections that support this operation may place limitations on what
-     * elements may be added to this collection.  In particular, some
-     * collections will refuse to add {@code null} elements, and others will
-     * impose restrictions on the type of elements that may be added.
-     * Collection classes should clearly specify in their documentation any
-     * restrictions on what elements may be added.<p>
-     * <p>
-     * If a collection refuses to add a particular element for any reason
-     * other than that it already contains the element, it <i>must</i> throw
-     * an exception (rather than returning {@code false}).  This preserves
-     * the invariant that a collection always contains the specified element
-     * after this call returns.
-     *
-     * @param value element whose presence in this collection is to be ensured
-     * @return {@code true} if this collection changed as a result of the
-     * call
-     * @throws UnsupportedOperationException if the {@code add} operation
-     *                                       is not supported by this collection
-     * @throws ClassCastException            if the class of the specified element
-     *                                       prevents it from being added to this collection
-     * @throws NullPointerException          if the specified element is null and this
-     *                                       collection does not permit null elements
-     * @throws IllegalArgumentException      if some property of the element
-     *                                       prevents it from being added to this collection
-     * @throws IllegalStateException         if the element cannot be added at this
-     *                                       time due to insertion restrictions
-     */
+
     @Override
     public boolean add(T value) {
         grow();
@@ -298,8 +175,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
 
     public void addUnsafe(T value) {
         grow();
-        var index = findIndex(value);
-        entries[~index] = value;
+        entries[findEmptySlotWithoutEqualityCheck(value)] = value;
         size++;
     }
 
@@ -392,6 +268,29 @@ public class LowMemoryHashSet<T> implements Set<T> {
         }
         throw new IllegalStateException();
     }
+
+    private int findEmptySlotWithoutEqualityCheck(final T t) {
+        final var index = calcStartIndexByHashCode(t);
+        if(null == entries[index]) {
+            return index;
+        }
+        var lowerIndex = index;
+        var upperIndex = index;
+        while (0 <= lowerIndex || upperIndex < entries.length) {
+            if(0 <= --lowerIndex) {
+                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
+                    return lowerIndex;
+                }
+            }
+            if(++upperIndex < entries.length) {
+                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
+                    return upperIndex;
+                }
+            }
+        }
+        throw new IllegalStateException();
+    }
+
 
     private int findIndexOfMatch(final T t) {
         final var index = calcStartIndexByHashCode(t);
@@ -545,8 +444,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
         }
 
         boolean isTargetIndexNearerToStartIndex(final int targetIndex) {
-            var distanceToTargetIndex = Math.abs(startIndex - targetIndex);
-            return distanceToTargetIndex < distance;
+            return Math.abs(startIndex - targetIndex) < distance;
         }
     }
 
@@ -606,9 +504,9 @@ public class LowMemoryHashSet<T> implements Set<T> {
     public boolean addAll(Collection<? extends T> c) {
         grow(size + c.size());
         boolean modified = false;
+        int index;
         for (T t : c) {
-            var index = findIndex(t);
-            if(index < 0) {
+            if((index=findIndex(t)) < 0) {
                 entries[~index] = t;
                 size++;
                 modified = true;

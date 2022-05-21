@@ -70,6 +70,7 @@ import java.util.stream.Stream;
 public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
+    private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
     private final LowMemoryHashSet<TripleSetWithKey> triplesBySubject = new LowMemoryHashSet<>();
     private final LowMemoryHashSet<TripleSetWithKey> triplesByPredicate = new LowMemoryHashSet<>();
@@ -97,13 +98,9 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         int hashCode();
 
-        default void addUnsafe(Triple t) {
-            this.add(t);
-        }
+        void addUnsafe(Triple t);
 
-        default void removeUnsafe(Triple t) {
-            this.removeUnsafe(t);
-        }
+        void removeUnsafe(Triple t);
     }
 
     private static class LookupObjectForTripleSetWithKey implements TripleSetWithKey {
@@ -121,12 +118,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || (!(o instanceof TripleSetWithKey))) return false;
-
-            TripleSetWithKey that = (TripleSetWithKey) o;
-
-            return this.getKeyOfSet() == that.getKeyOfSet();
+            return this.getKeyOfSet() == ((TripleSetWithKey) o).getKeyOfSet();
         }
 
         @Override
@@ -134,301 +126,79 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             return this.getKeyOfSet();
         }
 
-        /**
-         * Returns the number of elements in this set (its cardinality).  If this
-         * set contains more than {@code Integer.MAX_VALUE} elements, returns
-         * {@code Integer.MAX_VALUE}.
-         *
-         * @return the number of elements in this set (its cardinality)
-         */
+        @Override
+        public void addUnsafe(Triple t) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void removeUnsafe(Triple t) {
+            throw new UnsupportedOperationException();
+        }
+
         @Override
         public int size() {
-            return 0;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Returns {@code true} if this set contains no elements.
-         *
-         * @return {@code true} if this set contains no elements
-         */
         @Override
         public boolean isEmpty() {
-            return false;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Returns {@code true} if this set contains the specified element.
-         * More formally, returns {@code true} if and only if this set
-         * contains an element {@code e} such that
-         * {@code Objects.equals(o, e)}.
-         *
-         * @param o element whose presence in this set is to be tested
-         * @return {@code true} if this set contains the specified element
-         * @throws ClassCastException   if the type of the specified element
-         *                              is incompatible with this set
-         *                              (<a href="Collection.html#optional-restrictions">optional</a>)
-         * @throws NullPointerException if the specified element is null and this
-         *                              set does not permit null elements
-         *                              (<a href="Collection.html#optional-restrictions">optional</a>)
-         */
         @Override
         public boolean contains(Object o) {
-            return false;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Returns an iterator over the elements in this set.  The elements are
-         * returned in no particular order (unless this set is an instance of some
-         * class that provides a guarantee).
-         *
-         * @return an iterator over the elements in this set
-         */
         @Override
         public Iterator<Triple> iterator() {
-            return null;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Returns an array containing all of the elements in this set.
-         * If this set makes any guarantees as to what order its elements
-         * are returned by its iterator, this method must return the
-         * elements in the same order.
-         *
-         * <p>The returned array will be "safe" in that no references to it
-         * are maintained by this set.  (In other words, this method must
-         * allocate a new array even if this set is backed by an array).
-         * The caller is thus free to modify the returned array.
-         *
-         * <p>This method acts as bridge between array-based and collection-based
-         * APIs.
-         *
-         * @return an array containing all the elements in this set
-         */
         @Override
         public Object[] toArray() {
-            return new Object[0];
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Returns an array containing all of the elements in this set; the
-         * runtime type of the returned array is that of the specified array.
-         * If the set fits in the specified array, it is returned therein.
-         * Otherwise, a new array is allocated with the runtime type of the
-         * specified array and the size of this set.
-         *
-         * <p>If this set fits in the specified array with room to spare
-         * (i.e., the array has more elements than this set), the element in
-         * the array immediately following the end of the set is set to
-         * {@code null}.  (This is useful in determining the length of this
-         * set <i>only</i> if the caller knows that this set does not contain
-         * any null elements.)
-         *
-         * <p>If this set makes any guarantees as to what order its elements
-         * are returned by its iterator, this method must return the elements
-         * in the same order.
-         *
-         * <p>Like the {@link #toArray()} method, this method acts as bridge between
-         * array-based and collection-based APIs.  Further, this method allows
-         * precise control over the runtime type of the output array, and may,
-         * under certain circumstances, be used to save allocation costs.
-         *
-         * <p>Suppose {@code x} is a set known to contain only strings.
-         * The following code can be used to dump the set into a newly allocated
-         * array of {@code String}:
-         *
-         * <pre>
-         *     String[] y = x.toArray(new String[0]);</pre>
-         * <p>
-         * Note that {@code toArray(new Object[0])} is identical in function to
-         * {@code toArray()}.
-         *
-         * @param a the array into which the elements of this set are to be
-         *          stored, if it is big enough; otherwise, a new array of the same
-         *          runtime type is allocated for this purpose.
-         * @return an array containing all the elements in this set
-         * @throws ArrayStoreException  if the runtime type of the specified array
-         *                              is not a supertype of the runtime type of every element in this
-         *                              set
-         * @throws NullPointerException if the specified array is null
-         */
         @Override
         public <T> T[] toArray(T[] a) {
-            return null;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Adds the specified element to this set if it is not already present
-         * (optional operation).  More formally, adds the specified element
-         * {@code e} to this set if the set contains no element {@code e2}
-         * such that
-         * {@code Objects.equals(e, e2)}.
-         * If this set already contains the element, the call leaves the set
-         * unchanged and returns {@code false}.  In combination with the
-         * restriction on constructors, this ensures that sets never contain
-         * duplicate elements.
-         *
-         * <p>The stipulation above does not imply that sets must accept all
-         * elements; sets may refuse to add any particular element, including
-         * {@code null}, and throw an exception, as described in the
-         * specification for {@link Collection#add Collection.add}.
-         * Individual set implementations should clearly document any
-         * restrictions on the elements that they may contain.
-         *
-         * @param triple element to be added to this set
-         * @return {@code true} if this set did not already contain the specified
-         * element
-         * @throws UnsupportedOperationException if the {@code add} operation
-         *                                       is not supported by this set
-         * @throws ClassCastException            if the class of the specified element
-         *                                       prevents it from being added to this set
-         * @throws NullPointerException          if the specified element is null and this
-         *                                       set does not permit null elements
-         * @throws IllegalArgumentException      if some property of the specified element
-         *                                       prevents it from being added to this set
-         */
         @Override
         public boolean add(Triple triple) {
-            return false;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Removes the specified element from this set if it is present
-         * (optional operation).  More formally, removes an element {@code e}
-         * such that
-         * {@code Objects.equals(o, e)}, if
-         * this set contains such an element.  Returns {@code true} if this set
-         * contained the element (or equivalently, if this set changed as a
-         * result of the call).  (This set will not contain the element once the
-         * call returns.)
-         *
-         * @param o object to be removed from this set, if present
-         * @return {@code true} if this set contained the specified element
-         * @throws ClassCastException            if the type of the specified element
-         *                                       is incompatible with this set
-         *                                       (<a href="Collection.html#optional-restrictions">optional</a>)
-         * @throws NullPointerException          if the specified element is null and this
-         *                                       set does not permit null elements
-         *                                       (<a href="Collection.html#optional-restrictions">optional</a>)
-         * @throws UnsupportedOperationException if the {@code remove} operation
-         *                                       is not supported by this set
-         */
         @Override
         public boolean remove(Object o) {
-            return false;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Returns {@code true} if this set contains all of the elements of the
-         * specified collection.  If the specified collection is also a set, this
-         * method returns {@code true} if it is a <i>subset</i> of this set.
-         *
-         * @param c collection to be checked for containment in this set
-         * @return {@code true} if this set contains all of the elements of the
-         * specified collection
-         * @throws ClassCastException   if the types of one or more elements
-         *                              in the specified collection are incompatible with this
-         *                              set
-         *                              (<a href="Collection.html#optional-restrictions">optional</a>)
-         * @throws NullPointerException if the specified collection contains one
-         *                              or more null elements and this set does not permit null
-         *                              elements
-         *                              (<a href="Collection.html#optional-restrictions">optional</a>),
-         *                              or if the specified collection is null
-         * @see #contains(Object)
-         */
         @Override
         public boolean containsAll(Collection<?> c) {
-            return false;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Adds all of the elements in the specified collection to this set if
-         * they're not already present (optional operation).  If the specified
-         * collection is also a set, the {@code addAll} operation effectively
-         * modifies this set so that its value is the <i>union</i> of the two
-         * sets.  The behavior of this operation is undefined if the specified
-         * collection is modified while the operation is in progress.
-         *
-         * @param c collection containing elements to be added to this set
-         * @return {@code true} if this set changed as a result of the call
-         * @throws UnsupportedOperationException if the {@code addAll} operation
-         *                                       is not supported by this set
-         * @throws ClassCastException            if the class of an element of the
-         *                                       specified collection prevents it from being added to this set
-         * @throws NullPointerException          if the specified collection contains one
-         *                                       or more null elements and this set does not permit null
-         *                                       elements, or if the specified collection is null
-         * @throws IllegalArgumentException      if some property of an element of the
-         *                                       specified collection prevents it from being added to this set
-         * @see #add(Object)
-         */
         @Override
         public boolean addAll(Collection<? extends Triple> c) {
-            return false;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Retains only the elements in this set that are contained in the
-         * specified collection (optional operation).  In other words, removes
-         * from this set all of its elements that are not contained in the
-         * specified collection.  If the specified collection is also a set, this
-         * operation effectively modifies this set so that its value is the
-         * <i>intersection</i> of the two sets.
-         *
-         * @param c collection containing elements to be retained in this set
-         * @return {@code true} if this set changed as a result of the call
-         * @throws UnsupportedOperationException if the {@code retainAll} operation
-         *                                       is not supported by this set
-         * @throws ClassCastException            if the class of an element of this set
-         *                                       is incompatible with the specified collection
-         *                                       (<a href="Collection.html#optional-restrictions">optional</a>)
-         * @throws NullPointerException          if this set contains a null element and the
-         *                                       specified collection does not permit null elements
-         *                                       (<a href="Collection.html#optional-restrictions">optional</a>),
-         *                                       or if the specified collection is null
-         * @see #remove(Object)
-         */
         @Override
         public boolean retainAll(Collection<?> c) {
-            return false;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Removes from this set all of its elements that are contained in the
-         * specified collection (optional operation).  If the specified
-         * collection is also a set, this operation effectively modifies this
-         * set so that its value is the <i>asymmetric set difference</i> of
-         * the two sets.
-         *
-         * @param c collection containing elements to be removed from this set
-         * @return {@code true} if this set changed as a result of the call
-         * @throws UnsupportedOperationException if the {@code removeAll} operation
-         *                                       is not supported by this set
-         * @throws ClassCastException            if the class of an element of this set
-         *                                       is incompatible with the specified collection
-         *                                       (<a href="Collection.html#optional-restrictions">optional</a>)
-         * @throws NullPointerException          if this set contains a null element and the
-         *                                       specified collection does not permit null elements
-         *                                       (<a href="Collection.html#optional-restrictions">optional</a>),
-         *                                       or if the specified collection is null
-         * @see #remove(Object)
-         * @see #contains(Object)
-         */
         @Override
         public boolean removeAll(Collection<?> c) {
-            return false;
+            throw new UnsupportedOperationException();
         }
 
-        /**
-         * Removes all of the elements from this set (optional operation).
-         * The set will be empty after this call returns.
-         *
-         * @throws UnsupportedOperationException if the {@code clear} method
-         *                                       is not supported by this set
-         */
         @Override
         public void clear() {
-
+            throw new UnsupportedOperationException();
         }
     }
 
@@ -448,12 +218,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || (!(o instanceof TripleSetWithKey))) return false;
-
-            TripleSetWithKey that = (TripleSetWithKey) o;
-
-            return this.getKeyOfSet() == that.getKeyOfSet();
+            return this.getKeyOfSet() == ((TripleSetWithKey) o).getKeyOfSet();
         }
 
         @Override
@@ -477,12 +242,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || (!(o instanceof TripleSetWithKey))) return false;
-
-            TripleSetWithKey that = (TripleSetWithKey) o;
-
-            return this.getKeyOfSet() == that.getKeyOfSet();
+            return this.getKeyOfSet() == ((TripleSetWithKey) o).getKeyOfSet();
         }
 
         @Override
@@ -627,11 +387,9 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     new LookupObjectForTripleSetWithKey(sKey),
                     ts -> {
                         if(ts == null) {
-                            ts = createSortedListSetForTriplesBySubject.apply(sKey);
-                        } else {
-                            if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
-                                ts = createLowMemoryHashSetForTriplesBySubject.apply(ts);
-                            }
+                            return createSortedListSetForTriplesBySubject.apply(sKey);
+                        } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+                            return createLowMemoryHashSetForTriplesBySubject.apply(ts);
                         }
                         return ts;
                     });
@@ -646,11 +404,9 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                 new LookupObjectForTripleSetWithKey(pKey),
                     ts -> {
                         if(ts == null) {
-                            ts = createSortedListSetForTriplesByPredicate.apply(pKey);
-                        } else {
-                            if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
-                                ts = createLowMemoryHashSetForTriplesByPredicate.apply(ts);
-                            }
+                            return createSortedListSetForTriplesByPredicate.apply(pKey);
+                        } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+                            return createLowMemoryHashSetForTriplesByPredicate.apply(ts);
                         }
                         return ts;
                     });
@@ -663,11 +419,9 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     new LookupObjectForTripleSetWithKey(oKey),
                     ts -> {
                         if(ts == null) {
-                            ts = createSortedListSetForTriplesByObject.apply(oKey);
-                        } else {
-                            if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
-                                ts = createLowMemoryHashSetForTriplesByObject.apply(ts);
-                            }
+                            return createSortedListSetForTriplesByObject.apply(oKey);
+                        } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+                            return createLowMemoryHashSetForTriplesByObject.apply(ts);
                         }
                         return ts;
                     });
@@ -694,12 +448,10 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             return null;
-                        } else {
-                            if(ts.remove(t)) {
-                                removed[0] = true;
-                                if(ts.isEmpty()) {
-                                    return null; /*thereby remove key*/
-                                }
+                        } else if(ts.remove(t)) {
+                            removed[0] = true;
+                            if(ts.isEmpty()) {
+                                return null; /*thereby remove key*/
                             }
                         }
                         return ts;
@@ -749,13 +501,8 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                 return null;
             }
             if(om.isConcrete()) { //SPO:S?0
-                var byObjectIndex = this.triplesByObject
-                            .getIfPresent(new LookupObjectForTripleSetWithKey(om.getIndexingValue().hashCode()));
-                if (byObjectIndex == null) {
-                    return null;
-                }
-                if(bySubjectIndex.size() <= byObjectIndex.size()) {
-                    if (pm.isConcrete()) { // SPO:SPO
+                if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    if(pm.isConcrete()) { // SPO:SPO
                         if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
                             return Pair.of(bySubjectIndex,
                                     t -> om.equals(t.getObject())
@@ -779,27 +526,58 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                         }
                     }
                 } else {
-                    if (pm.isConcrete()) { // SPO:SPO
-                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                            return Pair.of(byObjectIndex,
-                                    t -> sm.equals(t.getSubject())
-                                            && pm.equals(t.getPredicate())
-                                            && om.equals(t.getObject()));
-                        } else {
-                            return Pair.of(byObjectIndex,
-                                    t ->  sm.equals(t.getSubject())
-                                            && pm.equals(t.getPredicate())
-                                            && om.sameValueAs(t.getObject()));
+                    var byObjectIndex = this.triplesByObject
+                            .getIfPresent(new LookupObjectForTripleSetWithKey(om.getIndexingValue().hashCode()));
+                    if (byObjectIndex == null) {
+                        return null;
+                    }
+                    if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                                return Pair.of(bySubjectIndex,
+                                        t -> om.equals(t.getObject())
+                                                && pm.equals(t.getPredicate())
+                                                && sm.equals(t.getSubject()));
+                            } else {
+                                return Pair.of(bySubjectIndex,
+                                        t -> om.sameValueAs(t.getObject())
+                                                && pm.equals(t.getPredicate())
+                                                && sm.equals(t.getSubject()));
+                            }
+                        } else { // SPO:S*O
+                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                                return Pair.of(bySubjectIndex,
+                                        t -> om.equals(t.getObject())
+                                                && sm.equals(t.getSubject()));
+                            } else {
+                                return Pair.of(bySubjectIndex,
+                                        t -> om.sameValueAs(t.getObject())
+                                                && sm.equals(t.getSubject()));
+                            }
                         }
-                    } else { // SPO:S*O
-                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                            return Pair.of(byObjectIndex,
-                                    t -> sm.equals(t.getSubject())
-                                            && om.equals(t.getObject()));
-                        } else {
-                            return Pair.of(byObjectIndex,
-                                    t -> sm.equals(t.getSubject())
-                                            && om.sameValueAs(t.getObject()));
+                    } else {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                                return Pair.of(byObjectIndex,
+                                        t -> sm.equals(t.getSubject())
+                                                && pm.equals(t.getPredicate())
+                                                && om.equals(t.getObject()));
+                            } else {
+                                return Pair.of(byObjectIndex,
+                                        t ->  sm.equals(t.getSubject())
+                                                && pm.equals(t.getPredicate())
+                                                && om.sameValueAs(t.getObject()));
+                            }
+                        } else { // SPO:S*O
+                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                                return Pair.of(byObjectIndex,
+                                        t -> sm.equals(t.getSubject())
+                                                && om.equals(t.getObject()));
+                            } else {
+                                return Pair.of(byObjectIndex,
+                                        t -> sm.equals(t.getSubject())
+                                                && om.sameValueAs(t.getObject()));
+                            }
                         }
                     }
                 }
@@ -818,12 +596,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                 return null;
             }
             if(pm.isConcrete()) { // SPO:*PO
-                var byPredicateIndex = this.triplesByPredicate
-                        .getIfPresent(new LookupObjectForTripleSetWithKey(pm.getIndexingValue().hashCode()));
-                if(byPredicateIndex == null) {
-                    return null;
-                }
-                if(byObjectIndex.size() <= byPredicateIndex.size()) {
+                if(byObjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
                     if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
                         return Pair.of(byObjectIndex,
                                 t -> pm.equals(t.getPredicate())
@@ -834,14 +607,31 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                                         && om.sameValueAs(t.getObject()));
                     }
                 } else {
-                    if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                        return Pair.of(byPredicateIndex,
-                                t -> om.equals(t.getObject())
-                                        && pm.equals(t.getPredicate()));
+                    var byPredicateIndex = this.triplesByPredicate
+                            .getIfPresent(new LookupObjectForTripleSetWithKey(pm.getIndexingValue().hashCode()));
+                    if(byPredicateIndex == null) {
+                        return null;
+                    }
+                    if(byObjectIndex.size() <= byPredicateIndex.size()) {
+                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                            return Pair.of(byObjectIndex,
+                                    t -> pm.equals(t.getPredicate())
+                                            && om.equals(t.getObject()));
+                        } else {
+                            return Pair.of(byObjectIndex,
+                                    t ->  pm.equals(t.getPredicate())
+                                            && om.sameValueAs(t.getObject()));
+                        }
                     } else {
-                        return Pair.of(byPredicateIndex,
-                                t ->  om.sameValueAs(t.getObject())
-                                        && pm.equals(t.getPredicate()));
+                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
+                            return Pair.of(byPredicateIndex,
+                                    t -> om.equals(t.getObject())
+                                            && pm.equals(t.getPredicate()));
+                        } else {
+                            return Pair.of(byPredicateIndex,
+                                    t ->  om.sameValueAs(t.getObject())
+                                            && pm.equals(t.getPredicate()));
+                        }
                     }
                 }
             } else {    // SPO:**O
@@ -1009,15 +799,11 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         private final Iterator<TripleSetWithKey> baseIterator;
         private Iterator<Triple> subIterator;
-        private boolean hasSubIterator = false;
 
         public ListsOfTriplesIterator(Iterator<TripleSetWithKey> baseIterator) {
 
             this.baseIterator = baseIterator;
-            if(baseIterator.hasNext()) {
-                subIterator = baseIterator.next().iterator();
-                hasSubIterator = true;
-            }
+            subIterator = baseIterator.hasNext() ? baseIterator.next().iterator() : Collections.emptyIterator();
         }
 
         /**
@@ -1029,17 +815,13 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
          */
         @Override
         public boolean hasNext() {
-            if(hasSubIterator) {
-                if(subIterator.hasNext()) {
+            if(subIterator.hasNext()) {
+                return true;
+            }
+            while(baseIterator.hasNext()) {
+                if((subIterator = baseIterator.next().iterator()).hasNext()) {
                     return true;
                 }
-                while(baseIterator.hasNext()) {
-                    subIterator = baseIterator.next().iterator();
-                    if(subIterator.hasNext()) {
-                        return true;
-                    }
-                }
-                hasSubIterator = false;
             }
             return false;
         }
@@ -1052,10 +834,10 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
          */
         @Override
         public Triple next() {
-            if(!hasSubIterator || !this.hasNext()) {
-                throw new NoSuchElementException();
+            if(this.hasNext()) {
+                return subIterator.next();
             }
-            return subIterator.next();
+            throw new NoSuchElementException();
         }
     }
 
@@ -1186,8 +968,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
          */
         @Override
         public Triple next() {
-            current = this.iterator.next();
-            return current;
+            return current = this.iterator.next();
         }
 
         /**
@@ -1218,9 +999,10 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                 var currentBeforeToList = current;
                 this.iterator = this.toList().iterator();
                 this.isStillIteratorWithNoRemove = false;
-                current = currentBeforeToList;
+                graphMem.delete(currentBeforeToList);
+            } else {
+                graphMem.delete(current);
             }
-            graphMem.delete(current);
         }
     }
 
@@ -1260,10 +1042,8 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         @Override
         public boolean hasNext() {
             while(!this.hasCurrent && this.iterator.hasNext()) {
-                var candidate = this.iterator.next();
-                this.hasCurrent = filter.test(candidate);
-                if(this.hasCurrent) {
-                    this.current = candidate;
+                if(filter.test(current = this.iterator.next())) {
+                    hasCurrent = true;
                 }
             }
             return this.hasCurrent;

@@ -75,48 +75,6 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
         return other -> value.equals(other);
     }
 
-    public boolean containsByComparableAndPredicate(E comparable, Predicate<E> predicate) {
-        if(this.size() < this.getSizeToStartSorting()) {
-            for (E e1 : this) {
-                if(predicate.test(e1)) {
-                    return true;
-                }
-            }
-        } else {
-            var startIndex = Collections.binarySearch(this, comparable, this.getComparator());
-            if(startIndex >= 0) {
-                /*search forward*/
-                for (var i = startIndex; i < this.size(); i++) {
-                    var e1 = this.get(i);
-                    if (predicate.test(e1)) {
-                        return true;
-                    }
-                    if (i != startIndex) {
-                        if (0 != this.getComparator().compare(comparable, e1)) {
-                            break;
-                        }
-                    }
-                }
-                if(startIndex > 0) {
-                    /*search backward*/
-                    startIndex--;
-                    for (var i = startIndex; i >= 0; i--) {
-                        var e1 = this.get(i);
-                        if (predicate.test(e1)) {
-                            return true;
-                        }
-                        if (i != startIndex) {
-                            if (0 != this.getComparator().compare(comparable, e1)) {
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
     /**
      * Returns {@code true} if this list contains the specified element.
      * More formally, returns {@code true} if and only if this list contains
@@ -140,9 +98,9 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
             var startIndex = Collections.binarySearch(this, e, this.getComparator());
             if(startIndex >= 0) {
                 /*search forward*/
+                E e1;
                 for (var i = startIndex; i < this.size(); i++) {
-                    var e1 = this.get(i);
-                    if (predicate.test(e1)) {
+                    if (predicate.test(e1 = super.get(i))) {
                         return true;
                     }
                     if (i != startIndex) {
@@ -153,10 +111,8 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
                 }
                 if(startIndex > 0) {
                     /*search backward*/
-                    startIndex--;
-                    for (var i = startIndex; i >= 0; i--) {
-                        var e1 = this.get(i);
-                        if (predicate.test(e1)) {
+                    for (var i = --startIndex; i >= 0; i--) {
+                        if (predicate.test(e1 = super.get(i))) {
                             return true;
                         }
                         if (i != startIndex) {
@@ -194,10 +150,10 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
                 super.add(~index, e);
             }
             else {
+                E e1;
                 /*search forward*/
                 for (var i = index; i < super.size(); i++) {
-                    var e1 = super.get(i);
-                    if (e.equals(e1)) {
+                    if (e.equals(e1 = super.get(i))) {
                         return false;
                     }
                     if (0 != getComparator().compare(e, e1)) {
@@ -206,21 +162,18 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
                 }
                 if(index > 0) {
                     /*search backward*/
-                    index--;
-                    for (var i = index; i >= 0; i--) {
-                        var e1 = super.get(i);
-                        if (e.equals(e1)) {
+                    for (var i = index-1; i >= 0; i--) {
+                        if (e.equals(e1 = super.get(i))) {
                             return false;
                         }
                         if (0 != getComparator().compare(e, e1)) {
                             break;
                         }
                     }
-                    index++;
                 }
                 // Insertion index is index of existing element, to add new element
                 // behind it increase index+
-                super.add(++index, e);
+                super.add(index, e);
             }
 
         }
@@ -242,7 +195,7 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
             else {
                 // Insertion index is index of existing element, to add new element
                 // behind it increase index
-                super.add(++index, e);
+                super.add(index, e);
             }
         }
     }
@@ -271,10 +224,10 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
             if (index < 0) {
                 return false;
             } else {
+                E e;
                 /*search forward*/
                 for (var i = index; i < super.size(); i++) {
-                    var e = super.get(i);
-                    if (elementToRemove.equals(e)) {
+                    if (elementToRemove.equals(e = super.get(i))) {
                         super.remove(i);
                         return true;
                     }
@@ -286,8 +239,7 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
                     /*search backward*/
                     index--;
                     for (var i = index; i >= 0; i--) {
-                        var e = super.get(i);
-                        if (elementToRemove.equals(e)) {
+                        if (elementToRemove.equals(e = super.get(i))) {
                             super.remove(i);
                             return true;
                         }
@@ -306,10 +258,10 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
             super.remove(elementToRemove);
         } else {
             var index = Collections.binarySearch(this, elementToRemove, getComparator());
+            E e;
             /*search forward*/
             for (var i = index; i < super.size(); i++) {
-                var e = super.get(i);
-                if (elementToRemove.equals(e)) {
+                if (elementToRemove.equals(e = super.get(i))) {
                     super.remove(i);
                     return;
                 }
@@ -319,10 +271,8 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
             }
             if (index > 0) {
                 /*search backward*/
-                index--;
-                for (var i = index; i >= 0; i--) {
-                    var e = super.get(i);
-                    if (elementToRemove.equals(e)) {
+                for (var i = index-1; i >= 0; i--) {
+                    if (elementToRemove.equals(e = super.get(i))) {
                         super.remove(i);
                         return;
                     }
