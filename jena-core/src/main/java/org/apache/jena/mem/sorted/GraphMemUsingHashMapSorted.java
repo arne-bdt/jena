@@ -540,8 +540,7 @@ public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWit
          */
         @Override
         public Triple next() {
-            current = this.iterator.next();
-            return current;
+            return current = this.iterator.next();
         }
 
         /**
@@ -614,11 +613,8 @@ public class GraphMemUsingHashMapSorted extends GraphMemBase implements GraphWit
         @Override
         public boolean hasNext() {
             while(!this.hasCurrent && this.iterator.hasNext()) {
-                var candidate = this.iterator.next();
-                if(filter.test(candidate))
-                {
-                    this.current = candidate;
-                    this.hasCurrent = true;
+                if(filter.test(current = this.iterator.next())) {
+                    hasCurrent = true;
                 }
             }
             return this.hasCurrent;

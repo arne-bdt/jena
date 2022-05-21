@@ -631,8 +631,7 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
          */
         @Override
         public Triple next() {
-            current = this.iterator.next();
-            return current;
+            return current = this.iterator.next();
         }
 
         /**
@@ -705,10 +704,8 @@ public class GraphMemUsingHashMap extends GraphMemBase implements GraphWithPerfo
         @Override
         public boolean hasNext() {
             while(!this.hasCurrent && this.iterator.hasNext()) {
-                var candidate = this.iterator.next();
-                this.hasCurrent = filter.test(candidate);
-                if(this.hasCurrent) {
-                    this.current = candidate;
+                if(filter.test(current = this.iterator.next())) {
+                    hasCurrent = true;
                 }
             }
             return this.hasCurrent;

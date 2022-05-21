@@ -799,6 +799,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         private final Iterator<TripleSetWithKey> baseIterator;
         private Iterator<Triple> subIterator;
+        boolean hasNext = false;
 
         public ListsOfTriplesIterator(Iterator<TripleSetWithKey> baseIterator) {
 
@@ -816,14 +817,14 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         @Override
         public boolean hasNext() {
             if(subIterator.hasNext()) {
-                return true;
+                return hasNext = true;
             }
             while(baseIterator.hasNext()) {
                 if((subIterator = baseIterator.next().iterator()).hasNext()) {
-                    return true;
+                    return hasNext = true;
                 }
             }
-            return false;
+            return hasNext = false;
         }
 
         /**
@@ -834,7 +835,8 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
          */
         @Override
         public Triple next() {
-            if(this.hasNext()) {
+            if(hasNext || this.hasNext()) {
+                hasNext = false;
                 return subIterator.next();
             }
             throw new NoSuchElementException();
