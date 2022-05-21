@@ -27,17 +27,14 @@ import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.generic.LowMemoryHashSet;
 import org.apache.jena.mem2.generic.SortedListSetBase;
 import org.apache.jena.mem2.helper.TripleEqualsOrMatches;
-import org.apache.jena.mem2.specialized.TripleHashSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
 import org.apache.jena.util.iterator.NiceIterator;
 
 import java.util.*;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -73,13 +70,13 @@ import java.util.stream.Stream;
 public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
-    private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 100; /*rough guess, should be evaluated*/
+    private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
     private final LowMemoryHashSet<TripleSetWithKey> triplesBySubject = new LowMemoryHashSet<>();
     private final LowMemoryHashSet<TripleSetWithKey> triplesByPredicate = new LowMemoryHashSet<>();
     private final LowMemoryHashSet<TripleSetWithKey> triplesByObject = new LowMemoryHashSet<>();
 
-    private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 70;//350;
+    private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//350;
 
     private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_SUBJECT =
             Comparator.comparingInt((Triple t) -> t.getObject().getIndexingValue().hashCode())
@@ -613,14 +610,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         this.triplesByPredicate.clear();
         this.triplesByObject.clear();
     }
-
-    private Set<Triple> getSmallestSet(final Set<Triple> a, final Set<Triple> b, final Set<Triple> c) {
-        if(a.size() < b.size()) {
-            return c.size() < a.size() ? c : a;
-        }
-        return b.size() < c.size() ? b : c;
-    }
-
 
     /**
      * Add a triple to the triple store. The default implementation throws an
