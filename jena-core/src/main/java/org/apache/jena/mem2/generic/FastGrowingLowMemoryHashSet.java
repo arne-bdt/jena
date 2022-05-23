@@ -29,11 +29,11 @@ import java.util.stream.StreamSupport;
  * Queue which grows, if needed but never shrinks.
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
- * @param <T> type of elements in the collection.
+ * @param <E> type of elements in the collection.
  */
-public class LowMemoryHashSet<T> implements Set<T> {
+public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
 
-    protected int getHashCode(final T value) {
+    protected int getHashCode(final E value) {
         return value.hashCode();
     }
 
@@ -42,12 +42,12 @@ public class LowMemoryHashSet<T> implements Set<T> {
         return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
     }
 
-    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
-    protected int calcStartIndexByHashCode(final T value) {
-        return calcStartIndexByHashCode(getHashCode(value));
-    }
+//    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
+//    protected int calcStartIndexByHashCode(final E value) {
+//        return calcStartIndexByHashCode(getHashCode(value));
+//    }
 
-    protected Predicate<T> getContainsPredicate(final T value) {
+    protected Predicate<E> getContainsPredicate(final E value) {
         return other -> value.equals(other);
     }
 
@@ -56,21 +56,27 @@ public class LowMemoryHashSet<T> implements Set<T> {
     private static float loadFactor = 0.5f;
     protected int size = 0;
     protected Object[] entries;
+    protected int[] hashCodes;
 
-    public LowMemoryHashSet() {
+    public FastGrowingLowMemoryHashSet() {
         this.entries = new Object[MINIMUM_SIZE];
+        this.hashCodes = new int[MINIMUM_SIZE];
     }
 
-    public LowMemoryHashSet(int initialCapacity) {
+    public FastGrowingLowMemoryHashSet(int initialCapacity) {
         this.entries = new Object[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
+        this.hashCodes = new int[entries.length];
     }
 
-    public LowMemoryHashSet(Set<? extends T> set) {
+    public FastGrowingLowMemoryHashSet(Set<? extends E> set) {
         this.entries = new Object[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
+        this.hashCodes = new int[entries.length];
         int index;
-        for (T t : set) {
-            if((index = findIndex(t)) < 0) {
-                entries[~index] = t;
+        for (E e : set) {
+            var hashCode = getHashCode(e);
+            if((index = findIndex(hashCode)) < 0) {
+                entries[~index] = e;
+                hashCodes[~index] = hashCode;
                 size++;
             }
         }
@@ -85,10 +91,14 @@ public class LowMemoryHashSet<T> implements Set<T> {
 
     private void grow(final int minCapacity) {
         final var oldEntries = this.entries;
+        final var oldHashCodes = this.hashCodes;
         this.entries = new Object[Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1];
+        this.hashCodes = new int[entries.length];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                this.entries[findEmptySlotWithoutEqualityCheck((T)oldEntries[i])] = oldEntries[i];
+                var newIndex = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
+                this.entries[newIndex] = oldEntries[i];
+                this.hashCodes[newIndex] = oldHashCodes[i];
             }
         }
     }
@@ -99,10 +109,14 @@ public class LowMemoryHashSet<T> implements Set<T> {
             return false;
         }
         final var oldEntries = this.entries;
+        final var oldHashCodes = this.hashCodes;
         this.entries = new Object[newSize];
+        this.hashCodes = new int[newSize];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                this.entries[findEmptySlotWithoutEqualityCheck((T)oldEntries[i])] = oldEntries[i];
+                var newIndex = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
+                this.entries[newIndex] = oldEntries[i];
+                this.hashCodes[newIndex] = oldHashCodes[i];
             }
         }
         return true;
@@ -132,13 +146,14 @@ public class LowMemoryHashSet<T> implements Set<T> {
 
     @Override
     public boolean contains(Object o) {
-        var t = (T)o;
-        final var index = calcStartIndexByHashCode(t);
+        var e = (E)o;
+        final var hashCode = getHashCode(e);
+        final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
         }
-        var predicate = getContainsPredicate(t);
-        if(predicate.test((T)entries[index])) {
+        var predicate = getContainsPredicate(e);
+        if(hashCode == hashCodes[index] && predicate.test((E)entries[index])) {
             return true;
         }
         var lowerIndex = index;
@@ -150,19 +165,17 @@ public class LowMemoryHashSet<T> implements Set<T> {
                         if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                             return false;
                         } else {
-                            return predicate.test((T)entries[upperIndex]);
+                            return hashCode == hashCodes[upperIndex] && predicate.test((E)entries[upperIndex]);
                         }
-                    } else {
-                        return false;
                     }
-                } else if (predicate.test((T)entries[lowerIndex])) {
+                } else if (hashCode == hashCodes[lowerIndex] && predicate.test((E)entries[lowerIndex])) {
                     return true;
                 }
             }
             if(++upperIndex < entries.length) {
                 if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                     return false;
-                } else if (predicate.test((T)entries[upperIndex])) {
+                } else if (hashCode == hashCodes[upperIndex] && predicate.test((E)entries[upperIndex])) {
                     return true;
                 }
             }
@@ -172,7 +185,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
 
 
     @Override
-    public Iterator<T> iterator() {
+    public Iterator<E> iterator() {
         return new ArrayWithNullsIterator(entries, size);
     }
 
@@ -197,41 +210,49 @@ public class LowMemoryHashSet<T> implements Set<T> {
 
 
     @Override
-    public boolean add(T value) {
+    public boolean add(E value) {
         grow();
-        var index = findIndex(value);
+        var hashCode = getHashCode(value);
+        var index = findIndex(hashCode);
         if(index < 0) {
             entries[~index] = value;
+            hashCodes[~index] = hashCode;
             size++;
             return true;
         }
         return false;
     }
 
-    public void addUnsafe(T value) {
+    public void addUnsafe(E value) {
         grow();
-        entries[findEmptySlotWithoutEqualityCheck(value)] = value;
+        var hashCode = getHashCode(value);
+        var index = findEmptySlotWithoutEqualityCheck(hashCode);
+        entries[index] = value;
+        hashCodes[index] = hashCode;
         size++;
     }
 
-    public T addIfAbsent(T value) {
+    public E addIfAbsent(E value) {
         grow();
-        var index = findIndex(value);
+        var hashCode = getHashCode(value);
+        var index = findIndex(hashCode);
         if(index < 0) {
             entries[~index] = value;
+            hashCodes[~index] = hashCode;
             size++;
             return value;
         }
-        return (T)entries[index];
+        return (E)entries[index];
     }
 
-    public T getIfPresent(T value) {
-        final var index = calcStartIndexByHashCode(value);
+    public E getIfPresent(E value) {
+        final var hashCode = getHashCode(value);
+        final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return null;
         }
-        if(value.equals(entries[index])) {
-            return (T)entries[index];
+        if(hashCode == hashCodes[index]) {
+            return (E)entries[index];
         }
         var lowerIndex = index;
         var upperIndex = index;
@@ -242,70 +263,97 @@ public class LowMemoryHashSet<T> implements Set<T> {
                         if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                             return null;
                         } else {
-                            return value.equals(entries[upperIndex]) ? (T)entries[upperIndex] : null;           /*found equal element*/
+                            return hashCode == hashCodes[upperIndex] ? (E)entries[upperIndex] : null;           /*found equal element*/
                         }
-                    } else {
-                        return null;
                     }
-                } else if (value.equals(entries[lowerIndex])) {
-                    return (T)entries[lowerIndex];            /*found equal element*/
+                } else if (hashCode == hashCodes[lowerIndex]) {
+                    return (E)entries[lowerIndex];            /*found equal element*/
                 }
             }
             if(++upperIndex < entries.length) {
                 if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                     return null;
-                } else if (value.equals(entries[upperIndex])) {
-                    return (T)entries[upperIndex];           /*found equal element*/
+                } else if (hashCode == hashCodes[upperIndex]) {
+                    return (E)entries[upperIndex];           /*found equal element*/
                 }
             }
         }
         throw new IllegalStateException();
     }
 
-    public T compute(T value, Function<T, T> remappingFunction) {
-        var index = findIndex(value);
+    public E getIfPresent(int hashCode) {
+        final var index = calcStartIndexByHashCode(hashCode);
+        if(null == entries[index]) {
+            return null;
+        }
+        if(hashCode == hashCodes[index]) {
+            return (E)entries[index];
+        }
+        var lowerIndex = index;
+        var upperIndex = index;
+        while (0 <= lowerIndex || upperIndex < entries.length) {
+            if(0 <= --lowerIndex) {
+                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
+                    if(++upperIndex < entries.length) {
+                        if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
+                            return null;
+                        } else {
+                            return hashCode == hashCodes[upperIndex] ? (E)entries[upperIndex] : null;           /*found equal element*/
+                        }
+                    }
+                } else if (hashCode == hashCodes[lowerIndex]) {
+                    return (E)entries[lowerIndex];            /*found equal element*/
+                }
+            }
+            if(++upperIndex < entries.length) {
+                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
+                    return null;
+                } else if (hashCode == hashCodes[upperIndex]) {
+                    return (E)entries[upperIndex];           /*found equal element*/
+                }
+            }
+        }
+        throw new IllegalStateException();
+    }
+
+    public E compute(final int hashCode, Function<E, E> remappingFunction) {
+        var index = findIndex(hashCode);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
                 return null;
             }
-            if(!value.equals(newValue)) {
-                throw new IllegalArgumentException("remapped value is not equal to value");
-            }
             if(grow()) {
-                entries[findEmptySlotWithoutEqualityCheck(value)] = newValue;
+                index = findEmptySlotWithoutEqualityCheck(hashCode);
+                entries[index] = newValue;
+                hashCodes[index] = hashCode;
             } else {
                 entries[~index] = newValue;
+                hashCodes[~index] = hashCode;
             }
-
             size++;
             return newValue;
         } else { /*existing value found*/
-            var newValue = remappingFunction.apply((T)entries[index]);
+            var newValue = remappingFunction.apply((E)entries[index]);
             if(newValue == null) {
                 entries[index] = null;
                 size--;
                 rearrangeNeighbours(index);
                 return null;
             } else {
-                if(value == newValue) {
-                    return newValue;
-                }
-                if(!value.equals(newValue)) {
-                    throw new IllegalArgumentException("remapped value is not equal to value");
-                }
                 entries[index] = newValue;
+                hashCodes[index] = hashCode;
                 return newValue;
             }
         }
     }
 
-    private int findIndex(final T t) {
-        final var index = calcStartIndexByHashCode(t);
+    private int findIndex(final int hashCode) {
+        final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return ~index;
         }
-        if(t.equals(entries[index])) {
+        if(hashCode == hashCodes[index]) {
             return index;
         }
         int emptyIndex = -1;
@@ -315,7 +363,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
             if(0 <= --lowerIndex) {
                 if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
                     emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
-                } else if (t.equals(entries[lowerIndex])) {
+                } else if (hashCode == hashCodes[lowerIndex]) {
                     return lowerIndex;            /*found equal element*/
                 }
             }
@@ -324,7 +372,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
                     if(emptyIndex < 0) {          /*this index is only relevant if slot with same distance in backward direction was not also empty*/
                         emptyIndex = upperIndex;
                     }
-                } else if (t.equals(entries[upperIndex])) {
+                } else if (hashCode == hashCodes[upperIndex]) {
                     return upperIndex;           /*found equal element*/
                 }
             }
@@ -335,8 +383,8 @@ public class LowMemoryHashSet<T> implements Set<T> {
         throw new IllegalStateException();
     }
 
-    private int findEmptySlotWithoutEqualityCheck(final T t) {
-        final var index = calcStartIndexByHashCode(t);
+    private int findEmptySlotWithoutEqualityCheck(final int hashCode) {
+        final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return index;
         }
@@ -379,7 +427,8 @@ public class LowMemoryHashSet<T> implements Set<T> {
      */
     @Override
     public boolean remove(Object o) {
-        var index = findIndex((T) o);
+        var hashCode = getHashCode((E)o);
+        var index = findIndex(hashCode);
         if (index < 0) {
             return false;
         }
@@ -389,8 +438,8 @@ public class LowMemoryHashSet<T> implements Set<T> {
         return true;
     }
 
-    public void removeUnsafe(T e) {
-        var index = findIndex(e);
+    public void removeUnsafe(E e) {
+        var index = findIndex(getHashCode(e));
         entries[index] = null;
         size--;
         rearrangeNeighbours(index);
@@ -412,6 +461,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
                 if (neighbour.isTargetIndexNearerToStartIndex(index)){
                     var oldIndexOfNeighbour = neighbour.currentIndex;
                     entries[index] = entries[oldIndexOfNeighbour];
+                    hashCodes[index] = hashCodes[oldIndexOfNeighbour];
                     entries[oldIndexOfNeighbour] = null;
                     neighbour.setCurrentIndex(index);
                     if(0 == neighbour.distance) {
@@ -437,7 +487,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
             if(null == entries[i]) {
                 break;
             }
-            neighbour = new ObjectsWithStartIndexIndexAndDistance((T)entries[i], i);
+            neighbour = new ObjectsWithStartIndexIndexAndDistance(i);
             if(neighbour.distance > 0) {
                 neighbours.add(neighbour);
             }
@@ -447,7 +497,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
             if(null == entries[i]) {
                 break;
             }
-            neighbour = new ObjectsWithStartIndexIndexAndDistance((T)entries[i], i);
+            neighbour = new ObjectsWithStartIndexIndexAndDistance(i);
             if(neighbour.distance > 0) {
                 neighbours.add(neighbour);
             }
@@ -456,14 +506,14 @@ public class LowMemoryHashSet<T> implements Set<T> {
     }
 
     private class ObjectsWithStartIndexIndexAndDistance {
-        final T object;
+        final E object;
         final int startIndex;
         int currentIndex;
         int distance;
 
-        public ObjectsWithStartIndexIndexAndDistance(final T object, final int currentIndex) {
-            this.object = object;
-            this.startIndex = calcStartIndexByHashCode(object);
+        public ObjectsWithStartIndexIndexAndDistance(final int currentIndex) {
+            this.object = (E)entries[currentIndex];
+            this.startIndex = calcStartIndexByHashCode(hashCodes[currentIndex]);
             this.setCurrentIndex(currentIndex);
         }
 
@@ -530,13 +580,15 @@ public class LowMemoryHashSet<T> implements Set<T> {
      * @see #add(Object)
      */
     @Override
-    public boolean addAll(Collection<? extends T> c) {
+    public boolean addAll(Collection<? extends E> c) {
         grow(size + c.size());
         boolean modified = false;
         int index;
-        for (T t : c) {
-            if((index=findIndex(t)) < 0) {
-                entries[~index] = t;
+        for (E e : c) {
+            var hashCode = getHashCode(e);
+            if((index=findIndex(hashCode)) < 0) {
+                entries[~index] = e;
+                hashCodes[~index] = hashCode;
                 size++;
                 modified = true;
             }
@@ -609,6 +661,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
     @Override
     public void clear() {
         entries = new Object[MINIMUM_SIZE];
+        hashCodes = new int[MINIMUM_SIZE];
         size = 0;
     }
 
@@ -626,7 +679,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
      * @since 1.8
      */
     @Override
-    public Stream<T> stream() {
+    public Stream<E> stream() {
         return StreamSupport.stream(new ArrayWithNullsSpliteratorSized<>(entries, size), false);
     }
 
@@ -646,7 +699,7 @@ public class LowMemoryHashSet<T> implements Set<T> {
      * @since 1.8
      */
     @Override
-    public Stream<T> parallelStream() {
+    public Stream<E> parallelStream() {
         return StreamSupport.stream(new ArrayWithNullsSpliteratorSized<>(entries, size), true);
     }
 

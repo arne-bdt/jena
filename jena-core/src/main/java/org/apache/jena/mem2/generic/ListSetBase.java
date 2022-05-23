@@ -26,15 +26,7 @@ import java.util.function.UnaryOperator;
  * ArrayList which is sorted when the size reaches a given size.
  * @param <E>
  */
-public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E> {
-
-    protected int getSizeToStartSorting() {
-        return DEFAULT_SIZE_TO_START_SORTING;
-    }
-
-    protected abstract Comparator<E> getComparator();
-
-    private static int DEFAULT_SIZE_TO_START_SORTING = 15;
+public abstract class ListSetBase<E> extends ArrayList<E> implements Set<E> {
 
     /**
      * Constructs an empty list with the specified initial capacity.
@@ -43,7 +35,7 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
      * @throws IllegalArgumentException if the specified initial capacity
      *                                  is negative
      */
-    public SortedListSetBase(int initialCapacity) {
+    public ListSetBase(int initialCapacity) {
         super(initialCapacity);
     }
 
@@ -55,18 +47,14 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
      * @param c the collection whose elements are to be placed into this list
      * @throws NullPointerException if the specified collection is null
      */
-    public SortedListSetBase(Collection<? extends E> c) {
+    public ListSetBase(Collection<? extends E> c) {
         super(c);
-        var comparator = this.getComparator();
-        if(comparator != null) {
-            super.sort(this.getComparator());
-        }
     }
 
     /**
      * Constructs an empty list with an initial capacity of ten.
      */
-    public SortedListSetBase() {
+    public ListSetBase() {
         super();
     }
 
@@ -87,41 +75,15 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
     @Override
     public boolean contains(Object o) {
         var e = (E) o;
+        if(this.isEmpty()) {
+            return false;
+        }
         var predicate = getContainsPredicate(e);
         for (E e1 : this) {
             if(predicate.test(e1)) {
                 return true;
             }
         }
-//        if(this.size() < this.getSizeToStartSorting()) {
-//            for (E e1 : this) {
-//                if(predicate.test(e1)) {
-//                    return true;
-//                }
-//            }
-//        } else {
-//            var startIndex = Collections.binarySearch(this, e, this.getComparator());
-//            if(startIndex < 0) {
-//                return false;
-//            } else if (predicate.test(super.get(startIndex))) {
-//                return true;
-//            } else {
-//                var lowerIndex = startIndex;
-//                var upperIndex = startIndex;
-//                while (0 <= lowerIndex || upperIndex < super.size()) {
-//                    if(0 <= --lowerIndex) {
-//                        if (predicate.test(super.get(lowerIndex))) {
-//                            return true;
-//                        }
-//                    }
-//                    if(++upperIndex < super.size()) {
-//                        if (predicate.test(super.get(upperIndex))) {
-//                            return true;
-//                        }
-//                    }
-//                }
-//            }
-//        }
         return false;
     }
 
@@ -133,69 +95,15 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
      */
     @Override
     public boolean add(E e) {
-        if(this.size() < this.getSizeToStartSorting()) {
-            if (super.contains(e)) {
-                return false; /*triple already exists*/
-            }
-            super.add(e);
-            if(this.size() == this.getSizeToStartSorting()) {
-                super.sort(this.getComparator());
-            }
-        } else {
-            var index = Collections.binarySearch(this, e, getComparator());
-            // < 0 if element is not in the list, see Collections.binarySearch
-            if (index < 0) {
-                super.add(~index, e);
-            }
-            else {
-                E e1;
-                /*search forward*/
-                for (var i = index; i < super.size(); i++) {
-                    if (e.equals(e1 = super.get(i))) {
-                        return false;
-                    }
-                    if (0 != getComparator().compare(e, e1)) {
-                        break;
-                    }
-                }
-                if(index > 0) {
-                    /*search backward*/
-                    for (var i = index-1; i >= 0; i--) {
-                        if (e.equals(e1 = super.get(i))) {
-                            return false;
-                        }
-                        if (0 != getComparator().compare(e, e1)) {
-                            break;
-                        }
-                    }
-                }
-                // Insertion index is index of existing element, to add new element
-                // behind it increase index+
-                super.add(index, e);
-            }
-
+        if (super.contains(e)) {
+            return false; /*triple already exists*/
         }
+        super.add(e);
         return true;
     }
 
     public void addUnsafe(E e) {
-        if(this.size() < this.getSizeToStartSorting()) {
-            super.add(e);
-            if(this.size() == this.getSizeToStartSorting()) {
-                super.sort(this.getComparator());
-            }
-        } else {
-            var index = Collections.binarySearch(this, e, getComparator());
-            // < 0 if element is not in the list, see Collections.binarySearch
-            if (index < 0) {
-                super.add(~index, e);
-            }
-            else {
-                // Insertion index is index of existing element, to add new element
-                // behind it increase index
-                super.add(index, e);
-            }
-        }
+        super.add(e);
     }
 
     /**
@@ -213,73 +121,11 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
      */
     @Override
     public boolean remove(Object o) {
-        var elementToRemove = (E)o;
-        if(this.size() < this.getSizeToStartSorting()) {
-            return super.remove(o);
-        } else {
-            var index = Collections.binarySearch(this, elementToRemove, getComparator());
-            // < 0 if element is not in the list, see Collections.binarySearch
-            if (index < 0) {
-                return false;
-            } else {
-                E e;
-                /*search forward*/
-                for (var i = index; i < super.size(); i++) {
-                    if (elementToRemove.equals(e = super.get(i))) {
-                        super.remove(i);
-                        return true;
-                    }
-                    if (0 != getComparator().compare(elementToRemove, e)) {
-                        break;
-                    }
-                }
-                if (index > 0) {
-                    /*search backward*/
-                    index--;
-                    for (var i = index; i >= 0; i--) {
-                        if (elementToRemove.equals(e = super.get(i))) {
-                            super.remove(i);
-                            return true;
-                        }
-                        if (0 != getComparator().compare(elementToRemove, e)) {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
+        return super.remove(o);
     }
 
     public void removeUnsafe(E elementToRemove) {
-        if(this.size() < this.getSizeToStartSorting()) {
-            super.remove(elementToRemove);
-        } else {
-            var index = Collections.binarySearch(this, elementToRemove, getComparator());
-            E e;
-            /*search forward*/
-            for (var i = index; i < super.size(); i++) {
-                if (elementToRemove.equals(e = super.get(i))) {
-                    super.remove(i);
-                    return;
-                }
-                if (0 != getComparator().compare(elementToRemove, e)) {
-                    break;
-                }
-            }
-            if (index > 0) {
-                /*search backward*/
-                for (var i = index-1; i >= 0; i--) {
-                    if (elementToRemove.equals(e = super.get(i))) {
-                        super.remove(i);
-                        return;
-                    }
-                    if (0 != getComparator().compare(elementToRemove, e)) {
-                        break;
-                    }
-                }
-            }
-        }
+        super.remove(elementToRemove);
     }
 
     /**
@@ -325,9 +171,7 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
      */
     @Override
     public boolean addAll(Collection<? extends E> c) {
-        var modified = super.addAll(c);
-        super.sort(getComparator());
-        return modified;
+        return super.addAll(c);
     }
 
     /**
@@ -427,9 +271,6 @@ public abstract class SortedListSetBase<E> extends ArrayList<E> implements Set<E
 
     @Override
     public void sort(Comparator<? super E> c) {
-        if(c != getComparator()) {
-            throw new UnsupportedOperationException();
-        }
-        super.sort(getComparator());
+        super.sort(c);
     }
 }

@@ -78,10 +78,10 @@ public class SortedTripleListSet extends SortedListSetBase<Triple> {
     }
 
     @Override
-    protected Predicate<Object> getContainsPredicate(Triple value) {
+    protected Predicate<Triple> getContainsPredicate(Triple value) {
         if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
             return t -> value.equals(t);
         }
-        return t -> value.matches((Triple) t);
+        return t -> value.matches(t);
     }
 }
