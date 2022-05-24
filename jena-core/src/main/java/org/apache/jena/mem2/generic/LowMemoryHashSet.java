@@ -1021,11 +1021,9 @@ public class LowMemoryHashSet<T> implements Set<T> {
          */
         @Override
         public T next() {
-            while (0 < remaining) {
-                if(null != entries[++pos]) {
-                    remaining--;
-                    return (T) entries[pos];
-                }
+            if(0 < remaining--) {
+                while(entries[++pos] == null);
+                return (T) entries[pos];
             }
             throw new NoSuchElementException();
         }

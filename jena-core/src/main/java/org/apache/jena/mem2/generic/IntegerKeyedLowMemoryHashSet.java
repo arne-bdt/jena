@@ -272,8 +272,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
                 return null;
             }
             if(grow()) {
-                index = findEmptySlotWithoutEqualityCheck(key);
-                entries[index] = newValue;
+                entries[findEmptySlotWithoutEqualityCheck(key)] = newValue;
             } else {
                 entries[~index] = newValue;
             }
@@ -1016,11 +1015,9 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
          */
         @Override
         public T next() {
-            while (0 < remaining) {
-                if(null != entries[++pos]) {
-                    remaining--;
-                    return (T) entries[pos];
-                }
+            if(0 < remaining--) {
+                while(entries[++pos] == null);
+                return (T) entries[pos];
             }
             throw new NoSuchElementException();
         }
