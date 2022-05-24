@@ -228,8 +228,8 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         protected int getHashCode(Triple value) {
-            return (value.getSubject().getIndexingValue().hashCode() >> 1)
-                    ^ value.getObject().getIndexingValue().hashCode();
+            return (value.getSubject().hashCode() >> 1)
+                    ^ value.getObject().hashCode();
         }
 
         @Override
@@ -250,8 +250,8 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         protected int getHashCode(Triple value) {
-            return (value.getSubject().getIndexingValue().hashCode() >> 1)
-                    ^ value.getPredicate().getIndexingValue().hashCode();
+            return (value.getSubject().hashCode() >> 1)
+                    ^ value.getPredicate().hashCode();
         }
 
         @Override

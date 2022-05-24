@@ -392,29 +392,24 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
     private void rearrangeNeighbours(int index) {
         /*rearrange neighbours*/
         var neighbours = getNeighbours(index);
-        if(neighbours.isEmpty()) {
+        if(neighbours == null) {
             return;
         }
-        var distanceComparator
-                = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
-        neighbours.sort(distanceComparator);
+        Arrays.sort(neighbours, ObjectsWithStartIndexIndexAndDistance.distanceComparator);
         boolean elementsHaveBeenSwitched;
         do {
             elementsHaveBeenSwitched = false;
             for (ObjectsWithStartIndexIndexAndDistance neighbour : neighbours) {
+                if(neighbour.distance == 0) {
+                    break;
+                }
                 if (neighbour.isTargetIndexNearerToStartIndex(index)){
                     var oldIndexOfNeighbour = neighbour.currentIndex;
                     entries[index] = entries[oldIndexOfNeighbour];
                     entries[oldIndexOfNeighbour] = null;
                     neighbour.setCurrentIndex(index);
-                    if(0 == neighbour.distance) {
-                        neighbours.remove(neighbour);
-                        if(neighbours.isEmpty()) {
-                            return;
-                        }
-                    }
                     index = oldIndexOfNeighbour;
-                    neighbours.sort(distanceComparator);
+                    Arrays.sort(neighbours, ObjectsWithStartIndexIndexAndDistance.distanceComparator);
                     elementsHaveBeenSwitched = true;
                     break;
                 }
@@ -422,7 +417,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
         } while(elementsHaveBeenSwitched);
     }
 
-    private List<ObjectsWithStartIndexIndexAndDistance> getNeighbours(int index) {
+    private ObjectsWithStartIndexIndexAndDistance[] getNeighbours(int index) {
         var neighbours = new ArrayList<ObjectsWithStartIndexIndexAndDistance>();
         var i=index;
         ObjectsWithStartIndexIndexAndDistance neighbour;
@@ -430,7 +425,8 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
             if(null == entries[i]) {
                 break;
             }
-            neighbour = new ObjectsWithStartIndexIndexAndDistance(i);
+            neighbour = new ObjectsWithStartIndexIndexAndDistance(
+                    calcStartIndexByKey(getKeyFunction.apply((E)entries[i])), i);
             if(neighbour.distance > 0) {
                 neighbours.add(neighbour);
             }
@@ -440,23 +436,26 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
             if(null == entries[i]) {
                 break;
             }
-            neighbour = new ObjectsWithStartIndexIndexAndDistance(i);
+            neighbour = new ObjectsWithStartIndexIndexAndDistance(
+                    calcStartIndexByKey(getKeyFunction.apply((E)entries[i])), i);
             if(neighbour.distance > 0) {
                 neighbours.add(neighbour);
             }
         }
-        return neighbours;
+        return neighbours.isEmpty()
+                ? null : neighbours.toArray(new ObjectsWithStartIndexIndexAndDistance[neighbours.size()]);
     }
 
-    private class ObjectsWithStartIndexIndexAndDistance {
-        final E object;
+    private static class ObjectsWithStartIndexIndexAndDistance {
+        public final static Comparator<ObjectsWithStartIndexIndexAndDistance>  distanceComparator
+                = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
+
         final int startIndex;
         int currentIndex;
         int distance;
 
-        public ObjectsWithStartIndexIndexAndDistance(final int currentIndex) {
-            this.object = (E)entries[currentIndex];
-            this.startIndex = calcStartIndexByKey(getKeyFunction.apply(object));
+        public ObjectsWithStartIndexIndexAndDistance(final int startIndex, final int currentIndex) {
+            this.startIndex = startIndex;
             this.setCurrentIndex(currentIndex);
         }
 
@@ -644,7 +643,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
         return StreamSupport.stream(new ArrayWithNullsSpliteratorSized<>(entries, size), true);
     }
 
-    private static class ArrayWithNullsSpliteratorSized<T> implements Spliterator<T> {
+    private static class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
 
         private final Object[] entries;
         private final int maxPos;
@@ -671,11 +670,11 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
          * @throws NullPointerException if the specified action is null
          */
         @Override
-        public boolean tryAdvance(Consumer<? super T> action) {
+        public boolean tryAdvance(Consumer<? super E> action) {
             while(0 < maxRemaining && pos < maxPos) {
                 if(null != entries[++pos]) {
                     maxRemaining--;
-                    action.accept((T) entries[pos]);
+                    action.accept((E) entries[pos]);
                     return true;
                 }
             }
@@ -695,11 +694,11 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
          * it returns {@code false}.  It should be overridden whenever possible.
          */
         @Override
-        public void forEachRemaining(Consumer<? super T> action) {
+        public void forEachRemaining(Consumer<? super E> action) {
             while(0 < maxRemaining && pos < maxPos) {
                 if(null != entries[++pos]) {
                     maxRemaining--;
-                    action.accept((T) entries[pos]);
+                    action.accept((E) entries[pos]);
                 }
             }
         }
@@ -744,7 +743,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
          * performance.
          */
         @Override
-        public Spliterator<T> trySplit() {
+        public Spliterator<E> trySplit() {
             if(entries.length - pos < 10) {
                 return null;
             }
@@ -814,7 +813,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
         }
     }
 
-    private static class ArrayWithNullsSubSpliteratorUnSized<T> implements Spliterator<T> {
+    private static class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
 
         private final Object[] entries;
         private int pos;
@@ -846,12 +845,14 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
          * @throws NullPointerException if the specified action is null
          */
         @Override
-        public boolean tryAdvance(Consumer<? super T> action) {
-            while(0 < maxRemaining && pos < maxPos) {
-                if(null != entries[++pos]) {
-                    maxRemaining--;
-                    action.accept((T) entries[pos]);
-                    return true;
+        public boolean tryAdvance(Consumer<? super E> action) {
+            if(0 < maxRemaining) {
+                while (pos < maxPos) {
+                    if (null != entries[++pos]) {
+                        maxRemaining--;
+                        action.accept((E) entries[pos]);
+                        return true;
+                    }
                 }
             }
             return false;
@@ -870,11 +871,11 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
          * it returns {@code false}.  It should be overridden whenever possible.
          */
         @Override
-        public void forEachRemaining(Consumer<? super T> action) {
+        public void forEachRemaining(Consumer<? super E> action) {
             while(0 < maxRemaining && pos < maxPos) {
                 if(null != entries[++pos]) {
                     maxRemaining--;
-                    action.accept((T) entries[pos]);
+                    action.accept((E) entries[pos]);
                 }
             }
         }
@@ -919,7 +920,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
          * performance.
          */
         @Override
-        public Spliterator<T> trySplit() {
+        public Spliterator<E> trySplit() {
             if(maxPos - pos < 10) {
                 return null;
             }
@@ -984,7 +985,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
         }
     }
 
-    private static class ArrayWithNullsIterator<T> implements Iterator<T> {
+    private static class ArrayWithNullsIterator<E> implements Iterator<E> {
 
         private final Object[] entries;
         private int remaining;
@@ -1014,10 +1015,10 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
          * @throws NoSuchElementException if the iteration has no more elements
          */
         @Override
-        public T next() {
+        public E next() {
             if(0 < remaining--) {
                 while(entries[++pos] == null);
-                return (T) entries[pos];
+                return (E) entries[pos];
             }
             throw new NoSuchElementException();
         }
