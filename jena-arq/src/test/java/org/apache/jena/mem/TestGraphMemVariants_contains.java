@@ -50,7 +50,6 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
     @Test
-    @Ignore
     public void BSBM_50000() {
         loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
@@ -77,7 +76,7 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      */
     @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 5,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
     }
 
@@ -114,6 +113,32 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
     }
 
+    @Test
+    public void xxx_CGMES() {
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 5,
+                "C:/temp/res_test/xxx_CGMES_EQ.xml",
+                "C:/temp/res_test/xxx_CGMES_SSH.xml",
+                "C:/temp/res_test/xxx_CGMES_TP.xml");
+    }
+
+    @Test
+    public void xxx_CGMES_EQ() {
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+                "C:/temp/res_test/xxx_CGMES_EQ.xml");
+    }
+
+    @Test
+    public void xxx_CGMES_SSH() {
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+                "C:/temp/res_test/xxx_CGMES_SSH.xml");
+    }
+
+    @Test
+    public void xxx_CGMES_TP() {
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+                "C:/temp/res_test/xxx_CGMES_TP.xml");
+    }
+
     private void loadGraphsMeasureTimeAndMemory_contains(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, String... graphUris) {
         final var triplesPerGraph = loadTriples(graphMultiplier, graphUris);
         final var nonExistingTriplesToSearchFor = generateRandomTriples(1000);
@@ -133,7 +158,8 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
 
                     stopwatchContains.resume();
                     for (Triple t : triples) {
-                        if(!graph.contains(t)) {
+                        if(!graph.contains(Triple.create(t.getSubject(), t.getPredicate(), t.getObject()))) {
+                            graph.contains(Triple.create(t.getSubject(), t.getPredicate(), t.getObject()));
                             Assert.fail();
                         }
                     }

@@ -23,10 +23,7 @@ import org.apache.commons.lang3.time.StopWatch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.specialized.HybridTripleSet;
-import org.apache.jena.mem2.specialized.LowMemoryTripleHashSet;
-import org.apache.jena.mem2.specialized.SortedTripleListSet;
-import org.apache.jena.mem2.specialized.TripleHashSet;
+import org.apache.jena.mem2.specialized.*;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -137,16 +134,22 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
     private void loadGraphsMeasureTimeAndMemory_load(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, String... graphUris) {
         final var triplesPerGraph = loadTriples(1, graphUris);
         //for(var numberOfTriples : Arrays.asList(50, 100, 250, 500, 1000, 2000, 5000, 10000, 25000, 50000, 75000, 100000, 150000)) {
-        for(var numberOfTriples : Arrays.asList(50, 100, 250, 500, 1000, 2000, 5000, 10000, 25000, 50000, 75000, 100000, 110000, 120000, 130000, 140000, 150000, 160000, 170000, 180000, 190000, 200000)) {
+        //for(var numberOfTriples : Arrays.asList(50, 100, 250, 500, 1000, 2000, 5000, 10000, 25000, 50000, 75000, 100000, 110000, 120000, 130000, 140000, 150000, 160000, 170000, 180000, 190000, 200000)) {
+        for(var numberOfTriples : Arrays.asList(1000000, 1000000, 1000000, 5000000, 5000000, 5000000, 10000000, 10000000, 10000000)) {
         //for(var numberOfTriples : Arrays.asList(50, 100, 125, 150, 175, 200, 225, 250, 275, 300, 400, 500, 600, 700, 800, 900, 1000, 1200)) {
         //for(var numberOfTriples : Arrays.asList(290, 300, 310, 320, 330, 340, 350, 360, 370, 380, 390, 400, 410)) {
             var randomTriple = selectRandomTriples(triplesPerGraph, numberOfTriples);
 
             var sets = new ArrayList<Supplier<Set<Triple>>>();
-            sets.add(() -> new SortedTripleListSet(2));
+            //sets.add(() -> new SortedTripleListSet2(2));
+            //sets.add(() -> new SortedTripleListSet2(2));
             sets.add(() -> new LowMemoryTripleHashSet());
-            sets.add(() -> new TripleHashSet());
-            sets.add(() -> new HybridTripleSet());
+            sets.add(() -> new LowMemoryTripleHashSet());
+            sets.add(() -> new LowMemoryTripleHashSet());
+            sets.add(() -> new LowMemoryTripleHashSet());
+            //sets.add(() -> new LowMemoryTripleHashSet());
+            //sets.add(() -> new TripleHashSet());
+            //sets.add(() -> new HybridTripleSet());
 
             for (Supplier<Set<Triple>> supplier : sets) {
                 var stopAdditions = StopWatch.createStarted();

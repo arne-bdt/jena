@@ -113,6 +113,32 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
     }
 
+    @Test
+    public void xxx_CGMES() {
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
+                "C:/temp/res_test/xxx_CGMES_EQ.xml",
+                "C:/temp/res_test/xxx_CGMES_SSH.xml",
+                "C:/temp/res_test/xxx_CGMES_TP.xml");
+    }
+
+    @Test
+    public void xxx_CGMES_EQ() {
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
+                "C:/temp/res_test/xxx_CGMES_EQ.xml");
+    }
+
+    @Test
+    public void xxx_CGMES_SSH() {
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
+                "C:/temp/res_test/xxx_CGMES_SSH.xml");
+    }
+
+    @Test
+    public void xxx_CGMES_TP() {
+        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
+                "C:/temp/res_test/xxx_CGMES_TP.xml");
+    }
+
     private void loadGraphsMeasureTimeAndMemory_delete(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, String... graphUris) {
         final var triplesPerGraph = loadTriples(graphMultiplier, graphUris);
         for (Pair<String, Supplier<Graph>> graphSuppliersWithName : graphVariantSuppliersWithNames) {

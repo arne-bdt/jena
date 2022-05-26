@@ -24,49 +24,46 @@ import org.apache.jena.datatypes.xsd.impl.XSDDouble;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.sorted.GraphMemUsingHashMapSorted;
-import org.apache.jena.mem.sorted.experiment.GraphMemUsingHashMapSortedExperiment;
-import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.*;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public abstract class TestGraphMemVariantsBase {
 
 
 
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
+
             Pair.of("GraphMem2", () -> new GraphMem2()),
             Pair.of("GraphMem2", () -> new GraphMem2()),
-//            Pair.of("GraphMem2", () -> new GraphMem2()),
-            //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-            //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-            //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-            //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
-//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
-            //Pair.of("GraphMem", () -> new GraphMem()),
-//            Pair.of("GraphMem", () -> new GraphMem()),
+
+
             Pair.of("GraphMem", () -> new GraphMem()),
             Pair.of("GraphMem", () -> new GraphMem())
-            //Pair.of("GraphMemHash", () -> new GraphMemHash()),
-            //Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries()),
-            //Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries())
-            //Pair.of("GraphMem", () -> new GraphMem()),
-            //Pair.of("GraphMemHash", () -> new GraphMemHash())
-            //Pair.of("GraphMem", () -> new GraphMem()),
-            //Pair.of("GraphMem", () -> new GraphMem()),
-            //Pair.of("GraphMemSimple", () -> new GraphMemSimple()),
-            //Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-            //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment())
-            //Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
+//            Pair.of("GraphMem", () -> new GraphMem()),
+//            Pair.of("GraphMem", () -> new GraphMem()),
 
+//            Pair.of("GraphMem2", () -> new GraphMem2()),
+//            Pair.of("GraphMem2", () -> new GraphMem2()),
+
+
+
+
+//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
+//
+//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
+//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
+//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
+//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
+//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap())
     );
 
     protected static Random random = new Random();
@@ -103,7 +100,7 @@ public abstract class TestGraphMemVariantsBase {
         return triplesPerGraph;
     }
 
-    protected static List<List<Triple>> selectRandomTriples(final List<List<Triple>> triplesPerGraph, final int numberOfRandomTriplesToSelect) {
+    protected static List<List<Triple>> selectRandomTriples(final List<List<Triple>> triplesPerGraph, int numberOfRandomTriplesToSelect) {
         var randomlySelectedTriples = new ArrayList<List<Triple>>(triplesPerGraph.size());
         /*find random triples*/
         for (List<Triple> triples : triplesPerGraph) {
@@ -111,18 +108,10 @@ public abstract class TestGraphMemVariantsBase {
                 randomlySelectedTriples.add(Collections.emptyList());
                 continue;
             }
-            var randomlySelectedInGraph = new HashSet<Triple>(numberOfRandomTriplesToSelect);
-            do {
-                var intStream = random.ints(numberOfRandomTriplesToSelect, 0, triples.size());
-                var i = intStream.iterator();
-                while(i.hasNext()) {
-                    randomlySelectedInGraph.add(triples.get(i.next()));
-                    if(randomlySelectedInGraph.size() == numberOfRandomTriplesToSelect) {
-                        break;
-                    }
-                }
-            } while (randomlySelectedInGraph.size() <= numberOfRandomTriplesToSelect);
-            randomlySelectedTriples.add(randomlySelectedInGraph.stream().collect(Collectors.toList()));
+            var list = new ArrayList<>(triples);
+            triples.forEach(t -> list.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
+            Collections.shuffle(list);
+            randomlySelectedTriples.add(list.subList(0, Math.min(numberOfRandomTriplesToSelect, list.size())));
         }
         return randomlySelectedTriples;
     }

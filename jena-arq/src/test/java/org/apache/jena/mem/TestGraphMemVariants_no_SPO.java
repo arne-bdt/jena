@@ -30,6 +30,7 @@ import org.junit.Test;
 import java.util.*;
 import java.util.function.Supplier;
 
+@Ignore
 public class TestGraphMemVariants_no_SPO extends TestGraphMemVariantsBase {
 
     @Test
@@ -53,7 +54,6 @@ public class TestGraphMemVariants_no_SPO extends TestGraphMemVariantsBase {
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
     @Test
-    @Ignore
     public void BSBM_50000() {
         loadGraphsMeasureTimeAndMemory_no_S_P_O(graphImplementationsToTest,
                 1, 250,
@@ -80,9 +80,68 @@ public class TestGraphMemVariants_no_SPO extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() {
+        loadGraphsMeasureTimeAndMemory_no_S_P_O(graphImplementationsToTest, 1, 500,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
+    }
+
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_TP() {
+        loadGraphsMeasureTimeAndMemory_no_S_P_O(graphImplementationsToTest, 1, 500,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
+    }
+
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SSH() {
+        loadGraphsMeasureTimeAndMemory_no_S_P_O(graphImplementationsToTest, 1, 500,
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml");
+    }
+
+    /**
+     * Due to copyright, data cannot be added to the repository.
+     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
+     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
+     */
+    @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SV() {
-        loadGraphsMeasureTimeAndMemory_no_S_P_O(graphImplementationsToTest, 10, 500,
+        loadGraphsMeasureTimeAndMemory_no_S_P_O(graphImplementationsToTest, 1, 500,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
+    }
+
+    @Test
+    public void xxx_CGMES() {
+        loadGraphsMeasureTimeAndMemory_no_S_P_O(graphImplementationsToTest, 1, 500,
+                "C:/temp/res_test/xxx_CGMES_EQ.xml",
+                "C:/temp/res_test/xxx_CGMES_SSH.xml",
+                "C:/temp/res_test/xxx_CGMES_TP.xml");
+    }
+
+    @Test
+    public void xxx_CGMES_EQ() {
+        loadGraphsMeasureTimeAndMemory_no_S_P_O(graphImplementationsToTest, 1, 500,
+                "C:/temp/res_test/xxx_CGMES_EQ.xml");
+    }
+
+    @Test
+    public void xxx_CGMES_SSH() {
+        loadGraphsMeasureTimeAndMemory_no_S_P_O(graphImplementationsToTest, 1, 500,
+                "C:/temp/res_test/xxx_CGMES_SSH.xml");
+    }
+
+    @Test
+    public void xxx_CGMES_TP() {
+        loadGraphsMeasureTimeAndMemory_no_S_P_O(graphImplementationsToTest, 1, 500,
+                "C:/temp/res_test/xxx_CGMES_TP.xml");
     }
 
     private void loadGraphsMeasureTimeAndMemory_no_S_P_O(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, int graphMultiplier, int numberOfRandomTriplesToSearchFor, String... graphUris) {
