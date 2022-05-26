@@ -71,23 +71,18 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
     private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
-    private final IntegerKeyedLowMemoryHashSet<TripleSetWithKey> triplesBySubject = new IntegerKeyedLowMemoryHashSet<>(TripleSetWithKey::getKeyOfSet);
-    private final IntegerKeyedLowMemoryHashSet<TripleSetWithKey> triplesByPredicate = new IntegerKeyedLowMemoryHashSet<>(TripleSetWithKey::getKeyOfSet);
-    private final IntegerKeyedLowMemoryHashSet<TripleSetWithKey> triplesByObject = new IntegerKeyedLowMemoryHashSet<>(TripleSetWithKey::getKeyOfSet);
+    private static class KeyedHashSet extends IntegerKeyedLowMemoryHashSet<TripleSetWithKey>{
+        @Override
+        protected int getKey(TripleSetWithKey value) {
+            return value.getKeyOfSet();
+        }
+    }
+
+    private final KeyedHashSet triplesBySubject = new KeyedHashSet();
+    private final KeyedHashSet triplesByPredicate = new KeyedHashSet();
+    private final KeyedHashSet triplesByObject = new KeyedHashSet();
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
-
-//    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_SUBJECT =
-//            Comparator.comparingInt((Triple t) -> t.getObject().getIndexingValue().hashCode())
-//                    .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
-//
-//    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_PREDICATE =
-//            Comparator.comparingInt((Triple t) -> t.getSubject().getIndexingValue().hashCode())
-//                    .thenComparing(t -> t.getObject().getIndexingValue().hashCode());
-//
-//    private static Comparator<Triple> TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_OBJECT =
-//            Comparator.comparingInt((Triple t) -> t.getSubject().getIndexingValue().hashCode())
-//                    .thenComparing(t -> t.getPredicate().getIndexingValue().hashCode());
 
     private interface TripleSetWithKey extends Set<Triple> {
 
@@ -129,75 +124,82 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     private static Function<Integer, TripleSetWithKey> createSortedListSetForTriplesBySubject
             = keyOfSet -> new AbstractSortedTriplesSet(INITIAL_SIZE_FOR_ARRAY_LISTS, keyOfSet)  {
-//        @Override
-//        protected Comparator<Triple> getComparator() {
-//            return TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_SUBJECT;
-//        }
-//
-//        @Override
-//        protected int getSizeToStartSorting() { return 15; }
 
         @Override
-        protected Predicate<Triple> getContainsPredicate(Triple value) {
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
-                return t -> value.getObject().equals(t.getObject())
-                        && value.getPredicate().equals(t.getPredicate())
-                        && value.getSubject().equals(t.getSubject());
+        public boolean contains(Object o) {
+            var triple = (Triple)o;
+            if(TripleEqualsOrMatches.isEqualsForObjectOk(triple.getObject())) {
+                for (Triple t : this) {
+                    if(triple.getObject().equals(t.getObject())
+                            && triple.getPredicate().equals(t.getPredicate())
+                            && triple.getSubject().equals(t.getSubject())) {
+                        return true;
+                    }
+                }
+            } else {
+                for (Triple t : this) {
+                    if(triple.getObject().sameValueAs(t.getObject())
+                            && triple.getPredicate().equals(t.getPredicate())
+                            && triple.getSubject().equals(t.getSubject())) {
+                        return true;
+                    }
+                }
             }
-            return t -> value.getObject().sameValueAs(t.getObject())
-                    && value.getPredicate().equals(t.getPredicate())
-                    && value.getSubject().equals(t.getSubject());
+            return false;
         }
     };
 
     private static Function<Integer, TripleSetWithKey> createSortedListSetForTriplesByPredicate
             = keyOfSet -> new AbstractSortedTriplesSet(INITIAL_SIZE_FOR_ARRAY_LISTS, keyOfSet) {
-//        @Override
-//        protected Comparator<Triple> getComparator() {
-//            return TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_PREDICATE;
-//        }
-//
-//        @Override
-//        protected int getSizeToStartSorting() {
-//            return 15;
-//        }
 
         @Override
-        protected Predicate<Triple> getContainsPredicate(Triple value) {
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
-                return t -> value.getSubject().equals(t.getSubject())
-                        && value.getObject().equals(t.getObject())
-                        && value.getPredicate().equals(t.getPredicate());
+        public boolean contains(Object o) {
+            var triple = (Triple)o;
+            if(TripleEqualsOrMatches.isEqualsForObjectOk(triple.getObject())) {
+                for (Triple t : this) {
+                    if(triple.getSubject().equals(t.getSubject())
+                            && triple.getObject().equals(t.getObject())
+                            && triple.getPredicate().equals(t.getPredicate())) {
+                        return true;
+                    }
+                }
+            } else {
+                for (Triple t : this) {
+                    if(triple.getSubject().equals(t.getSubject())
+                            && triple.getObject().sameValueAs(t.getObject())
+                            && triple.getPredicate().equals(t.getPredicate())) {
+                        return true;
+                    }
+                }
             }
-            return t -> value.getSubject().equals(t.getSubject())
-                    && value.getObject().sameValueAs(t.getObject())
-                    && value.getPredicate().equals(t.getPredicate());
+            return false;
         }
     };
 
     private static Function<Integer, TripleSetWithKey> createSortedListSetForTriplesByObject
             = keyOfSet -> new AbstractSortedTriplesSet(INITIAL_SIZE_FOR_ARRAY_LISTS, keyOfSet) {
 
-//        @Override
-//        protected Comparator<Triple> getComparator() {
-//            return TRIPLE_INDEXING_VALUE_HASH_CODE_COMPARATOR_FOR_TRIPLES_BY_OBJECT;
-//        }
-//
-//        @Override
-//        protected int getSizeToStartSorting() {
-//            return 15;
-//        }
-
         @Override
-        protected Predicate<Triple> getContainsPredicate(Triple value) {
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
-                return t -> value.getSubject().equals(t.getSubject())
-                        && value.getPredicate().equals(t.getPredicate())
-                        && value.getObject().equals(t.getObject());
+        public boolean contains(Object o) {
+            var triple = (Triple)o;
+            if(TripleEqualsOrMatches.isEqualsForObjectOk(triple.getObject())) {
+                for (Triple t : this) {
+                    if(triple.getSubject().equals(t.getSubject())
+                            && triple.getPredicate().equals(t.getPredicate())
+                            && triple.getObject().equals(t.getObject())) {
+                        return true;
+                    }
+                }
+            } else {
+                for (Triple t : this) {
+                    if(triple.getSubject().equals(t.getSubject())
+                            && triple.getPredicate().equals(t.getPredicate())
+                            && triple.getObject().sameValueAs(t.getObject())) {
+                        return true;
+                    }
+                }
             }
-            return t -> value.getSubject().equals(t.getSubject())
-                    && value.getPredicate().equals(t.getPredicate())
-                    && value.getObject().sameValueAs(t.getObject());
+            return false;
         }
     };
 

@@ -30,36 +30,33 @@ import java.util.stream.StreamSupport;
  * It´s purpose is to support fast remove operations.
  * @param <E> type of elements in the collection.
  */
-public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
+public abstract class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByKey(final int key) {
         return (key ^ (key >>> 16)) & (entries.length-1);
     }
 
-    private final Function<E, Integer> getKeyFunction;
+    protected abstract int getKey(E value);
 
     private static int MINIMUM_SIZE = 16;
     private static float loadFactor = 0.5f;
     protected int size = 0;
     protected Object[] entries;
 
-    public IntegerKeyedLowMemoryHashSet(Function<E, Integer> getKeyFunction) {
-        this.getKeyFunction = getKeyFunction;
+    public IntegerKeyedLowMemoryHashSet() {
         this.entries = new Object[MINIMUM_SIZE];
     }
 
-    public IntegerKeyedLowMemoryHashSet(Function<E, Integer> getKeyFunction, int initialCapacity) {
-        this.getKeyFunction = getKeyFunction;
+    public IntegerKeyedLowMemoryHashSet(int initialCapacity) {
         this.entries = new Object[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
     }
 
-    public IntegerKeyedLowMemoryHashSet(Function<E, Integer> getKeyFunction, Set<? extends E> set) {
-        this.getKeyFunction = getKeyFunction;
+    public IntegerKeyedLowMemoryHashSet(Set<? extends E> set) {
         this.entries = new Object[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
         int index;
         for (E e : set) {
-            if((index = findIndex(getKeyFunction.apply(e))) < 0) {
+            if((index = findIndex(getKey(e))) < 0) {
                 entries[~index] = e;
                 size++;
             }
@@ -78,7 +75,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
         this.entries = new Object[Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                this.entries[findEmptySlotWithoutEqualityCheck(getKeyFunction.apply((E)oldEntries[i]))] = oldEntries[i];
+                this.entries[findEmptySlotWithoutEqualityCheck(getKey((E)oldEntries[i]))] = oldEntries[i];
             }
         }
     }
@@ -92,7 +89,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
         this.entries = new Object[newSize];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                this.entries[findEmptySlotWithoutEqualityCheck(getKeyFunction.apply((E)oldEntries[i]))] = oldEntries[i];
+                this.entries[findEmptySlotWithoutEqualityCheck(getKey((E)oldEntries[i]))] = oldEntries[i];
             }
         }
         return true;
@@ -123,12 +120,12 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
     @Override
     public boolean contains(Object o) {
         var e = (E)o;
-        final var key = getKeyFunction.apply(e);
+        final var key = getKey(e);
         final var index = calcStartIndexByKey(key);
         if(null == entries[index]) {
             return false;
         }
-        if(key == getKeyFunction.apply((E)entries[index])) {
+        if(key == getKey((E)entries[index])) {
             return true;
         }
         var lowerIndex = index;
@@ -140,19 +137,19 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
                         if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                             return false;
                         } else {
-                            return key == getKeyFunction.apply((E)entries[upperIndex]);
+                            return key == getKey((E)entries[upperIndex]);
                         }
                     } else {
                         return false;
                     }
-                } else if (key == getKeyFunction.apply((E)entries[lowerIndex])) {
+                } else if (key == getKey((E)entries[lowerIndex])) {
                     return true;
                 }
             }
             if(++upperIndex < entries.length) {
                 if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                     return false;
-                } else if (key == getKeyFunction.apply((E)entries[upperIndex])) {
+                } else if (key == getKey((E)entries[upperIndex])) {
                     return true;
                 }
             }
@@ -189,7 +186,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
     @Override
     public boolean add(E value) {
         grow();
-        var index = findIndex(getKeyFunction.apply(value));
+        var index = findIndex(getKey(value));
         if(index < 0) {
             entries[~index] = value;
             size++;
@@ -200,13 +197,13 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
 
     public void addUnsafe(E value) {
         grow();
-        entries[findEmptySlotWithoutEqualityCheck(getKeyFunction.apply(value))] = value;
+        entries[findEmptySlotWithoutEqualityCheck(getKey(value))] = value;
         size++;
     }
 
     public E addIfAbsent(E value) {
         grow();
-        var index = findIndex(getKeyFunction.apply(value));
+        var index = findIndex(getKey(value));
         if(index < 0) {
             entries[~index] = value;
             size++;
@@ -216,7 +213,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
     }
 
     public E getIfPresent(E value) {
-        return getIfPresent(getKeyFunction.apply(value));
+        return getIfPresent(getKey(value));
     }
 
     public E getIfPresent(int key) {
@@ -225,7 +222,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
             return null;
         }
         E e = (E)entries[index];
-        if(key ==  getKeyFunction.apply(e)) {
+        if(key ==  getKey(e)) {
             return e;
         }
         var lowerIndex = index;
@@ -238,14 +235,14 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
                             return null;
                         } else {
                             e = (E)entries[upperIndex];
-                            return key == getKeyFunction.apply(e) ? e : null;           /*found equal element*/
+                            return key == getKey(e) ? e : null;           /*found equal element*/
                         }
                     } else {
                         return null;
                     }
                 } else {
                     e = (E)entries[lowerIndex];
-                    if (key == getKeyFunction.apply(e)) {
+                    if (key == getKey(e)) {
                         return e;            /*found equal element*/
                     }
                 }
@@ -255,7 +252,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
                     return null;
                 } else {
                     e = (E)entries[upperIndex];
-                    if (key == getKeyFunction.apply(e)) {
+                    if (key == getKey(e)) {
                         return e;            /*found equal element*/
                     }
                 }
@@ -297,7 +294,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
         if(null == entries[index]) {
             return ~index;
         }
-        if(key == getKeyFunction.apply((E)entries[index])) {
+        if(key == getKey((E)entries[index])) {
             return index;
         }
         int emptyIndex = -1;
@@ -307,7 +304,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
             if(0 <= --lowerIndex) {
                 if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
                     emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
-                } else if (key == getKeyFunction.apply((E)entries[lowerIndex])) {
+                } else if (key == getKey((E)entries[lowerIndex])) {
                     return lowerIndex;            /*found equal element*/
                 }
             }
@@ -316,7 +313,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
                     if(emptyIndex < 0) {          /*this index is only relevant if slot with same distance in backward direction was not also empty*/
                         emptyIndex = upperIndex;
                     }
-                } else if (key == getKeyFunction.apply((E)entries[upperIndex])) {
+                } else if (key == getKey((E)entries[upperIndex])) {
                     return upperIndex;           /*found equal element*/
                 }
             }
@@ -371,7 +368,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
      */
     @Override
     public boolean remove(Object o) {
-        var key = getKeyFunction.apply((E)o);
+        var key = getKey((E)o);
         var index = findIndex(key);
         if (index < 0) {
             return false;
@@ -383,7 +380,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
     }
 
     public void removeUnsafe(E e) {
-        var index = findIndex(getKeyFunction.apply(e));
+        var index = findIndex(getKey(e));
         entries[index] = null;
         size--;
         rearrangeNeighbours(index);
@@ -426,7 +423,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
                 break;
             }
             neighbour = new ObjectsWithStartIndexIndexAndDistance(
-                    calcStartIndexByKey(getKeyFunction.apply((E)entries[i])), i);
+                    calcStartIndexByKey(getKey((E)entries[i])), i);
             if(neighbour.distance > 0) {
                 neighbours.add(neighbour);
             }
@@ -437,7 +434,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
                 break;
             }
             neighbour = new ObjectsWithStartIndexIndexAndDistance(
-                    calcStartIndexByKey(getKeyFunction.apply((E)entries[i])), i);
+                    calcStartIndexByKey(getKey((E)entries[i])), i);
             if(neighbour.distance > 0) {
                 neighbours.add(neighbour);
             }
@@ -527,7 +524,7 @@ public class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
         boolean modified = false;
         int index;
         for (E e : c) {
-            var key = getKeyFunction.apply(e);
+            var key = getKey(e);
             if((index=findIndex(key)) < 0) {
                 entries[~index] = e;
                 size++;

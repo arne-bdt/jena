@@ -58,35 +58,6 @@ public abstract class ListSetBase<E> extends ArrayList<E> implements Set<E> {
         super();
     }
 
-
-    protected Predicate<E> getContainsPredicate(final E value) {
-        return other -> value.equals(other);
-    }
-
-    /**
-     * Returns {@code true} if this list contains the specified element.
-     * More formally, returns {@code true} if and only if this list contains
-     * at least one element {@code e} such that
-     * {@code Objects.equals(o, e)}.
-     *
-     * @param o element whose presence in this list is to be tested -> o must be of type <E> and not null.
-     * @return {@code true} if this list contains the specified element
-     */
-    @Override
-    public boolean contains(Object o) {
-        var e = (E) o;
-        if(this.isEmpty()) {
-            return false;
-        }
-        var predicate = getContainsPredicate(e);
-        for (E e1 : this) {
-            if(predicate.test(e1)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /**
      * Appends the specified element to the end of this list.
      *
