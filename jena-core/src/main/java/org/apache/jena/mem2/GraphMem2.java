@@ -40,29 +40,26 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
- * GraphMemUsingHashMap is supposed to completely replace the original GraphMem implementation.
+ * GraphMem2 is supposed to completely replace the original GraphMem implementation.
  *
  * This implementation basically follows the same pattern as GraphMem:
  * - all triples are stored in three hash maps:
  *   - one with subjects as key, one with predicates as key and one with objects as key
  * Main differences between GraphMemUsingHashMap and GraphMem:
- * - GraphMem uses its own hash map and triple bag implementations while GraphMemUsingHashMap uses the standard
- *   HashMap<K,V> and ArrayList<T>.
- * - GraphMemUsingHashMap optimizes find operations by
+ * - GraphMem2 optimizes find operations by
  *   - implementing every possible permutation to avoid unnecessary repeated condition checks (Node.isConcrete)
  *   - careful order of conditions to fail as fast as possible
- * - GraphMemUsingHashMap has the Graph#stream operations implemented as real java streams considering the same
+ * - GraphMem2 has the Graph#stream operations implemented as real java streams considering the same
  *   optimizations as the find operations and not wrapping iterators to streams.
- * - GraphMemUsingHashMap optimizes memory usage by using Node.getIndexingValue().hashCode() as hash keys instead
+ * - GraphMem2 optimizes memory usage by using Node.getIndexingValue().hashCode() as hash keys instead
  *   of the Node.getIndexingValue() object itself. This is totally fine, because values are lists.
  *
  * Benchmarks show that:
- * - adding triples is much faster than on GraphMem
+ * - adding triples is faster than on GraphMem
  * - for large graphs this implementation need less memory than GraphMem
- * - find and contains operations are a bit faster than GraphMem
  * - stream operations are faster than GraphMem and can be accelerated even more by appending .parallel()
  *
- * The ExtendedIterator<> returned by Graph#find calls supports .remove and .removeNext to make it fully compatible with the
+ * The ExtendedIterator<> returned by Graph#find calls supports .remove to make it fully compatible with the
  * usages of GraphMem in the whole jena repository.
  *
  * Adding triples while iterating on a result is not supported, but it was probably not intentional that GraphMem
@@ -212,7 +209,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         @Override
         protected int getHashCode(Triple value) {
             return (value.getObject().getIndexingValue().hashCode() >> 1)
-                    ^ value.getPredicate().getIndexingValue().hashCode();
+                    ^ value.getPredicate().hashCode();
         }
 
         @Override
@@ -234,7 +231,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         @Override
         protected int getHashCode(Triple value) {
             return (value.getSubject().hashCode() >> 1)
-                    ^ value.getObject().hashCode();
+                    ^ value.getObject().getIndexingValue().hashCode();
         }
 
         @Override
@@ -294,7 +291,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     public void performAdd(final Triple t) {
         subject:
         {
-            var sKey = t.getSubject().getIndexingValue().hashCode();
+            var sKey = t.getSubject().hashCode();
             var withSameSubjectKey = this.triplesBySubject.compute(
                     sKey,
                     ts -> {
@@ -311,7 +308,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
         predicate:
         {
-            var pKey = t.getPredicate().getIndexingValue().hashCode();
+            var pKey = t.getPredicate().hashCode();
             var withSamePredicateKey = this.triplesByPredicate.compute(
                 pKey,
                     ts -> {
@@ -354,7 +351,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         subject:
         {
             final boolean[] removed = {false};
-            var sKey = t.getSubject().getIndexingValue().hashCode();
+            var sKey = t.getSubject().hashCode();
             this.triplesBySubject.compute(
                     sKey,
                     ts -> {
@@ -374,7 +371,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
         predicate:
         {
-            var pKey = t.getPredicate().getIndexingValue().hashCode();
+            var pKey = t.getPredicate().hashCode();
             this.triplesByPredicate.compute(
                     pKey,
                     ts -> {
@@ -408,7 +405,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     public Pair<Set<Triple>, Predicate<Triple>> getOptimalSetAndPredicate(final Node sm, final Node pm, final Node om) {
         if (sm.isConcrete()) { // SPO:S??
             var bySubjectIndex = this.triplesBySubject
-                    .getIfPresent(sm.getIndexingValue().hashCode());
+                    .getIfPresent(sm.hashCode());
             if(bySubjectIndex == null) {
                 return null;
             }
@@ -501,7 +498,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                                     && om.sameValueAs(t.getObject()));
                 } else {
                     var byPredicateIndex = this.triplesByPredicate
-                            .getIfPresent(pm.getIndexingValue().hashCode());
+                            .getIfPresent(pm.hashCode());
                     if(byPredicateIndex == null) {
                         return null;
                     }
@@ -532,7 +529,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             }
         } else if(pm.isConcrete()) { //SPO:*P*
             var byPredicateIndex = this.triplesByPredicate
-                    .getIfPresent(pm.getIndexingValue().hashCode());
+                    .getIfPresent(pm.hashCode());
             if(byPredicateIndex == null) {
                 return null;
             }
@@ -559,7 +556,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         if(sm.isConcrete() || pm.isConcrete() || om.isConcrete()) {
             if(sm.isConcrete() && pm.isConcrete() && om.isConcrete()) {
-                var subjects = triplesBySubject.getIfPresent(sm.getIndexingValue().hashCode());
+                var subjects = triplesBySubject.getIfPresent(sm.hashCode());
                 if(subjects == null) {
                     return false;
                 }
@@ -827,11 +824,11 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
          */
         @Override
         public boolean hasNext() {
-            while(!this.hasCurrent && this.iterator.hasNext()) {
-                if(filter.test(current = this.iterator.next())) {
-                    return hasCurrent = true;
-                }
+            if(hasCurrent) {
+                return true;
             }
+            while(this.iterator.hasNext() && !(hasCurrent = filter.test(current = this.iterator.next())));
+
             return this.hasCurrent;
         }
 
