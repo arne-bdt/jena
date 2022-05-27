@@ -83,6 +83,11 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         protected Object getKey(TripleSetWithKey value) {
             return value.indexingValue();
         }
+
+        @Override
+        protected int getHashCode(TripleSetWithKey value) {
+            return value.indexingHashCode();
+        }
     }
 
     private final KeyedHashSet triplesBySubject = new KeyedHashSet(256); //256
@@ -94,6 +99,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     private interface TripleSetWithKey extends Set<Triple> {
 
         Object indexingValue();
+        int indexingHashCode();
 
         void addUnsafe(Triple t);
 
@@ -119,33 +125,49 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     private static abstract class AbstractSortedTriplesSet extends ListSetBase<Triple> implements TripleSetWithKey {
 
         private final Object indexingValue;
+        private final int indexingHashCode;
 
         public AbstractSortedTriplesSet(final Object indexingValue) {
             super(INITIAL_SIZE_FOR_ARRAY_LISTS);
             this.indexingValue = indexingValue;
+            this.indexingHashCode = indexingValue.hashCode();
         }
 
         @Override
         public Object indexingValue() {
             return this.indexingValue;
+        }
+
+        @Override
+        public int indexingHashCode() {
+            return this.indexingHashCode;
         }
     }
 
     private static abstract class AbstractLowMemoryTripleHashSet extends LowMemoryHashSet<Triple> implements TripleSetWithKey {
         private final Object indexingValue;
+        private final int indexingHashCode;
+
         public AbstractLowMemoryTripleHashSet(int initialCapacity, TripleSetWithKey setWithKey) {
             super(initialCapacity, setWithKey);
             this.indexingValue = setWithKey.indexingValue();
+            this.indexingHashCode = indexingValue.hashCode();
         }
 
         public AbstractLowMemoryTripleHashSet(TripleSetWithKey setWithKey) {
             super(setWithKey);
             this.indexingValue = setWithKey.indexingValue();
+            this.indexingHashCode = indexingValue.hashCode();
         }
 
         @Override
         public Object indexingValue() {
             return this.indexingValue;
+        }
+
+        @Override
+        public int indexingHashCode() {
+            return this.indexingHashCode;
         }
     }
 
@@ -309,7 +331,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             return new TripleHashSetForSubjects(ts);
                         }
-
                         return ts;
                     });
             if(!withSameSubjectKey.add(t,  combineNodeHashes(t.getObject().hashCode(), hashKeyOfPredicate))) {
@@ -330,7 +351,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                         ts.addUnsafe(t, combineNodeHashes( t.getObject().getIndexingValue().hashCode(), hashKeyOfSubject));
                         return ts;
                     });
-
         }
         object:
         {

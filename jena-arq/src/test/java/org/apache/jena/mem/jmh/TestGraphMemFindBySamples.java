@@ -24,7 +24,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
-import org.apache.jena.mem2.GraphMem2NoEqualsOkOpt;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.junit.Test;
@@ -65,7 +64,6 @@ public class TestGraphMemFindBySamples {
     @Param({
             "GraphMem",
             "GraphMem2",
-//            "GraphMem2NoEqualsOkOpt"
     })
     public String param1_GraphImplementation;
 
@@ -76,9 +74,6 @@ public class TestGraphMemFindBySamples {
 
             case "GraphMem2":
                 return new GraphMem2();
-
-            case "GraphMem2NoEqualsOkOpt":
-                return new GraphMem2NoEqualsOkOpt();
 
             default:
                 throw new IllegalArgumentException();

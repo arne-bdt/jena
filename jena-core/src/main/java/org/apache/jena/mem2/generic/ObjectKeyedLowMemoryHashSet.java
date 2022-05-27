@@ -35,10 +35,20 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByKey(final Object key) {
         var hashCode = key.hashCode();
+        return calcStartIndexByHashCode(key.hashCode());
+    }
+
+    private int calcStartIndexByHashCode(final int hashCode) {
         return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
     }
 
+    private int calcStartIndexByValue(final E value) {
+        return calcStartIndexByHashCode(getHashCode(value));
+    }
+
     protected abstract Object getKey(E value);
+
+    protected abstract int getHashCode(E value);
 
     private static int MINIMUM_SIZE = 16;
     private static float loadFactor = 0.5f;
@@ -61,7 +71,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         this.entries = new Object[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
         int index;
         for (E e : set) {
-            if((index = findIndex(getKey(e))) < 0) {
+            if((index = findIndexByValue(e)) < 0) {
                 entries[~index] = e;
                 size++;
             }
@@ -80,7 +90,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         this.entries = new Object[Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                this.entries[findEmptySlotWithoutEqualityCheck(getKey((E)oldEntries[i]))] = oldEntries[i];
+                this.entries[findEmptySlotWithoutEqualityCheckByValue((E)oldEntries[i])] = oldEntries[i];
             }
         }
     }
@@ -94,7 +104,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         this.entries = new Object[newSize];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                this.entries[findEmptySlotWithoutEqualityCheck(getKey((E)oldEntries[i]))] = oldEntries[i];
+                this.entries[findEmptySlotWithoutEqualityCheckByValue((E)oldEntries[i])] = oldEntries[i];
             }
         }
         return true;
@@ -126,7 +136,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     public boolean contains(Object o) {
         var e = (E)o;
         final var key = getKey(e);
-        final var index = calcStartIndexByKey(key);
+        final var index = calcStartIndexByValue(e);
         if(null == entries[index]) {
             return false;
         }
@@ -191,7 +201,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     @Override
     public boolean add(E value) {
         grow();
-        var index = findIndex(getKey(value));
+        var index = findIndexByKey(getKey(value));
         if(index < 0) {
             entries[~index] = value;
             size++;
@@ -202,13 +212,13 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
 
     public void addUnsafe(E value) {
         grow();
-        entries[findEmptySlotWithoutEqualityCheck(getKey(value))] = value;
+        entries[findEmptySlotWithoutEqualityCheckByValue(value)] = value;
         size++;
     }
 
     public E addIfAbsent(E value) {
         grow();
-        var index = findIndex(getKey(value));
+        var index = findIndexByValue(value);
         if(index < 0) {
             entries[~index] = value;
             size++;
@@ -263,14 +273,14 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     }
 
     public E compute(final Object key, Function<E, E> remappingFunction) {
-        var index = findIndex(key);
+        var index = findIndexByKey(key);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
                 return null;
             }
             if(grow()) {
-                entries[findEmptySlotWithoutEqualityCheck(key)] = newValue;
+                entries[findEmptySlotWithoutEqualityCheckByKey(key)] = newValue;
             } else {
                 entries[~index] = newValue;
             }
@@ -290,8 +300,16 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         }
     }
 
-    private int findIndex(final Object key) {
-        final var index = calcStartIndexByKey(key);
+    private int findIndexByKey(final Object key) {
+        return findIndex(key, key.hashCode());
+    }
+
+    private int findIndexByValue(final E value) {
+        return findIndex(getKey(value), getHashCode(value));
+    }
+
+    private int findIndex(final Object key, final int hashCode) {
+        final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return ~index;
         }
@@ -325,8 +343,16 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         throw new IllegalStateException();
     }
 
-    private int findEmptySlotWithoutEqualityCheck(final Object key) {
-        final var index = calcStartIndexByKey(key);
+    private int findEmptySlotWithoutEqualityCheckByKey(final Object key) {
+        return findEmptySlotWithoutEqualityCheck(key.hashCode());
+    }
+
+    private int findEmptySlotWithoutEqualityCheckByValue(final E value) {
+        return findEmptySlotWithoutEqualityCheck(getHashCode(value));
+    }
+
+    private int findEmptySlotWithoutEqualityCheck(final int hashCode) {
+        final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return index;
         }
@@ -369,8 +395,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
      */
     @Override
     public boolean remove(Object o) {
-        var key = getKey((E)o);
-        var index = findIndex(key);
+        var index = findIndexByValue((E)o);
         if (index < 0) {
             return false;
         }
@@ -381,7 +406,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     }
 
     public void removeUnsafe(E e) {
-        var index = findIndex(getKey(e));
+        var index = findIndexByValue(e);
         entries[index] = null;
         size--;
         rearrangeNeighbours(index);
@@ -526,7 +551,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         int index;
         for (E e : c) {
             var key = getKey(e);
-            if((index=findIndex(key)) < 0) {
+            if((index= findIndexByKey(key)) < 0) {
                 entries[~index] = e;
                 size++;
                 modified = true;
