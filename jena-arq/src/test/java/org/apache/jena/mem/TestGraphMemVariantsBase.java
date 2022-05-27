@@ -45,10 +45,8 @@ public abstract class TestGraphMemVariantsBase {
 
             Pair.of("GraphMem", () -> new GraphMem()),
             Pair.of("GraphMem", () -> new GraphMem()),
-            Pair.of("GraphMem", () -> new GraphMem()),
+            Pair.of("GraphMem", () -> new GraphMem())
 
-            Pair.of("GraphMem2", () -> new GraphMem2()),
-            Pair.of("GraphMem2", () -> new GraphMem2())
 //            Pair.of("GraphMem", () -> new GraphMem()),
 //            Pair.of("GraphMem", () -> new GraphMem()),
 

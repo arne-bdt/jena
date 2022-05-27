@@ -28,7 +28,6 @@ import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.generic.IntegerKeyedLowMemoryHashSet;
 import org.apache.jena.mem2.generic.ListSetBase;
 import org.apache.jena.mem2.generic.LowMemoryHashSet;
-import org.apache.jena.mem2.helper.TripleEqualsOrMatches;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -40,7 +39,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
- * GraphMemUsingHashMap is supposed to completely replace the original GraphMem implementation.
+ * GraphMem2 is supposed to completely replace the original GraphMem implementation.
  *
  * This implementation basically follows the same pattern as GraphMem:
  * - all triples are stored in three hash maps:
@@ -147,21 +146,11 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         @Override
         public boolean contains(Object o) {
             var triple = (Triple)o;
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(triple.getObject())) {
-                for (Triple t : this) {
-                    if(triple.getObject().equals(t.getObject())
-                            && triple.getPredicate().equals(t.getPredicate())
-                            && triple.getSubject().equals(t.getSubject())) {
-                        return true;
-                    }
-                }
-            } else {
-                for (Triple t : this) {
-                    if(triple.getObject().sameValueAs(t.getObject())
-                            && triple.getPredicate().equals(t.getPredicate())
-                            && triple.getSubject().equals(t.getSubject())) {
-                        return true;
-                    }
+            for (Triple t : this) {
+                if(triple.getObject().sameValueAs(t.getObject())
+                        && triple.getPredicate().equals(t.getPredicate())
+                        && triple.getSubject().equals(t.getSubject())) {
+                    return true;
                 }
             }
             return false;
@@ -177,21 +166,11 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         @Override
         public boolean contains(Object o) {
             var triple = (Triple)o;
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(triple.getObject())) {
-                for (Triple t : this) {
-                    if(triple.getSubject().equals(t.getSubject())
-                            && triple.getObject().equals(t.getObject())
-                            && triple.getPredicate().equals(t.getPredicate())) {
-                        return true;
-                    }
-                }
-            } else {
-                for (Triple t : this) {
-                    if(triple.getSubject().equals(t.getSubject())
-                            && triple.getObject().sameValueAs(t.getObject())
-                            && triple.getPredicate().equals(t.getPredicate())) {
-                        return true;
-                    }
+            for (Triple t : this) {
+                if(triple.getSubject().equals(t.getSubject())
+                        && triple.getObject().sameValueAs(t.getObject())
+                        && triple.getPredicate().equals(t.getPredicate())) {
+                    return true;
                 }
             }
             return false;
@@ -208,21 +187,11 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         @Override
         public boolean contains(Object o) {
             var triple = (Triple)o;
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(triple.getObject())) {
-                for (Triple t : this) {
-                    if(triple.getSubject().equals(t.getSubject())
-                            && triple.getPredicate().equals(t.getPredicate())
-                            && triple.getObject().equals(t.getObject())) {
-                        return true;
-                    }
-                }
-            } else {
-                for (Triple t : this) {
-                    if(triple.getSubject().equals(t.getSubject())
-                            && triple.getPredicate().equals(t.getPredicate())
-                            && triple.getObject().sameValueAs(t.getObject())) {
-                        return true;
-                    }
+            for (Triple t : this) {
+                if(triple.getSubject().equals(t.getSubject())
+                        && triple.getPredicate().equals(t.getPredicate())
+                        && triple.getObject().sameValueAs(t.getObject())) {
+                    return true;
                 }
             }
             return false;
@@ -237,17 +206,11 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
 
         @Override
         protected int getHashCode(Triple value) {
-            return (31 * value.getObject().hashCode()) +
-                    value.getPredicate().hashCode();
+            return combineNodeHashes(value.getObject().hashCode(), value.getPredicate().hashCode());
         }
 
         @Override
         protected Predicate<Triple> getContainsPredicate(Triple value) {
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
-                return t -> value.getObject().equals(t.getObject())
-                        && value.getPredicate().equals(t.getPredicate())
-                        && value.getSubject().equals(t.getSubject());
-            }
             return t -> value.getObject().sameValueAs(t.getObject())
                     && value.getPredicate().equals(t.getPredicate())
                     && value.getSubject().equals(t.getSubject());
@@ -263,17 +226,11 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
 
         @Override
         protected int getHashCode(Triple value) {
-            return (31 * value.getObject().getIndexingValue().hashCode())
-                    + value.getSubject().hashCode();
+            return combineNodeHashes(value.getObject().getIndexingValue().hashCode(), value.getSubject().hashCode());
         }
 
         @Override
         protected Predicate<Triple> getContainsPredicate(Triple value) {
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
-                return t -> value.getSubject().equals(t.getSubject())
-                        && value.getObject().equals(t.getObject())
-                        && value.getPredicate().equals(t.getPredicate());
-            }
             return t -> value.getSubject().equals(t.getSubject())
                     && value.getObject().sameValueAs(t.getObject())
                     && value.getPredicate().equals(t.getPredicate());
@@ -289,8 +246,7 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
 
         @Override
         protected int getHashCode(Triple value) {
-            return (31 * value.getPredicate().hashCode())
-                    + value.getSubject().hashCode();
+            return combineNodeHashes(value.getPredicate().hashCode(), value.getSubject().hashCode());
         }
 
         @Override
@@ -301,6 +257,10 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         }
     }
 
+
+    private static int combineNodeHashes(final int hashCodeOne, final int hashCodeTwo) {
+        return (31 * hashCodeOne) + hashCodeTwo;
+    }
 
     public GraphMem2NoEqualsOkOpt() {
         super();
@@ -327,9 +287,15 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
     @SuppressWarnings("java:S1199")
     @Override
     public void performAdd(final Triple t) {
+        var hashKeyOfSubject = t.getSubject().hashCode();
+        var hashKeyOfPredicate = t.getPredicate().hashCode();
+        var hashKeyOfObject = t.getObject().hashCode();
+        var hashKeyOfObjectIndexing = t.getObject().getIndexingValue().hashCode();
         subject:
         {
-            var sKey = t.getSubject().getIndexingValue().hashCode();
+            var sKey = t.getSubject().getIndexingValue() == t.getSubject()
+                    ? hashKeyOfSubject
+                    : t.getSubject().getIndexingValue().hashCode();
             var withSameSubjectKey = this.triplesBySubject.compute(
                     sKey,
                     ts -> {
@@ -340,13 +306,15 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
                         }
                         return ts;
                     });
-            if(!withSameSubjectKey.add(t)) {
+            if(!withSameSubjectKey.add(t,  combineNodeHashes(hashKeyOfObject, hashKeyOfPredicate))) {
                 return;
             }
         }
         predicate:
         {
-            var pKey = t.getPredicate().getIndexingValue().hashCode();
+            var pKey = t.getPredicate().getIndexingValue() == t.getPredicate()
+                    ? hashKeyOfPredicate
+                    : t.getPredicate().getIndexingValue().hashCode();
             var withSamePredicateKey = this.triplesByPredicate.compute(
                 pKey,
                     ts -> {
@@ -357,22 +325,21 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
                         }
                         return ts;
                     });
-            withSamePredicateKey.addUnsafe(t);
+            withSamePredicateKey.addUnsafe(t, combineNodeHashes(hashKeyOfObjectIndexing, hashKeyOfSubject));
         }
         object:
         {
-            var oKey = t.getObject().getIndexingValue().hashCode();
             var withSameObjectKey = this.triplesByObject.compute(
-                    oKey,
+                    hashKeyOfObjectIndexing,
                     ts -> {
                         if(ts == null) {
-                            return new TripleListSetForObjects(oKey);
+                            return new TripleListSetForObjects(hashKeyOfObjectIndexing);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             return new TripleHashSetForObjects(ts);
                         }
                         return ts;
                     });
-            withSameObjectKey.addUnsafe(t);
+            withSameObjectKey.addUnsafe(t, combineNodeHashes(hashKeyOfPredicate, hashKeyOfSubject));
         }
     }
 
@@ -386,16 +353,21 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
     @SuppressWarnings("java:S1199")
     @Override
     public void performDelete(Triple t) {
+        var hashKeyOfSubject = t.getSubject().hashCode();
+        var hashKeyOfPredicate = t.getPredicate().hashCode();
+        var hashKeyOfObject = t.getObject().hashCode();
+        var hashKeyOfObjectIndexing = t.getObject().getIndexingValue().hashCode();
         subject:
         {
             final boolean[] removed = {false};
-            var sKey = t.getSubject().getIndexingValue().hashCode();
             this.triplesBySubject.compute(
-                    sKey,
+                    t.getSubject().getIndexingValue() == t.getSubject()
+                            ? hashKeyOfSubject
+                            : t.getSubject().getIndexingValue().hashCode(),
                     ts -> {
                         if(ts == null) {
                             return null;
-                        } else if(ts.remove(t)) {
+                        } else if(ts.remove(t, combineNodeHashes(hashKeyOfObject, hashKeyOfPredicate))) {
                             removed[0] = true;
                             if(ts.isEmpty()) {
                                 return null; /*thereby remove key*/
@@ -409,21 +381,21 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         }
         predicate:
         {
-            var pKey = t.getPredicate().getIndexingValue().hashCode();
             this.triplesByPredicate.compute(
-                    pKey,
+                    t.getPredicate().getIndexingValue() == t.getPredicate()
+                            ? hashKeyOfPredicate
+                            : t.getPredicate().getIndexingValue().hashCode(),
                     ts -> {
-                        ts.removeUnsafe(t);
+                        ts.removeUnsafe(t, combineNodeHashes(hashKeyOfObjectIndexing, hashKeyOfSubject));
                         return ts.isEmpty() ? null : ts;
                     });
         }
         object:
         {
-            var oKey = t.getObject().getIndexingValue().hashCode();
             this.triplesByObject.compute(
-                    oKey,
+                    hashKeyOfObjectIndexing,
                     ts -> {
-                        ts.removeUnsafe(t);
+                        ts.removeUnsafe(t, combineNodeHashes(hashKeyOfPredicate, hashKeyOfSubject));
                         return ts.isEmpty() ? null : ts;
                     });
         }
@@ -450,27 +422,14 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
             if(om.isConcrete()) { //SPO:S?0
                 if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
                     if(pm.isConcrete()) { // SPO:SPO
-                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                            return Pair.of(bySubjectIndex,
-                                    t -> om.equals(t.getObject())
-                                            && pm.equals(t.getPredicate())
-                                            && sm.equals(t.getSubject()));
-                        } else {
-                            return Pair.of(bySubjectIndex,
-                                    t -> om.sameValueAs(t.getObject())
-                                            && pm.equals(t.getPredicate())
-                                            && sm.equals(t.getSubject()));
-                        }
+                        return Pair.of(bySubjectIndex,
+                                t -> om.sameValueAs(t.getObject())
+                                        && pm.equals(t.getPredicate())
+                                        && sm.equals(t.getSubject()));
                     } else { // SPO:S*O
-                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                            return Pair.of(bySubjectIndex,
-                                    t -> om.equals(t.getObject())
-                                            && sm.equals(t.getSubject()));
-                        } else {
-                            return Pair.of(bySubjectIndex,
-                                    t -> om.sameValueAs(t.getObject())
-                                            && sm.equals(t.getSubject()));
-                        }
+                        return Pair.of(bySubjectIndex,
+                                t -> om.sameValueAs(t.getObject())
+                                        && sm.equals(t.getSubject()));
                     }
                 } else {
                     var byObjectIndex = this.triplesByObject
@@ -480,27 +439,14 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
                     }
                     if(bySubjectIndex.size() <= byObjectIndex.size()) {
                         if (pm.isConcrete()) { // SPO:SPO
-                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                                return Pair.of(bySubjectIndex,
-                                        t -> om.equals(t.getObject())
-                                                && pm.equals(t.getPredicate())
-                                                && sm.equals(t.getSubject()));
-                            } else {
-                                return Pair.of(bySubjectIndex,
-                                        t -> om.sameValueAs(t.getObject())
-                                                && pm.equals(t.getPredicate())
-                                                && sm.equals(t.getSubject()));
-                            }
+                            return Pair.of(bySubjectIndex,
+                                    t -> om.sameValueAs(t.getObject())
+                                            && pm.equals(t.getPredicate())
+                                            && sm.equals(t.getSubject()));
                         } else { // SPO:S*O
-                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                                return Pair.of(bySubjectIndex,
-                                        t -> om.equals(t.getObject())
-                                                && sm.equals(t.getSubject()));
-                            } else {
-                                return Pair.of(bySubjectIndex,
-                                        t -> om.sameValueAs(t.getObject())
-                                                && sm.equals(t.getSubject()));
-                            }
+                            return Pair.of(bySubjectIndex,
+                                    t -> om.sameValueAs(t.getObject())
+                                            && sm.equals(t.getSubject()));
                         }
                     } else {
                         if (pm.isConcrete()) { // SPO:SPO
@@ -532,7 +478,7 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
             if(pm.isConcrete()) { // SPO:*PO
                 if(byObjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
                     return Pair.of(byObjectIndex,
-                            t ->  pm.equals(t.getPredicate())
+                            t -> pm.equals(t.getPredicate())
                                     && om.sameValueAs(t.getObject()));
                 } else {
                     var byPredicateIndex = this.triplesByPredicate
@@ -542,28 +488,17 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
                     }
                     if(byObjectIndex.size() <= byPredicateIndex.size()) {
                         return Pair.of(byObjectIndex,
-                                t ->  pm.equals(t.getPredicate())
+                                t -> pm.equals(t.getPredicate())
                                         && om.sameValueAs(t.getObject()));
                     } else {
-                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                            return Pair.of(byPredicateIndex,
-                                    t -> om.equals(t.getObject())
-                                            && pm.equals(t.getPredicate()));
-                        } else {
-                            return Pair.of(byPredicateIndex,
-                                    t ->  om.sameValueAs(t.getObject())
-                                            && pm.equals(t.getPredicate()));
-                        }
+                        return Pair.of(byPredicateIndex,
+                                t -> om.sameValueAs(t.getObject())
+                                        && pm.equals(t.getPredicate()));
                     }
                 }
             } else {    // SPO:**O
-                if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                    return Pair.of(byObjectIndex,
-                            t -> om.equals(t.getObject()));
-                } else {
-                    return Pair.of(byObjectIndex,
-                            t -> om.sameValueAs(t.getObject()));
-                }
+                return Pair.of(byObjectIndex,
+                        t -> om.sameValueAs(t.getObject()));
             }
         } else if(pm.isConcrete()) { //SPO:*P*
             var byPredicateIndex = this.triplesByPredicate
@@ -865,8 +800,11 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
             if(hasCurrent) {
                 return true;
             }
-            while(this.iterator.hasNext() && !(hasCurrent = filter.test(current = this.iterator.next())));
-
+            while(iterator.hasNext()) {
+                if (filter.test(current = this.iterator.next())) {
+                    return hasCurrent = true;
+                }
+            }
             return this.hasCurrent;
         }
 

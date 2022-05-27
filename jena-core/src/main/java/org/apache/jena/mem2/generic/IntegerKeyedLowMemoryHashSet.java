@@ -668,11 +668,13 @@ public abstract class IntegerKeyedLowMemoryHashSet<E> implements Set<E> {
          */
         @Override
         public boolean tryAdvance(Consumer<? super E> action) {
-            while(0 < maxRemaining && pos < maxPos) {
-                if(null != entries[++pos]) {
-                    maxRemaining--;
-                    action.accept((E) entries[pos]);
-                    return true;
+            if(0 < maxRemaining) {
+                while (pos < maxPos) {
+                    if (null != entries[++pos]) {
+                        maxRemaining--;
+                        action.accept((E) entries[pos]);
+                        return true;
+                    }
                 }
             }
             return false;
