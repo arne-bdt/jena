@@ -28,7 +28,6 @@ import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.generic.IntegerKeyedLowMemoryHashSet;
 import org.apache.jena.mem2.generic.ListSetBase;
 import org.apache.jena.mem2.generic.LowMemoryHashSet;
-import org.apache.jena.mem2.helper.TripleEqualsOrMatches;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -147,21 +146,11 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         @Override
         public boolean contains(Object o) {
             var triple = (Triple)o;
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(triple.getObject())) {
-                for (Triple t : this) {
-                    if(triple.getObject().equals(t.getObject())
-                            && triple.getPredicate().equals(t.getPredicate())
-                            && triple.getSubject().equals(t.getSubject())) {
-                        return true;
-                    }
-                }
-            } else {
-                for (Triple t : this) {
-                    if(triple.getObject().sameValueAs(t.getObject())
-                            && triple.getPredicate().equals(t.getPredicate())
-                            && triple.getSubject().equals(t.getSubject())) {
-                        return true;
-                    }
+            for (Triple t : this) {
+                if(triple.getObject().sameValueAs(t.getObject())
+                        && triple.getPredicate().equals(t.getPredicate())
+                        && triple.getSubject().equals(t.getSubject())) {
+                    return true;
                 }
             }
             return false;
@@ -177,21 +166,11 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         @Override
         public boolean contains(Object o) {
             var triple = (Triple)o;
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(triple.getObject())) {
-                for (Triple t : this) {
-                    if(triple.getSubject().equals(t.getSubject())
-                            && triple.getObject().equals(t.getObject())
-                            && triple.getPredicate().equals(t.getPredicate())) {
-                        return true;
-                    }
-                }
-            } else {
-                for (Triple t : this) {
-                    if(triple.getSubject().equals(t.getSubject())
-                            && triple.getObject().sameValueAs(t.getObject())
-                            && triple.getPredicate().equals(t.getPredicate())) {
-                        return true;
-                    }
+            for (Triple t : this) {
+                if(triple.getSubject().equals(t.getSubject())
+                        && triple.getObject().sameValueAs(t.getObject())
+                        && triple.getPredicate().equals(t.getPredicate())) {
+                    return true;
                 }
             }
             return false;
@@ -208,21 +187,11 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         @Override
         public boolean contains(Object o) {
             var triple = (Triple)o;
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(triple.getObject())) {
-                for (Triple t : this) {
-                    if(triple.getSubject().equals(t.getSubject())
-                            && triple.getPredicate().equals(t.getPredicate())
-                            && triple.getObject().equals(t.getObject())) {
-                        return true;
-                    }
-                }
-            } else {
-                for (Triple t : this) {
-                    if(triple.getSubject().equals(t.getSubject())
-                            && triple.getPredicate().equals(t.getPredicate())
-                            && triple.getObject().sameValueAs(t.getObject())) {
-                        return true;
-                    }
+            for (Triple t : this) {
+                if(triple.getSubject().equals(t.getSubject())
+                        && triple.getPredicate().equals(t.getPredicate())
+                        && triple.getObject().sameValueAs(t.getObject())) {
+                    return true;
                 }
             }
             return false;
@@ -242,11 +211,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         protected Predicate<Triple> getContainsPredicate(Triple value) {
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
-                return t -> value.getObject().equals(t.getObject())
-                        && value.getPredicate().equals(t.getPredicate())
-                        && value.getSubject().equals(t.getSubject());
-            }
             return t -> value.getObject().sameValueAs(t.getObject())
                     && value.getPredicate().equals(t.getPredicate())
                     && value.getSubject().equals(t.getSubject());
@@ -267,11 +231,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         protected Predicate<Triple> getContainsPredicate(Triple value) {
-            if(TripleEqualsOrMatches.isEqualsForObjectOk(value.getObject())) {
-                return t -> value.getSubject().equals(t.getSubject())
-                        && value.getObject().equals(t.getObject())
-                        && value.getPredicate().equals(t.getPredicate());
-            }
             return t -> value.getSubject().equals(t.getSubject())
                     && value.getObject().sameValueAs(t.getObject())
                     && value.getPredicate().equals(t.getPredicate());
@@ -298,10 +257,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
     }
 
-
-    private static int combineNodeHashes(final Node one, final Node two) {
-        return combineNodeHashes(one.hashCode(), two.hashCode());
-    }
 
     private static int combineNodeHashes(final int hashCodeOne, final int hashCodeTwo) {
         return (31 * hashCodeOne) + hashCodeTwo;
@@ -467,27 +422,14 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             if(om.isConcrete()) { //SPO:S?0
                 if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
                     if(pm.isConcrete()) { // SPO:SPO
-                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                            return Pair.of(bySubjectIndex,
-                                    t -> om.equals(t.getObject())
-                                            && pm.equals(t.getPredicate())
-                                            && sm.equals(t.getSubject()));
-                        } else {
-                            return Pair.of(bySubjectIndex,
-                                    t -> om.sameValueAs(t.getObject())
-                                            && pm.equals(t.getPredicate())
-                                            && sm.equals(t.getSubject()));
-                        }
+                        return Pair.of(bySubjectIndex,
+                                t -> om.sameValueAs(t.getObject())
+                                        && pm.equals(t.getPredicate())
+                                        && sm.equals(t.getSubject()));
                     } else { // SPO:S*O
-                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                            return Pair.of(bySubjectIndex,
-                                    t -> om.equals(t.getObject())
-                                            && sm.equals(t.getSubject()));
-                        } else {
-                            return Pair.of(bySubjectIndex,
-                                    t -> om.sameValueAs(t.getObject())
-                                            && sm.equals(t.getSubject()));
-                        }
+                        return Pair.of(bySubjectIndex,
+                                t -> om.sameValueAs(t.getObject())
+                                        && sm.equals(t.getSubject()));
                     }
                 } else {
                     var byObjectIndex = this.triplesByObject
@@ -497,27 +439,14 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     }
                     if(bySubjectIndex.size() <= byObjectIndex.size()) {
                         if (pm.isConcrete()) { // SPO:SPO
-                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                                return Pair.of(bySubjectIndex,
-                                        t -> om.equals(t.getObject())
-                                                && pm.equals(t.getPredicate())
-                                                && sm.equals(t.getSubject()));
-                            } else {
-                                return Pair.of(bySubjectIndex,
-                                        t -> om.sameValueAs(t.getObject())
-                                                && pm.equals(t.getPredicate())
-                                                && sm.equals(t.getSubject()));
-                            }
+                            return Pair.of(bySubjectIndex,
+                                    t -> om.sameValueAs(t.getObject())
+                                            && pm.equals(t.getPredicate())
+                                            && sm.equals(t.getSubject()));
                         } else { // SPO:S*O
-                            if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                                return Pair.of(bySubjectIndex,
-                                        t -> om.equals(t.getObject())
-                                                && sm.equals(t.getSubject()));
-                            } else {
-                                return Pair.of(bySubjectIndex,
-                                        t -> om.sameValueAs(t.getObject())
-                                                && sm.equals(t.getSubject()));
-                            }
+                            return Pair.of(bySubjectIndex,
+                                    t -> om.sameValueAs(t.getObject())
+                                            && sm.equals(t.getSubject()));
                         }
                     } else {
                         if (pm.isConcrete()) { // SPO:SPO
@@ -549,7 +478,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             if(pm.isConcrete()) { // SPO:*PO
                 if(byObjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
                     return Pair.of(byObjectIndex,
-                            t ->  pm.equals(t.getPredicate())
+                            t -> pm.equals(t.getPredicate())
                                     && om.sameValueAs(t.getObject()));
                 } else {
                     var byPredicateIndex = this.triplesByPredicate
@@ -559,28 +488,17 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     }
                     if(byObjectIndex.size() <= byPredicateIndex.size()) {
                         return Pair.of(byObjectIndex,
-                                t ->  pm.equals(t.getPredicate())
+                                t -> pm.equals(t.getPredicate())
                                         && om.sameValueAs(t.getObject()));
                     } else {
-                        if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                            return Pair.of(byPredicateIndex,
-                                    t -> om.equals(t.getObject())
-                                            && pm.equals(t.getPredicate()));
-                        } else {
-                            return Pair.of(byPredicateIndex,
-                                    t ->  om.sameValueAs(t.getObject())
-                                            && pm.equals(t.getPredicate()));
-                        }
+                        return Pair.of(byPredicateIndex,
+                                t -> om.sameValueAs(t.getObject())
+                                        && pm.equals(t.getPredicate()));
                     }
                 }
             } else {    // SPO:**O
-                if (TripleEqualsOrMatches.isEqualsForObjectOk(om)) {
-                    return Pair.of(byObjectIndex,
-                            t -> om.equals(t.getObject()));
-                } else {
-                    return Pair.of(byObjectIndex,
-                            t -> om.sameValueAs(t.getObject()));
-                }
+                return Pair.of(byObjectIndex,
+                        t -> om.sameValueAs(t.getObject()));
             }
         } else if(pm.isConcrete()) { //SPO:*P*
             var byPredicateIndex = this.triplesByPredicate
@@ -882,8 +800,11 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             if(hasCurrent) {
                 return true;
             }
-            while(this.iterator.hasNext() && !(hasCurrent = filter.test(current = this.iterator.next())));
-
+            while(iterator.hasNext()) {
+                if (filter.test(current = this.iterator.next())) {
+                    return hasCurrent = true;
+                }
+            }
             return this.hasCurrent;
         }
 

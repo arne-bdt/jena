@@ -90,7 +90,23 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
 
         void addUnsafe(Triple t);
 
+        default boolean add(Triple t, int hashCode) {
+            return this.add(t);
+        }
+
+        default void addUnsafe(Triple t, int hashCode) {
+            this.addUnsafe(t);
+        }
+
+        default boolean remove(Triple t, int hashCode) {
+            return remove(t);
+        }
+
         void removeUnsafe(Triple t);
+
+        default void removeUnsafe(Triple t, int hashCode) {
+            this.removeUnsafe(t);
+        }
     }
 
     private static abstract class AbstractSortedTriplesSet extends ListSetBase<Triple> implements TripleSetWithKey {

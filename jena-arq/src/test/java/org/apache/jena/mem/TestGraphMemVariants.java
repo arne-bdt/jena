@@ -421,6 +421,10 @@ public class TestGraphMemVariants extends TestGraphMemVariantsBase {
                     stopwatch_PO.suspend();
                     for (int i = 0; i < graphs.size(); i++) {
                         var graph = graphs.get(i);
+                        if(graph.size() < 10000) {
+                            continue;
+                        }
+
                         var triples = existingTriplesToSearchFor.get(i);
                         var nonExistingTriples = nonExistingTriplesToSearchFor.get(i);
 

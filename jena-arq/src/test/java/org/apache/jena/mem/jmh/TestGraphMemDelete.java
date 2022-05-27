@@ -62,7 +62,7 @@ public class TestGraphMemDelete {
     @Param({
             "GraphMem",
             "GraphMem2",
-            "GraphMem2NoEqualsOkOpt"
+//            "GraphMem2NoEqualsOkOpt"
     })
     public String param1_GraphImplementation;
 

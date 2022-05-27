@@ -51,7 +51,11 @@ public class TestGraphMemBigBDSMContainsFindAndStreamAll {
     @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;
 
-    @Param({"GraphMem", "GraphMem2", "GraphMem2NoEqualsOkOpt"})
+    @Param({
+            "GraphMem",
+            "GraphMem2",
+//            "GraphMem2NoEqualsOkOpt"
+    })
     public String param1_GraphImplementation;
 
     private Graph createGraph() {

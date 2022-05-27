@@ -1053,6 +1053,12 @@ public class LowMemoryHashSet<E> implements Set<E> {
                 while(entries[++pos] == null);
                 return (E) entries[pos];
             }
+//            while (0 < remaining) {
+//                if (null != entries[++pos]) {
+//                    remaining--;
+//                    return (E) entries[pos];
+//                }
+//            }
             throw new NoSuchElementException();
         }
     }

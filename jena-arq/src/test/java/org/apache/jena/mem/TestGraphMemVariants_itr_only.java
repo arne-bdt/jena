@@ -217,7 +217,7 @@ public class TestGraphMemVariants_itr_only extends TestGraphMemVariantsBase {
 //                        }
 //                        stopwatchS__.suspend();
 
-                        count_P_ = getCount_p_(count_P_, stopwatch_P_, graph, triples);
+                        //count_P_ = getCount_p_(count_P_, stopwatch_P_, graph, triples);
 
                         count__O = getCount__o(count__O, stopwatch__O, graph, triples);
 
@@ -283,7 +283,7 @@ public class TestGraphMemVariants_itr_only extends TestGraphMemVariantsBase {
 
     private int getCount__o(int count__O, StopWatch stopwatch__O, Graph graph, List<Triple> triples) {
         stopwatch__O.resume();
-        for(int k=0; k<5; k++) {
+        for(int k=0; k<10; k++) {
             for (Triple t : triples) {
                 count__O += count(graph.find(Node.ANY, Node.ANY, t.getObject()));
             }
