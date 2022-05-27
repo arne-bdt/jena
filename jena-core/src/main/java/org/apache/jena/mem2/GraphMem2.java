@@ -70,15 +70,24 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
     private static class KeyedHashSet extends ObjectKeyedLowMemoryHashSet<TripleSetWithKey> {
+
+        public KeyedHashSet() {
+            super();
+        }
+
+        public KeyedHashSet(int initialCapacity) {
+            super(initialCapacity);
+        }
+
         @Override
         protected Object getKey(TripleSetWithKey value) {
             return value.indexingValue();
         }
     }
 
-    private final KeyedHashSet triplesBySubject = new KeyedHashSet();
-    private final KeyedHashSet triplesByPredicate = new KeyedHashSet();
-    private final KeyedHashSet triplesByObject = new KeyedHashSet();
+    private final KeyedHashSet triplesBySubject = new KeyedHashSet(256); //256
+    private final KeyedHashSet triplesByPredicate = new KeyedHashSet(64); //64
+    private final KeyedHashSet triplesByObject = new KeyedHashSet(512); //512
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 
@@ -124,6 +133,10 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     private static abstract class AbstractLowMemoryTripleHashSet extends LowMemoryHashSet<Triple> implements TripleSetWithKey {
         private final Object indexingValue;
+        public AbstractLowMemoryTripleHashSet(int initialCapacity, TripleSetWithKey setWithKey) {
+            super(initialCapacity, setWithKey);
+            this.indexingValue = setWithKey.indexingValue();
+        }
 
         public AbstractLowMemoryTripleHashSet(TripleSetWithKey setWithKey) {
             super(setWithKey);
@@ -219,7 +232,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     private static class TripleHashSetForPredicates extends AbstractLowMemoryTripleHashSet {
 
         public TripleHashSetForPredicates(TripleSetWithKey setWithKey) {
-            super(setWithKey);
+            super(256, setWithKey);
         }
 
         @Override
@@ -238,7 +251,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     private static class TripleHashSetForObjects extends AbstractLowMemoryTripleHashSet {
 
         public TripleHashSetForObjects(TripleSetWithKey setWithKey) {
-            super(setWithKey);
+            super(124, setWithKey);
         }
 
         @Override
@@ -296,6 +309,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             return new TripleHashSetForSubjects(ts);
                         }
+
                         return ts;
                     });
             if(!withSameSubjectKey.add(t,  combineNodeHashes(t.getObject().hashCode(), hashKeyOfPredicate))) {
@@ -305,32 +319,33 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         predicate:
         {
             var indexingValue = t.getPredicate().getIndexingValue();
-            var withSamePredicateKey = this.triplesByPredicate.compute(
+            this.triplesByPredicate.compute(
                 indexingValue,
                     ts -> {
                         if(ts == null) {
-                            return new TripleListSetForPredicates(indexingValue);
+                            ts = new TripleListSetForPredicates(indexingValue);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
-                            return new TripleHashSetForPredicates(ts);
+                            ts = new TripleHashSetForPredicates(ts);
                         }
+                        ts.addUnsafe(t, combineNodeHashes( t.getObject().getIndexingValue().hashCode(), hashKeyOfSubject));
                         return ts;
                     });
-            withSamePredicateKey.addUnsafe(t, combineNodeHashes( t.getObject().getIndexingValue().hashCode(), hashKeyOfSubject));
+
         }
         object:
         {
             var indexingValue = t.getObject().getIndexingValue();
-            var withSameObjectKey = this.triplesByObject.compute(
+            this.triplesByObject.compute(
                     indexingValue,
                     ts -> {
                         if(ts == null) {
-                            return new TripleListSetForObjects(indexingValue);
+                            ts = new TripleListSetForObjects(indexingValue);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
-                            return new TripleHashSetForObjects(ts);
+                            ts = new TripleHashSetForObjects(ts);
                         }
+                        ts.addUnsafe(t, combineNodeHashes(hashKeyOfPredicate, hashKeyOfSubject));
                         return ts;
                     });
-            withSameObjectKey.addUnsafe(t, combineNodeHashes(hashKeyOfPredicate, hashKeyOfSubject));
         }
     }
 

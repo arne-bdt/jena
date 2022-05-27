@@ -36,7 +36,6 @@ public class TestGraphMemVariants_Profile_Memory extends TestGraphMemVariantsBas
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
     }
 
-
     private void hashCollisions(String graphUri) {
         var loadingGraph = new GraphMemWithArrayListOnly();
         RDFDataMgr.read(loadingGraph, graphUri);

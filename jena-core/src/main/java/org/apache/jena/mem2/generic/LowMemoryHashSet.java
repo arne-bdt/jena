@@ -66,7 +66,11 @@ public class LowMemoryHashSet<E> implements Set<E> {
     }
 
     public LowMemoryHashSet(Set<? extends E> set) {
-        this.entries = new Object[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
+        this(set.size(), set);
+    }
+
+    public LowMemoryHashSet(int initialCapacity, Set<? extends E> set) {
+        this.entries = new Object[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
         int index;
         for (E t : set) {
             if((index = findIndex(t)) < 0) {
@@ -195,6 +199,11 @@ public class LowMemoryHashSet<E> implements Set<E> {
         return a;
     }
 
+    public E findAny() {
+        var index = -1;
+        while(entries[++index] == null);
+        return (E)entries[index];
+    }
 
     @Override
     public boolean add(E value) {

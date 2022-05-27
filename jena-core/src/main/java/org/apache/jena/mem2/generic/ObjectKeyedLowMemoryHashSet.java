@@ -54,7 +54,11 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     }
 
     public ObjectKeyedLowMemoryHashSet(Set<? extends E> set) {
-        this.entries = new Object[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
+        this(set.size(), set);
+    }
+
+    public ObjectKeyedLowMemoryHashSet(int initialCapacity, Set<? extends E> set) {
+        this.entries = new Object[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
         int index;
         for (E e : set) {
             if((index = findIndex(getKey(e))) < 0) {
