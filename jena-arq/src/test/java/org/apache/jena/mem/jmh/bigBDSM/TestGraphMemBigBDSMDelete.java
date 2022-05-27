@@ -16,17 +16,15 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.jmh;
+package org.apache.jena.mem.jmh.bigBDSM;
 
 import org.apache.jena.graph.Graph;
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMem2NoEqualsOkOpt;
 import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.util.iterator.ExtendedIterator;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -39,33 +37,19 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 @State(Scope.Benchmark)
-public class TestGraphMemContainsFindAndStreamAll {
+public class TestGraphMemBigBDSMDelete {
 
-    @Param({
-//            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
-//            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
-            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-    })
+    public String getParam0_GraphUri() {
+        return param0_GraphUri;
+    }
+
+    @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;
 
-    @Param({
-//            "GraphMem",
-            "GraphMem2",
-            "GraphMem2NoEqualsOkOpt"})
+    @Param({"GraphMem", "GraphMem2", "GraphMem2NoEqualsOkOpt"})
     public String param1_GraphImplementation;
 
     private Graph createGraph() {
@@ -84,61 +68,37 @@ public class TestGraphMemContainsFindAndStreamAll {
         }
     }
 
-    private List<Triple> triples;
+    private List<Triple> triplesToAdd;
+    private List<Triple> triplesToDelete;
     private Graph sut;
 
     @Setup(Level.Invocation)
-    public void setupInvokation() throws Exception {
+    public void setupInvokation() {
+        this.sut = createGraph();
+        triplesToAdd.forEach(sut::add);
         // Invocation level: to be executed for each benchmark method execution.
     }
 
     @Setup(Level.Iteration)
-    public void setupIteration() throws Exception {
+    public void setupIteration() {
         // Iteration level: to be executed before/after each iteration of the benchmark.
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         // Trial level: to be executed before/after each run of the benchmark.
         var loadingGraph = new GraphMemWithArrayListOnly();
-        RDFDataMgr.read(loadingGraph, param0_GraphUri);
-        this.triples = loadingGraph.triples;
-        this.sut = createGraph();
-        this.triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
+        RDFDataMgr.read(loadingGraph, getParam0_GraphUri());
+        this.triplesToAdd = loadingGraph.triples;
+        this.triplesToDelete = new ArrayList<>(triplesToAdd.size());
+        this.triplesToAdd.forEach(t -> triplesToDelete.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
     }
 
 
     @Benchmark
-    public void graphContains() {
-        triples.forEach(t -> Assert.assertTrue(sut.contains(t)));
-    }
-
-    @Benchmark
-    public void graphFind() {
-        var found = new ArrayList<Triple>(sut.size());
-        var it = sut.find();
-        while(it.hasNext()) {
-            found.add(it.next());
-        }
-        it.close();
-        assertEquals(sut.size(), found.size());
-    }
-
-    @Benchmark
-    public void graphStream() {
-        var found = sut.stream().collect(Collectors.toList());
-        assertEquals(sut.size(), found.size());
-    }
-
-    @Benchmark
-    public void graphStreamParallel() throws ExecutionException, InterruptedException {
-        if(triples.size() < 10000) { /*to avoid waiting for blocking parallel execution*/
-            var found = sut.stream().collect(Collectors.toList());
-            assertEquals(sut.size(), found.size());
-        } else {
-            var found = sut.stream().parallel().collect(Collectors.toList());
-            assertEquals(sut.size(), found.size());
-        }
+    public void graphDelete() {
+        triplesToDelete.forEach(t -> this.sut.delete(t));
+        Assert.assertTrue(this.sut.isEmpty());
     }
 
     @Test
@@ -149,18 +109,17 @@ public class TestGraphMemContainsFindAndStreamAll {
                 .include(this.getClass().getName())
                 // Set the following options as needed
                 .mode (Mode.AverageTime)
-                .timeUnit(TimeUnit.MILLISECONDS)
+                .timeUnit(TimeUnit.SECONDS)
                 .warmupTime(TimeValue.NONE)
-                .warmupIterations(7)
+                .warmupIterations(3)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(40)
+                .measurementIterations(10)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)
                 .shouldDoGC(true)
                 //.jvmArgs("-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintInlining")
                 .jvmArgs("-Xmx12G")
-                .jvmArgsAppend("-Djava.util.concurrent.ForkJoinPool.common.parallelism=8")
                 //.addProfiler(WinPerfAsmProfiler.class)
                 .resultFormat(ResultFormatType.JSON)
                 .result(this.getClass().getSimpleName() + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".json")

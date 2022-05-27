@@ -187,71 +187,63 @@ public class TestGraphMemVariants_itr_only extends TestGraphMemVariantsBase {
                         var graph = graphs.get(i);
                         var triples = existingTriplesToSearchFor.get(i);
 
-                        stopwatchContains.resume();
-                        for (Triple t : triples) {
-                            if(!graph.contains(t)) {
-                                Assert.fail();
-                            }
-                        }
-                        stopwatchContains.suspend();
+//                        stopwatchContains.resume();
+//                        for (Triple t : triples) {
+//                            if(!graph.contains(t)) {
+//                                Assert.fail();
+//                            }
+//                        }
+//                        stopwatchContains.suspend();
+//
+//                        stopwatchNonExisting.resume();
+//                        var counter=0;
+//                        while(counter < triples.size()) {
+//                            for (Triple t : nonExistingTriplesToSearchFor) {
+//                                if(graph.contains(t)) {
+//                                    Assert.fail();
+//                                }
+//                                counter++;
+//                            }
+//                        }
+//                        stopwatchNonExisting.suspend();
+//
+//                        stopwatch___.resume();
+//                        count___ += count(graph.find());
+//                        stopwatch___.suspend();
+//
+//                        stopwatchS__.resume();
+//                        for (Triple t : triples) {
+//                            countS__ += count(graph.find(t.getSubject(), Node.ANY, Node.ANY));
+//                        }
+//                        stopwatchS__.suspend();
 
-                        stopwatchNonExisting.resume();
-                        var counter=0;
-                        while(counter < triples.size()) {
-                            for (Triple t : nonExistingTriplesToSearchFor) {
-                                if(graph.contains(t)) {
-                                    Assert.fail();
-                                }
-                                counter++;
-                            }
-                        }
-                        stopwatchNonExisting.suspend();
+                        count_P_ = getCount_p_(count_P_, stopwatch_P_, graph, triples);
 
-                        stopwatch___.resume();
-                        count___ += count(graph.find());
-                        stopwatch___.suspend();
+                        count__O = getCount__o(count__O, stopwatch__O, graph, triples);
 
-                        stopwatchS__.resume();
-                        for (Triple t : triples) {
-                            countS__ += count(graph.find(t.getSubject(), Node.ANY, Node.ANY));
-                        }
-                        stopwatchS__.suspend();
-
-                        stopwatch_P_.resume();
-                        for (Triple t : triples) {
-                            count_P_ += count(graph.find(Node.ANY, t.getPredicate(), Node.ANY));
-                        }
-                        stopwatch_P_.suspend();
-
-                        stopwatch__O.resume();
-                        for (Triple t : triples) {
-                            count__O += count(graph.find(Node.ANY, Node.ANY, t.getObject()));
-                        }
-                        stopwatch__O.suspend();
-
-                        stopwatchSP_.resume();
-                        for (Triple t : triples) {
-                            countSP_ += count(graph.find(t.getSubject(), t.getPredicate(), Node.ANY));
-                        }
-                        stopwatchSP_.suspend();
-
-                        stopwatchSPO.resume();
-                        for (Triple t : triples) {
-                            countSPO += count(graph.find(t.getSubject(), t.getPredicate(), t.getObject()));
-                        }
-                        stopwatchSPO.suspend();
-
-                        stopwatchS_O.resume();
-                        for (Triple t : triples) {
-                            countS_O += count(graph.find(t.getSubject(), Node.ANY, t.getObject()));
-                        }
-                        stopwatchS_O.suspend();
-
-                        stopwatch_PO.resume();
-                        for (Triple t : triples) {
-                            count_PO += count(graph.find(Node.ANY, t.getPredicate(), t.getObject()));
-                        }
-                        stopwatch_PO.suspend();
+//                        stopwatchSP_.resume();
+//                        for (Triple t : triples) {
+//                            countSP_ += count(graph.find(t.getSubject(), t.getPredicate(), Node.ANY));
+//                        }
+//                        stopwatchSP_.suspend();
+//
+//                        stopwatchSPO.resume();
+//                        for (Triple t : triples) {
+//                            countSPO += count(graph.find(t.getSubject(), t.getPredicate(), t.getObject()));
+//                        }
+//                        stopwatchSPO.suspend();
+//
+//                        stopwatchS_O.resume();
+//                        for (Triple t : triples) {
+//                            countS_O += count(graph.find(t.getSubject(), Node.ANY, t.getObject()));
+//                        }
+//                        stopwatchS_O.suspend();
+//
+//                        stopwatch_PO.resume();
+//                        for (Triple t : triples) {
+//                            count_PO += count(graph.find(Node.ANY, t.getPredicate(), t.getObject()));
+//                        }
+//                        stopwatch_PO.suspend();
                     }
                     stopwatchContains.stop();
                     stopwatchNonExisting.stop();
@@ -286,220 +278,28 @@ public class TestGraphMemVariants_itr_only extends TestGraphMemVariantsBase {
                 stopwatchWholeSearch.stop();
                 System.out.println("number of random triples to search for: " + numberOfRandomTriplesToSearchFor + " total time of all Graph.find and Graph.contains operations: " + stopwatchWholeSearch.formatTime());
             }
-//            if(0 < numberOfRandomTriplesToSearchFor && !(graphSuppliersWithName.getValue().get() instanceof GraphMemWithArrayListOnly)) {
-//                var stopwatchWholeSearch = StopWatch.createStarted();
-//                {
-//                    var count___ = 0;
-//                    var countS__ = 0;
-//                    var count_P_ = 0;
-//                    var count__O = 0;
-//                    var countSP_ = 0;
-//                    var countSPO = 0;
-//                    var countS_O = 0;
-//                    var count_PO = 0;
-//                    var stopwatch___ = StopWatch.createStarted();
-//                    stopwatch___.suspend();
-//                    var stopwatchS__ = StopWatch.createStarted();
-//                    stopwatchS__.suspend();
-//                    var stopwatch_P_ = StopWatch.createStarted();
-//                    stopwatch_P_.suspend();
-//                    var stopwatch__O = StopWatch.createStarted();
-//                    stopwatch__O.suspend();
-//                    var stopwatchSP_ = StopWatch.createStarted();
-//                    stopwatchSP_.suspend();
-//                    var stopwatchSPO = StopWatch.createStarted();
-//                    stopwatchSPO.suspend();
-//                    var stopwatchS_O = StopWatch.createStarted();
-//                    stopwatchS_O.suspend();
-//                    var stopwatch_PO = StopWatch.createStarted();
-//                    stopwatch_PO.suspend();
-//                    for (int i = 0; i < graphs.size(); i++) {
-//                        var graph = graphs.get(i);
-//                        var triples = existingTriplesToSearchFor.get(i);
-//                        var nonExistingTriples = nonExistingTriplesToSearchFor.get(i);
-//
-//                        stopwatch___.resume();
-//                        count___ += graph.stream().count();
-//                        stopwatch___.suspend();
-//
-//                        stopwatchS__.resume();
-//                        for (Triple t : triples) {
-//                            countS__ += graph.stream(t.getSubject(), Node.ANY, Node.ANY).count();
-//                        }
-//                        stopwatchS__.suspend();
-//
-//                        stopwatch_P_.resume();
-//                        for (Triple t : triples) {
-//                            count_P_ += graph.stream(Node.ANY, t.getPredicate(), Node.ANY).count();
-//                        }
-//                        stopwatch_P_.suspend();
-//
-//                        stopwatch__O.resume();
-//                        for (Triple t : triples) {
-//                            count__O += graph.stream(Node.ANY, Node.ANY, t.getObject()).count();
-//                        }
-//                        stopwatch__O.suspend();
-//
-//                        stopwatchSP_.resume();
-//                        for (Triple t : triples) {
-//                            countSP_ += graph.stream(t.getSubject(), t.getPredicate(), Node.ANY).count();
-//                        }
-//                        stopwatchSP_.suspend();
-//
-//                        stopwatchSPO.resume();
-//                        for (Triple t : triples) {
-//                            countSPO += graph.stream(t.getSubject(), t.getPredicate(), t.getObject()).count();
-//                        }
-//                        stopwatchSPO.suspend();
-//
-//                        stopwatchS_O.resume();
-//                        for (Triple t : triples) {
-//                            countS_O += graph.stream(t.getSubject(), Node.ANY, t.getObject()).count();
-//                        }
-//                        stopwatchS_O.suspend();
-//
-//                        stopwatch_PO.resume();
-//                        for (Triple t : triples) {
-//                            count_PO += graph.stream(Node.ANY, t.getPredicate(), t.getObject()).count();
-//                        }
-//                        stopwatch_PO.suspend();
-//                    }
-//                    stopwatch___.stop();
-//                    stopwatchS__.stop();
-//                    stopwatch_P_.stop();
-//                    stopwatch__O.stop();
-//                    stopwatchSP_.stop();
-//                    stopwatchSPO.stop();
-//                    stopwatchS_O.stop();
-//                    stopwatch_PO.stop();
-//                    System.out.println(String.format("Graph.stream().count(): ___: %d/%s S__: %d/%s _P_: %d/%s __O: %d/%s SP_: %d/%s SPO: %d/%s S_O: %d/%s _PO: %d/%s",
-//                            count___,
-//                            stopwatch___.formatTime(),
-//                            countS__,
-//                            stopwatchS__.formatTime(),
-//                            count_P_,
-//                            stopwatch_P_.formatTime(),
-//                            count__O,
-//                            stopwatch__O.formatTime(),
-//                            countSP_,
-//                            stopwatchSP_.formatTime(),
-//                            countSPO,
-//                            stopwatchSPO.formatTime(),
-//                            countS_O,
-//                            stopwatchS_O.formatTime(),
-//                            count_PO,
-//                            stopwatch_PO.formatTime()));
-//                }
-//                stopwatchWholeSearch.stop();
-//                System.out.println("number of random triples to search for: " + numberOfRandomTriplesToSearchFor + " total time of all Graph.stream.count operations: " + stopwatchWholeSearch.formatTime());
-//            }
-//            if(0 < numberOfRandomTriplesToSearchFor && !(graphSuppliersWithName.getValue().get() instanceof GraphMemWithArrayListOnly)) {
-//                var stopwatchWholeSearch = StopWatch.createStarted();
-//                {
-//                    var count___ = 0;
-//                    var countS__ = 0;
-//                    var count_P_ = 0;
-//                    var count__O = 0;
-//                    var countSP_ = 0;
-//                    var countSPO = 0;
-//                    var countS_O = 0;
-//                    var count_PO = 0;
-//                    var stopwatch___ = StopWatch.createStarted();
-//                    stopwatch___.suspend();
-//                    var stopwatchS__ = StopWatch.createStarted();
-//                    stopwatchS__.suspend();
-//                    var stopwatch_P_ = StopWatch.createStarted();
-//                    stopwatch_P_.suspend();
-//                    var stopwatch__O = StopWatch.createStarted();
-//                    stopwatch__O.suspend();
-//                    var stopwatchSP_ = StopWatch.createStarted();
-//                    stopwatchSP_.suspend();
-//                    var stopwatchSPO = StopWatch.createStarted();
-//                    stopwatchSPO.suspend();
-//                    var stopwatchS_O = StopWatch.createStarted();
-//                    stopwatchS_O.suspend();
-//                    var stopwatch_PO = StopWatch.createStarted();
-//                    stopwatch_PO.suspend();
-//                    for (int i = 0; i < graphs.size(); i++) {
-//                        var graph = graphs.get(i);
-//                        var triples = existingTriplesToSearchFor.get(i);
-//                        var nonExistingTriples = nonExistingTriplesToSearchFor.get(i);
-//
-//                        stopwatch___.resume();
-//                        count___ += graph.stream().parallel().count();
-//                        stopwatch___.suspend();
-//
-//                        stopwatchS__.resume();
-//                        for (Triple t : triples) {
-//                            countS__ += graph.stream(t.getSubject(), Node.ANY, Node.ANY).parallel().count();
-//                        }
-//                        stopwatchS__.suspend();
-//
-//                        stopwatch_P_.resume();
-//                        for (Triple t : triples) {
-//                            count_P_ += graph.stream(Node.ANY, t.getPredicate(), Node.ANY).parallel().count();
-//                        }
-//                        stopwatch_P_.suspend();
-//
-//                        stopwatch__O.resume();
-//                        for (Triple t : triples) {
-//                            count__O += graph.stream(Node.ANY, Node.ANY, t.getObject()).parallel().count();
-//                        }
-//                        stopwatch__O.suspend();
-//
-//                        stopwatchSP_.resume();
-//                        for (Triple t : triples) {
-//                            countSP_ += graph.stream(t.getSubject(), t.getPredicate(), Node.ANY).parallel().count();
-//                        }
-//                        stopwatchSP_.suspend();
-//
-//                        stopwatchSPO.resume();
-//                        for (Triple t : triples) {
-//                            countSPO += graph.stream(t.getSubject(), t.getPredicate(), t.getObject()).parallel().count();
-//                        }
-//                        stopwatchSPO.suspend();
-//
-//                        stopwatchS_O.resume();
-//                        for (Triple t : triples) {
-//                            countS_O += graph.stream(t.getSubject(), Node.ANY, t.getObject()).parallel().count();
-//                        }
-//                        stopwatchS_O.suspend();
-//
-//                        stopwatch_PO.resume();
-//                        for (Triple t : triples) {
-//                            count_PO += graph.stream(Node.ANY, t.getPredicate(), t.getObject()).parallel().count();
-//                        }
-//                        stopwatch_PO.suspend();
-//                    }
-//                    stopwatch___.stop();
-//                    stopwatchS__.stop();
-//                    stopwatch_P_.stop();
-//                    stopwatch__O.stop();
-//                    stopwatchSP_.stop();
-//                    stopwatchSPO.stop();
-//                    stopwatchS_O.stop();
-//                    stopwatch_PO.stop();
-//                    System.out.println(String.format("Graph.stream().parallel().count(): ___: %d/%s S__: %d/%s _P_: %d/%s __O: %d/%s SP_: %d/%s SPO: %d/%s S_O: %d/%s _PO: %d/%s",
-//                            count___,
-//                            stopwatch___.formatTime(),
-//                            countS__,
-//                            stopwatchS__.formatTime(),
-//                            count_P_,
-//                            stopwatch_P_.formatTime(),
-//                            count__O,
-//                            stopwatch__O.formatTime(),
-//                            countSP_,
-//                            stopwatchSP_.formatTime(),
-//                            countSPO,
-//                            stopwatchSPO.formatTime(),
-//                            countS_O,
-//                            stopwatchS_O.formatTime(),
-//                            count_PO,
-//                            stopwatch_PO.formatTime()));
-//                }
-//                stopwatchWholeSearch.stop();
-//                System.out.println("number of random triples to search for: " + numberOfRandomTriplesToSearchFor + " total time of all Graph.stream.parallel.count operations: " + stopwatchWholeSearch.formatTime());
-//            }
         }
+    }
+
+    private int getCount__o(int count__O, StopWatch stopwatch__O, Graph graph, List<Triple> triples) {
+        stopwatch__O.resume();
+        for(int k=0; k<5; k++) {
+            for (Triple t : triples) {
+                count__O += count(graph.find(Node.ANY, Node.ANY, t.getObject()));
+            }
+        }
+        stopwatch__O.suspend();
+        return count__O;
+    }
+
+    private int getCount_p_(int count_P_, StopWatch stopwatch_P_, Graph graph, List<Triple> triples) {
+        stopwatch_P_.resume();
+        for(int k=0; k<5; k++) {
+            for (Triple t : triples) {
+                count_P_ += count(graph.find(Node.ANY, t.getPredicate(), Node.ANY));
+            }
+        }
+        stopwatch_P_.suspend();
+        return count_P_;
     }
 }

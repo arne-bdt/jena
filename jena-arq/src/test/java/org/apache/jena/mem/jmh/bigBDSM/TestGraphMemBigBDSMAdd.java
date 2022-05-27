@@ -16,13 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.jmh;
+package org.apache.jena.mem.jmh.bigBDSM;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMem2NoEqualsOkOpt;
 import org.apache.jena.riot.RDFDataMgr;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -46,7 +47,7 @@ public class TestGraphMemBigBDSMAdd {
     @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;
 
-    @Param({"GraphMem", "GraphMem2"})
+    @Param({"GraphMem", "GraphMem2", "GraphMem2NoEqualsOkOpt"})
     public String param1_GraphImplementation;
 
     private Graph createGraph() {
@@ -56,6 +57,9 @@ public class TestGraphMemBigBDSMAdd {
 
             case "GraphMem2":
                 return new GraphMem2();
+
+            case "GraphMem2NoEqualsOkOpt":
+                return new GraphMem2NoEqualsOkOpt();
 
             default:
                 throw new IllegalArgumentException();
@@ -101,7 +105,7 @@ public class TestGraphMemBigBDSMAdd {
                 .warmupTime(TimeValue.NONE)
                 .warmupIterations(5)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(20)
+                .measurementIterations(10)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)

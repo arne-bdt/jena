@@ -23,6 +23,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMem2NoEqualsOkOpt;
 import org.apache.jena.riot.RDFDataMgr;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -43,19 +44,23 @@ public class TestGraphMemAdd {
         return param0_GraphUri;
     }
 
-    @Param({"./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
-            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+    @Param({
+//            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
+//            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
             "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml"
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
+//            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+//            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+//            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+//            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
     })
     public String param0_GraphUri;
 
-    @Param({"GraphMem", "GraphMem2"})
+    @Param({
+//            "GraphMem",
+            "GraphMem2",
+            "GraphMem2NoEqualsOkOpt"})
     public String param1_GraphImplementation;
 
     private Graph createGraph() {
@@ -65,6 +70,9 @@ public class TestGraphMemAdd {
 
             case "GraphMem2":
                 return new GraphMem2();
+
+            case "GraphMem2NoEqualsOkOpt":
+                return new GraphMem2NoEqualsOkOpt();
 
             default:
                 throw new IllegalArgumentException();

@@ -76,7 +76,7 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
      */
     @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 5,
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
     }
 
@@ -123,7 +123,7 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
 
     @Test
     public void xxx_CGMES_EQ() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 10,
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
                 "C:/temp/res_test/xxx_CGMES_EQ.xml");
     }
 
@@ -157,10 +157,11 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
                     var triples = triplesPerGraph.get(i);
 
                     stopwatchContains.resume();
-                    for (Triple t : triples) {
-                        if(!graph.contains(Triple.create(t.getSubject(), t.getPredicate(), t.getObject()))) {
-                            graph.contains(Triple.create(t.getSubject(), t.getPredicate(), t.getObject()));
-                            Assert.fail();
+                    for(int k=0; k<50; k++) {
+                        for (Triple t : triples) {
+                            if (!graph.contains(Triple.create(t.getSubject(), t.getPredicate(), t.getObject()))) {
+                                Assert.fail();
+                            }
                         }
                     }
                     stopwatchContains.suspend();

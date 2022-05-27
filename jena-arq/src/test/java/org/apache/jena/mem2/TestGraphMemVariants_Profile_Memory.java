@@ -18,27 +18,99 @@
 
 package org.apache.jena.mem2;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
-import org.apache.jena.mem2.specialized.LowMemoryTripleHashSet;
 import org.apache.jena.riot.RDFDataMgr;
-import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.*;
+import java.util.function.Function;
 
 public class TestGraphMemVariants_Profile_Memory extends TestGraphMemVariantsBase {
 
     @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() throws InterruptedException {
-        load_and_wait(
+        hashCollisions(
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
     }
 
+
+    private void hashCollisions(String graphUri) {
+        var loadingGraph = new GraphMemWithArrayListOnly();
+        RDFDataMgr.read(loadingGraph, graphUri);
+        var triples = loadingGraph.triples;
+        var subjectsByHashCode = getMapWithNodes(triples, Triple::getSubject, 524288);
+        var predicatesByHashCode = getMapWithNodes(triples, Triple::getPredicate, 512);
+        var objectsByHashCode = getMapWithNodes(triples, Triple::getObject, 1048576);
+        var subjectCollisions = new CollisionSummary(subjectsByHashCode);
+        var predicateCollisions = new CollisionSummary(predicatesByHashCode);
+        var objectCollisions = new CollisionSummary(objectsByHashCode);
+        int i=0;
+    }
+
+    private static class CollisionSummary {
+        public int hashes;
+        public int nodes;
+        public int collisions;
+        public final double collisionsPerNodePerCent;
+
+        public CollisionSummary(List<HashCodeAndNodes> hashesAndNodes) {
+            for (HashCodeAndNodes hashAndNodes : hashesAndNodes) {
+                hashes++;
+                nodes += hashAndNodes.nodes.size();
+                if(hashAndNodes.nodes.size() > 1) {
+                    collisions += hashAndNodes.nodes.size() - 1;
+                }
+            }
+            collisions = nodes - hashes;
+            collisionsPerNodePerCent = collisions != 0 ? (double)collisions/(double)nodes * 100d : 0;
+        }
+    }
+
+    private List<HashCodeAndNodes> getMapWithNodes(List<Triple> triples, Function<Triple, Node> nodeResolver, int size) {
+        var nodesByIndexingHash = new HashMap<Integer, Set<Node>>();
+        triples.forEach(t -> {
+            var node = nodeResolver.apply(t);
+            var hashCode = node.getIndexingValue().hashCode();
+            if(node.isLiteral()) {
+                hashCode = (hashCode ^ ((hashCode*31) >>> 16) & (size - 1));
+            } else {
+                hashCode = (hashCode ^ (hashCode >>> 16) & (size - 1));
+            }
+
+
+            //hashCode = hashCode & (size-1);
+            nodesByIndexingHash.compute(hashCode,
+                    (hc, set) -> {
+                        if(set == null) {
+                            set = new HashSet<>();
+                        }
+                        set.add(node);
+                        return set;
+                    });
+        });
+        var hashCodesAndNodes = new ArrayList<HashCodeAndNodes>(nodesByIndexingHash.size());
+        nodesByIndexingHash.entrySet()
+                .forEach(entrySet -> {
+                    hashCodesAndNodes.add(new HashCodeAndNodes(entrySet.getKey(), entrySet.getValue()));
+        });
+        hashCodesAndNodes.sort(HashCodeAndNodes.mostNodesPerHashCodeComparator);
+        return hashCodesAndNodes;
+    }
+
+    private static class HashCodeAndNodes {
+        public final int hashCode;
+        public final Set<Node> nodes;
+
+        public HashCodeAndNodes(int hashCode, Set<Node> nodes) {
+            this.hashCode = hashCode;
+            this.nodes = nodes;
+        }
+        public static Comparator<HashCodeAndNodes> mostNodesPerHashCodeComparator
+                = Comparator.comparingInt((HashCodeAndNodes o) -> o.nodes.size()).reversed();
+    }
 
 
 

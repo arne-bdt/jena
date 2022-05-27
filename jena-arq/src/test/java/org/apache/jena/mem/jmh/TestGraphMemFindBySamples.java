@@ -24,9 +24,9 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMem2NoEqualsOkOpt;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
-import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -38,9 +38,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -49,23 +47,23 @@ import static org.junit.Assert.assertTrue;
 public class TestGraphMemFindBySamples {
 
     @Param({
-            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
-            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
+//            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
+//            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+            "C:/temp/res_test/xxx_CGMES_TP.xml",
             "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
             "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
             "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
     })
     public String param0_GraphUri;
 
-    @Param({"GraphMem", "GraphMem2"})
-    public String param1_GraphImplementation;
+    @Param({"100"})
+    public int param2_sampleSize;
 
-    @Param({"500"})
-    public int sampleSize;
+    @Param({"GraphMem", "GraphMem2", "GraphMem2NoEqualsOkOpt"})
+    public String param1_GraphImplementation;
 
     private Graph createGraph() {
         switch (this.param1_GraphImplementation) {
@@ -74,6 +72,9 @@ public class TestGraphMemFindBySamples {
 
             case "GraphMem2":
                 return new GraphMem2();
+
+            case "GraphMem2NoEqualsOkOpt":
+                return new GraphMem2NoEqualsOkOpt();
 
             default:
                 throw new IllegalArgumentException();
@@ -102,8 +103,8 @@ public class TestGraphMemFindBySamples {
         var triples = loadingGraph.triples;
         triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
 
-        this.samples = new ArrayList<>(sampleSize);
-        var sampleIncrement = triples.size() / sampleSize;
+        this.samples = new ArrayList<>(param2_sampleSize);
+        var sampleIncrement = triples.size() / param2_sampleSize;
         for(var i=0; i< triples.size(); i+=sampleIncrement) {
             this.samples.add(triples.get(i));
         }
@@ -183,16 +184,15 @@ public class TestGraphMemFindBySamples {
                 .mode (Mode.AverageTime)
                 .timeUnit(TimeUnit.MILLISECONDS)
                 .warmupTime(TimeValue.NONE)
-                .warmupIterations(10)
+                .warmupIterations(8)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(40)
+                .measurementIterations(16)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)
                 .shouldDoGC(true)
                 //.jvmArgs("-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintInlining")
                 .jvmArgs("-Xmx12G")
-                .jvmArgsAppend("-Djava.util.concurrent.ForkJoinPool.common.parallelism=6")
                 //.addProfiler(WinPerfAsmProfiler.class)
                 .resultFormat(ResultFormatType.JSON)
                 .result(this.getClass().getSimpleName() + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".json")

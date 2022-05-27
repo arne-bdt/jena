@@ -88,7 +88,7 @@ public class LowMemoryHashSet<E> implements Set<E> {
         this.entries = new Object[Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                this.entries[findEmptySlotWithoutEqualityCheck((E)oldEntries[i])] = oldEntries[i];
+                this.entries[findEmptySlotWithoutEqualityCheck(getHashCode((E)oldEntries[i]))] = oldEntries[i];
             }
         }
     }
@@ -102,7 +102,7 @@ public class LowMemoryHashSet<E> implements Set<E> {
         this.entries = new Object[newSize];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                this.entries[findEmptySlotWithoutEqualityCheck((E)oldEntries[i])] = oldEntries[i];
+                this.entries[findEmptySlotWithoutEqualityCheck(getHashCode((E)oldEntries[i]))] = oldEntries[i];
             }
         }
         return true;
@@ -132,12 +132,12 @@ public class LowMemoryHashSet<E> implements Set<E> {
 
     @Override
     public boolean contains(Object o) {
-        var t = (E)o;
-        final var index = calcStartIndexByHashCode(t);
+        var e = (E)o;
+        final var index = calcStartIndexByHashCode(getHashCode(e));
         if(null == entries[index]) {
             return false;
         }
-        var predicate = getContainsPredicate(t);
+        var predicate = getContainsPredicate(e);
         if(predicate.test((E)entries[index])) {
             return true;
         }
@@ -208,9 +208,24 @@ public class LowMemoryHashSet<E> implements Set<E> {
         return false;
     }
 
-    public void addUnsafe(E value) {
+    public boolean add(E value, int hashCode) {
         grow();
-        entries[findEmptySlotWithoutEqualityCheck(value)] = value;
+        var index = findIndex(value, hashCode);
+        if(index < 0) {
+            entries[~index] = value;
+            size++;
+            return true;
+        }
+        return false;
+    }
+
+    public void addUnsafe(E value) {
+        addUnsafe(value, getHashCode(value));
+    }
+
+    public void addUnsafe(E value, int hashCode) {
+        grow();
+        entries[findEmptySlotWithoutEqualityCheck(hashCode)] = value;
         size++;
     }
 
@@ -273,7 +288,7 @@ public class LowMemoryHashSet<E> implements Set<E> {
                 throw new IllegalArgumentException("remapped value is not equal to value");
             }
             if(grow()) {
-                entries[findEmptySlotWithoutEqualityCheck(value)] = newValue;
+                entries[findEmptySlotWithoutEqualityCheck(getHashCode(value))] = newValue;
             } else {
                 entries[~index] = newValue;
             }
@@ -301,7 +316,10 @@ public class LowMemoryHashSet<E> implements Set<E> {
     }
 
     private int findIndex(final E t) {
-        final var index = calcStartIndexByHashCode(t);
+        return findIndex(t, getHashCode(t));
+    }
+    private int findIndex(final E t, final int hashNode) {
+        final var index = calcStartIndexByHashCode(hashNode);
         if(null == entries[index]) {
             return ~index;
         }
@@ -335,8 +353,8 @@ public class LowMemoryHashSet<E> implements Set<E> {
         throw new IllegalStateException();
     }
 
-    private int findEmptySlotWithoutEqualityCheck(final E t) {
-        final var index = calcStartIndexByHashCode(t);
+    private int findEmptySlotWithoutEqualityCheck(final int hashCode) {
+        final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return index;
         }
@@ -379,7 +397,12 @@ public class LowMemoryHashSet<E> implements Set<E> {
      */
     @Override
     public boolean remove(Object o) {
-        var index = findIndex((E) o);
+        var e = (E)o;
+        return remove(e, getHashCode(e));
+    }
+
+    public boolean remove(E e, int hashCode) {
+        var index = findIndex(e, hashCode);
         if (index < 0) {
             return false;
         }
@@ -390,7 +413,11 @@ public class LowMemoryHashSet<E> implements Set<E> {
     }
 
     public void removeUnsafe(E e) {
-        var index = findIndex(e);
+        removeUnsafe(e, getHashCode(e));
+    }
+
+    public void removeUnsafe(E e, int hashCode) {
+        var index = findIndex(e, hashCode);
         entries[index] = null;
         size--;
         rearrangeNeighbours(index);
