@@ -19,15 +19,14 @@
 package org.apache.jena.mem2;
 
 import org.apache.commons.lang3.NotImplementedException;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
-import org.apache.jena.mem2.generic.IntegerKeyedLowMemoryHashSet;
 import org.apache.jena.mem2.generic.ListSetBase;
 import org.apache.jena.mem2.generic.LowMemoryHashSet;
+import org.apache.jena.mem2.generic.ObjectKeyedLowMemoryHashSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -70,10 +69,10 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
     private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
-    private static class KeyedHashSet extends IntegerKeyedLowMemoryHashSet<TripleSetWithKey>{
+    private static class KeyedHashSet extends ObjectKeyedLowMemoryHashSet<TripleSetWithKey> {
         @Override
-        protected int getKey(TripleSetWithKey value) {
-            return value.getKeyOfSet();
+        protected Object getKey(TripleSetWithKey value) {
+            return value.indexingValue();
         }
     }
 
@@ -85,7 +84,7 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
 
     private interface TripleSetWithKey extends Set<Triple> {
 
-        int getKeyOfSet();
+        Object indexingValue();
 
         void addUnsafe(Triple t);
 
@@ -110,37 +109,37 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
 
     private static abstract class AbstractSortedTriplesSet extends ListSetBase<Triple> implements TripleSetWithKey {
 
-        private final int keyOfSet;
+        private final Object indexingValue;
 
-        public AbstractSortedTriplesSet(final int keyOfSet) {
+        public AbstractSortedTriplesSet(final Object indexingValue) {
             super(INITIAL_SIZE_FOR_ARRAY_LISTS);
-            this.keyOfSet = keyOfSet;
+            this.indexingValue = indexingValue;
         }
 
         @Override
-        public int getKeyOfSet() {
-            return this.keyOfSet;
+        public Object indexingValue() {
+            return this.indexingValue;
         }
     }
 
     private static abstract class AbstractLowMemoryTripleHashSet extends LowMemoryHashSet<Triple> implements TripleSetWithKey {
-        private final int keyOfSet;
+        private final Object indexingValue;
 
         public AbstractLowMemoryTripleHashSet(TripleSetWithKey setWithKey) {
             super(setWithKey);
-            this.keyOfSet = setWithKey.getKeyOfSet();
+            this.indexingValue = setWithKey.indexingValue();
         }
 
         @Override
-        public int getKeyOfSet() {
-            return this.keyOfSet;
+        public Object indexingValue() {
+            return this.indexingValue;
         }
     }
 
     private static class TripleListSetForSubjects extends AbstractSortedTriplesSet {
 
-        public TripleListSetForSubjects(int keyOfSet) {
-            super(keyOfSet);
+        public TripleListSetForSubjects(Object indexingValue) {
+            super(indexingValue);
         }
 
         @Override
@@ -159,8 +158,8 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
 
     private static class TripleListSetForPredicates extends AbstractSortedTriplesSet {
 
-        public TripleListSetForPredicates(int keyOfSet) {
-            super(keyOfSet);
+        public TripleListSetForPredicates(Object indexingValue) {
+            super(indexingValue);
         }
 
         @Override
@@ -180,8 +179,8 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
 
     private static class TripleListSetForObjects extends AbstractSortedTriplesSet {
 
-        public TripleListSetForObjects(int keyOfSet) {
-            super(keyOfSet);
+        public TripleListSetForObjects(Object indexingValue) {
+            super(indexingValue);
         }
 
         @Override
@@ -212,8 +211,7 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         @Override
         protected Predicate<Triple> getContainsPredicate(Triple value) {
             return t -> value.getObject().sameValueAs(t.getObject())
-                    && value.getPredicate().equals(t.getPredicate())
-                    && value.getSubject().equals(t.getSubject());
+                    && value.getPredicate().equals(t.getPredicate());
         }
     }
 
@@ -232,8 +230,7 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         @Override
         protected Predicate<Triple> getContainsPredicate(Triple value) {
             return t -> value.getSubject().equals(t.getSubject())
-                    && value.getObject().sameValueAs(t.getObject())
-                    && value.getPredicate().equals(t.getPredicate());
+                    && value.getObject().sameValueAs(t.getObject());
         }
     }
 
@@ -252,8 +249,7 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         @Override
         protected Predicate<Triple> getContainsPredicate(Triple value) {
             return t -> value.getSubject().equals(t.getSubject())
-                    && value.getPredicate().equals(t.getPredicate())
-                    && value.getObject().sameValueAs(t.getObject());
+                    && value.getPredicate().equals(t.getPredicate());
         }
     }
 
@@ -289,51 +285,46 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
     public void performAdd(final Triple t) {
         var hashKeyOfSubject = t.getSubject().hashCode();
         var hashKeyOfPredicate = t.getPredicate().hashCode();
-        var hashKeyOfObject = t.getObject().hashCode();
-        var hashKeyOfObjectIndexing = t.getObject().getIndexingValue().hashCode();
         subject:
         {
-            var sKey = t.getSubject().getIndexingValue() == t.getSubject()
-                    ? hashKeyOfSubject
-                    : t.getSubject().getIndexingValue().hashCode();
+            var indexingValue = t.getSubject().getIndexingValue();
             var withSameSubjectKey = this.triplesBySubject.compute(
-                    sKey,
+                    indexingValue,
                     ts -> {
                         if(ts == null) {
-                            return new TripleListSetForSubjects(sKey);
+                            return new TripleListSetForSubjects(indexingValue);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             return new TripleHashSetForSubjects(ts);
                         }
                         return ts;
                     });
-            if(!withSameSubjectKey.add(t,  combineNodeHashes(hashKeyOfObject, hashKeyOfPredicate))) {
+            if(!withSameSubjectKey.add(t,  combineNodeHashes(t.getObject().hashCode(), hashKeyOfPredicate))) {
                 return;
             }
         }
         predicate:
         {
-            var pKey = t.getPredicate().getIndexingValue() == t.getPredicate()
-                    ? hashKeyOfPredicate
-                    : t.getPredicate().getIndexingValue().hashCode();
+            var indexingValue = t.getPredicate().getIndexingValue();
             var withSamePredicateKey = this.triplesByPredicate.compute(
-                pKey,
+                indexingValue,
                     ts -> {
                         if(ts == null) {
-                            return new TripleListSetForPredicates(pKey);
+                            return new TripleListSetForPredicates(indexingValue);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             return new TripleHashSetForPredicates(ts);
                         }
                         return ts;
                     });
-            withSamePredicateKey.addUnsafe(t, combineNodeHashes(hashKeyOfObjectIndexing, hashKeyOfSubject));
+            withSamePredicateKey.addUnsafe(t, combineNodeHashes( t.getObject().getIndexingValue().hashCode(), hashKeyOfSubject));
         }
         object:
         {
+            var indexingValue = t.getObject().getIndexingValue();
             var withSameObjectKey = this.triplesByObject.compute(
-                    hashKeyOfObjectIndexing,
+                    indexingValue,
                     ts -> {
                         if(ts == null) {
-                            return new TripleListSetForObjects(hashKeyOfObjectIndexing);
+                            return new TripleListSetForObjects(indexingValue);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             return new TripleHashSetForObjects(ts);
                         }
@@ -355,19 +346,15 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
     public void performDelete(Triple t) {
         var hashKeyOfSubject = t.getSubject().hashCode();
         var hashKeyOfPredicate = t.getPredicate().hashCode();
-        var hashKeyOfObject = t.getObject().hashCode();
-        var hashKeyOfObjectIndexing = t.getObject().getIndexingValue().hashCode();
         subject:
         {
             final boolean[] removed = {false};
             this.triplesBySubject.compute(
-                    t.getSubject().getIndexingValue() == t.getSubject()
-                            ? hashKeyOfSubject
-                            : t.getSubject().getIndexingValue().hashCode(),
+                    t.getSubject().getIndexingValue(),
                     ts -> {
                         if(ts == null) {
                             return null;
-                        } else if(ts.remove(t, combineNodeHashes(hashKeyOfObject, hashKeyOfPredicate))) {
+                        } else if(ts.remove(t, combineNodeHashes(t.getObject().hashCode(), hashKeyOfPredicate))) {
                             removed[0] = true;
                             if(ts.isEmpty()) {
                                 return null; /*thereby remove key*/
@@ -382,18 +369,16 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         predicate:
         {
             this.triplesByPredicate.compute(
-                    t.getPredicate().getIndexingValue() == t.getPredicate()
-                            ? hashKeyOfPredicate
-                            : t.getPredicate().getIndexingValue().hashCode(),
+                    t.getPredicate().getIndexingValue(),
                     ts -> {
-                        ts.removeUnsafe(t, combineNodeHashes(hashKeyOfObjectIndexing, hashKeyOfSubject));
+                        ts.removeUnsafe(t, combineNodeHashes(t.getObject().getIndexingValue().hashCode(), hashKeyOfSubject));
                         return ts.isEmpty() ? null : ts;
                     });
         }
         object:
         {
             this.triplesByObject.compute(
-                    hashKeyOfObjectIndexing,
+                    t.getObject().getIndexingValue(),
                     ts -> {
                         ts.removeUnsafe(t, combineNodeHashes(hashKeyOfPredicate, hashKeyOfSubject));
                         return ts.isEmpty() ? null : ts;
@@ -412,107 +397,6 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         this.triplesByObject.clear();
     }
 
-    public Pair<Set<Triple>, Predicate<Triple>> getOptimalSetAndPredicate(final Node sm, final Node pm, final Node om) {
-        if (sm.isConcrete()) { // SPO:S??
-            var bySubjectIndex = this.triplesBySubject
-                    .getIfPresent(sm.getIndexingValue().hashCode());
-            if(bySubjectIndex == null) {
-                return null;
-            }
-            if(om.isConcrete()) { //SPO:S?0
-                if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
-                    if(pm.isConcrete()) { // SPO:SPO
-                        return Pair.of(bySubjectIndex,
-                                t -> om.sameValueAs(t.getObject())
-                                        && pm.equals(t.getPredicate())
-                                        && sm.equals(t.getSubject()));
-                    } else { // SPO:S*O
-                        return Pair.of(bySubjectIndex,
-                                t -> om.sameValueAs(t.getObject())
-                                        && sm.equals(t.getSubject()));
-                    }
-                } else {
-                    var byObjectIndex = this.triplesByObject
-                            .getIfPresent(om.getIndexingValue().hashCode());
-                    if (byObjectIndex == null) {
-                        return null;
-                    }
-                    if(bySubjectIndex.size() <= byObjectIndex.size()) {
-                        if (pm.isConcrete()) { // SPO:SPO
-                            return Pair.of(bySubjectIndex,
-                                    t -> om.sameValueAs(t.getObject())
-                                            && pm.equals(t.getPredicate())
-                                            && sm.equals(t.getSubject()));
-                        } else { // SPO:S*O
-                            return Pair.of(bySubjectIndex,
-                                    t -> om.sameValueAs(t.getObject())
-                                            && sm.equals(t.getSubject()));
-                        }
-                    } else {
-                        if (pm.isConcrete()) { // SPO:SPO
-                            return Pair.of(byObjectIndex,
-                                    t ->  sm.equals(t.getSubject())
-                                            && pm.equals(t.getPredicate())
-                                            && om.sameValueAs(t.getObject()));
-                        } else { // SPO:S*O
-                            return Pair.of(byObjectIndex,
-                                    t -> sm.equals(t.getSubject())
-                                            && om.sameValueAs(t.getObject()));
-                        }
-                    }
-                }
-            } else if(pm.isConcrete()) { //SPO: SP*
-                return Pair.of(bySubjectIndex,
-                        t -> pm.equals(t.getPredicate())
-                                && sm.equals(t.getSubject()));
-            } else { // SPO:S**
-                return Pair.of(bySubjectIndex,
-                        t -> sm.equals(t.getSubject()));
-            }
-        } else if(om.isConcrete()) { // SPO:*?O
-            var byObjectIndex = this.triplesByObject
-                    .getIfPresent(om.getIndexingValue().hashCode());
-            if(byObjectIndex == null) {
-                return null;
-            }
-            if(pm.isConcrete()) { // SPO:*PO
-                if(byObjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
-                    return Pair.of(byObjectIndex,
-                            t -> pm.equals(t.getPredicate())
-                                    && om.sameValueAs(t.getObject()));
-                } else {
-                    var byPredicateIndex = this.triplesByPredicate
-                            .getIfPresent(pm.getIndexingValue().hashCode());
-                    if(byPredicateIndex == null) {
-                        return null;
-                    }
-                    if(byObjectIndex.size() <= byPredicateIndex.size()) {
-                        return Pair.of(byObjectIndex,
-                                t -> pm.equals(t.getPredicate())
-                                        && om.sameValueAs(t.getObject()));
-                    } else {
-                        return Pair.of(byPredicateIndex,
-                                t -> om.sameValueAs(t.getObject())
-                                        && pm.equals(t.getPredicate()));
-                    }
-                }
-            } else {    // SPO:**O
-                return Pair.of(byObjectIndex,
-                        t -> om.sameValueAs(t.getObject()));
-            }
-        } else if(pm.isConcrete()) { //SPO:*P*
-            var byPredicateIndex = this.triplesByPredicate
-                    .getIfPresent(pm.getIndexingValue().hashCode());
-            if(byPredicateIndex == null) {
-                return null;
-            }
-            return Pair.of(byPredicateIndex,
-                    t -> pm.equals(t.getPredicate()));
-        } else { // SPO:***
-            throw new IllegalArgumentException("All node are Node.ANY, which is not allowed here.");
-        }
-    }
-
     /**
      * Answer true if the graph contains any triple matching <code>t</code>.
      * The default implementation uses <code>find</code> and checks to see
@@ -527,34 +411,83 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         final Node pm = triple.getPredicate();
         final Node om = triple.getObject();
 
-        if(sm.isConcrete() || pm.isConcrete() || om.isConcrete()) {
-            if(sm.isConcrete() && pm.isConcrete() && om.isConcrete()) {
-                var subjects = triplesBySubject.getIfPresent(sm.getIndexingValue().hashCode());
-                if(subjects == null) {
-                    return false;
-                }
-                if(subjects.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
-                    return subjects.contains(triple);
-                } else {
-                    var objects = triplesByObject.getIfPresent(om.getIndexingValue().hashCode());
-                    if(objects == null) {
-                        return false;
-                    }
-                    return objects.size() < subjects.size() ? objects.contains(triple) : subjects.contains(triple);
-                }
-            } else {
-                var setAndPredicatePair = getOptimalSetAndPredicate(sm, pm, om);
-                if (setAndPredicatePair == null) {
-                    return false;
-                }
-                for (Triple t : setAndPredicatePair.getKey()) {
-                    if (setAndPredicatePair.getValue().test(t)) {
-                        return true;
-                    }
-                }
+        if (sm.isConcrete()) { // SPO:S??
+            var bySubjectIndex = this.triplesBySubject
+                    .getIfPresent(sm.getIndexingValue());
+            if(bySubjectIndex == null) {
                 return false;
             }
-        } else {
+            if(om.isConcrete()) { //SPO:S?0
+                if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    if(pm.isConcrete()) { // SPO:SPO
+                        return bySubjectIndex.contains(triple);
+                    } else { // SPO:S*O
+                        return bySubjectIndex.stream().anyMatch(
+                                t -> om.sameValueAs(t.getObject()));
+                    }
+                } else {
+                    var byObjectIndex = this.triplesByObject
+                            .getIfPresent(om.getIndexingValue());
+                    if (byObjectIndex == null) {
+                        return false;
+                    }
+                    if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return bySubjectIndex.contains(triple);
+                        } else { // SPO:S*O
+                            return bySubjectIndex.stream().anyMatch(
+                                    t -> om.sameValueAs(t.getObject()));
+                        }
+                    } else {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return byObjectIndex.contains(triple);
+                        } else { // SPO:S*O
+                            return byObjectIndex.stream().anyMatch(
+                                    t -> sm.equals(t.getSubject()));
+                        }
+                    }
+                }
+            } else if(pm.isConcrete()) { //SPO: SP*
+                return bySubjectIndex.stream().anyMatch(
+                        t -> pm.equals(t.getPredicate()));
+            } else { // SPO:S**
+                return true;
+            }
+        } else if(om.isConcrete()) { // SPO:*?O
+            var byObjectIndex = this.triplesByObject
+                    .getIfPresent(om.getIndexingValue());
+            if(byObjectIndex == null) {
+                return false;
+            }
+            if(pm.isConcrete()) { // SPO:*PO
+                if(byObjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    return byObjectIndex.stream().anyMatch(
+                            t -> pm.equals(t.getPredicate()));
+                } else {
+                    var byPredicateIndex = this.triplesByPredicate
+                            .getIfPresent(pm.getIndexingValue());
+                    if(byPredicateIndex == null) {
+                        return false;
+                    }
+                    if(byObjectIndex.size() <= byPredicateIndex.size()) {
+                        return byObjectIndex.stream().anyMatch(
+                                t -> pm.equals(t.getPredicate()));
+                    } else {
+                        return byPredicateIndex.stream().anyMatch(
+                                t -> om.sameValueAs(t.getObject()));
+                    }
+                }
+            } else {    // SPO:**O
+                return true;
+            }
+        } else if(pm.isConcrete()) { //SPO:*P*
+            var byPredicateIndex = this.triplesByPredicate
+                    .getIfPresent(pm.getIndexingValue());
+            if(byPredicateIndex == null) {
+                return false;
+            }
+            return true;
+        } else { // SPO:***
             return !this.triplesBySubject.isEmpty();
         }
     }
@@ -566,7 +499,7 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
      * fewer predicates than subjects or objects.
      * @return
      */
-    private IntegerKeyedLowMemoryHashSet<TripleSetWithKey> getMapWithFewestKeys() {
+    private KeyedHashSet getMapWithFewestKeys() {
         var subjectCount = this.triplesBySubject.size();
         var predicateCount = this.triplesByPredicate.size();
         var objectCount = this.triplesByObject.size();
@@ -623,15 +556,89 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         final var pm = null == p ? Node.ANY : p;
         final var om = null == o ? Node.ANY : o;
 
-        if(sm.isConcrete() || pm.isConcrete() || om.isConcrete()) {
-            var setAndPredicatePair = getOptimalSetAndPredicate(sm, pm, om);
-            if(setAndPredicatePair == null) {
+        if (sm.isConcrete()) { // SPO:S??
+            var bySubjectIndex = this.triplesBySubject
+                    .getIfPresent(sm.getIndexingValue());
+            if(bySubjectIndex == null) {
                 return Stream.empty();
             }
-            return setAndPredicatePair.getKey()
-                    .stream()
-                    .filter(setAndPredicatePair.getValue());
-        } else {
+            if(om.isConcrete()) { //SPO:S?0
+                if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    if(pm.isConcrete()) { // SPO:SPO
+                        return bySubjectIndex.stream().filter(
+                                t -> om.sameValueAs(t.getObject())
+                                        && pm.equals(t.getPredicate()));
+                    } else { // SPO:S*O
+                        return bySubjectIndex.stream().filter(
+                                t -> om.sameValueAs(t.getObject()));
+                    }
+                } else {
+                    var byObjectIndex = this.triplesByObject
+                            .getIfPresent(om.getIndexingValue());
+                    if (byObjectIndex == null) {
+                        return Stream.empty();
+                    }
+                    if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return bySubjectIndex.stream().filter(
+                                    t -> om.sameValueAs(t.getObject())
+                                            && pm.equals(t.getPredicate()));
+                        } else { // SPO:S*O
+                            return bySubjectIndex.stream().filter(
+                                    t -> om.sameValueAs(t.getObject()));
+                        }
+                    } else {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return byObjectIndex.stream().filter(
+                                    t ->  sm.equals(t.getSubject())
+                                            && pm.equals(t.getPredicate()));
+                        } else { // SPO:S*O
+                            return byObjectIndex.stream()
+                                    .filter(t -> sm.equals(t.getSubject()));
+                        }
+                    }
+                }
+            } else if(pm.isConcrete()) { //SPO: SP*
+                return bySubjectIndex.stream()
+                        .filter(t -> pm.equals(t.getPredicate()));
+            } else { // SPO:S**
+                return bySubjectIndex.stream();
+            }
+        } else if(om.isConcrete()) { // SPO:*?O
+            var byObjectIndex = this.triplesByObject
+                    .getIfPresent(om.getIndexingValue());
+            if(byObjectIndex == null) {
+                return Stream.empty();
+            }
+            if(pm.isConcrete()) { // SPO:*PO
+                if(byObjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    return byObjectIndex.stream()
+                            .filter(t -> pm.equals(t.getPredicate()));
+                } else {
+                    var byPredicateIndex = this.triplesByPredicate
+                            .getIfPresent(pm.getIndexingValue());
+                    if(byPredicateIndex == null) {
+                        return Stream.empty();
+                    }
+                    if(byObjectIndex.size() <= byPredicateIndex.size()) {
+                        return byObjectIndex.stream()
+                                .filter(t -> pm.equals(t.getPredicate()));
+                    } else {
+                        return byPredicateIndex.stream()
+                                .filter(t -> om.sameValueAs(t.getObject()));
+                    }
+                }
+            } else {    // SPO:**O
+                return byObjectIndex.stream();
+            }
+        } else if(pm.isConcrete()) { //SPO:*P*
+            var byPredicateIndex = this.triplesByPredicate
+                    .getIfPresent(pm.getIndexingValue());
+            if(byPredicateIndex == null) {
+                return Stream.empty();
+            }
+            return byPredicateIndex.stream();
+        } else { // SPO:***
             return this.stream();
         }
     }
@@ -645,13 +652,99 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         final Node pm = triplePattern.getPredicate();
         final Node om = triplePattern.getObject();
 
-        if(sm.isConcrete() || pm.isConcrete() || om.isConcrete()) {
-            var setAndPredicatePair = getOptimalSetAndPredicate(sm, pm, om);
-            if(setAndPredicatePair == null) {
+        if (sm.isConcrete()) { // SPO:S??
+            var bySubjectIndex = this.triplesBySubject
+                    .getIfPresent(sm.getIndexingValue());
+            if(bySubjectIndex == null) {
                 return NiceIterator.emptyIterator();
             }
-            return new IteratorFiltering(setAndPredicatePair.getKey().iterator(), setAndPredicatePair.getValue(), this);
-        } else {
+            if(om.isConcrete()) { //SPO:S?0
+                if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    if(pm.isConcrete()) { // SPO:SPO
+                        return new IteratorFiltering(bySubjectIndex.iterator(),
+                                t -> om.sameValueAs(t.getObject())
+                                        && pm.equals(t.getPredicate()),
+                                this);
+                    } else { // SPO:S*O
+                        return new IteratorFiltering(bySubjectIndex.iterator(),
+                                t -> om.sameValueAs(t.getObject()),
+                                this);
+                    }
+                } else {
+                    var byObjectIndex = this.triplesByObject
+                            .getIfPresent(om.getIndexingValue());
+                    if (byObjectIndex == null) {
+                        return NiceIterator.emptyIterator();
+                    }
+                    if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return new IteratorFiltering(bySubjectIndex.iterator(),
+                                    t -> om.sameValueAs(t.getObject())
+                                            && pm.equals(t.getPredicate()),
+                                    this);
+                        } else { // SPO:S*O
+                            return new IteratorFiltering(bySubjectIndex.iterator(),
+                                    t -> om.sameValueAs(t.getObject()),
+                                    this);
+                        }
+                    } else {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return new IteratorFiltering(byObjectIndex.iterator(),
+                                    t ->  sm.equals(t.getSubject())
+                                            && pm.equals(t.getPredicate()),
+                                    this);
+                        } else { // SPO:S*O
+                            return new IteratorFiltering(byObjectIndex.iterator(),
+                                    t -> sm.equals(t.getSubject()),
+                                    this);
+                        }
+                    }
+                }
+            } else if(pm.isConcrete()) { //SPO: SP*
+                return new IteratorFiltering(bySubjectIndex.iterator(),
+                        t -> pm.equals(t.getPredicate()),
+                        this);
+            } else { // SPO:S**
+                return new IteratorWrapperWithRemove(bySubjectIndex.iterator(), this);
+            }
+        } else if(om.isConcrete()) { // SPO:*?O
+            var byObjectIndex = this.triplesByObject
+                    .getIfPresent(om.getIndexingValue());
+            if(byObjectIndex == null) {
+                return NiceIterator.emptyIterator();
+            }
+            if(pm.isConcrete()) { // SPO:*PO
+                if(byObjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    return new IteratorFiltering(byObjectIndex.iterator(),
+                            t -> pm.equals(t.getPredicate()),
+                            this);
+                } else {
+                    var byPredicateIndex = this.triplesByPredicate
+                            .getIfPresent(pm.getIndexingValue());
+                    if(byPredicateIndex == null) {
+                        return null;
+                    }
+                    if(byObjectIndex.size() <= byPredicateIndex.size()) {
+                        return new IteratorFiltering(byObjectIndex.iterator(),
+                                t -> pm.equals(t.getPredicate()),
+                                this);
+                    } else {
+                        return new IteratorFiltering(byPredicateIndex.iterator(),
+                                t -> om.sameValueAs(t.getObject()),
+                                this);
+                    }
+                }
+            } else {    // SPO:**O
+                return new IteratorWrapperWithRemove(byObjectIndex.iterator(), this);
+            }
+        } else if(pm.isConcrete()) { //SPO:*P*
+            var byPredicateIndex = this.triplesByPredicate
+                    .getIfPresent(pm.getIndexingValue());
+            if(byPredicateIndex == null) {
+                return NiceIterator.emptyIterator();
+            }
+            return new IteratorWrapperWithRemove(byPredicateIndex.iterator(), this);
+        } else { // SPO:***
             /*use the map with the fewest keys*/
             return new ListsOfTriplesIterator(this.getMapWithFewestKeys().iterator(), this);
         }
@@ -876,6 +969,171 @@ public class GraphMem2NoEqualsOkOpt extends GraphMemBase implements GraphWithPer
         @Override
         public Set<Triple> toSet() {
             return NiceIterator.asSet(this);
+        }
+    }
+
+    /**
+     *  Wrapper for Iterator<Triple> which supports .remove and .removeNext, which deletes triples from the graph.
+     *  It is done by simply replacing the wrapped iterator with .toList().iterator().
+     */
+    private static class IteratorWrapperWithRemove implements ExtendedIterator<Triple> {
+
+        private Iterator<Triple> iterator;
+        private final Graph graphMem;
+        private boolean isStillIteratorWithNoRemove = true;
+
+        /**
+         The remembered current triple. Subclass should *not* assign to this variable.
+         */
+        protected Triple current;
+
+        public IteratorWrapperWithRemove(Iterator<Triple> iteratorWithNoRemove, Graph graphMem) {
+            this.iterator = iteratorWithNoRemove;
+            this.graphMem = graphMem;
+        }
+
+        /**
+         * Close the iterator. Other operations on this iterator may now throw an exception.
+         * A ClosableIterator may be closed as many times as desired - the subsequent
+         * calls do nothing.
+         */
+        @Override
+        public void close() {
+            /*this class can only wrap Iterator<>, which has no close method*/
+        }
+
+        /**
+         * Answer the next object, and remove it. Equivalent to next(); remove().
+         */
+        @Override
+        public Triple removeNext() {
+            throw new NotImplementedException();
+//            Triple result = next();
+//            remove();
+//            return result;
+        }
+
+        /**
+         * return a new iterator which delivers all the elements of this iterator and
+         * then all the elements of the other iterator. Does not copy either iterator;
+         * they are consumed as the result iterator is consumed.
+         *
+         * @param other iterator to append
+         */
+        @Override
+        public <X extends Triple> ExtendedIterator<Triple> andThen(Iterator<X> other) {
+            return NiceIterator.andThen( this, other );
+        }
+
+        /**
+         * return a new iterator containing only the elements of _this_ which
+         * pass the filter _f_. The order of the elements is preserved. Does not
+         * copy _this_, which is consumed as the result is consumed.
+         *
+         * @param f filter predicate
+         */
+        @Override
+        public ExtendedIterator<Triple> filterKeep(Predicate<Triple> f) {
+            return new FilterIterator<>( f, this );
+        }
+
+        /**
+         * return a new iterator containing only the elements of _this_ which
+         * are rejected by the filter _f_. The order of the elements is preserved.
+         * Does not copy _this_, which is consumed as the result is consumed.
+         *
+         * @param f filter predicate
+         */
+        @Override
+        public ExtendedIterator<Triple> filterDrop(Predicate<Triple> f) {
+            return new FilterIterator<>( f.negate(), this );
+        }
+
+        /**
+         * return a new iterator where each element is the result of applying
+         * _map1_ to the corresponding element of _this_. _this_ is not
+         * copied; it is consumed as the result is consumed.
+         *
+         * @param map1 mapping function
+         */
+        @Override
+        public <U> ExtendedIterator<U> mapWith(Function<Triple, U> map1) {
+            return new Map1Iterator<>( map1, this );
+        }
+
+        /**
+         * Answer a list of the [remaining] elements of this iterator, in order,
+         * consuming this iterator.
+         */
+        @Override
+        public List<Triple> toList() {
+            return NiceIterator.asList(this);
+        }
+
+        /**
+         * Answer a set of the [remaining] elements of this iterator,
+         * consuming this iterator.
+         */
+        @Override
+        public Set<Triple> toSet() {
+            return NiceIterator.asSet(this);
+        }
+
+        /**
+         * Returns {@code true} if the iteration has more elements.
+         * (In other words, returns {@code true} if {@link #next} would
+         * return an element rather than throwing an exception.)
+         *
+         * @return {@code true} if the iteration has more elements
+         */
+        @Override
+        public boolean hasNext() {
+            return this.iterator.hasNext();
+        }
+
+        /**
+         * Returns the next element in the iteration.
+         *
+         * @return the next element in the iteration
+         * @throws NoSuchElementException if the iteration has no more elements
+         */
+        @Override
+        public Triple next() {
+            return current = this.iterator.next();
+        }
+
+        /**
+         * Removes from the underlying collection the last element returned
+         * by this iterator (optional operation).  This method can be called
+         * only once per call to {@link #next}.
+         * <p>
+         * The behavior of an iterator is unspecified if the underlying collection
+         * is modified while the iteration is in progress in any way other than by
+         * calling this method, unless an overriding class has specified a
+         * concurrent modification policy.
+         * <p>
+         * The behavior of an iterator is unspecified if this method is called
+         * after a call to the {@link #forEachRemaining forEachRemaining} method.
+         *
+         * @throws UnsupportedOperationException if the {@code remove}
+         *                                       operation is not supported by this iterator
+         * @throws IllegalStateException         if the {@code next} method has not
+         *                                       yet been called, or the {@code remove} method has already
+         *                                       been called after the last call to the {@code next}
+         *                                       method
+         * @implSpec The default implementation throws an instance of
+         * {@link UnsupportedOperationException} and performs no other action.
+         */
+        @Override
+        public void remove() {
+            if(isStillIteratorWithNoRemove) {
+                var currentBeforeToList = current;
+                this.iterator = this.toList().iterator();
+                this.isStillIteratorWithNoRemove = false;
+                graphMem.delete(currentBeforeToList);
+            } else {
+                graphMem.delete(current);
+            }
         }
     }
 }
