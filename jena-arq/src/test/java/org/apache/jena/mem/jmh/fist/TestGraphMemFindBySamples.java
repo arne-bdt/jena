@@ -25,6 +25,7 @@ import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMem2Fast;
+import org.apache.jena.mem2.GraphMem2LowMemory;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.junit.Test;
@@ -65,7 +66,8 @@ public class TestGraphMemFindBySamples {
     @Param({
 //            "GraphMem",
             "GraphMem2",
-            "GraphMem2Fast"
+            "GraphMem2Fast",
+            "GraphMem2LowMemory"
     })
     public String param1_GraphImplementation;
 
@@ -79,6 +81,9 @@ public class TestGraphMemFindBySamples {
 
             case "GraphMem2Fast":
                 return new GraphMem2Fast();
+
+            case "GraphMem2LowMemory":
+                return new GraphMem2LowMemory();
 
             default:
                 throw new IllegalArgumentException();

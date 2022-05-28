@@ -126,11 +126,12 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     public boolean contains(Object o) {
         var e = (E)o;
         final var key = getKey(e);
-        final var index = calcStartIndexByHashCode(key.hashCode());
+        final var hashCode = key.hashCode();
+        final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
         }
-        if(key.equals(getKey((E)entries[index]))) {
+        if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
             return true;
         }
         var lowerIndex = index;
@@ -142,19 +143,19 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
                         if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                             return false;
                         } else {
-                            return key.equals(getKey((E)entries[upperIndex]));
+                            return hashCode == getHashCode((E)entries[upperIndex]) && key.equals(getKey((E)entries[upperIndex]));
                         }
                     } else {
                         return false;
                     }
-                } else if (key.equals(getKey((E)entries[lowerIndex]))) {
+                } else if (hashCode == getHashCode((E)entries[lowerIndex]) && key.equals(getKey((E)entries[lowerIndex]))) {
                     return true;
                 }
             }
             if(++upperIndex < entries.length) {
                 if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                     return false;
-                } else if (key.equals(getKey((E)entries[upperIndex]))) {
+                } else if (hashCode == getHashCode((E)entries[upperIndex]) && key.equals(getKey((E)entries[upperIndex]))) {
                     return true;
                 }
             }
@@ -218,13 +219,13 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     }
 
     public E getIfPresent(final Object key) {
-        final var index = calcStartIndexByHashCode(key.hashCode());
+        final int hashCode = key.hashCode();
+        final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return null;
         }
-        E e = (E)entries[index];
-        if(key.equals(getKey(e))) {
-            return e;
+        if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
+            return (E)entries[index];
         }
         var lowerIndex = index;
         var upperIndex = index;
@@ -235,16 +236,14 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
                         if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                             return null;
                         } else {
-                            e = (E)entries[upperIndex];
-                            return key.equals(getKey(e)) ? e : null;           /*found equal element*/
+                            return hashCode == getHashCode((E)entries[upperIndex]) && key.equals(getKey((E)entries[upperIndex])) ? (E)entries[upperIndex] : null;           /*found equal element*/
                         }
                     } else {
                         return null;
                     }
                 } else {
-                    e = (E)entries[lowerIndex];
-                    if (key.equals(getKey(e))) {
-                        return e;            /*found equal element*/
+                    if (hashCode == getHashCode((E)entries[lowerIndex]) && key.equals(getKey((E)entries[lowerIndex]))) {
+                        return (E)entries[lowerIndex];            /*found equal element*/
                     }
                 }
             }
@@ -252,14 +251,41 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
                 if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                     return null;
                 } else {
-                    e = (E)entries[upperIndex];
-                    if (key.equals(getKey(e))) {
-                        return e;            /*found equal element*/
+                    if (hashCode == getHashCode((E)entries[upperIndex]) && key.equals(getKey((E)entries[upperIndex]))) {
+                        return (E)entries[upperIndex];            /*found equal element*/
                     }
                 }
             }
         }
         throw new IllegalStateException();
+    }
+
+    public E compute(final Object key, final int hashCodeOfKey, Function<E, E> remappingFunction) {
+        var index = findIndex(key, hashCodeOfKey);
+        if(index < 0) { /*value does not exist yet*/
+            var newValue = remappingFunction.apply(null);
+            if(newValue == null) {
+                return null;
+            }
+            if(grow()) {
+                entries[findEmptySlotWithoutEqualityCheck(hashCodeOfKey)] = newValue;
+            } else {
+                entries[~index] = newValue;
+            }
+            size++;
+            return newValue;
+        } else { /*existing value found*/
+            var newValue = remappingFunction.apply((E)entries[index]);
+            if(newValue == null) {
+                entries[index] = null;
+                size--;
+                rearrangeNeighbours(index);
+                return null;
+            } else {
+                entries[index] = newValue;
+                return newValue;
+            }
+        }
     }
 
     public E compute(final Object key, Function<E, E> remappingFunction) {
@@ -300,7 +326,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         if(null == entries[index]) {
             return ~index;
         }
-        if(key.equals(getKey((E)entries[index]))) {
+        if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
             return index;
         }
         int emptyIndex = -1;
@@ -310,7 +336,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
             if(0 <= --lowerIndex) {
                 if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
                     emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
-                } else if (key.equals(getKey((E)entries[lowerIndex]))) {
+                } else if (hashCode == getHashCode((E)entries[lowerIndex]) && key.equals(getKey((E)entries[lowerIndex]))) {
                     return lowerIndex;            /*found equal element*/
                 }
             }
@@ -319,7 +345,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
                     if(emptyIndex < 0) {          /*this index is only relevant if slot with same distance in backward direction was not also empty*/
                         emptyIndex = upperIndex;
                     }
-                } else if (key.equals(getKey((E)entries[upperIndex]))) {
+                } else if (hashCode == getHashCode((E)entries[upperIndex]) && key.equals(getKey((E)entries[upperIndex]))) {
                     return upperIndex;           /*found equal element*/
                 }
             }
