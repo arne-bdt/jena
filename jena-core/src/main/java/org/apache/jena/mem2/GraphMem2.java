@@ -151,7 +151,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         public AbstractLowMemoryTripleHashSet(int initialCapacity, TripleSetWithKey setWithKey) {
             super(initialCapacity, setWithKey);
             this.indexingValue = setWithKey.indexingValue();
-            this.indexingHashCode = indexingValue.hashCode();
+            this.indexingHashCode = setWithKey.indexingHashCode();
         }
 
         public AbstractLowMemoryTripleHashSet(TripleSetWithKey setWithKey) {
