@@ -182,8 +182,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             var triple = (Triple)o;
             for (Triple t : this) {
                 if(triple.getObject().sameValueAs(t.getObject())
-                        && triple.getPredicate().equals(t.getPredicate())
-                        && triple.getSubject().equals(t.getSubject())) {
+                        && triple.getPredicate().equals(t.getPredicate())) {
                     return true;
                 }
             }
@@ -202,8 +201,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             var triple = (Triple)o;
             for (Triple t : this) {
                 if(triple.getSubject().equals(t.getSubject())
-                        && triple.getObject().sameValueAs(t.getObject())
-                        && triple.getPredicate().equals(t.getPredicate())) {
+                        && triple.getObject().sameValueAs(t.getObject())) {
                     return true;
                 }
             }
@@ -223,8 +221,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             var triple = (Triple)o;
             for (Triple t : this) {
                 if(triple.getSubject().equals(t.getSubject())
-                        && triple.getPredicate().equals(t.getPredicate())
-                        && triple.getObject().sameValueAs(t.getObject())) {
+                        && triple.getPredicate().equals(t.getPredicate())) {
                     return true;
                 }
             }
