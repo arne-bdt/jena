@@ -16,13 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.jmh;
+package org.apache.jena.mem.jmh.fist;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.RDFDataMgr;
 import org.junit.Assert;
 import org.junit.Test;
@@ -59,8 +60,9 @@ public class TestGraphMemDelete {
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem",
-            "GraphMem2"
+//            "GraphMem",
+            "GraphMem2",
+            "GraphMem2Fast"
     })
     public String param1_GraphImplementation;
 
@@ -71,6 +73,9 @@ public class TestGraphMemDelete {
 
             case "GraphMem2":
                 return new GraphMem2();
+
+            case "GraphMem2Fast":
+                return new GraphMem2Fast();
 
             default:
                 throw new IllegalArgumentException();

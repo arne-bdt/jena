@@ -37,27 +37,23 @@ public abstract class TestGraphMemVariantsBase {
 
 
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
-
+            Pair.of("GraphMem", () -> new GraphMem()),
             Pair.of("GraphMem2", () -> new GraphMem2()),
-            Pair.of("GraphMem", () -> new GraphMem())
-//            Pair.of("GraphMem2", () -> new GraphMem2()),
-//            Pair.of("GraphMem2", () -> new GraphMem2()),
-
-
-//            Pair.of("GraphMem2NoEqualsOkOpt", () -> new GraphMem2NoEqualsOkOpt()),
-//            Pair.of("GraphMem2NoEqualsOkOpt", () -> new GraphMem2NoEqualsOkOpt()),
-
+            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast())
 
 
 
 //            Pair.of("GraphMem", () -> new GraphMem()),
 //            Pair.of("GraphMem", () -> new GraphMem()),
-
+//            Pair.of("GraphMem", () -> new GraphMem()),
+//            Pair.of("GraphMem", () -> new GraphMem()),
+//            Pair.of("GraphMem", () -> new GraphMem()),
+//
 //            Pair.of("GraphMem2", () -> new GraphMem2()),
 //            Pair.of("GraphMem2", () -> new GraphMem2()),
-
-
-
+//            Pair.of("GraphMem2", () -> new GraphMem2()),
+//            Pair.of("GraphMem2", () -> new GraphMem2()),
+//            Pair.of("GraphMem2", () -> new GraphMem2())
 
 //            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
 //            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),

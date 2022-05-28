@@ -16,15 +16,17 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.jmh.bigBDSM;
+package org.apache.jena.mem.jmh.fist;
 
 import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.RDFDataMgr;
-import org.junit.Assert;
+import org.apache.jena.util.iterator.ExtendedIterator;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -37,20 +39,29 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @State(Scope.Benchmark)
-public class TestGraphMemBigBDSMContainsFindAndStreamAll {
+public class TestGraphMemFindAnything {
 
-    @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
+    @Param({
+//            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
+//            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+    })
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem",
+//            "GraphMem",
             "GraphMem2",
+            "GraphMem2Fast"
     })
     public String param1_GraphImplementation;
 
@@ -62,13 +73,15 @@ public class TestGraphMemBigBDSMContainsFindAndStreamAll {
             case "GraphMem2":
                 return new GraphMem2();
 
+            case "GraphMem2Fast":
+                return new GraphMem2Fast();
+
             default:
                 throw new IllegalArgumentException();
         }
     }
 
     private List<Triple> triples;
-    private List<Triple> samples;
     private Graph sut;
 
     @Setup(Level.Invocation)
@@ -86,38 +99,57 @@ public class TestGraphMemBigBDSMContainsFindAndStreamAll {
         // Trial level: to be executed before/after each run of the benchmark.
         var loadingGraph = new GraphMemWithArrayListOnly();
         RDFDataMgr.read(loadingGraph, param0_GraphUri);
-        this.triples = loadingGraph.triples;
         this.sut = createGraph();
-        this.triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
-    }
-
-
-    @Benchmark
-    public void graphContains() {
-        triples.forEach(t -> Assert.assertTrue(sut.contains(t)));
+        this.triples = loadingGraph.triples;
+        triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
     }
 
     @Benchmark
-    public void graphFind() {
-        var found = new ArrayList<Triple>(sut.size());
-        var it = sut.find();
-        while(it.hasNext()) {
-            found.add(it.next());
+    public void graphFindBySamples_Subject_ANY_ANY() {
+        for (Triple sample : triples) {
+            var it = sut.find(sample.getSubject(), Node.ANY, Node.ANY);
+            assertTrue(it.hasNext());
         }
-        it.close();
-        assertEquals(sut.size(), found.size());
     }
 
     @Benchmark
-    public void graphStream() {
-        var found = sut.stream().collect(Collectors.toList());
-        assertEquals(sut.size(), found.size());
+    public void graphFindBySamples_ANY_Predicate_ANY() {
+        for (Triple sample : triples) {
+            var it = sut.find(Node.ANY, sample.getPredicate(), Node.ANY);
+            assertTrue(it.hasNext());
+        }
     }
 
     @Benchmark
-    public void graphStreamParallel() {
-        var found = sut.stream().parallel().collect(Collectors.toList());
-        assertEquals(sut.size(), found.size());
+    public void graphFindBySamples_ANY_ANY_Object() {
+        for (Triple sample : triples) {
+            var it = sut.find(Node.ANY, Node.ANY, sample.getObject());
+            assertTrue(it.hasNext());
+        }
+    }
+
+    @Benchmark
+    public void graphFindBySamples_Subject_Predicate_ANY() {
+        for (Triple sample : triples) {
+            var it = sut.find(sample.getSubject(), sample.getPredicate(), Node.ANY);
+            assertTrue(it.hasNext());
+        }
+    }
+
+    @Benchmark
+    public void graphFindBySamples_Subject_ANY_Object() {
+        for (Triple sample : triples) {
+            var it = sut.find(sample.getSubject(), Node.ANY, sample.getObject());
+            assertTrue(it.hasNext());
+        }
+    }
+
+    @Benchmark
+    public void graphFindBySamples_ANY_Predicate_Object() {
+        for (Triple sample : triples) {
+            var it = sut.find(Node.ANY, sample.getPredicate(), sample.getObject());
+            assertTrue(it.hasNext());
+        }
     }
 
     @Test
@@ -130,16 +162,15 @@ public class TestGraphMemBigBDSMContainsFindAndStreamAll {
                 .mode (Mode.AverageTime)
                 .timeUnit(TimeUnit.MILLISECONDS)
                 .warmupTime(TimeValue.NONE)
-                .warmupIterations(3)
+                .warmupIterations(5)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(15)
+                .measurementIterations(10)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)
                 .shouldDoGC(true)
                 //.jvmArgs("-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintInlining")
                 .jvmArgs("-Xmx12G")
-                .jvmArgsAppend("-Djava.util.concurrent.ForkJoinPool.common.parallelism=8")
                 //.addProfiler(WinPerfAsmProfiler.class)
                 .resultFormat(ResultFormatType.JSON)
                 .result(this.getClass().getSimpleName() + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".json")

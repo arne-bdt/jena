@@ -16,14 +16,17 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.jmh;
+package org.apache.jena.mem.jmh.second;
 
 import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.util.iterator.ExtendedIterator;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -33,33 +36,25 @@ import org.openjdk.jmh.runner.options.TimeValue;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.assertTrue;
+
 @State(Scope.Benchmark)
-public class TestGraphMemAdd {
+public class TestGraphMemBigBDSMFindBySamples {
 
-    public String getParam0_GraphUri() {
-        return param0_GraphUri;
-    }
-
-    @Param({
-//            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
-//            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
-            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-    })
+    @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;
 
+    @Param({"100"})
+    public int param2_sampleSize;
+
     @Param({
-            "GraphMem",
+//            "GraphMem",
             "GraphMem2",
-//            "GraphMem2NoEqualsOkOpt"
+            "GraphMem2Fast"
     })
     public String param1_GraphImplementation;
 
@@ -71,12 +66,16 @@ public class TestGraphMemAdd {
             case "GraphMem2":
                 return new GraphMem2();
 
+            case "GraphMem2Fast":
+                return new GraphMem2Fast();
+
             default:
                 throw new IllegalArgumentException();
         }
     }
 
-    private List<Triple> triples;
+    private List<Triple> samples;
+    private Graph sut;
 
     @Setup(Level.Invocation)
     public void setupInvokation() throws Exception {
@@ -92,15 +91,80 @@ public class TestGraphMemAdd {
     public void setupTrial() throws Exception {
         // Trial level: to be executed before/after each run of the benchmark.
         var loadingGraph = new GraphMemWithArrayListOnly();
-        RDFDataMgr.read(loadingGraph, getParam0_GraphUri());
-        this.triples = loadingGraph.triples;
+        RDFDataMgr.read(loadingGraph, param0_GraphUri);
+        this.sut = createGraph();
+        var triples = loadingGraph.triples;
+        triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
+
+        this.samples = new ArrayList<>(param2_sampleSize);
+        var sampleIncrement = triples.size() / param2_sampleSize;
+        for(var i=0; i< triples.size(); i+=sampleIncrement) {
+            this.samples.add(triples.get(i));
+        }
     }
 
+    @Benchmark
+    public void graphFindBySamples_Subject_ANY_ANY() {
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(sample.getSubject(), Node.ANY, Node.ANY));
+        }
+        assertTrue(total > 0);
+    }
 
     @Benchmark
-    public void graphAdd() {
-        var sut = createGraph();
-        triples.forEach(sut::add);
+    public void graphFindBySamples_ANY_Predicate_ANY() {
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(Node.ANY, sample.getPredicate(), Node.ANY));
+        }
+        assertTrue(total > 0);
+    }
+
+    @Benchmark
+    public void graphFindBySamples_ANY_ANY_Object() {
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(Node.ANY, Node.ANY, sample.getObject()));
+        }
+        assertTrue(total > 0);
+    }
+
+    @Benchmark
+    public void graphFindBySamples_Subject_Predicate_ANY() {
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(sample.getSubject(), sample.getPredicate(), Node.ANY));
+        }
+        assertTrue(total > 0);
+    }
+
+    @Benchmark
+    public void graphFindBySamples_Subject_ANY_Object() {
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(sample.getSubject(), Node.ANY, sample.getObject()));
+        }
+        assertTrue(total > 0);
+    }
+
+    @Benchmark
+    public void graphFindBySamples_ANY_Predicate_Object() {
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(Node.ANY, sample.getPredicate(), sample.getObject()));
+        }
+        assertTrue(total > 0);
+    }
+
+    private static int count(final ExtendedIterator extendedIterator) {
+        var count = 0;
+        while(extendedIterator.hasNext()) {
+            extendedIterator.next();
+            count++;
+        }
+        extendedIterator.close();
+        return count;
     }
 
     @Test
@@ -111,11 +175,11 @@ public class TestGraphMemAdd {
                 .include(this.getClass().getName())
                 // Set the following options as needed
                 .mode (Mode.AverageTime)
-                .timeUnit(TimeUnit.SECONDS)
+                .timeUnit(TimeUnit.MILLISECONDS)
                 .warmupTime(TimeValue.NONE)
                 .warmupIterations(5)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(20)
+                .measurementIterations(10)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)

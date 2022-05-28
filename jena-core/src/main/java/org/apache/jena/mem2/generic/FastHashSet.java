@@ -31,7 +31,7 @@ import java.util.stream.StreamSupport;
  * It´s purpose is to support fast remove operations.
  * @param <E> type of elements in the collection.
  */
-public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
+public class FastHashSet<E> implements Set<E> {
 
     protected int getHashCode(final E value) {
         return value.hashCode();
@@ -40,6 +40,11 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByHashCode(final int hashCode) {
         return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+    }
+
+    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
+    protected int calcStartIndexByHashCode(final E value) {
+        return calcStartIndexByHashCode(getHashCode(value));
     }
 
     protected Predicate<E> getContainsPredicate(final E value) {
@@ -53,24 +58,29 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
     protected Object[] entries;
     protected int[] hashCodes;
 
-    public FastGrowingLowMemoryHashSet() {
+    public FastHashSet() {
         this.entries = new Object[MINIMUM_SIZE];
         this.hashCodes = new int[MINIMUM_SIZE];
+
     }
 
-    public FastGrowingLowMemoryHashSet(int initialCapacity) {
+    public FastHashSet(int initialCapacity) {
         this.entries = new Object[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
     }
 
-    public FastGrowingLowMemoryHashSet(Set<? extends E> set) {
-        this.entries = new Object[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
+    public FastHashSet(Set<? extends E> set) {
+        this(set.size(), set);
+    }
+
+    public FastHashSet(int initialCapacity, Set<? extends E> set) {
+        this.entries = new Object[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
         int index;
-        for (E e : set) {
-            var hashCode = getHashCode(e);
-            if((index = findIndex(hashCode)) < 0) {
-                entries[~index] = e;
+        int hashCode;
+        for (E t : set) {
+            if((index = findIndex(t, hashCode = getHashCode(t))) < 0) {
+                entries[~index] = t;
                 hashCodes[~index] = hashCode;
                 size++;
             }
@@ -91,9 +101,9 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
         this.hashCodes = new int[entries.length];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                var newIndex = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
-                this.entries[newIndex] = oldEntries[i];
-                this.hashCodes[newIndex] = oldHashCodes[i];
+                var newSlot = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
+                this.entries[newSlot] = oldEntries[i];
+                this.hashCodes[newSlot] = oldHashCodes[i];
             }
         }
     }
@@ -109,9 +119,9 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
         this.hashCodes = new int[newSize];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                var newIndex = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
-                this.entries[newIndex] = oldEntries[i];
-                this.hashCodes[newIndex] = oldHashCodes[i];
+                var newSlot = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
+                this.entries[newSlot] = oldEntries[i];
+                this.hashCodes[newSlot] = oldHashCodes[i];
             }
         }
         return true;
@@ -142,7 +152,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
     @Override
     public boolean contains(Object o) {
         var e = (E)o;
-        final var hashCode = getHashCode(e);
+        var hashCode = getHashCode(e);
         final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
@@ -162,6 +172,8 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
                         } else {
                             return hashCode == hashCodes[upperIndex] && predicate.test((E)entries[upperIndex]);
                         }
+                    } else {
+                        return false;
                     }
                 } else if (hashCode == hashCodes[lowerIndex] && predicate.test((E)entries[lowerIndex])) {
                     return true;
@@ -203,12 +215,20 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
         return a;
     }
 
+    public E findAny() {
+        var index = -1;
+        while(entries[++index] == null);
+        return (E)entries[index];
+    }
 
     @Override
     public boolean add(E value) {
+        return add(value, getHashCode(value));
+    }
+
+    public boolean add(E value, int hashCode) {
         grow();
-        var hashCode = getHashCode(value);
-        var index = findIndex(hashCode);
+        var index = findIndex(value, hashCode);
         if(index < 0) {
             entries[~index] = value;
             hashCodes[~index] = hashCode;
@@ -219,8 +239,11 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
     }
 
     public void addUnsafe(E value) {
+        addUnsafe(value, getHashCode(value));
+    }
+
+    public void addUnsafe(E value, int hashCode) {
         grow();
-        var hashCode = getHashCode(value);
         var index = findEmptySlotWithoutEqualityCheck(hashCode);
         entries[index] = value;
         hashCodes[index] = hashCode;
@@ -230,7 +253,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
     public E addIfAbsent(E value) {
         grow();
         var hashCode = getHashCode(value);
-        var index = findIndex(hashCode);
+        var index = findIndex(value, hashCode);
         if(index < 0) {
             entries[~index] = value;
             hashCodes[~index] = hashCode;
@@ -241,12 +264,12 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
     }
 
     public E getIfPresent(E value) {
-        final var hashCode = getHashCode(value);
+        var hashCode = getHashCode(value);
         final var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return null;
         }
-        if(hashCode == hashCodes[index]) {
+        if(hashCode == hashCodes[index] && value.equals(entries[index])) {
             return (E)entries[index];
         }
         var lowerIndex = index;
@@ -258,17 +281,19 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
                         if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                             return null;
                         } else {
-                            return hashCode == hashCodes[upperIndex] ? (E)entries[upperIndex] : null;           /*found equal element*/
+                            return hashCode == hashCodes[upperIndex] && value.equals(entries[upperIndex]) ? (E)entries[upperIndex] : null;           /*found equal element*/
                         }
+                    } else {
+                        return null;
                     }
-                } else if (hashCode == hashCodes[lowerIndex]) {
+                } else if (hashCode == hashCodes[lowerIndex] && value.equals(entries[lowerIndex])) {
                     return (E)entries[lowerIndex];            /*found equal element*/
                 }
             }
             if(++upperIndex < entries.length) {
                 if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
                     return null;
-                } else if (hashCode == hashCodes[upperIndex]) {
+                } else if (hashCode == hashCodes[upperIndex] && value.equals(entries[upperIndex])) {
                     return (E)entries[upperIndex];           /*found equal element*/
                 }
             }
@@ -276,66 +301,41 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
         throw new IllegalStateException();
     }
 
-    public E getIfPresent(int hashCode) {
-        final var index = calcStartIndexByHashCode(hashCode);
-        if(null == entries[index]) {
-            return null;
-        }
-        if(hashCode == hashCodes[index]) {
-            return (E)entries[index];
-        }
-        var lowerIndex = index;
-        var upperIndex = index;
-        while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= --lowerIndex) {
-                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
-                    if(++upperIndex < entries.length) {
-                        if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                            return null;
-                        } else {
-                            return hashCode == hashCodes[upperIndex] ? (E)entries[upperIndex] : null;           /*found equal element*/
-                        }
-                    }
-                } else if (hashCode == hashCodes[lowerIndex]) {
-                    return (E)entries[lowerIndex];            /*found equal element*/
-                }
-            }
-            if(++upperIndex < entries.length) {
-                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                    return null;
-                } else if (hashCode == hashCodes[upperIndex]) {
-                    return (E)entries[upperIndex];           /*found equal element*/
-                }
-            }
-        }
-        throw new IllegalStateException();
-    }
-
-    public E compute(final int hashCode, Function<E, E> remappingFunction) {
-        var index = findIndex(hashCode);
+    public E compute(E value, Function<E, E> remappingFunction) {
+        var hashCode = getHashCode(value);
+        var index = findIndex(value, hashCode);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
                 return null;
             }
+            if(!value.equals(newValue)) {
+                throw new IllegalArgumentException("remapped value is not equal to value");
+            }
             if(grow()) {
                 index = findEmptySlotWithoutEqualityCheck(hashCode);
-                entries[index] = newValue;
-                hashCodes[index] = hashCode;
             } else {
-                entries[~index] = newValue;
-                hashCodes[~index] = hashCode;
+                index = ~index;
             }
+            entries[index] = newValue;
+            hashCodes[index] = hashCode;
             size++;
             return newValue;
         } else { /*existing value found*/
             var newValue = remappingFunction.apply((E)entries[index]);
             if(newValue == null) {
                 entries[index] = null;
+                //hashCodes[index] = null;
                 size--;
                 rearrangeNeighbours(index);
                 return null;
             } else {
+                if(value == newValue) {
+                    return newValue;
+                }
+                if(!value.equals(newValue)) {
+                    throw new IllegalArgumentException("remapped value is not equal to value");
+                }
                 entries[index] = newValue;
                 hashCodes[index] = hashCode;
                 return newValue;
@@ -343,12 +343,15 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
         }
     }
 
-    private int findIndex(final int hashCode) {
-        final var index = calcStartIndexByHashCode(hashCode);
+//    private int findIndex(final E t) {
+//        return findIndex(t, getHashCode(t));
+//    }
+    private int findIndex(final E t, final int hashNode) {
+        final var index = calcStartIndexByHashCode(hashNode);
         if(null == entries[index]) {
             return ~index;
         }
-        if(hashCode == hashCodes[index]) {
+        if(hashNode == hashCodes[index] && t.equals(entries[index])) {
             return index;
         }
         int emptyIndex = -1;
@@ -358,7 +361,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
             if(0 <= --lowerIndex) {
                 if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
                     emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
-                } else if (hashCode == hashCodes[lowerIndex]) {
+                } else if (hashNode == hashCodes[lowerIndex] && t.equals(entries[lowerIndex])) {
                     return lowerIndex;            /*found equal element*/
                 }
             }
@@ -367,7 +370,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
                     if(emptyIndex < 0) {          /*this index is only relevant if slot with same distance in backward direction was not also empty*/
                         emptyIndex = upperIndex;
                     }
-                } else if (hashCode == hashCodes[upperIndex]) {
+                } else if (hashNode == hashCodes[upperIndex] && t.equals(entries[upperIndex])) {
                     return upperIndex;           /*found equal element*/
                 }
             }
@@ -422,8 +425,12 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
      */
     @Override
     public boolean remove(Object o) {
-        var hashCode = getHashCode((E)o);
-        var index = findIndex(hashCode);
+        var e = (E)o;
+        return remove(e, getHashCode(e));
+    }
+
+    public boolean remove(E e, int hashCode) {
+        var index = findIndex(e, hashCode);
         if (index < 0) {
             return false;
         }
@@ -434,7 +441,11 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
     }
 
     public void removeUnsafe(E e) {
-        var index = findIndex(getHashCode(e));
+        removeUnsafe(e, getHashCode(e));
+    }
+
+    public void removeUnsafe(E e, int hashCode) {
+        var index = findIndex(e, hashCode);
         entries[index] = null;
         size--;
         rearrangeNeighbours(index);
@@ -443,30 +454,25 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
     private void rearrangeNeighbours(int index) {
         /*rearrange neighbours*/
         var neighbours = getNeighbours(index);
-        if(neighbours.isEmpty()) {
+        if(neighbours == null) {
             return;
         }
-        var distanceComparator
-                = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
-        neighbours.sort(distanceComparator);
+        Arrays.sort(neighbours, ObjectsWithStartIndexIndexAndDistance.distanceComparator);
         boolean elementsHaveBeenSwitched;
         do {
             elementsHaveBeenSwitched = false;
             for (ObjectsWithStartIndexIndexAndDistance neighbour : neighbours) {
+                if(neighbour.distance == 0) {
+                    break;
+                }
                 if (neighbour.isTargetIndexNearerToStartIndex(index)){
                     var oldIndexOfNeighbour = neighbour.currentIndex;
                     entries[index] = entries[oldIndexOfNeighbour];
                     hashCodes[index] = hashCodes[oldIndexOfNeighbour];
                     entries[oldIndexOfNeighbour] = null;
                     neighbour.setCurrentIndex(index);
-                    if(0 == neighbour.distance) {
-                        neighbours.remove(neighbour);
-                        if(neighbours.isEmpty()) {
-                            return;
-                        }
-                    }
                     index = oldIndexOfNeighbour;
-                    neighbours.sort(distanceComparator);
+                    Arrays.sort(neighbours, ObjectsWithStartIndexIndexAndDistance.distanceComparator);
                     elementsHaveBeenSwitched = true;
                     break;
                 }
@@ -474,7 +480,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
         } while(elementsHaveBeenSwitched);
     }
 
-    private List<ObjectsWithStartIndexIndexAndDistance> getNeighbours(int index) {
+    private ObjectsWithStartIndexIndexAndDistance[] getNeighbours(int index) {
         var neighbours = new ArrayList<ObjectsWithStartIndexIndexAndDistance>();
         var i=index;
         ObjectsWithStartIndexIndexAndDistance neighbour;
@@ -482,7 +488,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
             if(null == entries[i]) {
                 break;
             }
-            neighbour = new ObjectsWithStartIndexIndexAndDistance(i);
+            neighbour = new ObjectsWithStartIndexIndexAndDistance(calcStartIndexByHashCode((E)entries[i]), i);
             if(neighbour.distance > 0) {
                 neighbours.add(neighbour);
             }
@@ -492,23 +498,25 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
             if(null == entries[i]) {
                 break;
             }
-            neighbour = new ObjectsWithStartIndexIndexAndDistance(i);
+            neighbour = new ObjectsWithStartIndexIndexAndDistance(calcStartIndexByHashCode((E)entries[i]), i);
             if(neighbour.distance > 0) {
                 neighbours.add(neighbour);
             }
         }
-        return neighbours;
+        return neighbours.isEmpty()
+                ? null : neighbours.toArray(new ObjectsWithStartIndexIndexAndDistance[neighbours.size()]);
     }
 
-    private class ObjectsWithStartIndexIndexAndDistance {
-        final E object;
+    private static class ObjectsWithStartIndexIndexAndDistance {
+        public final static Comparator<ObjectsWithStartIndexIndexAndDistance>  distanceComparator
+                = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
+
         final int startIndex;
         int currentIndex;
         int distance;
 
-        public ObjectsWithStartIndexIndexAndDistance(final int currentIndex) {
-            this.object = (E)entries[currentIndex];
-            this.startIndex = calcStartIndexByHashCode(hashCodes[currentIndex]);
+        public ObjectsWithStartIndexIndexAndDistance(final int startIndex, final int currentIndex) {
+            this.startIndex = startIndex;
             this.setCurrentIndex(currentIndex);
         }
 
@@ -579,10 +587,10 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
         grow(size + c.size());
         boolean modified = false;
         int index;
-        for (E e : c) {
-            var hashCode = getHashCode(e);
-            if((index=findIndex(hashCode)) < 0) {
-                entries[~index] = e;
+        int hashCode;
+        for (E t : c) {
+            if((index=findIndex(t, hashCode = getHashCode(t))) < 0) {
+                entries[~index] = t;
                 hashCodes[~index] = hashCode;
                 size++;
                 modified = true;
@@ -656,7 +664,6 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
     @Override
     public void clear() {
         entries = new Object[MINIMUM_SIZE];
-        hashCodes = new int[MINIMUM_SIZE];
         size = 0;
     }
 
@@ -698,7 +705,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
         return StreamSupport.stream(new ArrayWithNullsSpliteratorSized<>(entries, size), true);
     }
 
-    private static class ArrayWithNullsSpliteratorSized<T> implements Spliterator<T> {
+    private static class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
 
         private final Object[] entries;
         private final int maxPos;
@@ -725,12 +732,14 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
          * @throws NullPointerException if the specified action is null
          */
         @Override
-        public boolean tryAdvance(Consumer<? super T> action) {
-            while(0 < maxRemaining && pos < maxPos) {
-                if(null != entries[++pos]) {
-                    maxRemaining--;
-                    action.accept((T) entries[pos]);
-                    return true;
+        public boolean tryAdvance(Consumer<? super E> action) {
+            if(0 < maxRemaining) {
+                while (pos < maxPos) {
+                    if (null != entries[++pos]) {
+                        maxRemaining--;
+                        action.accept((E) entries[pos]);
+                        return true;
+                    }
                 }
             }
             return false;
@@ -749,11 +758,11 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
          * it returns {@code false}.  It should be overridden whenever possible.
          */
         @Override
-        public void forEachRemaining(Consumer<? super T> action) {
+        public void forEachRemaining(Consumer<? super E> action) {
             while(0 < maxRemaining && pos < maxPos) {
                 if(null != entries[++pos]) {
                     maxRemaining--;
-                    action.accept((T) entries[pos]);
+                    action.accept((E) entries[pos]);
                 }
             }
         }
@@ -798,7 +807,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
          * performance.
          */
         @Override
-        public Spliterator<T> trySplit() {
+        public Spliterator<E> trySplit() {
             if(entries.length - pos < 10) {
                 return null;
             }
@@ -868,7 +877,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
         }
     }
 
-    private static class ArrayWithNullsSubSpliteratorUnSized<T> implements Spliterator<T> {
+    private static class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
 
         private final Object[] entries;
         private int pos;
@@ -900,12 +909,14 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
          * @throws NullPointerException if the specified action is null
          */
         @Override
-        public boolean tryAdvance(Consumer<? super T> action) {
-            while(0 < maxRemaining && pos < maxPos) {
-                if(null != entries[++pos]) {
-                    maxRemaining--;
-                    action.accept((T) entries[pos]);
-                    return true;
+        public boolean tryAdvance(Consumer<? super E> action) {
+            if(0 < maxRemaining) {
+                while (pos < maxPos) {
+                    if (null != entries[++pos]) {
+                        maxRemaining--;
+                        action.accept((E) entries[pos]);
+                        return true;
+                    }
                 }
             }
             return false;
@@ -924,11 +935,11 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
          * it returns {@code false}.  It should be overridden whenever possible.
          */
         @Override
-        public void forEachRemaining(Consumer<? super T> action) {
+        public void forEachRemaining(Consumer<? super E> action) {
             while(0 < maxRemaining && pos < maxPos) {
                 if(null != entries[++pos]) {
                     maxRemaining--;
-                    action.accept((T) entries[pos]);
+                    action.accept((E) entries[pos]);
                 }
             }
         }
@@ -973,7 +984,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
          * performance.
          */
         @Override
-        public Spliterator<T> trySplit() {
+        public Spliterator<E> trySplit() {
             if(maxPos - pos < 10) {
                 return null;
             }
@@ -1038,7 +1049,7 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
         }
     }
 
-    private static class ArrayWithNullsIterator<T> implements Iterator<T> {
+    private static class ArrayWithNullsIterator<E> implements Iterator<E> {
 
         private final Object[] entries;
         private int remaining;
@@ -1068,13 +1079,17 @@ public class FastGrowingLowMemoryHashSet<E> implements Set<E> {
          * @throws NoSuchElementException if the iteration has no more elements
          */
         @Override
-        public T next() {
-            while (0 < remaining) {
-                if(null != entries[++pos]) {
-                    remaining--;
-                    return (T) entries[pos];
-                }
+        public E next() {
+            if(0 < remaining--) {
+                while(entries[++pos] == null);
+                return (E) entries[pos];
             }
+//            while (0 < remaining) {
+//                if (null != entries[++pos]) {
+//                    remaining--;
+//                    return (E) entries[pos];
+//                }
+//            }
             throw new NoSuchElementException();
         }
     }

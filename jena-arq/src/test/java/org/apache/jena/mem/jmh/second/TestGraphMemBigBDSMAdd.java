@@ -16,14 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.jmh.bigBDSM;
+package org.apache.jena.mem.jmh.second;
 
 import org.apache.jena.graph.Graph;
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.RDFDataMgr;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -37,17 +37,20 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertTrue;
-
 @State(Scope.Benchmark)
-public class TestGraphMemBigBDSMFindAnything {
+public class TestGraphMemBigBDSMAdd {
+
+    public String getParam0_GraphUri() {
+        return param0_GraphUri;
+    }
 
     @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem",
+//            "GraphMem",
             "GraphMem2",
+            "GraphMem2Fast"
     })
     public String param1_GraphImplementation;
 
@@ -59,13 +62,15 @@ public class TestGraphMemBigBDSMFindAnything {
             case "GraphMem2":
                 return new GraphMem2();
 
+            case "GraphMem2Fast":
+                return new GraphMem2Fast();
+
             default:
                 throw new IllegalArgumentException();
         }
     }
 
     private List<Triple> triples;
-    private Graph sut;
 
     @Setup(Level.Invocation)
     public void setupInvokation() throws Exception {
@@ -81,58 +86,15 @@ public class TestGraphMemBigBDSMFindAnything {
     public void setupTrial() throws Exception {
         // Trial level: to be executed before/after each run of the benchmark.
         var loadingGraph = new GraphMemWithArrayListOnly();
-        RDFDataMgr.read(loadingGraph, param0_GraphUri);
-        this.sut = createGraph();
+        RDFDataMgr.read(loadingGraph, getParam0_GraphUri());
         this.triples = loadingGraph.triples;
-        triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
     }
 
-    @Benchmark
-    public void graphFindBySamples_Subject_ANY_ANY() {
-        for (Triple sample : triples) {
-            var it = sut.find(sample.getSubject(), Node.ANY, Node.ANY);
-            assertTrue(it.hasNext());
-        }
-    }
 
     @Benchmark
-    public void graphFindBySamples_ANY_Predicate_ANY() {
-        for (Triple sample : triples) {
-            var it = sut.find(Node.ANY, sample.getPredicate(), Node.ANY);
-            assertTrue(it.hasNext());
-        }
-    }
-
-    @Benchmark
-    public void graphFindBySamples_ANY_ANY_Object() {
-        for (Triple sample : triples) {
-            var it = sut.find(Node.ANY, Node.ANY, sample.getObject());
-            assertTrue(it.hasNext());
-        }
-    }
-
-    @Benchmark
-    public void graphFindBySamples_Subject_Predicate_ANY() {
-        for (Triple sample : triples) {
-            var it = sut.find(sample.getSubject(), sample.getPredicate(), Node.ANY);
-            assertTrue(it.hasNext());
-        }
-    }
-
-    @Benchmark
-    public void graphFindBySamples_Subject_ANY_Object() {
-        for (Triple sample : triples) {
-            var it = sut.find(sample.getSubject(), Node.ANY, sample.getObject());
-            assertTrue(it.hasNext());
-        }
-    }
-
-    @Benchmark
-    public void graphFindBySamples_ANY_Predicate_Object() {
-        for (Triple sample : triples) {
-            var it = sut.find(Node.ANY, sample.getPredicate(), sample.getObject());
-            assertTrue(it.hasNext());
-        }
+    public void graphAdd() {
+        var sut = createGraph();
+        triples.forEach(sut::add);
     }
 
     @Test
@@ -143,7 +105,7 @@ public class TestGraphMemBigBDSMFindAnything {
                 .include(this.getClass().getName())
                 // Set the following options as needed
                 .mode (Mode.AverageTime)
-                .timeUnit(TimeUnit.MILLISECONDS)
+                .timeUnit(TimeUnit.SECONDS)
                 .warmupTime(TimeValue.NONE)
                 .warmupIterations(5)
                 .measurementTime(TimeValue.NONE)

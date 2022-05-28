@@ -16,13 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.jmh.bigBDSM;
+package org.apache.jena.mem.jmh.second;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.RDFDataMgr;
 import org.junit.Assert;
 import org.junit.Test;
@@ -49,8 +50,9 @@ public class TestGraphMemBigBDSMDelete {
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem",
+//            "GraphMem",
             "GraphMem2",
+            "GraphMem2Fast"
     })
     public String param1_GraphImplementation;
 
@@ -61,6 +63,9 @@ public class TestGraphMemBigBDSMDelete {
 
             case "GraphMem2":
                 return new GraphMem2();
+
+            case "GraphMem2Fast":
+                return new GraphMem2Fast();
 
             default:
                 throw new IllegalArgumentException();

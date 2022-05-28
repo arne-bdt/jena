@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.jmh;
+package org.apache.jena.mem.jmh.fist;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
@@ -24,6 +24,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.junit.Test;
@@ -39,10 +40,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 @State(Scope.Benchmark)
-public class TestGraphMemFindAnything {
+public class TestGraphMemFindBySamples {
 
     @Param({
 //            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
@@ -57,10 +59,13 @@ public class TestGraphMemFindAnything {
     })
     public String param0_GraphUri;
 
+    @Param({"500"})
+    public int param2_sampleSize;
+
     @Param({
-            "GraphMem",
+//            "GraphMem",
             "GraphMem2",
-//            "GraphMem2NoEqualsOkOpt"
+            "GraphMem2Fast"
     })
     public String param1_GraphImplementation;
 
@@ -72,12 +77,15 @@ public class TestGraphMemFindAnything {
             case "GraphMem2":
                 return new GraphMem2();
 
+            case "GraphMem2Fast":
+                return new GraphMem2Fast();
+
             default:
                 throw new IllegalArgumentException();
         }
     }
 
-    private List<Triple> triples;
+    private List<Triple> samples;
     private Graph sut;
 
     @Setup(Level.Invocation)
@@ -96,56 +104,78 @@ public class TestGraphMemFindAnything {
         var loadingGraph = new GraphMemWithArrayListOnly();
         RDFDataMgr.read(loadingGraph, param0_GraphUri);
         this.sut = createGraph();
-        this.triples = loadingGraph.triples;
+        var triples = loadingGraph.triples;
         triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
+
+        this.samples = new ArrayList<>(param2_sampleSize);
+        var sampleIncrement = triples.size() / param2_sampleSize;
+        for(var i=0; i< triples.size(); i+=sampleIncrement) {
+            this.samples.add(triples.get(i));
+        }
     }
 
     @Benchmark
     public void graphFindBySamples_Subject_ANY_ANY() {
-        for (Triple sample : triples) {
-            var it = sut.find(sample.getSubject(), Node.ANY, Node.ANY);
-            assertTrue(it.hasNext());
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(sample.getSubject(), Node.ANY, Node.ANY));
         }
+        assertTrue(total > 0);
     }
 
     @Benchmark
     public void graphFindBySamples_ANY_Predicate_ANY() {
-        for (Triple sample : triples) {
-            var it = sut.find(Node.ANY, sample.getPredicate(), Node.ANY);
-            assertTrue(it.hasNext());
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(Node.ANY, sample.getPredicate(), Node.ANY));
         }
+        assertTrue(total > 0);
     }
 
     @Benchmark
     public void graphFindBySamples_ANY_ANY_Object() {
-        for (Triple sample : triples) {
-            var it = sut.find(Node.ANY, Node.ANY, sample.getObject());
-            assertTrue(it.hasNext());
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(Node.ANY, Node.ANY, sample.getObject()));
         }
+        assertTrue(total > 0);
     }
 
     @Benchmark
     public void graphFindBySamples_Subject_Predicate_ANY() {
-        for (Triple sample : triples) {
-            var it = sut.find(sample.getSubject(), sample.getPredicate(), Node.ANY);
-            assertTrue(it.hasNext());
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(sample.getSubject(), sample.getPredicate(), Node.ANY));
         }
+        assertTrue(total > 0);
     }
 
     @Benchmark
     public void graphFindBySamples_Subject_ANY_Object() {
-        for (Triple sample : triples) {
-            var it = sut.find(sample.getSubject(), Node.ANY, sample.getObject());
-            assertTrue(it.hasNext());
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(sample.getSubject(), Node.ANY, sample.getObject()));
         }
+        assertTrue(total > 0);
     }
 
     @Benchmark
     public void graphFindBySamples_ANY_Predicate_Object() {
-        for (Triple sample : triples) {
-            var it = sut.find(Node.ANY, sample.getPredicate(), sample.getObject());
-            assertTrue(it.hasNext());
+        var total = 0;
+        for (Triple sample : samples) {
+            total += count(sut.find(Node.ANY, sample.getPredicate(), sample.getObject()));
         }
+        assertTrue(total > 0);
+    }
+
+    private static int count(final ExtendedIterator extendedIterator) {
+        var count = 0;
+        while(extendedIterator.hasNext()) {
+            extendedIterator.next();
+            count++;
+        }
+        extendedIterator.close();
+        return count;
     }
 
     @Test
@@ -158,9 +188,9 @@ public class TestGraphMemFindAnything {
                 .mode (Mode.AverageTime)
                 .timeUnit(TimeUnit.MILLISECONDS)
                 .warmupTime(TimeValue.NONE)
-                .warmupIterations(5)
+                .warmupIterations(15)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(10)
+                .measurementIterations(30)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)
