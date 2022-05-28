@@ -25,6 +25,7 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.generic.ObjectKeyedLowMemoryHashSet;
+import org.apache.jena.mem2.generic.ObjectKeyedLowMemoryHashSet2;
 import org.apache.jena.mem2.specialized.*;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -171,6 +172,34 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
         }
     }
 
+    private static class ObjeckKeyedLowMemoryTripleHashSet2 extends ObjectKeyedLowMemoryHashSet2<Triple> {
+
+        @Override
+        public boolean add(Triple value) {
+            return super.add(new TripleCachingHashValue(value));
+        }
+
+        @Override
+        public void addUnsafe(Triple value) {
+            super.addUnsafe(new TripleCachingHashValue(value));
+        }
+
+        @Override
+        public Triple addIfAbsent(Triple value) {
+            return super.addIfAbsent(new TripleCachingHashValue(value));
+        }
+
+        @Override
+        protected Object getKey(Triple value) {
+            return value;
+        }
+
+        @Override
+        protected int getHashCode(Triple value) {
+            return value instanceof TripleCachingHashValue ? ((TripleCachingHashValue)value).hashCode : value.hashCode();
+        }
+    }
+
     private void loadGraphsMeasureTimeAndMemory_load(List<Pair<String, Supplier<Graph>>> graphVariantSuppliersWithNames, String... graphUris) {
         final var triplesPerGraph = loadTriples(1, graphUris);
         //for(var numberOfTriples : Arrays.asList(50, 100, 250, 500, 1000, 2000, 5000, 10000, 25000, 50000, 75000, 100000, 150000)) {
@@ -188,15 +217,16 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
             sets.add(() -> new HashCachingLowMemoryTripleHashSet());
             sets.add(() -> new HashCachingLowMemoryTripleHashSet());
 
+            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet2());
+            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet2());
+            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet2());
+            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet2());
+
             sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
             sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
             sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
             sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
 
-            sets.add(() -> new LowMemoryTripleHashSet());
-            sets.add(() -> new LowMemoryTripleHashSet());
-            sets.add(() -> new LowMemoryTripleHashSet());
-            sets.add(() -> new LowMemoryTripleHashSet());
             //sets.add(() -> new LowMemoryTripleHashSet());
             //sets.add(() -> new TripleHashSet());
             //sets.add(() -> new HybridTripleSet());
