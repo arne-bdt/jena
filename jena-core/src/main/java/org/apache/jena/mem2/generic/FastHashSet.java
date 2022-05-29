@@ -153,41 +153,25 @@ public class FastHashSet<E> implements Set<E> {
     public boolean contains(Object o) {
         var e = (E)o;
         var hashCode = getHashCode(e);
-        final var index = calcStartIndexByHashCode(hashCode);
+        var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
         }
         var predicate = getContainsPredicate(e);
         if(hashCode == hashCodes[index] && predicate.test((E)entries[index])) {
             return true;
+        } else if(--index < 0){
+            index += entries.length;
         }
-        var lowerIndex = index;
-        var upperIndex = index;
-        while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= --lowerIndex) {
-                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
-                    if(++upperIndex < entries.length) {
-                        if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                            return false;
-                        } else {
-                            return hashCode == hashCodes[upperIndex] && predicate.test((E)entries[upperIndex]);
-                        }
-                    } else {
-                        return false;
-                    }
-                } else if (hashCode == hashCodes[lowerIndex] && predicate.test((E)entries[lowerIndex])) {
-                    return true;
-                }
-            }
-            if(++upperIndex < entries.length) {
-                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                    return false;
-                } else if (hashCode == hashCodes[upperIndex] && predicate.test((E)entries[upperIndex])) {
-                    return true;
-                }
+        while(true) {
+            if(null == entries[index]) {
+                return false;
+            } else if(hashCode == hashCodes[index] && predicate.test((E)entries[index])) {
+                return true;
+            } else if(--index < 0){
+                index += entries.length;
             }
         }
-        throw new IllegalStateException();
     }
 
 
@@ -265,40 +249,16 @@ public class FastHashSet<E> implements Set<E> {
 
     public E getIfPresent(E value) {
         var hashCode = getHashCode(value);
-        final var index = calcStartIndexByHashCode(hashCode);
-        if(null == entries[index]) {
-            return null;
-        }
-        if(hashCode == hashCodes[index] && value.equals(entries[index])) {
-            return (E)entries[index];
-        }
-        var lowerIndex = index;
-        var upperIndex = index;
-        while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= --lowerIndex) {
-                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
-                    if(++upperIndex < entries.length) {
-                        if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                            return null;
-                        } else {
-                            return hashCode == hashCodes[upperIndex] && value.equals(entries[upperIndex]) ? (E)entries[upperIndex] : null;           /*found equal element*/
-                        }
-                    } else {
-                        return null;
-                    }
-                } else if (hashCode == hashCodes[lowerIndex] && value.equals(entries[lowerIndex])) {
-                    return (E)entries[lowerIndex];            /*found equal element*/
-                }
-            }
-            if(++upperIndex < entries.length) {
-                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                    return null;
-                } else if (hashCode == hashCodes[upperIndex] && value.equals(entries[upperIndex])) {
-                    return (E)entries[upperIndex];           /*found equal element*/
-                }
+        var index = calcStartIndexByHashCode(hashCode);
+        while(true) {
+            if(null == entries[index]) {
+                return null;
+            } else if(hashCode == hashCodes[index] && value.equals(entries[index])) {
+                return (E)entries[index];
+            } else if(--index < 0){
+                index += entries.length;
             }
         }
-        throw new IllegalStateException();
     }
 
     public E compute(E value, Function<E, E> remappingFunction) {
@@ -335,64 +295,28 @@ public class FastHashSet<E> implements Set<E> {
         }
     }
 
-//    private int findIndex(final E t) {
-//        return findIndex(t, getHashCode(t));
-//    }
-    private int findIndex(final E t, final int hashNode) {
-        final var index = calcStartIndexByHashCode(hashNode);
-        if(null == entries[index]) {
-            return ~index;
-        }
-        if(hashNode == hashCodes[index] && t.equals(entries[index])) {
-            return index;
-        }
-        int emptyIndex = -1;
-        var lowerIndex = index;
-        var upperIndex = index;
-        while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= --lowerIndex) {
-                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
-                    emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
-                } else if (hashNode == hashCodes[lowerIndex] && t.equals(entries[lowerIndex])) {
-                    return lowerIndex;            /*found equal element*/
-                }
-            }
-            if(++upperIndex < entries.length) {
-                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                    if(emptyIndex < 0) {          /*this index is only relevant if slot with same distance in backward direction was not also empty*/
-                        emptyIndex = upperIndex;
-                    }
-                } else if (hashNode == hashCodes[upperIndex] && t.equals(entries[upperIndex])) {
-                    return upperIndex;           /*found equal element*/
-                }
-            }
-            if(emptyIndex >= 0) { /*found empty slot in any direction*/
-                return ~emptyIndex;
+    private int findIndex(final E e, final int hashCode) {
+        var index = calcStartIndexByHashCode(hashCode);
+        while(true) {
+            if(null == entries[index]) {
+                return ~index;
+            } else if(hashCode == hashCodes[index] && e.equals(entries[index])) {
+                return index;
+            } else if(--index < 0){
+                index += entries.length;
             }
         }
-        throw new IllegalStateException();
     }
 
     private int findEmptySlotWithoutEqualityCheck(final int hashCode) {
-        final var index = calcStartIndexByHashCode(hashCode);
-        if(null == entries[index]) {
-            return index;
-        }
-        var lowerIndex = index;
-        var upperIndex = index;
-        while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= --lowerIndex) {
-                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
-                    return lowerIndex;
-                }
-            }
-            if(++upperIndex < entries.length) {
-                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                    return upperIndex;
-                }
+        var index = calcStartIndexByHashCode(hashCode);
+        while(true) {
+            if(null == entries[index]) {
+                return index;
+            } else if(--index < 0){
+                index += entries.length;
             }
         }
-        throw new IllegalStateException();
     }
 
     /**
@@ -472,27 +396,37 @@ public class FastHashSet<E> implements Set<E> {
         } while(elementsHaveBeenSwitched);
     }
 
-    private ObjectsWithStartIndexIndexAndDistance[] getNeighbours(int index) {
+    private ObjectsWithStartIndexIndexAndDistance[] getNeighbours(final int index) {
         var neighbours = new ArrayList<ObjectsWithStartIndexIndexAndDistance>();
-        var i=index;
         ObjectsWithStartIndexIndexAndDistance neighbour;
-        while (i-- > 0) {
+        /*find left*/
+        var i = index;
+        while(true) {
+            if(--i < 0){
+                i += entries.length;
+            }
             if(null == entries[i]) {
                 break;
-            }
-            neighbour = new ObjectsWithStartIndexIndexAndDistance(calcStartIndexByHashCode((E)entries[i]), i);
-            if(neighbour.distance > 0) {
-                neighbours.add(neighbour);
+            } else {
+                neighbour = new ObjectsWithStartIndexIndexAndDistance(entries.length, calcStartIndexByHashCode((E)entries[i]), i);
+                if(neighbour.distance > 0) {
+                    neighbours.add(neighbour);
+                }
             }
         }
         i = index;
-        while(++i < entries.length) {
+        /*find right*/
+        while(true) {
+            if(++i == entries.length){
+                i = 0;
+            }
             if(null == entries[i]) {
                 break;
-            }
-            neighbour = new ObjectsWithStartIndexIndexAndDistance(calcStartIndexByHashCode((E)entries[i]), i);
-            if(neighbour.distance > 0) {
-                neighbours.add(neighbour);
+            } else {
+                neighbour = new ObjectsWithStartIndexIndexAndDistance(entries.length, calcStartIndexByHashCode((E)entries[i]), i);
+                if(neighbour.distance > 0) {
+                    neighbours.add(neighbour);
+                }
             }
         }
         return neighbours.isEmpty()
@@ -502,23 +436,30 @@ public class FastHashSet<E> implements Set<E> {
     private static class ObjectsWithStartIndexIndexAndDistance {
         public final static Comparator<ObjectsWithStartIndexIndexAndDistance>  distanceComparator
                 = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
-
         final int startIndex;
+        final int length;
         int currentIndex;
         int distance;
 
-        public ObjectsWithStartIndexIndexAndDistance(final int startIndex, final int currentIndex) {
+        public ObjectsWithStartIndexIndexAndDistance(final int length, final int startIndex, final int currentIndex) {
+            this.length = length;
             this.startIndex = startIndex;
             this.setCurrentIndex(currentIndex);
         }
 
         void setCurrentIndex(final int currentIndex) {
             this.currentIndex = currentIndex;
-            this.distance = Math.abs(startIndex - currentIndex);
+            this.distance = calcDistance(currentIndex);
+        }
+
+        private int calcDistance(final int index) {
+            return index <= startIndex
+                    ? startIndex - index
+                    : startIndex + length - index;
         }
 
         boolean isTargetIndexNearerToStartIndex(final int targetIndex) {
-            return Math.abs(startIndex - targetIndex) < distance;
+            return calcDistance(targetIndex) < distance;
         }
     }
 
@@ -1076,12 +1017,6 @@ public class FastHashSet<E> implements Set<E> {
                 while(entries[++pos] == null);
                 return (E) entries[pos];
             }
-//            while (0 < remaining) {
-//                if (null != entries[++pos]) {
-//                    remaining--;
-//                    return (E) entries[pos];
-//                }
-//            }
             throw new NoSuchElementException();
         }
     }

@@ -127,40 +127,24 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         var e = (E)o;
         final var key = getKey(e);
         final var hashCode = key.hashCode();
-        final var index = calcStartIndexByHashCode(hashCode);
+        var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
         }
         if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
             return true;
+        } else if(--index < 0){
+            index += entries.length;
         }
-        var lowerIndex = index;
-        var upperIndex = index;
-        while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= --lowerIndex) {
-                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
-                    if(++upperIndex < entries.length) {
-                        if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                            return false;
-                        } else {
-                            return hashCode == getHashCode((E)entries[upperIndex]) && key.equals(getKey((E)entries[upperIndex]));
-                        }
-                    } else {
-                        return false;
-                    }
-                } else if (hashCode == getHashCode((E)entries[lowerIndex]) && key.equals(getKey((E)entries[lowerIndex]))) {
-                    return true;
-                }
-            }
-            if(++upperIndex < entries.length) {
-                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                    return false;
-                } else if (hashCode == getHashCode((E)entries[upperIndex]) && key.equals(getKey((E)entries[upperIndex]))) {
-                    return true;
-                }
+        while(true) {
+            if(null == entries[index]) {
+                return false;
+            } else if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
+                return true;
+            } else if(--index < 0){
+                index += entries.length;
             }
         }
-        throw new IllegalStateException();
     }
 
 
@@ -220,44 +204,16 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
 
     public E getIfPresent(final Object key) {
         final int hashCode = key.hashCode();
-        final var index = calcStartIndexByHashCode(hashCode);
-        if(null == entries[index]) {
-            return null;
-        }
-        if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
-            return (E)entries[index];
-        }
-        var lowerIndex = index;
-        var upperIndex = index;
-        while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= --lowerIndex) {
-                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
-                    if(++upperIndex < entries.length) {
-                        if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                            return null;
-                        } else {
-                            return hashCode == getHashCode((E)entries[upperIndex]) && key.equals(getKey((E)entries[upperIndex])) ? (E)entries[upperIndex] : null;           /*found equal element*/
-                        }
-                    } else {
-                        return null;
-                    }
-                } else {
-                    if (hashCode == getHashCode((E)entries[lowerIndex]) && key.equals(getKey((E)entries[lowerIndex]))) {
-                        return (E)entries[lowerIndex];            /*found equal element*/
-                    }
-                }
-            }
-            if(++upperIndex < entries.length) {
-                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                    return null;
-                } else {
-                    if (hashCode == getHashCode((E)entries[upperIndex]) && key.equals(getKey((E)entries[upperIndex]))) {
-                        return (E)entries[upperIndex];            /*found equal element*/
-                    }
-                }
+        var index = calcStartIndexByHashCode(hashCode);
+        while(true) {
+            if(null == entries[index]) {
+                return null;
+            } else if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
+                return (E)entries[index];
+            } else if(--index < 0){
+                index += entries.length;
             }
         }
-        throw new IllegalStateException();
     }
 
     public E compute(final Object key, final int hashCodeOfKey, Function<E, E> remappingFunction) {
@@ -297,60 +253,27 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     }
 
     private int findIndex(final Object key, final int hashCode) {
-        final var index = calcStartIndexByHashCode(hashCode);
-        if(null == entries[index]) {
-            return ~index;
-        }
-        if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
-            return index;
-        }
-        int emptyIndex = -1;
-        var lowerIndex = index;
-        var upperIndex = index;
-        while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= --lowerIndex) {
-                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
-                    emptyIndex = lowerIndex;      /*memorize index but check later if entry with same forward distance is possibly equal to element to find */
-                } else if (hashCode == getHashCode((E)entries[lowerIndex]) && key.equals(getKey((E)entries[lowerIndex]))) {
-                    return lowerIndex;            /*found equal element*/
-                }
-            }
-            if(++upperIndex < entries.length) {
-                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                    if(emptyIndex < 0) {          /*this index is only relevant if slot with same distance in backward direction was not also empty*/
-                        emptyIndex = upperIndex;
-                    }
-                } else if (hashCode == getHashCode((E)entries[upperIndex]) && key.equals(getKey((E)entries[upperIndex]))) {
-                    return upperIndex;           /*found equal element*/
-                }
-            }
-            if(emptyIndex >= 0) { /*found empty slot in any direction*/
-                return ~emptyIndex;
+        var index = calcStartIndexByHashCode(hashCode);
+        while(true) {
+            if(null == entries[index]) {
+                return ~index;
+            } else if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
+                return index;
+            } else if(--index < 0){
+                index += entries.length;
             }
         }
-        throw new IllegalStateException();
     }
 
     private int findEmptySlotWithoutEqualityCheck(final int hashCode) {
-        final var index = calcStartIndexByHashCode(hashCode);
-        if(null == entries[index]) {
-            return index;
-        }
-        var lowerIndex = index;
-        var upperIndex = index;
-        while (0 <= lowerIndex || upperIndex < entries.length) {
-            if(0 <= --lowerIndex) {
-                if(null == entries[lowerIndex]) { /*found first empty slot in backward direction*/
-                    return lowerIndex;
-                }
-            }
-            if(++upperIndex < entries.length) {
-                if(null == entries[upperIndex]) { /*found first empty index in forward direction*/
-                    return upperIndex;
-                }
+        var index = calcStartIndexByHashCode(hashCode);
+        while(true) {
+            if(null == entries[index]) {
+                return index;
+            } else if(--index < 0){
+                index += entries.length;
             }
         }
-        throw new IllegalStateException();
     }
 
     /**
@@ -420,29 +343,37 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         } while(elementsHaveBeenSwitched);
     }
 
-    private ObjectsWithStartIndexIndexAndDistance[] getNeighbours(int index) {
+    private ObjectsWithStartIndexIndexAndDistance[] getNeighbours(final int index) {
         var neighbours = new ArrayList<ObjectsWithStartIndexIndexAndDistance>();
-        var i=index;
         ObjectsWithStartIndexIndexAndDistance neighbour;
-        while (i-- > 0) {
+        /*find left*/
+        var i = index;
+        while(true) {
+            if(--i < 0){
+                i += entries.length;
+            }
             if(null == entries[i]) {
                 break;
-            }
-            neighbour = new ObjectsWithStartIndexIndexAndDistance(
-                    calcStartIndexByHashCode(getHashCode((E)entries[i])), i);
-            if(neighbour.distance > 0) {
-                neighbours.add(neighbour);
+            } else {
+                neighbour = new ObjectsWithStartIndexIndexAndDistance(entries.length, calcStartIndexByHashCode(getHashCode((E)entries[i])), i);
+                if(neighbour.distance > 0) {
+                    neighbours.add(neighbour);
+                }
             }
         }
         i = index;
-        while(++i < entries.length) {
+        /*find right*/
+        while(true) {
+            if(++i == entries.length){
+                i = 0;
+            }
             if(null == entries[i]) {
                 break;
-            }
-            neighbour = new ObjectsWithStartIndexIndexAndDistance(
-                    calcStartIndexByHashCode(getHashCode((E)entries[i])), i);
-            if(neighbour.distance > 0) {
-                neighbours.add(neighbour);
+            } else {
+                neighbour = new ObjectsWithStartIndexIndexAndDistance(entries.length, calcStartIndexByHashCode(getHashCode((E)entries[i])), i);
+                if(neighbour.distance > 0) {
+                    neighbours.add(neighbour);
+                }
             }
         }
         return neighbours.isEmpty()
@@ -452,23 +383,30 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     private static class ObjectsWithStartIndexIndexAndDistance {
         public final static Comparator<ObjectsWithStartIndexIndexAndDistance>  distanceComparator
                 = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
-
         final int startIndex;
+        final int length;
         int currentIndex;
         int distance;
 
-        public ObjectsWithStartIndexIndexAndDistance(final int startIndex, final int currentIndex) {
+        public ObjectsWithStartIndexIndexAndDistance(final int length, final int startIndex, final int currentIndex) {
+            this.length = length;
             this.startIndex = startIndex;
             this.setCurrentIndex(currentIndex);
         }
 
         void setCurrentIndex(final int currentIndex) {
             this.currentIndex = currentIndex;
-            this.distance = Math.abs(startIndex - currentIndex);
+            this.distance = calcDistance(currentIndex);
+        }
+
+        private int calcDistance(final int index) {
+            return index <= startIndex
+                    ? startIndex - index
+                    : startIndex + length - index;
         }
 
         boolean isTargetIndexNearerToStartIndex(final int targetIndex) {
-            return Math.abs(startIndex - targetIndex) < distance;
+            return calcDistance(targetIndex) < distance;
         }
     }
 

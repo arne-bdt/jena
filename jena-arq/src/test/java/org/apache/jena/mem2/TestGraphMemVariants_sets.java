@@ -22,7 +22,6 @@ import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.graph.Graph;
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.generic.ObjectKeyedLowMemoryHashSet;
 import org.apache.jena.mem2.specialized.*;
@@ -181,22 +180,23 @@ public class TestGraphMemVariants_sets extends TestGraphMemVariantsBase {
             var randomTriple = selectRandomTriples(triplesPerGraph, numberOfTriples);
 
             var sets = new ArrayList<Supplier<Set<Triple>>>();
-            //sets.add(() -> new SortedTripleListSet2(2));
-            //sets.add(() -> new SortedTripleListSet2(2));
-            sets.add(() -> new HashCachingLowMemoryTripleHashSet());
-            sets.add(() -> new HashCachingLowMemoryTripleHashSet());
-            sets.add(() -> new HashCachingLowMemoryTripleHashSet());
-            sets.add(() -> new HashCachingLowMemoryTripleHashSet());
+//            sets.add(() -> new HashCachingLowMemoryTripleHashSet());
+//            sets.add(() -> new HashCachingLowMemoryTripleHashSet());
+//            sets.add(() -> new HashCachingLowMemoryTripleHashSet());
+//            sets.add(() -> new HashCachingLowMemoryTripleHashSet());
+//
+//
+//            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
+//            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
+//            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
+//            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
+
+            sets.add(() -> new LowMemoryTripleHashSet());
+            sets.add(() -> new LowMemoryTripleHashSet());
+            sets.add(() -> new LowMemoryTripleHashSet());
+            sets.add(() -> new LowMemoryTripleHashSet());
 
 
-            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
-            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
-            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
-            sets.add(() -> new ObjeckKeyedLowMemoryTripleHashSet());
-
-            //sets.add(() -> new LowMemoryTripleHashSet());
-            //sets.add(() -> new TripleHashSet());
-            //sets.add(() -> new HybridTripleSet());
 
             for (Supplier<Set<Triple>> supplier : sets) {
                 var stopAdditions = StopWatch.createStarted();
