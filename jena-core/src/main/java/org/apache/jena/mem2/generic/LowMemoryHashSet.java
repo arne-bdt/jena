@@ -312,12 +312,6 @@ public class LowMemoryHashSet<E> implements Set<E> {
                 rearrangeNeighbours(index);
                 return null;
             } else {
-                if(value == newValue) {
-                    return newValue;
-                }
-                if(!value.equals(newValue)) {
-                    throw new IllegalArgumentException("remapped value is not equal to value");
-                }
                 entries[index] = newValue;
                 return newValue;
             }

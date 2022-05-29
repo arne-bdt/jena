@@ -325,19 +325,11 @@ public class FastHashSet<E> implements Set<E> {
             var newValue = remappingFunction.apply((E)entries[index]);
             if(newValue == null) {
                 entries[index] = null;
-                //hashCodes[index] = null;
                 size--;
                 rearrangeNeighbours(index);
                 return null;
             } else {
-                if(value == newValue) {
-                    return newValue;
-                }
-                if(!value.equals(newValue)) {
-                    throw new IllegalArgumentException("remapped value is not equal to value");
-                }
                 entries[index] = newValue;
-                hashCodes[index] = hashCode;
                 return newValue;
             }
         }

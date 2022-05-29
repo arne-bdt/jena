@@ -48,7 +48,7 @@ public class TestGraphMemBigBDSMFindAnything {
     public String param0_GraphUri;
 
     @Param({
-//            "GraphMem",
+            "GraphMem",
             "GraphMem2",
             "GraphMem2Fast",
             "GraphMem2LowMemory"
@@ -157,7 +157,7 @@ public class TestGraphMemBigBDSMFindAnything {
                 .warmupTime(TimeValue.NONE)
                 .warmupIterations(5)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(10)
+                .measurementIterations(15)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)

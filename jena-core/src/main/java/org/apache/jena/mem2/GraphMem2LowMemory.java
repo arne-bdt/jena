@@ -90,9 +90,9 @@ public class GraphMem2LowMemory extends GraphMemBase implements GraphWithPerform
         }
     }
 
-    private final KeyedHashSet triplesBySubject = new KeyedHashSet(256); //256
-    private final KeyedHashSet triplesByPredicate = new KeyedHashSet(64); //64
-    private final KeyedHashSet triplesByObject = new KeyedHashSet(512); //512
+    private final KeyedHashSet triplesBySubject = new KeyedHashSet(); //256
+    private final KeyedHashSet triplesByPredicate = new KeyedHashSet(); //64
+    private final KeyedHashSet triplesByObject = new KeyedHashSet(); //512
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 

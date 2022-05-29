@@ -60,7 +60,7 @@ public class TestGraphMemFindAnything {
     public String param0_GraphUri;
 
     @Param({
-//            "GraphMem",
+            "GraphMem",
             "GraphMem2",
             "GraphMem2Fast",
             "GraphMem2LowMemory"
@@ -169,7 +169,7 @@ public class TestGraphMemFindAnything {
                 .warmupTime(TimeValue.NONE)
                 .warmupIterations(5)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(10)
+                .measurementIterations(20)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)

@@ -64,7 +64,7 @@ public class TestGraphMemFindBySamples {
     public int param2_sampleSize;
 
     @Param({
-//            "GraphMem",
+            "GraphMem",
             "GraphMem2",
             "GraphMem2Fast",
             "GraphMem2LowMemory"

@@ -64,7 +64,7 @@ public class TestGraphMemContainsFindAndStreamAll {
     public String param0_GraphUri;
 
     @Param({
-//            "GraphMem",
+            "GraphMem",
             "GraphMem2",
             "GraphMem2Fast",
             "GraphMem2LowMemory"

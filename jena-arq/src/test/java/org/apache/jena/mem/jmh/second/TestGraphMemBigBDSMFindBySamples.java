@@ -53,7 +53,7 @@ public class TestGraphMemBigBDSMFindBySamples {
     public int param2_sampleSize;
 
     @Param({
-//            "GraphMem",
+            "GraphMem",
             "GraphMem2",
             "GraphMem2Fast",
             "GraphMem2LowMemory"
@@ -184,7 +184,7 @@ public class TestGraphMemBigBDSMFindBySamples {
                 .warmupTime(TimeValue.NONE)
                 .warmupIterations(5)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(10)
+                .measurementIterations(15)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)

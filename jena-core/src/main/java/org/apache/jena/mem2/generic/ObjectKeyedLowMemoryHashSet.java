@@ -289,32 +289,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     }
 
     public E compute(final Object key, Function<E, E> remappingFunction) {
-        var hashCode = key.hashCode();
-        var index = findIndex(key, hashCode);
-        if(index < 0) { /*value does not exist yet*/
-            var newValue = remappingFunction.apply(null);
-            if(newValue == null) {
-                return null;
-            }
-            if(grow()) {
-                entries[findEmptySlotWithoutEqualityCheck(hashCode)] = newValue;
-            } else {
-                entries[~index] = newValue;
-            }
-            size++;
-            return newValue;
-        } else { /*existing value found*/
-            var newValue = remappingFunction.apply((E)entries[index]);
-            if(newValue == null) {
-                entries[index] = null;
-                size--;
-                rearrangeNeighbours(index);
-                return null;
-            } else {
-                entries[index] = newValue;
-                return newValue;
-            }
-        }
+        return compute(key, key.hashCode(), remappingFunction);
     }
 
     private int findIndexByValue(final E value) {
