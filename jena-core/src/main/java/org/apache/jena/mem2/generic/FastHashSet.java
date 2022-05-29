@@ -152,7 +152,7 @@ public class FastHashSet<E> implements Set<E> {
     @Override
     public boolean contains(Object o) {
         var e = (E)o;
-        var hashCode = getHashCode(e);
+        final var hashCode = getHashCode(e);
         var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;

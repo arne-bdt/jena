@@ -24,17 +24,17 @@ import org.apache.jena.mem2.generic.FastHashSet;
 import java.util.Set;
 import java.util.function.Predicate;
 
-public class HashCachingLowMemoryTripleHashSet extends FastHashSet<Triple> {
+public class FastTripleHashSet extends FastHashSet<Triple> {
 
-    public HashCachingLowMemoryTripleHashSet() {
+    public FastTripleHashSet() {
         super();
     }
 
-    public HashCachingLowMemoryTripleHashSet(int initialCapacity) {
+    public FastTripleHashSet(int initialCapacity) {
         super(initialCapacity);
     }
 
-    public HashCachingLowMemoryTripleHashSet(Set<? extends Triple> set) {
+    public FastTripleHashSet(Set<? extends Triple> set) {
         super(set);
     }
 

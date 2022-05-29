@@ -126,11 +126,12 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     public boolean contains(Object o) {
         var e = (E)o;
         final var key = getKey(e);
-        var index = calcStartIndexByHashCode(key.hashCode());
+        final var hashCode = key.hashCode();
+        var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
         }
-        if(key.equals(getKey((E)entries[index]))) {
+        if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
             return true;
         } else if(--index < 0){
             index += entries.length;
@@ -138,7 +139,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         while(true) {
             if(null == entries[index]) {
                 return false;
-            } else if(key.equals(getKey((E)entries[index]))) {
+            } else if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
                 return true;
             } else if(--index < 0){
                 index += entries.length;
@@ -202,11 +203,12 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     }
 
     public E getIfPresent(final Object key) {
+        var hashCode = key.hashCode();
         var index = calcStartIndexByHashCode(key.hashCode());
         while(true) {
             if(null == entries[index]) {
                 return null;
-            } else if(key.equals(getKey((E)entries[index]))) {
+            } else if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
                 return (E)entries[index];
             } else if(--index < 0){
                 index += entries.length;
@@ -255,7 +257,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
         while(true) {
             if(null == entries[index]) {
                 return ~index;
-            } else if(key.equals(getKey((E)entries[index]))) {
+            } else if(hashCode == getHashCode((E)entries[index]) && key.equals(getKey((E)entries[index]))) {
                 return index;
             } else if(--index < 0){
                 index += entries.length;

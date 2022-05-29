@@ -19,7 +19,6 @@
 package org.apache.jena.mem.jmh.fist;
 
 import org.apache.jena.graph.Graph;
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
@@ -27,8 +26,6 @@ import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.mem2.GraphMem2LowMemory;
 import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.util.iterator.ExtendedIterator;
-import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -40,15 +37,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 @State(Scope.Benchmark)
-public class TestGraphMemContainsFindAndStreamAll {
+public class TestGraphMemStreamAll {
 
     @Param({
 //            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
@@ -113,39 +108,33 @@ public class TestGraphMemContainsFindAndStreamAll {
         this.triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
     }
 
-
     @Benchmark
-    public void graphContains() {
-        triples.forEach(t -> Assert.assertTrue(sut.contains(t)));
+    public void graphFind() {
+        var found = new ArrayList<Triple>(sut.size());
+        var it = sut.find();
+        while(it.hasNext()) {
+            found.add(it.next());
+        }
+        it.close();
+        assertEquals(sut.size(), found.size());
     }
 
-//    @Benchmark
-//    public void graphFind() {
-//        var found = new ArrayList<Triple>(sut.size());
-//        var it = sut.find();
-//        while(it.hasNext()) {
-//            found.add(it.next());
-//        }
-//        it.close();
-//        assertEquals(sut.size(), found.size());
-//    }
-//
-//    @Benchmark
-//    public void graphStream() {
-//        var found = sut.stream().collect(Collectors.toList());
-//        assertEquals(sut.size(), found.size());
-//    }
-//
-//    @Benchmark
-//    public void graphStreamParallel() throws ExecutionException, InterruptedException {
-//        if(triples.size() < 10000) { /*to avoid waiting for blocking parallel execution*/
-//            var found = sut.stream().collect(Collectors.toList());
-//            assertEquals(sut.size(), found.size());
-//        } else {
-//            var found = sut.stream().parallel().collect(Collectors.toList());
-//            assertEquals(sut.size(), found.size());
-//        }
-//    }
+    @Benchmark
+    public void graphStream() {
+        var found = sut.stream().collect(Collectors.toList());
+        assertEquals(sut.size(), found.size());
+    }
+
+    @Benchmark
+    public void graphStreamParallel() {
+        if(triples.size() < 10000) { /*to avoid waiting for blocking parallel execution*/
+            var found = sut.stream().collect(Collectors.toList());
+            assertEquals(sut.size(), found.size());
+        } else {
+            var found = sut.stream().parallel().collect(Collectors.toList());
+            assertEquals(sut.size(), found.size());
+        }
+    }
 
     @Test
     public void benchmark() throws Exception {
