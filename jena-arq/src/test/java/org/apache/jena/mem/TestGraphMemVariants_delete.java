@@ -61,20 +61,6 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
      * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
      */
     @Test
-    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ_SSH_SV_and_TP() {
-        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
-                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
-    }
-
-    /**
-     * Due to copyright, data cannot be added to the repository.
-     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
-     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
-     */
-    @Test
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() {
         loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
@@ -111,14 +97,6 @@ public class TestGraphMemVariants_delete extends TestGraphMemVariantsBase {
     public void ENTSO_E_Test_Configurations_v3_0_RealGrid_TP() {
         loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
-    }
-
-    @Test
-    public void xxx_CGMES() {
-        loadGraphsMeasureTimeAndMemory_delete(graphImplementationsToTest, 1,
-                "C:/temp/res_test/xxx_CGMES_EQ.xml",
-                "C:/temp/res_test/xxx_CGMES_SSH.xml",
-                "C:/temp/res_test/xxx_CGMES_TP.xml");
     }
 
     @Test

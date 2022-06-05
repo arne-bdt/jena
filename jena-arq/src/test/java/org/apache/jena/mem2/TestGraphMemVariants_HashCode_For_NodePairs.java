@@ -22,25 +22,74 @@ import org.apache.jena.ext.com.google.common.hash.Hashing;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
+import org.apache.jena.rdf.model.InfModel;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.reasoner.Reasoner;
+import org.apache.jena.reasoner.rulesys.RDFSRuleReasonerFactory;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.vocabulary.ReasonerVocabulary;
 import org.junit.Test;
 
+import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.function.Function;
 
 public class TestGraphMemVariants_HashCode_For_NodePairs extends TestGraphMemVariantsBase {
 
     @Test
-    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ() throws InterruptedException {
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid() throws InterruptedException {
         hashCollisions(
-                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
+    }
+
+    @Test
+    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_SSH() throws InterruptedException {
+        hashCollisions(
+                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml");
+    }
+
+    @Test
+    public void xxx_CGMES() throws InterruptedException {
+        hashCollisions(
+                "C:/temp/res_test/xxx_CGMES_EQ.xml",
+                "C:/temp/res_test/xxx_CGMES_TP.xml",
+                "C:/temp/res_test/xxx_CGMES_SSH.xml");
+    }
+
+    /*"C:\Users\bern\Downloads\ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS\EquipmentProfileCoreRDFSAugmented-v2_4_15-4Jul2016.rdf"*/
+
+    @Test
+    public void cheeses_ttl() throws FileNotFoundException {
+        hashCollisions(
+                "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl");
+    }
+
+    @Test
+    public void test_rdfs() {
+        Model schema = RDFDataMgr.loadModel("./../jena-examples/src/main/resources/data/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/EquipmentProfileCoreRDFSAugmented-v2_4_15-4Jul2016.rdf");
+        Model model = RDFDataMgr.loadModel("C:/temp/res_test/xxx_CGMES_EQ.xml");
+        //InfModel infmodel = ModelFactory.createRDFSModel(schema, data);
+
+        Reasoner reasoner = RDFSRuleReasonerFactory.theInstance().create(null);
+        reasoner.setParameter(ReasonerVocabulary.PROPsetRDFSLevel,
+                ReasonerVocabulary.RDFS_FULL);
+        InfModel inf = ModelFactory.createInfModel(reasoner, schema, model);
+        int i=0;
     }
 
 
-    private void hashCollisions(String graphUri) {
-        var loadingGraph = new GraphMemWithArrayListOnly();
-        RDFDataMgr.read(loadingGraph, graphUri);
-        var triples = loadingGraph.triples;
+    private void hashCollisions(String... graphUris) {
+        ArrayList<Triple> triples = new ArrayList<>();
+        for (String uri : graphUris) {
+            var loadingGraph = new GraphMemWithArrayListOnly();
+
+            RDFDataMgr.read(loadingGraph, uri);
+            triples.addAll(loadingGraph.triples);
+        }
         var byHashCodeOP = getMapWithNodes(triples, Triple::getObject, Triple::getPredicate);
         var byHashCodePO = getMapWithNodes(triples, Triple::getPredicate, Triple::getObject);
         var byHashCodeSO = getMapWithNodes(triples, Triple::getSubject, Triple::getObject);
@@ -126,7 +175,10 @@ public class TestGraphMemVariants_HashCode_For_NodePairs extends TestGraphMemVar
 
         @Override
         public int hashCode() {
-            return (31 * one.getIndexingValue().hashCode()) + two.getIndexingValue().hashCode();
+            //return (31 * one.hashCode()) ^ two.hashCode();
+            return (31 * one.hashCode()) + two.hashCode();
+            //return (127 * one.hashCode()) ^ two.hashCode();
+            //return (one.hashCode() >> 1) ^ two.hashCode();
         }
     }
 }

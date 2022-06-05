@@ -20,11 +20,21 @@ package org.apache.jena.mem;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.jena.arq.junit.riot.VocabLangRDF;
+import org.apache.jena.datatypes.BaseDatatype;
+import org.apache.jena.datatypes.DatatypeFormatException;
+import org.apache.jena.datatypes.RDFDatatype;
+import org.apache.jena.datatypes.TypeMapper;
+import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.datatypes.xsd.impl.XSDDouble;
+import org.apache.jena.datatypes.xsd.impl.XSDFloat;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.graph.impl.LiteralLabel;
 import org.apache.jena.mem2.*;
+import org.apache.jena.rdfs.assembler.VocabRDFS;
+import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
@@ -37,41 +47,15 @@ public abstract class TestGraphMemVariantsBase {
 
 
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
+
+
             Pair.of("GraphMem", () -> new GraphMem()),
+
             Pair.of("GraphMem2", () -> new GraphMem2()),
-//            Pair.of("GraphMem2", () -> new GraphMem2()),
-//            Pair.of("GraphMem2", () -> new GraphMem2()),
-//            Pair.of("GraphMem3", () -> new GraphMem3()),
-//            Pair.of("GraphMem3", () -> new GraphMem3()),
-//            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast()),
-//            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast()),
-            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast())
 
+            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast()),
 
-
-//            Pair.of("GraphMem", () -> new GraphMem()),
-//            Pair.of("GraphMem", () -> new GraphMem()),
-//            Pair.of("GraphMem", () -> new GraphMem()),
-//            Pair.of("GraphMem", () -> new GraphMem()),
-//            Pair.of("GraphMem", () -> new GraphMem()),
-//
-//            Pair.of("GraphMem2", () -> new GraphMem2()),
-//            Pair.of("GraphMem2", () -> new GraphMem2()),
-//            Pair.of("GraphMem2", () -> new GraphMem2()),
-//            Pair.of("GraphMem2", () -> new GraphMem2()),
-//            Pair.of("GraphMem2", () -> new GraphMem2())
-
-//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-//            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-//
-//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
-//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
-//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
-//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
-//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap())
+            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap())
     );
 
     protected static Random random = new Random();
@@ -86,6 +70,10 @@ public abstract class TestGraphMemVariantsBase {
         return count;
     }
 
+    //
+
+
+
     protected static List<List<Triple>> loadTriples(int graphMultiplier, final String... graphUris)
     {
         var triplesPerGraph = new ArrayList<List<Triple>>(graphUris.length*graphMultiplier);
@@ -94,9 +82,7 @@ public abstract class TestGraphMemVariantsBase {
             var stopwatch = StopWatch.createStarted();
             for(int i=0; i<graphMultiplier; i++) {
                 for (String graphUri : graphUris) {
-                    var loadingGraph = new GraphMemWithArrayListOnly();
-                    RDFDataMgr.read(loadingGraph, graphUri);
-                    var tripleList = loadingGraph.triples;
+                    var tripleList = TypedTripleReader.read(graphUri);
                     triplesPerGraph.add(tripleList);
                     System.out.println("graph uri: '" + graphUri + "' triples: " + tripleList.size());
                 }
@@ -159,5 +145,5 @@ public abstract class TestGraphMemVariantsBase {
         Runtime.getRuntime().gc();
         return BigDecimal.valueOf(Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024l)).divide(BigDecimal.valueOf(1024l)).doubleValue();
     }
-
 }
+

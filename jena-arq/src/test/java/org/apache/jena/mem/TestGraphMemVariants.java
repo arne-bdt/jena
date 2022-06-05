@@ -59,20 +59,6 @@ public class TestGraphMemVariants extends TestGraphMemVariantsBase {
                 "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
     }
 
-//    /**
-//     * Due to copyright, data cannot be added to the repository.
-//     * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
-//     * from https://www.entsoe.eu/digital/cim/cim-conformity-and-interoperability/     *
-//     */
-//    @Test
-//    public void ENTSO_E_Test_Configurations_v3_0_RealGrid_EQ_SSH_SV_and_TP() {
-//        loadGraphsMeasureTimeAndMemory(graphImplementationsToTest, 1, 100,
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-//                "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
-//    }
-
     /**
      * Due to copyright, data cannot be added to the repository.
      * Download https://www.entsoe.eu/Documents/CIM_documents/Grid_Model_CIM/ENTSO-E_Conformity_Assessment_Scheme_v3.0.zip
@@ -116,14 +102,6 @@ public class TestGraphMemVariants extends TestGraphMemVariantsBase {
         loadGraphsMeasureTimeAndMemory(graphImplementationsToTest, 1, 500,
                 "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml");
     }
-
-//    @Test
-//    public void xxx_CGMES() {
-//        loadGraphsMeasureTimeAndMemory(graphImplementationsToTest, 1, 200,
-//                "C:/temp/res_test/xxx_CGMES_EQ.xml",
-//                "C:/temp/res_test/xxx_CGMES_SSH.xml",
-//                "C:/temp/res_test/xxx_CGMES_TP.xml");
-//    }
 
     @Test
     public void xxx_CGMES_EQ() {
