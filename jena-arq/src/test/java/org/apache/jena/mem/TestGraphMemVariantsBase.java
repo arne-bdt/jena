@@ -51,9 +51,9 @@ public abstract class TestGraphMemVariantsBase {
 
             Pair.of("GraphMem", () -> new GraphMem()),
 
-            Pair.of("GraphMem2", () -> new GraphMem2()),
+            Pair.of("GraphMem3", () -> new GraphMem3()),
 
-            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast())
+            Pair.of("GraphMem3Fast", () -> new GraphMem3Fast())
 
             //Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap())
     );

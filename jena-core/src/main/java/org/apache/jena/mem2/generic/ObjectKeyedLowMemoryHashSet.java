@@ -19,6 +19,7 @@
 package org.apache.jena.mem2.generic;
 
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -232,6 +233,35 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
             return newValue;
         } else { /*existing value found*/
             var newValue = remappingFunction.apply((E)entries[index]);
+            if(newValue == null) {
+                entries[index] = null;
+                size--;
+                rearrangeNeighbours(index);
+                return null;
+            } else {
+                entries[index] = newValue;
+                return newValue;
+            }
+        }
+    }
+
+    public E compute(final Object key, BiFunction<E, Integer, E> remappingFunction) {
+        var hashCodeOfKey = key.hashCode();
+        var index = findIndex(key, hashCodeOfKey);
+        if(index < 0) { /*value does not exist yet*/
+            var newValue = remappingFunction.apply(null, hashCodeOfKey);
+            if(newValue == null) {
+                return null;
+            }
+            if(grow()) {
+                entries[findEmptySlotWithoutEqualityCheck(hashCodeOfKey)] = newValue;
+            } else {
+                entries[~index] = newValue;
+            }
+            size++;
+            return newValue;
+        } else { /*existing value found*/
+            var newValue = remappingFunction.apply((E)entries[index], hashCodeOfKey);
             if(newValue == null) {
                 entries[index] = null;
                 size--;
