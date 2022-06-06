@@ -24,8 +24,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem.TypedTripleReader;
-import org.apache.jena.mem2.GraphMem2;
-import org.apache.jena.mem2.GraphMem2Fast;
+import org.apache.jena.mem2.*;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.junit.Test;
@@ -61,13 +60,13 @@ public class TestGraphMemFindBySamples {
     })
     public String param0_GraphUri;
 
-    @Param({"500"})
-    public int param2_sampleSize;
-
     @Param({
             "GraphMem",
             "GraphMem2",
-            "GraphMem2Fast"
+            "GraphMem2EqualsOk",
+            "GraphMem3",
+//            "GraphMem2Fast",
+//            "GraphMem3Fast"
     })
     public String param1_GraphImplementation;
 
@@ -79,13 +78,25 @@ public class TestGraphMemFindBySamples {
             case "GraphMem2":
                 return new GraphMem2();
 
+            case "GraphMem2EqualsOk":
+                return new GraphMem2EqualsOk();
+
             case "GraphMem2Fast":
                 return new GraphMem2Fast();
+
+            case "GraphMem3":
+                return new GraphMem3();
+
+            case "GraphMem3Fast":
+                return new GraphMem3Fast();
 
             default:
                 throw new IllegalArgumentException();
         }
     }
+
+    @Param({"500"})
+    public int param2_sampleSize;
 
     private List<Triple> samples;
     private Graph sut;

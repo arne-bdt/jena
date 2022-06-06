@@ -23,9 +23,9 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem.TypedTripleReader;
-import org.apache.jena.mem2.GraphMem2;
-import org.apache.jena.mem2.GraphMem2Fast;
+import org.apache.jena.mem2.*;
 import org.apache.jena.riot.RDFDataMgr;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 
+@Ignore
 @State(Scope.Benchmark)
 public class TestGraphMemStreamAll {
 
@@ -62,7 +63,10 @@ public class TestGraphMemStreamAll {
     @Param({
             "GraphMem",
             "GraphMem2",
-            "GraphMem2Fast"
+            "GraphMem2EqualsOk",
+            "GraphMem3",
+//            "GraphMem2Fast",
+//            "GraphMem3Fast"
     })
     public String param1_GraphImplementation;
 
@@ -74,8 +78,17 @@ public class TestGraphMemStreamAll {
             case "GraphMem2":
                 return new GraphMem2();
 
+            case "GraphMem2EqualsOk":
+                return new GraphMem2EqualsOk();
+
             case "GraphMem2Fast":
                 return new GraphMem2Fast();
+
+            case "GraphMem3":
+                return new GraphMem3();
+
+            case "GraphMem3Fast":
+                return new GraphMem3Fast();
 
             default:
                 throw new IllegalArgumentException();

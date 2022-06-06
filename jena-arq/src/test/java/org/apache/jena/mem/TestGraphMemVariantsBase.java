@@ -48,12 +48,13 @@ public abstract class TestGraphMemVariantsBase {
 
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
 
-
             Pair.of("GraphMem", () -> new GraphMem()),
 
-            Pair.of("GraphMem3", () -> new GraphMem3()),
+            Pair.of("GraphMem2", () -> new GraphMem2()),
 
-            Pair.of("GraphMem3Fast", () -> new GraphMem3Fast())
+            Pair.of("GraphMem2EqualsOk", () -> new GraphMem2EqualsOk())
+
+            //Pair.of("GraphMem3Fast", () -> new GraphMem3Fast())
 
             //Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap())
     );

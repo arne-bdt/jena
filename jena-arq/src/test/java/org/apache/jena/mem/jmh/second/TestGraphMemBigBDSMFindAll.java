@@ -21,12 +21,9 @@ package org.apache.jena.mem.jmh.second;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
-import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem.TypedTripleReader;
-import org.apache.jena.mem2.GraphMem2;
-import org.apache.jena.mem2.GraphMem2Fast;
-import org.apache.jena.riot.RDFDataMgr;
-import org.junit.Assert;
+import org.apache.jena.mem2.*;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -39,13 +36,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
+@Ignore
 @State(Scope.Benchmark)
-public class TestGraphMemBigBDSMContainsFindAndStreamAll {
+public class TestGraphMemBigBDSMFindAll {
 
     @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;
@@ -53,7 +49,10 @@ public class TestGraphMemBigBDSMContainsFindAndStreamAll {
     @Param({
             "GraphMem",
             "GraphMem2",
-            "GraphMem2Fast"
+            "GraphMem2EqualsOk",
+            "GraphMem3",
+//            "GraphMem2Fast",
+//            "GraphMem3Fast"
     })
     public String param1_GraphImplementation;
 
@@ -65,8 +64,17 @@ public class TestGraphMemBigBDSMContainsFindAndStreamAll {
             case "GraphMem2":
                 return new GraphMem2();
 
+            case "GraphMem2EqualsOk":
+                return new GraphMem2EqualsOk();
+
             case "GraphMem2Fast":
                 return new GraphMem2Fast();
+
+            case "GraphMem3":
+                return new GraphMem3();
+
+            case "GraphMem3Fast":
+                return new GraphMem3Fast();
 
             default:
                 throw new IllegalArgumentException();
@@ -95,12 +103,6 @@ public class TestGraphMemBigBDSMContainsFindAndStreamAll {
         this.triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
     }
 
-
-    @Benchmark
-    public void graphContains() {
-        triples.forEach(t -> Assert.assertTrue(sut.contains(t)));
-    }
-
     @Benchmark
     public void graphFind() {
         var found = new ArrayList<Triple>(sut.size());
@@ -111,19 +113,6 @@ public class TestGraphMemBigBDSMContainsFindAndStreamAll {
         it.close();
         assertEquals(sut.size(), found.size());
     }
-
-    @Benchmark
-    public void graphStream() {
-        var found = sut.stream().collect(Collectors.toList());
-        assertEquals(sut.size(), found.size());
-    }
-
-      /*not enough heap space on my machine, to run this test*/
-//    @Benchmark
-//    public void graphStreamParallel() {
-//        var found = sut.stream().parallel().collect(Collectors.toList());
-//        assertEquals(sut.size(), found.size());
-//    }
 
     @Test
     public void benchmark() throws Exception {

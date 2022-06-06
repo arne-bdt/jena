@@ -55,6 +55,12 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
                 "./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz");
     }
 
+    @Test
+    public void BSBM_2500() {
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
+                "./../jena-examples/src/main/resources/data/BSBM_2500.ttl");
+    }
+
 
     /**
      * Due to copyright, data cannot be added to the repository.

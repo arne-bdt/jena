@@ -29,9 +29,6 @@ public class TripleEqualsOrMatches {
     }
     public static boolean isEqualsForObjectOk( Node objectNode )
     {
-        if(objectNode.isLiteral() && objectNode.getLiteralDatatype() == null) { /*slow equals*/
-            return false;
-        }
-        return true;
+        return objectNode.isLiteral() ? objectNode.getLiteralDatatype() == null : true;
     }
 }

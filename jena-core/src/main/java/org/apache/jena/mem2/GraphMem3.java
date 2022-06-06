@@ -26,7 +26,7 @@ import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.generic.ListSetBase;
 import org.apache.jena.mem2.generic.LowMemoryHashSet;
-import org.apache.jena.mem2.generic.ObjectKeyedLowMemoryHashSet;
+import org.apache.jena.mem2.generic.KeyValueLowMemoryHashSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -69,33 +69,14 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
     private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
-    private static class KeyedHashSet extends ObjectKeyedLowMemoryHashSet<TripleSetWithKey> {
 
-        public KeyedHashSet() {
-            super();
-        }
-
-        @Override
-        protected Object getKey(TripleSetWithKey value) {
-            return value.indexingValue();
-        }
-
-        @Override
-        protected int getHashCode(TripleSetWithKey value) {
-            return value.indexingHashCode();
-        }
-    }
-
-    private final KeyedHashSet triplesBySubject = new KeyedHashSet(); //256
-    private final KeyedHashSet triplesByPredicate = new KeyedHashSet(); //64
-    private final KeyedHashSet triplesByObject = new KeyedHashSet(); //512
+    private final KeyValueLowMemoryHashSet<Object, TripleSetWithKey> triplesBySubject = new KeyValueLowMemoryHashSet<>(); //256
+    private final KeyValueLowMemoryHashSet<Object, TripleSetWithKey>  triplesByPredicate = new KeyValueLowMemoryHashSet<>(); //64
+    private final KeyValueLowMemoryHashSet<Object, TripleSetWithKey>  triplesByObject = new KeyValueLowMemoryHashSet<>(); //512
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 
-    private interface TripleSetWithKey extends Set<Triple> {
-
-        Object indexingValue();
-        int indexingHashCode();
+    private interface TripleSetWithKey extends Set<Triple>, KeyValueLowMemoryHashSet.KeyedValue<Object>  {
 
         void addUnsafe(Triple t);
 
@@ -118,40 +99,41 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         }
     }
 
-    private static abstract class AbstractSortedTriplesSet extends ListSetBase<Triple> implements TripleSetWithKey {
+    private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithKey {
 
-        private final int indexingHashCode;
+        private final int hashCodeOfKey;
 
-        public AbstractSortedTriplesSet(final int indexingHashCode) {
+        public AbstractTriplesListSet(final int hashCodeOfKey) {
             super(INITIAL_SIZE_FOR_ARRAY_LISTS);
-            this.indexingHashCode = indexingHashCode;
+            this.hashCodeOfKey = hashCodeOfKey;
         }
 
         @Override
-        public int indexingHashCode() {
-            return this.indexingHashCode;
+        public int getHashCodeOfKey() {
+            return hashCodeOfKey;
         }
+
     }
 
     private static abstract class AbstractLowMemoryTripleHashSet extends LowMemoryHashSet<Triple> implements TripleSetWithKey {
-        private final int indexingHashCode;
+        private final int hashCodeOfKey;
 
         public AbstractLowMemoryTripleHashSet(int initialCapacity, TripleSetWithKey setWithKey) {
             super(initialCapacity, setWithKey);
-            this.indexingHashCode = setWithKey.indexingHashCode();
+            this.hashCodeOfKey = setWithKey.getHashCodeOfKey();
         }
 
         public AbstractLowMemoryTripleHashSet(TripleSetWithKey setWithKey) {
             super(setWithKey);
-            this.indexingHashCode = setWithKey.indexingHashCode();
+            this.hashCodeOfKey = setWithKey.getHashCodeOfKey();
         }
         @Override
-        public int indexingHashCode() {
-            return this.indexingHashCode;
+        public int getHashCodeOfKey() {
+            return this.hashCodeOfKey;
         }
     }
 
-    private static class TripleListSetForSubjects extends AbstractSortedTriplesSet {
+    private static class TripleListSetForSubjects extends AbstractTriplesListSet {
 
         public TripleListSetForSubjects(final int indexingHashCode) {
             super(indexingHashCode);
@@ -170,12 +152,12 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         }
 
         @Override
-        public Object indexingValue() {
+        public Object getKey() {
             return this.get(0).getSubject().getIndexingValue();
         }
     }
 
-    private static class TripleListSetForPredicates extends AbstractSortedTriplesSet {
+    private static class TripleListSetForPredicates extends AbstractTriplesListSet {
 
         public TripleListSetForPredicates(final int indexingHashCode) {
             super(indexingHashCode);
@@ -194,13 +176,13 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         }
 
         @Override
-        public Object indexingValue() {
+        public Object getKey() {
             return this.get(0).getPredicate().getIndexingValue();
         }
     }
 
 
-    private static class TripleListSetForObjects extends AbstractSortedTriplesSet {
+    private static class TripleListSetForObjects extends AbstractTriplesListSet {
 
         public TripleListSetForObjects(final int indexingHashCode) {
             super(indexingHashCode);
@@ -219,7 +201,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         }
 
         @Override
-        public Object indexingValue() {
+        public Object getKey() {
             return this.get(0).getObject().getIndexingValue();
         }
     }
@@ -232,11 +214,11 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         protected Predicate<Triple> getContainsPredicate(final Triple value) {
-            return t -> value.getObject().sameValueAs(t.getObject())
-                    && value.getPredicate().equals(t.getPredicate());
+            return t ->  value.getPredicate().equals(t.getPredicate())
+                    && value.getObject().sameValueAs(t.getObject());
         }
         @Override
-        public Object indexingValue() {
+        public Object getKey() {
             return this.findAny().getSubject().getIndexingValue();
         }
     }
@@ -254,7 +236,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                     && value.getObject().sameValueAs(t.getObject());
         }
         @Override
-        public Object indexingValue() {
+        public Object getKey() {
             return this.findAny().getPredicate().getIndexingValue();
         }
     }
@@ -272,7 +254,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                     && value.getPredicate().equals(t.getPredicate());
         }
         @Override
-        public Object indexingValue() {
+        public Object getKey() {
             return this.findAny().getObject().getIndexingValue();
         }
     }
@@ -518,7 +500,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
      * fewer predicates than subjects or objects.
      * @return
      */
-    private KeyedHashSet getMapWithFewestKeys() {
+    private KeyValueLowMemoryHashSet<Object, TripleSetWithKey> getMapWithFewestKeys() {
         var subjectCount = this.triplesBySubject.size();
         var predicateCount = this.triplesByPredicate.size();
         var objectCount = this.triplesByObject.size();
@@ -585,8 +567,8 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                 if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
                     if(pm.isConcrete()) { // SPO:SPO
                         return bySubjectIndex.stream().filter(
-                                t -> om.sameValueAs(t.getObject())
-                                        && pm.equals(t.getPredicate()));
+                                t -> pm.equals(t.getPredicate())
+                                        && om.sameValueAs(t.getObject()));
                     } else { // SPO:S*O
                         return bySubjectIndex.stream().filter(
                                 t -> om.sameValueAs(t.getObject()));
@@ -600,8 +582,8 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                     if(bySubjectIndex.size() <= byObjectIndex.size()) {
                         if (pm.isConcrete()) { // SPO:SPO
                             return bySubjectIndex.stream().filter(
-                                    t -> om.sameValueAs(t.getObject())
-                                            && pm.equals(t.getPredicate()));
+                                    t -> pm.equals(t.getPredicate())
+                                            && om.sameValueAs(t.getObject()));
                         } else { // SPO:S*O
                             return bySubjectIndex.stream().filter(
                                     t -> om.sameValueAs(t.getObject()));
@@ -681,8 +663,8 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                 if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
                     if(pm.isConcrete()) { // SPO:SPO
                         return new IteratorFiltering(bySubjectIndex.iterator(),
-                                t -> om.sameValueAs(t.getObject())
-                                        && pm.equals(t.getPredicate()),
+                                t -> pm.equals(t.getPredicate())
+                                        && om.sameValueAs(t.getObject()),
                                 this);
                     } else { // SPO:S*O
                         return new IteratorFiltering(bySubjectIndex.iterator(),
@@ -698,8 +680,8 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                     if(bySubjectIndex.size() <= byObjectIndex.size()) {
                         if (pm.isConcrete()) { // SPO:SPO
                             return new IteratorFiltering(bySubjectIndex.iterator(),
-                                    t -> om.sameValueAs(t.getObject())
-                                            && pm.equals(t.getPredicate()),
+                                    t -> pm.equals(t.getPredicate())
+                                            && om.sameValueAs(t.getObject()),
                                     this);
                         } else { // SPO:S*O
                             return new IteratorFiltering(bySubjectIndex.iterator(),
