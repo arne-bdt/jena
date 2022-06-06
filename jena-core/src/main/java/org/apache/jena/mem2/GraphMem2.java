@@ -235,7 +235,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
 
         public static int combineNodeHashes(final int hashCodeOfPredicate, final int hashCodeOfObject) {
-            return (hashCodeOfPredicate >> 1) ^ hashCodeOfObject;
+            return (31 * hashCodeOfObject) ^ hashCodeOfPredicate;
         }
 
         @Override
@@ -262,7 +262,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
 
         public static int combineNodeHashes(final int hashCodeOfSubject, final int hashCodeOfObject) {
-            return (hashCodeOfObject >> 1) ^ hashCodeOfSubject;
+            return (127 * hashCodeOfSubject) ^ hashCodeOfObject;
         }
         @Override
         protected int getHashCode(final Triple value) {
@@ -288,7 +288,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
 
         public static int combineNodeHashes(final int hashCodeOfSubject, final int hashCodeOfPredicate) {
-            return (hashCodeOfPredicate >> 1) ^ hashCodeOfSubject;
+            return (31 * hashCodeOfSubject) ^ hashCodeOfPredicate;
         }
         @Override
         protected int getHashCode(Triple value) {

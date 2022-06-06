@@ -47,6 +47,7 @@ public class TestGraphMemVariants_load extends TestGraphMemVariantsBase {
      * http://wbsg.informatik.uni-mannheim.de/bizer/berlinsparqlbenchmark/spec/BenchmarkRules/index.html#datagenerator
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
+    @Ignore
     @Test
     public void BSBM_50000() {
         loadGraphsMeasureTimeAndMemory(graphImplementationsToTest, 1,

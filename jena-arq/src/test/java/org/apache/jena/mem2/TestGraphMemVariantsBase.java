@@ -25,8 +25,10 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
+import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem.sorted.GraphMemUsingHashMapSorted;
 import org.apache.jena.mem.sorted.experiment.GraphMemUsingHashMapSortedExperiment;
+import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
@@ -79,6 +81,19 @@ public abstract class TestGraphMemVariantsBase {
         return count;
     }
 
+    private static String getRDFSchemaUri(String graphUri) {
+        if(graphUri.endsWith("_EQ.xml")) {
+            return "./../jena-examples/src/main/resources/data/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/EquipmentProfileCoreRDFSAugmented-v2_4_15-4Jul2016.rdf";
+        } else if(graphUri.endsWith("_SSH.xml")) {
+            return "./../jena-examples/src/main/resources/data/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/SteadyStateHypothesisProfileRDFSAugmented-v2_4_15-16Feb2016.rdf";
+        } if(graphUri.endsWith("_TP.xml")) {
+            return "./../jena-examples/src/main/resources/data/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/TopologyProfileRDFSAugmented-v2_4_15-16Feb2016.rdf";
+        }  else if(graphUri.endsWith("_SV.xml")) {
+            return "./../jena-examples/src/main/resources/data/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/StateVariablesProfileRDFSAugmented-v2_4_15-16Feb2016.rdf";
+        }
+        return null;
+    }
+
     protected static List<List<Triple>> loadTriples(int graphMultiplier, final String... graphUris)
     {
         var triplesPerGraph = new ArrayList<List<Triple>>(graphUris.length*graphMultiplier);
@@ -87,11 +102,15 @@ public abstract class TestGraphMemVariantsBase {
             var stopwatch = StopWatch.createStarted();
             for(int i=0; i<graphMultiplier; i++) {
                 for (String graphUri : graphUris) {
-                    var loadingGraph = new GraphMemWithArrayListOnly();
-                    RDFDataMgr.read(loadingGraph, graphUri);
-                    var tripleList = loadingGraph.triples;
-                    triplesPerGraph.add(tripleList);
-                    System.out.println("graph uri: '" + graphUri + "' triples: " + tripleList.size());
+                    List<Triple> triples;
+                    var rdfSchemaUri = getRDFSchemaUri(graphUri);
+                    if(rdfSchemaUri != null) {
+                        triples = TypedTripleReader.read(graphUri, rdfSchemaUri, Lang.RDFXML);
+                    } else {
+                        triples = TypedTripleReader.read(graphUri);
+                    }
+                    triplesPerGraph.add(triples);
+                    System.out.println("graph uri: '" + graphUri + "' triples: " + triples.size());
                 }
             }
             stopwatch.stop();

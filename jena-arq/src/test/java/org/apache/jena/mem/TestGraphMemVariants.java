@@ -50,6 +50,19 @@ public class TestGraphMemVariants extends TestGraphMemVariantsBase {
      * Generated large dataset.
      * Tool:
      * http://wbsg.informatik.uni-mannheim.de/bizer/berlinsparqlbenchmark/spec/BenchmarkRules/index.html#datagenerator
+     * Generated with: java -cp lib/* benchmark.generator.Generator -pc 2500 -s ttl -ud
+     */
+    @Test
+    public void BSBM_2500() {
+        loadGraphsMeasureTimeAndMemory(graphImplementationsToTest,
+                1, 500,
+                "./../jena-examples/src/main/resources/data/BSBM_2500.ttl");
+    }
+
+    /**
+     * Generated large dataset.
+     * Tool:
+     * http://wbsg.informatik.uni-mannheim.de/bizer/berlinsparqlbenchmark/spec/BenchmarkRules/index.html#datagenerator
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
     @Test

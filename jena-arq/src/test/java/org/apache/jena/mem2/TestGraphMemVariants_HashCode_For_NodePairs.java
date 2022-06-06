@@ -53,6 +53,12 @@ public class TestGraphMemVariants_HashCode_For_NodePairs extends TestGraphMemVar
     }
 
     @Test
+    public void BSBM_2500() {
+        hashCollisions(
+                "./../jena-examples/src/main/resources/data/BSBM_2500.ttl");
+    }
+
+    @Test
     public void xxx_CGMES() throws InterruptedException {
         hashCollisions(
                 "C:/temp/res_test/xxx_CGMES_EQ.xml",
@@ -69,18 +75,10 @@ public class TestGraphMemVariants_HashCode_For_NodePairs extends TestGraphMemVar
     }
 
     @Test
-    public void test_rdfs() {
-        Model schema = RDFDataMgr.loadModel("./../jena-examples/src/main/resources/data/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/EquipmentProfileCoreRDFSAugmented-v2_4_15-4Jul2016.rdf");
-        Model model = RDFDataMgr.loadModel("C:/temp/res_test/xxx_CGMES_EQ.xml");
-        //InfModel infmodel = ModelFactory.createRDFSModel(schema, data);
-
-        Reasoner reasoner = RDFSRuleReasonerFactory.theInstance().create(null);
-        reasoner.setParameter(ReasonerVocabulary.PROPsetRDFSLevel,
-                ReasonerVocabulary.RDFS_FULL);
-        InfModel inf = ModelFactory.createInfModel(reasoner, schema, model);
-        int i=0;
+    public void pizza_owl_rdf() {
+        hashCollisions(
+                "./../jena-examples/src/main/resources/data/pizza.owl.rdf");
     }
-
 
     private void hashCollisions(String... graphUris) {
         ArrayList<Triple> triples = new ArrayList<>();
@@ -175,8 +173,8 @@ public class TestGraphMemVariants_HashCode_For_NodePairs extends TestGraphMemVar
 
         @Override
         public int hashCode() {
-            //return (31 * one.hashCode()) ^ two.hashCode();
-            return (31 * one.hashCode()) + two.hashCode();
+            return (31 * one.hashCode()) ^ two.hashCode();
+            //return (31 * one.hashCode()) + two.hashCode();
             //return (127 * one.hashCode()) ^ two.hashCode();
             //return (one.hashCode() >> 1) ^ two.hashCode();
         }
