@@ -22,6 +22,7 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
+import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.RDFDataMgr;
@@ -85,9 +86,7 @@ public class TestGraphMemBigBDSMAdd {
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
         // Trial level: to be executed before/after each run of the benchmark.
-        var loadingGraph = new GraphMemWithArrayListOnly();
-        RDFDataMgr.read(loadingGraph, getParam0_GraphUri());
-        this.triples = loadingGraph.triples;
+        this.triples = TypedTripleReader.read(param0_GraphUri);
     }
 
 

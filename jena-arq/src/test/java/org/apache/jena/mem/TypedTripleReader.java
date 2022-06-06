@@ -50,7 +50,6 @@ public class TypedTripleReader {
     private final static Query query = new ParameterizedSparqlString("PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
             "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n" +
             "PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>\n" +
-            "PREFIX uml: <http://iec.ch/TC57/NonStandard/UML#>\n" +
             "\n" +
             "SELECT ?property ?dataType ?primitiveType\n" +
             "WHERE {\n" +
@@ -70,9 +69,23 @@ public class TypedTripleReader {
             "\t\t}\n" +
             "}").asQuery();
 
+    private static String getRDFSchemaUri(String graphUri) {
+        if(graphUri.endsWith("_EQ.xml")) {
+            return "./../jena-examples/src/main/resources/data/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/EquipmentProfileCoreRDFSAugmented-v2_4_15-4Jul2016.rdf";
+        } else if(graphUri.endsWith("_SSH.xml")) {
+            return "./../jena-examples/src/main/resources/data/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/SteadyStateHypothesisProfileRDFSAugmented-v2_4_15-16Feb2016.rdf";
+        } if(graphUri.endsWith("_TP.xml")) {
+            return "./../jena-examples/src/main/resources/data/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/TopologyProfileRDFSAugmented-v2_4_15-16Feb2016.rdf";
+        }  else if(graphUri.endsWith("_SV.xml")) {
+            return "./../jena-examples/src/main/resources/data/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/StateVariablesProfileRDFSAugmented-v2_4_15-16Feb2016.rdf";
+        }
+        return null;
+    }
+
     public static void read(String graphUri, Graph targetGraph) {
-        if(graphUri.endsWith(".xml")) {
-            RDFDataMgr.read(targetGraph, graphUri, "urn:uuid", Lang.RDFXML);
+        var rdfSchemaUri = getRDFSchemaUri(graphUri);
+        if(rdfSchemaUri != null) {
+            read(graphUri, rdfSchemaUri, Lang.RDFXML, targetGraph);
         } else {
             RDFDataMgr.read(targetGraph, graphUri);
         }
@@ -80,13 +93,14 @@ public class TypedTripleReader {
 
 
     public static List<Triple> read(String graphUri) {
-        var loadingGraph = new GraphMemWithArrayListOnly();
-        if(graphUri.endsWith(".xml")) {
-            RDFDataMgr.read(loadingGraph, graphUri, "urn:uuid", Lang.RDFXML);
+        var rdfSchemaUri = getRDFSchemaUri(graphUri);
+        if(rdfSchemaUri != null) {
+            return read(graphUri, rdfSchemaUri, Lang.RDFXML);
         } else {
+            var loadingGraph = new GraphMemWithArrayListOnly();
             RDFDataMgr.read(loadingGraph, graphUri);
+            return loadingGraph.triples;
         }
-        return loadingGraph.triples;
     }
 
     public static List<Triple> read(String graphUri, String rdfSchemaUri, Lang lang) {

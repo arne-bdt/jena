@@ -22,6 +22,7 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
+import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.RDFDataMgr;
@@ -91,9 +92,7 @@ public class TestGraphMemBigBDSMDelete {
     @Setup(Level.Trial)
     public void setupTrial() {
         // Trial level: to be executed before/after each run of the benchmark.
-        var loadingGraph = new GraphMemWithArrayListOnly();
-        RDFDataMgr.read(loadingGraph, getParam0_GraphUri());
-        this.triplesToAdd = loadingGraph.triples;
+        this.triplesToAdd = TypedTripleReader.read(param0_GraphUri);
         this.triplesToDelete = new ArrayList<>(triplesToAdd.size());
         this.triplesToAdd.forEach(t -> triplesToDelete.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
     }

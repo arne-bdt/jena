@@ -22,6 +22,7 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
+import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.RDFDataMgr;
@@ -42,11 +43,12 @@ import java.util.concurrent.TimeUnit;
 public class TestGraphMemContains {
 
     @Param({
-//            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
-//            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
+            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
+            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
             "C:/temp/res_test/xxx_CGMES_SSH.xml",
             "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "./../jena-examples/src/main/resources/data/BSBM_2500.ttl",
             "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
             "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             "./../jena-examples/src/main/resources/data/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
@@ -93,9 +95,7 @@ public class TestGraphMemContains {
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
         // Trial level: to be executed before/after each run of the benchmark.
-        var loadingGraph = new GraphMemWithArrayListOnly();
-        RDFDataMgr.read(loadingGraph, param0_GraphUri);
-        this.triples = loadingGraph.triples;
+        this.triples = TypedTripleReader.read(param0_GraphUri);
         this.sut = createGraph();
         this.triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
     }

@@ -102,13 +102,7 @@ public abstract class TestGraphMemVariantsBase {
             var stopwatch = StopWatch.createStarted();
             for(int i=0; i<graphMultiplier; i++) {
                 for (String graphUri : graphUris) {
-                    List<Triple> triples;
-                    var rdfSchemaUri = getRDFSchemaUri(graphUri);
-                    if(rdfSchemaUri != null) {
-                        triples = TypedTripleReader.read(graphUri, rdfSchemaUri, Lang.RDFXML);
-                    } else {
-                        triples = TypedTripleReader.read(graphUri);
-                    }
+                    var triples = TypedTripleReader.read(graphUri);
                     triplesPerGraph.add(triples);
                     System.out.println("graph uri: '" + graphUri + "' triples: " + triples.size());
                 }
