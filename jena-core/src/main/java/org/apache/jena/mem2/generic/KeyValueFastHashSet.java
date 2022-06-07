@@ -19,9 +19,9 @@
 package org.apache.jena.mem2.generic;
 
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -29,23 +29,17 @@ import java.util.stream.StreamSupport;
  * Queue which grows, if needed but never shrinks.
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
- * @param <E> type of elements in the collection.
+ * @param <V> type of elements in the collection.
  */
-public class FastHashSet<E> implements Set<E> {
+public class KeyValueFastHashSet<K, V extends KeyValueFastHashSet.KeyedValue<K>> implements Set<V> {
 
-    protected int getHashCode(final E value) {
-        return value.hashCode();
+    public interface KeyedValue<K> {
+        K getKey();
     }
 
-    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByHashCode(final int hashCode) {
         return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
     }
-
-    protected Predicate<E> getContainsPredicate(final E value) {
-        return other -> value.equals(other);
-    }
-
 
     private static int MINIMUM_SIZE = 16;
     private static float loadFactor = 0.5f;
@@ -53,30 +47,28 @@ public class FastHashSet<E> implements Set<E> {
     protected Object[] entries;
     protected int[] hashCodes;
 
-    public FastHashSet() {
+    public KeyValueFastHashSet() {
         this.entries = new Object[MINIMUM_SIZE];
         this.hashCodes = new int[MINIMUM_SIZE];
 
     }
 
-    public FastHashSet(int initialCapacity) {
+    public KeyValueFastHashSet(int initialCapacity) {
         this.entries = new Object[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
     }
 
-    public FastHashSet(Set<? extends E> set) {
+    public KeyValueFastHashSet(Set<? extends V> set) {
         this(set.size(), set);
     }
 
-    public FastHashSet(int initialCapacity, Set<? extends E> set) {
+    public KeyValueFastHashSet(int initialCapacity, Set<? extends V> set) {
         this.entries = new Object[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
         int index;
-        int hashCode;
-        for (E t : set) {
-            if((index = findIndex(t, hashCode = getHashCode(t))) < 0) {
-                entries[~index] = t;
-                hashCodes[~index] = hashCode;
+        for (V e : set) {
+            if((index = findIndex(e.getKey(), e.getKey().hashCode())) < 0) {
+                entries[~index] = e;
                 size++;
             }
         }
@@ -146,14 +138,14 @@ public class FastHashSet<E> implements Set<E> {
 
     @Override
     public boolean contains(Object o) {
-        final var e = (E)o;
-        final var hashCode = getHashCode(e);
+        var e = (V)o;
+        final var key = e.getKey();
+        final var hashCode = key.hashCode();
         var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
         }
-        var predicate = getContainsPredicate(e);
-        if(hashCode == hashCodes[index] && predicate.test((E)entries[index])) {
+        if(hashCode == hashCodes[index] && key.equals(((V)entries[index]).getKey())) {
             return true;
         } else if(--index < 0){
             index += entries.length;
@@ -161,17 +153,19 @@ public class FastHashSet<E> implements Set<E> {
         while(true) {
             if(null == entries[index]) {
                 return false;
-            } else if(hashCode == hashCodes[index] && predicate.test((E)entries[index])) {
-                return true;
-            } else if(--index < 0){
-                index += entries.length;
+            } else {
+                if(hashCode == hashCodes[index] && key.equals(((V)entries[index]).getKey())) {
+                    return true;
+                } else if (--index < 0){
+                    index += entries.length;
+                }
             }
         }
     }
 
 
     @Override
-    public Iterator<E> iterator() {
+    public Iterator<V> iterator() {
         return new ArrayWithNullsIterator(entries, size);
     }
 
@@ -194,90 +188,81 @@ public class FastHashSet<E> implements Set<E> {
         return a;
     }
 
-    public E findAny() {
-        var index = -1;
-        while(entries[++index] == null);
-        return (E)entries[index];
-    }
 
     @Override
-    public boolean add(E value) {
-        return add(value, getHashCode(value));
+    public boolean add(V value) {
+        return add(value, value.getKey().hashCode());
     }
 
-    public boolean add(E value, int hashCode) {
+    public boolean add(V value, int hashCodeOfKey) {
         grow();
-        var index = findIndex(value, hashCode);
+        var index = findIndex(value.getKey(), hashCodeOfKey);
         if(index < 0) {
             entries[~index] = value;
-            hashCodes[~index] = hashCode;
+            hashCodes[~index] = hashCodeOfKey;
             size++;
             return true;
         }
         return false;
     }
 
-    public void addUnsafe(E value) {
-        addUnsafe(value, getHashCode(value));
+    public void addUnsafe(V value) {
+        addUnsafe(value, value.getKey().hashCode());
     }
 
-    public void addUnsafe(E value, int hashCode) {
+    public void addUnsafe(V value, int hashCodeOfKey) {
         grow();
-        var index = findEmptySlotWithoutEqualityCheck(hashCode);
+        var index = findEmptySlotWithoutEqualityCheck(hashCodeOfKey);
         entries[index] = value;
-        hashCodes[index] = hashCode;
+        hashCodes[index] = hashCodeOfKey;
         size++;
     }
 
-    public E addIfAbsent(E value) {
+    public V addIfAbsent(V value) {
         grow();
-        var hashCode = getHashCode(value);
-        var index = findIndex(value, hashCode);
+        var hashCode = value.getKey().hashCode();
+        var index = findIndex(value.getKey(), hashCode);
         if(index < 0) {
             entries[~index] = value;
             hashCodes[~index] = hashCode;
             size++;
             return value;
         }
-        return (E)entries[index];
+        return (V)entries[index];
     }
 
-    public E getIfPresent(E value) {
-        var hashCode = getHashCode(value);
+    public V getIfPresent(final K key) {
+        var hashCode = key.hashCode();
         var index = calcStartIndexByHashCode(hashCode);
         while(true) {
             if(null == entries[index]) {
                 return null;
-            } else if(hashCode == hashCodes[index] && value.equals(entries[index])) {
-                return (E)entries[index];
+            } else if(hashCode == hashCodes[index] && key.equals(((V)entries[index]).getKey())) {
+                return (V)entries[index];
             } else if(--index < 0){
                 index += entries.length;
             }
         }
     }
 
-    public E compute(E value, Function<E, E> remappingFunction) {
-        var hashCode = getHashCode(value);
-        var index = findIndex(value, hashCode);
+    public V compute(final K key, final int hashCodeOfKey, Function<V, V> remappingFunction) {
+        var index = findIndex(key, hashCodeOfKey);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
                 return null;
             }
-            if(!value.equals(newValue)) {
-                throw new IllegalArgumentException("remapped value is not equal to value");
-            }
             if(grow()) {
-                index = findEmptySlotWithoutEqualityCheck(hashCode);
+                index = findEmptySlotWithoutEqualityCheck(hashCodeOfKey);
             } else {
                 index = ~index;
             }
             entries[index] = newValue;
-            hashCodes[index] = hashCode;
+            hashCodes[index] = hashCodeOfKey;
             size++;
             return newValue;
         } else { /*existing value found*/
-            var newValue = remappingFunction.apply((E)entries[index]);
+            var newValue = remappingFunction.apply((V)entries[index]);
             if(newValue == null) {
                 entries[index] = null;
                 size--;
@@ -290,12 +275,51 @@ public class FastHashSet<E> implements Set<E> {
         }
     }
 
-    private int findIndex(final E e, final int hashCode) {
+    public V compute(final K key, BiFunction<V, Integer, V> remappingFunction) {
+        var hashCodeOfKey = key.hashCode();
+        var index = findIndex(key, hashCodeOfKey);
+        if(index < 0) { /*value does not exist yet*/
+            var newValue = remappingFunction.apply(null, hashCodeOfKey);
+            if(newValue == null) {
+                return null;
+            }
+            if(grow()) {
+                index = findEmptySlotWithoutEqualityCheck(hashCodeOfKey);
+            } else {
+                index = ~index;
+            }
+            entries[index] = newValue;
+            hashCodes[index] = hashCodeOfKey;
+            size++;
+            return newValue;
+        } else { /*existing value found*/
+            var newValue = remappingFunction.apply((V)entries[index], hashCodeOfKey);
+            if(newValue == null) {
+                entries[index] = null;
+                size--;
+                rearrangeNeighbours(index);
+                return null;
+            } else {
+                entries[index] = newValue;
+                return newValue;
+            }
+        }
+    }
+
+    public V compute(final K key, Function<V, V> remappingFunction) {
+        return compute(key, key.hashCode(), remappingFunction);
+    }
+
+    private int findIndexByValue(final V value) {
+        return findIndex(value.getKey(), value.getKey().hashCode());
+    }
+
+    private int findIndex(final K key, final int hashCode) {
         var index = calcStartIndexByHashCode(hashCode);
         while(true) {
             if(null == entries[index]) {
                 return ~index;
-            } else if(hashCode == hashCodes[index] && e.equals(entries[index])) {
+            } else if(hashCode == hashCodes[index] && key.equals(((V)entries[index]).getKey())) {
                 return index;
             } else if(--index < 0){
                 index += entries.length;
@@ -336,12 +360,7 @@ public class FastHashSet<E> implements Set<E> {
      */
     @Override
     public boolean remove(Object o) {
-        var e = (E)o;
-        return remove(e, getHashCode(e));
-    }
-
-    public boolean remove(E e, int hashCode) {
-        var index = findIndex(e, hashCode);
+        var index = findIndexByValue((V)o);
         if (index < 0) {
             return false;
         }
@@ -351,12 +370,8 @@ public class FastHashSet<E> implements Set<E> {
         return true;
     }
 
-    public void removeUnsafe(E e) {
-        removeUnsafe(e, getHashCode(e));
-    }
-
-    public void removeUnsafe(E e, int hashCode) {
-        var index = findIndex(e, hashCode);
+    public void removeUnsafe(V e) {
+        var index = findIndex(e.getKey(), e.getKey().hashCode());
         entries[index] = null;
         size--;
         rearrangeNeighbours(index);
@@ -508,18 +523,16 @@ public class FastHashSet<E> implements Set<E> {
      *                                       collection
      * @throws IllegalStateException         if not all the elements can be added at
      *                                       this time due to insertion restrictions
-     * @see #add(Object)
+     * @see #add(V)
      */
     @Override
-    public boolean addAll(Collection<? extends E> c) {
+    public boolean addAll(Collection<? extends V> c) {
         grow(size + c.size());
         boolean modified = false;
         int index;
-        int hashCode;
-        for (E t : c) {
-            if((index=findIndex(t, hashCode = getHashCode(t))) < 0) {
-                entries[~index] = t;
-                hashCodes[~index] = hashCode;
+        for (V e : c) {
+            if((index= findIndex(e.getKey(), e.getKey().hashCode())) < 0) {
+                entries[~index] = e;
                 size++;
                 modified = true;
             }
@@ -609,7 +622,7 @@ public class FastHashSet<E> implements Set<E> {
      * @since 1.8
      */
     @Override
-    public Stream<E> stream() {
+    public Stream<V> stream() {
         return StreamSupport.stream(new ArrayWithNullsSpliteratorSized<>(entries, size), false);
     }
 
@@ -629,7 +642,7 @@ public class FastHashSet<E> implements Set<E> {
      * @since 1.8
      */
     @Override
-    public Stream<E> parallelStream() {
+    public Stream<V> parallelStream() {
         return StreamSupport.stream(new ArrayWithNullsSpliteratorSized<>(entries, size), true);
     }
 
