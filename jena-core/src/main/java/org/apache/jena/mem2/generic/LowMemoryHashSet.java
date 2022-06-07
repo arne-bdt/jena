@@ -72,9 +72,9 @@ public class LowMemoryHashSet<E> implements Set<E> {
     public LowMemoryHashSet(int initialCapacity, Set<? extends E> set) {
         this.entries = new Object[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
         int index;
-        for (E t : set) {
-            if((index = findIndex(t)) < 0) {
-                entries[~index] = t;
+        for (E e : set) {
+            if((index = findIndex(e, getHashCode(e))) < 0) {
+                entries[~index] = e;
                 size++;
             }
         }
@@ -191,14 +191,7 @@ public class LowMemoryHashSet<E> implements Set<E> {
 
     @Override
     public boolean add(E value) {
-        grow();
-        var index = findIndex(value);
-        if(index < 0) {
-            entries[~index] = value;
-            size++;
-            return true;
-        }
-        return false;
+        return add(value, getHashCode(value));
     }
 
     public boolean add(E value, int hashCode) {
@@ -224,7 +217,7 @@ public class LowMemoryHashSet<E> implements Set<E> {
 
     public E addIfAbsent(E value) {
         grow();
-        var index = findIndex(value);
+        var index = findIndex(value, getHashCode(value));
         if(index < 0) {
             entries[~index] = value;
             size++;
@@ -247,7 +240,8 @@ public class LowMemoryHashSet<E> implements Set<E> {
     }
 
     public E compute(E value, Function<E, E> remappingFunction) {
-        var index = findIndex(value);
+        var hashCode = getHashCode(value);
+        var index = findIndex(value, hashCode);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
@@ -257,7 +251,7 @@ public class LowMemoryHashSet<E> implements Set<E> {
                 throw new IllegalArgumentException("remapped value is not equal to value");
             }
             if(grow()) {
-                entries[findEmptySlotWithoutEqualityCheck(getHashCode(value))] = newValue;
+                entries[findEmptySlotWithoutEqualityCheck(hashCode)] = newValue;
             } else {
                 entries[~index] = newValue;
             }
@@ -278,9 +272,6 @@ public class LowMemoryHashSet<E> implements Set<E> {
         }
     }
 
-    private int findIndex(final E e) {
-        return findIndex(e, getHashCode(e));
-    }
     private int findIndex(final E e, final int hashCode) {
         var index = calcStartIndexByHashCode(hashCode);
         while(true) {
@@ -505,9 +496,9 @@ public class LowMemoryHashSet<E> implements Set<E> {
         grow(size + c.size());
         boolean modified = false;
         int index;
-        for (E t : c) {
-            if((index=findIndex(t)) < 0) {
-                entries[~index] = t;
+        for (E e : c) {
+            if((index=findIndex(e, getHashCode(e))) < 0) {
+                entries[~index] = e;
                 size++;
                 modified = true;
             }

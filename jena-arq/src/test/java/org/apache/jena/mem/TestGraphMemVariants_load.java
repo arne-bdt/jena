@@ -126,7 +126,7 @@ public class TestGraphMemVariants_load extends TestGraphMemVariantsBase {
         final var triplesPerGraph = loadTriples(graphMultiplier, graphUris);
         for (Pair<String, Supplier<Graph>> graphSuppliersWithName : graphVariantSuppliersWithNames) {
             System.out.println("graph variant: '" + graphSuppliersWithName.getKey() + "'");
-            for(int i=0; i<3; i++) {
+            for(int i=0; i<5; i++) {
                 var graphs = fillGraphs(graphSuppliersWithName.getValue(), triplesPerGraph);
             }
         }

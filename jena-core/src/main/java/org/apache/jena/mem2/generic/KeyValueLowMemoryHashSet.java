@@ -210,7 +210,7 @@ public class KeyValueLowMemoryHashSet<K, V extends KeyValueLowMemoryHashSet.Keye
 
     public V getIfPresent(final K key) {
         var hashCode = key.hashCode();
-        var index = calcStartIndexByHashCode(key.hashCode());
+        var index = calcStartIndexByHashCode(hashCode);
         while(true) {
             if(null == entries[index]) {
                 return null;
@@ -287,7 +287,7 @@ public class KeyValueLowMemoryHashSet<K, V extends KeyValueLowMemoryHashSet.Keye
     }
 
     private int findIndexByValue(final V value) {
-        return findIndex(value.getKey(), value.hashCode());
+        return findIndex(value.getKey(), value.getHashCodeOfKey());
     }
 
     private int findIndex(final K key, final int hashCode) {

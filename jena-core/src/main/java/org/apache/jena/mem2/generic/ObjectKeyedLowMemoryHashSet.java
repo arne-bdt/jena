@@ -127,7 +127,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
     public boolean contains(Object o) {
         var e = (E)o;
         final var key = getKey(e);
-        final var hashCode = key.hashCode();
+        final var hashCode = getHashCode(e);// key.hashCode();
         var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
@@ -205,7 +205,7 @@ public abstract class ObjectKeyedLowMemoryHashSet<E> implements Set<E> {
 
     public E getIfPresent(final Object key) {
         var hashCode = key.hashCode();
-        var index = calcStartIndexByHashCode(key.hashCode());
+        var index = calcStartIndexByHashCode(hashCode);
         while(true) {
             if(null == entries[index]) {
                 return null;
