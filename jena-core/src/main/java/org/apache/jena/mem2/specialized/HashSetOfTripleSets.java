@@ -55,11 +55,12 @@ public class HashSetOfTripleSets {
     public HashSetOfTripleSets(int initialCapacity, Set<TripleSetWithIndexingValue> set) {
         this.entries = new TripleSetWithIndexingValue[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
-        int index;
+        int index, hashCode;
         Object indexingValue;
         for (TripleSetWithIndexingValue e : set) {
-            if((index = findIndex(indexingValue = e.getIndexingValue(), indexingValue.hashCode())) < 0) {
+            if((index = findIndex(indexingValue = e.getIndexingValue(), hashCode = indexingValue.hashCode())) < 0) {
                 entries[~index] = e;
+                hashCodes[~index] = hashCode;
                 size++;
             }
         }

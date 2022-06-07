@@ -65,10 +65,11 @@ public class KeyValueFastHashSet<K, V extends KeyValueFastHashSet.KeyedValue<K>>
     public KeyValueFastHashSet(int initialCapacity, Set<? extends V> set) {
         this.entries = new Object[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
-        int index;
+        int index, hashCode;
         for (V e : set) {
-            if((index = findIndex(e.getKey(), e.getKey().hashCode())) < 0) {
+            if((index = findIndex(e.getKey(), hashCode = e.getKey().hashCode())) < 0) {
                 entries[~index] = e;
+                hashCodes[~index] = hashCode;
                 size++;
             }
         }
