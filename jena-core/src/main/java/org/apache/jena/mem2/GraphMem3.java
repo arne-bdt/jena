@@ -26,7 +26,8 @@ import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.generic.ListSetBase;
 import org.apache.jena.mem2.generic.LowMemoryHashSet;
-import org.apache.jena.mem2.generic.KeyValueFastHashSet;
+import org.apache.jena.mem2.specialized.HashSetOfTripleSets;
+import org.apache.jena.mem2.specialized.TripleSetWithIndexingValue;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -70,39 +71,13 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
     private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
 
-    private final KeyValueFastHashSet<Object, TripleSetWithKey> triplesBySubject = new KeyValueFastHashSet<>(); //256
-    private final KeyValueFastHashSet<Object, TripleSetWithKey>  triplesByPredicate = new KeyValueFastHashSet<>(); //64
-    private final KeyValueFastHashSet<Object, TripleSetWithKey>  triplesByObject = new KeyValueFastHashSet<>(); //512
+    private final HashSetOfTripleSets triplesBySubject = new HashSetOfTripleSets(); //256
+    private final HashSetOfTripleSets triplesByPredicate = new HashSetOfTripleSets(); //64
+    private final HashSetOfTripleSets triplesByObject = new HashSetOfTripleSets(); //512
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 
-    private interface TripleSetWithKey extends Set<Triple>, KeyValueFastHashSet.KeyedValue<Object>  {
-
-        Object getKey();
-        void addUnsafe(Triple t);
-
-        boolean areOperationsWithHashCodesSupported();
-
-        default boolean add(Triple t, int hashCode) {
-            throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
-        }
-
-        default void addUnsafe(Triple t, int hashCode) {
-            throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
-        }
-
-        default boolean remove(Triple t, int hashCode) {
-            throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
-        }
-
-        void removeUnsafe(Triple t);
-
-        default void removeUnsafe(Triple t, int hashCode) {
-            throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
-        }
-    }
-
-    private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithKey {
+    private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithIndexingValue {
 
         @Override
         public boolean areOperationsWithHashCodesSupported() {
@@ -115,33 +90,33 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         public boolean equals(Object o) {
-            return this.getKey().equals(o);
+            return this.getIndexingValue().equals(o);
         }
 
         @Override
         public int hashCode() {
-            return this.getKey().hashCode();
+            return this.getIndexingValue().hashCode();
         }
     }
 
-    private static abstract class AbstractLowMemoryTripleHashSet extends LowMemoryHashSet<Triple> implements TripleSetWithKey {
+    private static abstract class AbstractLowMemoryTripleHashSet extends LowMemoryHashSet<Triple> implements TripleSetWithIndexingValue {
 
         @Override
         public boolean areOperationsWithHashCodesSupported() {
             return true;
         }
 
-        public AbstractLowMemoryTripleHashSet(TripleSetWithKey setWithKey) {
+        public AbstractLowMemoryTripleHashSet(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
         }
         @Override
         public boolean equals(Object o) {
-            return this.getKey().equals(o);
+            return this.getIndexingValue().equals(o);
         }
 
         @Override
         public int hashCode() {
-            return this.getKey().hashCode();
+            return this.getIndexingValue().hashCode();
         }
     }
 
@@ -160,7 +135,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         }
 
         @Override
-        public Object getKey() {
+        public Object getIndexingValue() {
             return this.get(0).getSubject().getIndexingValue();
         }
     }
@@ -180,7 +155,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         }
 
         @Override
-        public Object getKey() {
+        public Object getIndexingValue() {
             return this.get(0).getPredicate().getIndexingValue();
         }
     }
@@ -201,14 +176,14 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         }
 
         @Override
-        public Object getKey() {
+        public Object getIndexingValue() {
             return this.get(0).getObject().getIndexingValue();
         }
     }
 
     private static class TripleHashSetForSubjects extends AbstractLowMemoryTripleHashSet {
 
-        public TripleHashSetForSubjects(TripleSetWithKey setWithKey) {
+        public TripleHashSetForSubjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
         }
 
@@ -228,7 +203,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         }
 
         @Override
-        public Object getKey() {
+        public Object getIndexingValue() {
             return this.findAny().getSubject().getIndexingValue();
         }
     }
@@ -236,7 +211,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
 
     private static class TripleHashSetForPredicates extends AbstractLowMemoryTripleHashSet {
 
-        public TripleHashSetForPredicates(TripleSetWithKey setWithKey) {
+        public TripleHashSetForPredicates(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
         }
 
@@ -254,7 +229,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                     && value.getObject().sameValueAs(t.getObject());
         }
         @Override
-        public Object getKey() {
+        public Object getIndexingValue() {
             return this.findAny().getPredicate().getIndexingValue();
         }
     }
@@ -262,7 +237,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
 
     private static class TripleHashSetForObjects extends AbstractLowMemoryTripleHashSet {
 
-        public TripleHashSetForObjects(TripleSetWithKey setWithKey) {
+        public TripleHashSetForObjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
         }
 
@@ -280,7 +255,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                     && value.getPredicate().equals(t.getPredicate());
         }
         @Override
-        public Object getKey() {
+        public Object getIndexingValue() {
             return this.findAny().getObject().getIndexingValue();
         }
     }
@@ -317,9 +292,9 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         {
             final boolean[] added = {false};
             var indexingValue = t.getSubject().getIndexingValue();
-            var hashCodeOfIndexingValue = indexingValue == t.getSubject() ? hashCodeOfSubject : indexingValue.hashCode();
             this.triplesBySubject.compute(
-                    indexingValue, hashCodeOfIndexingValue,
+                    indexingValue,
+                    indexingValue == t.getSubject() ? hashCodeOfSubject : indexingValue.hashCode(),
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForSubjects();
@@ -342,9 +317,9 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         predicate:
         {
             var indexingValue = t.getPredicate().getIndexingValue();
-            var hashCodeOfIndexingValue = indexingValue == t.getPredicate() ? hashCodeOfPredicate : indexingValue.hashCode();
             this.triplesByPredicate.compute(
-                indexingValue, hashCodeOfIndexingValue,
+                    indexingValue,
+                    indexingValue == t.getPredicate() ? hashCodeOfPredicate : indexingValue.hashCode(),
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForPredicates();
@@ -363,9 +338,9 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         object:
         {
             var indexingValue = t.getObject().getIndexingValue();
-            var hashCodeOfIndexingValue = indexingValue == t.getObject() ? hashCodeOfObject : indexingValue.hashCode();
             this.triplesByObject.compute(
-                    indexingValue, hashCodeOfIndexingValue,
+                    indexingValue,
+                    indexingValue == t.getObject() ? hashCodeOfObject : indexingValue.hashCode(),
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForObjects();
@@ -399,8 +374,10 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         subject:
         {
             final boolean[] removed = {false};
+            var indexingValue = t.getSubject().getIndexingValue();
             this.triplesBySubject.compute(
-                    t.getSubject().getIndexingValue(),
+                    indexingValue,
+                    indexingValue == t.getSubject() ? hashCodeOfSubject : indexingValue.hashCode(),
                     ts -> {
                         if(ts == null) {
                             return null;
@@ -420,8 +397,10 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         }
         predicate:
         {
+            var indexingValue = t.getPredicate().getIndexingValue();
             this.triplesByPredicate.compute(
-                    t.getPredicate().getIndexingValue(),
+                    indexingValue,
+                    indexingValue == t.getPredicate() ? hashCodeOfPredicate : indexingValue.hashCode(),
                     ts -> {
                         if(ts.areOperationsWithHashCodesSupported()) {
                             ts.removeUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
@@ -433,8 +412,10 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         }
         object:
         {
+            var indexingValue = t.getObject().getIndexingValue();
             this.triplesByObject.compute(
-                    t.getObject().getIndexingValue(),
+                    indexingValue,
+                    indexingValue == t.getObject() ? hashCodeOfObject : indexingValue.hashCode(),
                     ts -> {
                         if(ts.areOperationsWithHashCodesSupported()) {
                             ts.removeUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
@@ -559,7 +540,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
      * fewer predicates than subjects or objects.
      * @return
      */
-    private KeyValueFastHashSet<Object, TripleSetWithKey> getMapWithFewestKeys() {
+    private HashSetOfTripleSets getMapWithFewestKeys() {
         var subjectCount = this.triplesBySubject.size();
         var predicateCount = this.triplesByPredicate.size();
         var objectCount = this.triplesByObject.size();
@@ -811,15 +792,15 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
     }
 
     private static class ListsOfTriplesIterator implements ExtendedIterator<Triple> {
-        private static final Iterator<TripleSetWithKey> EMPTY_SET_ITERATOR = Collections.emptyIterator();
+        private static final Iterator<TripleSetWithIndexingValue> EMPTY_SET_ITERATOR = Collections.emptyIterator();
         private static final Iterator<Triple> EMPTY_TRIPLES_ITERATOR = Collections.emptyIterator();
         private final Graph graph;
 
-        private Iterator<TripleSetWithKey> baseIterator;
+        private Iterator<TripleSetWithIndexingValue> baseIterator;
         private Iterator<Triple> subIterator;
         private Triple current;
 
-        public ListsOfTriplesIterator(Iterator<TripleSetWithKey> baseIterator, Graph graph) {
+        public ListsOfTriplesIterator(Iterator<TripleSetWithIndexingValue> baseIterator, Graph graph) {
             this.graph = graph;
             this.baseIterator = baseIterator;
             subIterator = baseIterator.hasNext() ? baseIterator.next().iterator() : EMPTY_TRIPLES_ITERATOR;

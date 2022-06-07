@@ -16,67 +16,50 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.generic;
+package org.apache.jena.mem2.specialized;
 
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-/**
- * Queue which grows, if needed but never shrinks.
- * This queue does not guarantee any order.
- * It´s purpose is to support fast remove operations.
- * @param <E> type of elements in the collection.
- */
-public class FastHashSet<E> implements Set<E> {
+public class HashSetOfTripleSets {
 
-    protected int getHashCode(final E value) {
-        return value.hashCode();
-    }
-
-    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByHashCode(final int hashCode) {
         return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
     }
 
-    protected Predicate<E> getContainsPredicate(final E value) {
-        return other -> value.equals(other);
-    }
-
-
     private static int MINIMUM_SIZE = 16;
     private static float loadFactor = 0.5f;
     protected int size = 0;
-    protected Object[] entries;
+    protected TripleSetWithIndexingValue[] entries;
     protected int[] hashCodes;
 
-    public FastHashSet() {
-        this.entries = new Object[MINIMUM_SIZE];
+    public HashSetOfTripleSets() {
+        this.entries = new TripleSetWithIndexingValue[MINIMUM_SIZE];
         this.hashCodes = new int[MINIMUM_SIZE];
 
     }
 
-    public FastHashSet(int initialCapacity) {
-        this.entries = new Object[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
+    public HashSetOfTripleSets(int initialCapacity) {
+        this.entries = new TripleSetWithIndexingValue[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
     }
 
-    public FastHashSet(Set<? extends E> set) {
+    public HashSetOfTripleSets(Set<TripleSetWithIndexingValue> set) {
         this(set.size(), set);
     }
 
-    public FastHashSet(int initialCapacity, Set<? extends E> set) {
-        this.entries = new Object[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
+    public HashSetOfTripleSets(int initialCapacity, Set<TripleSetWithIndexingValue> set) {
+        this.entries = new TripleSetWithIndexingValue[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
         int index;
-        int hashCode;
-        for (E t : set) {
-            if((index = findIndex(t, hashCode = getHashCode(t))) < 0) {
-                entries[~index] = t;
-                hashCodes[~index] = hashCode;
+        Object indexingValue;
+        for (TripleSetWithIndexingValue e : set) {
+            if((index = findIndex(indexingValue = e.getIndexingValue(), indexingValue.hashCode())) < 0) {
+                entries[~index] = e;
                 size++;
             }
         }
@@ -89,20 +72,6 @@ public class FastHashSet<E> implements Set<E> {
         return -1;
     }
 
-    private void grow(final int minCapacity) {
-        final var oldEntries = this.entries;
-        final var oldHashCodes = this.hashCodes;
-        this.entries = new Object[Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1];
-        this.hashCodes = new int[entries.length];
-        for(int i=0; i<oldEntries.length; i++) {
-            if(null != oldEntries[i]) {
-                var newSlot = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
-                this.entries[newSlot] = oldEntries[i];
-                this.hashCodes[newSlot] = oldHashCodes[i];
-            }
-        }
-    }
-
     private boolean grow() {
         final var newSize = calcNewSize();
         if(newSize < 0) {
@@ -110,7 +79,7 @@ public class FastHashSet<E> implements Set<E> {
         }
         final var oldEntries = this.entries;
         final var oldHashCodes = this.hashCodes;
-        this.entries = new Object[newSize];
+        this.entries = new TripleSetWithIndexingValue[newSize];
         this.hashCodes = new int[newSize];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
@@ -129,7 +98,6 @@ public class FastHashSet<E> implements Set<E> {
      *
      * @return the number of elements in this collection
      */
-    @Override
     public int size() {
         return size;
     }
@@ -139,21 +107,19 @@ public class FastHashSet<E> implements Set<E> {
      *
      * @return {@code true} if this collection contains no elements
      */
-    @Override
     public boolean isEmpty() {
         return size == 0;
     }
 
-    @Override
     public boolean contains(Object o) {
-        final var e = (E)o;
-        final var hashCode = getHashCode(e);
+        var e = (TripleSetWithIndexingValue)o;
+        final var key = e.getIndexingValue();
+        final var hashCode = key.hashCode();
         var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
         }
-        var predicate = getContainsPredicate(e);
-        if(hashCode == hashCodes[index] && predicate.test((E)entries[index])) {
+        if(hashCode == hashCodes[index] && key.equals(entries[index].getIndexingValue())) {
             return true;
         } else if(--index < 0){
             index += entries.length;
@@ -161,123 +127,52 @@ public class FastHashSet<E> implements Set<E> {
         while(true) {
             if(null == entries[index]) {
                 return false;
-            } else if(hashCode == hashCodes[index] && predicate.test((E)entries[index])) {
-                return true;
-            } else if(--index < 0){
-                index += entries.length;
+            } else {
+                if(hashCode == hashCodes[index] && key.equals(entries[index].getIndexingValue())) {
+                    return true;
+                } else if (--index < 0){
+                    index += entries.length;
+                }
             }
         }
     }
 
-
-    @Override
-    public Iterator<E> iterator() {
+    public Iterator<TripleSetWithIndexingValue> iterator() {
         return new ArrayWithNullsIterator(entries, size);
     }
 
-
-    @Override
-    public Object[] toArray() {
-        return this.stream().toArray();
-    }
-
-
-    @Override
-    public <T1> T1[] toArray(T1[] a) {
-        var asArray = this.stream().toArray();
-        if (a.length < size) {
-            return (T1[]) asArray;
-        }
-        System.arraycopy(asArray, 0, a, 0, asArray.length);
-        if (a.length > size)
-            a[size] = null;
-        return a;
-    }
-
-    public E findAny() {
-        var index = -1;
-        while(entries[++index] == null);
-        return (E)entries[index];
-    }
-
-    @Override
-    public boolean add(E value) {
-        return add(value, getHashCode(value));
-    }
-
-    public boolean add(E value, int hashCode) {
-        grow();
-        var index = findIndex(value, hashCode);
-        if(index < 0) {
-            entries[~index] = value;
-            hashCodes[~index] = hashCode;
-            size++;
-            return true;
-        }
-        return false;
-    }
-
-    public void addUnsafe(E value) {
-        addUnsafe(value, getHashCode(value));
-    }
-
-    public void addUnsafe(E value, int hashCode) {
-        grow();
-        var index = findEmptySlotWithoutEqualityCheck(hashCode);
-        entries[index] = value;
-        hashCodes[index] = hashCode;
-        size++;
-    }
-
-    public E addIfAbsent(E value) {
-        grow();
-        var hashCode = getHashCode(value);
-        var index = findIndex(value, hashCode);
-        if(index < 0) {
-            entries[~index] = value;
-            hashCodes[~index] = hashCode;
-            size++;
-            return value;
-        }
-        return (E)entries[index];
-    }
-
-    public E getIfPresent(E value) {
-        var hashCode = getHashCode(value);
+    public TripleSetWithIndexingValue getIfPresent(final Object indexingValue) {
+        var hashCode = indexingValue.hashCode();
         var index = calcStartIndexByHashCode(hashCode);
         while(true) {
             if(null == entries[index]) {
                 return null;
-            } else if(hashCode == hashCodes[index] && value.equals(entries[index])) {
-                return (E)entries[index];
+            } else if(hashCode == hashCodes[index] && indexingValue.equals(entries[index].getIndexingValue())) {
+                return entries[index];
             } else if(--index < 0){
                 index += entries.length;
             }
         }
     }
 
-    public E compute(E value, Function<E, E> remappingFunction) {
-        var hashCode = getHashCode(value);
-        var index = findIndex(value, hashCode);
+    public TripleSetWithIndexingValue compute(final Object key, final int hashCodeOfKey, Function<TripleSetWithIndexingValue, TripleSetWithIndexingValue> remappingFunction) {
+        var index = findIndex(key, hashCodeOfKey);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
                 return null;
             }
-            if(!value.equals(newValue)) {
-                throw new IllegalArgumentException("remapped value is not equal to value");
-            }
             if(grow()) {
-                index = findEmptySlotWithoutEqualityCheck(hashCode);
+                index = findEmptySlotWithoutEqualityCheck(hashCodeOfKey);
             } else {
                 index = ~index;
             }
             entries[index] = newValue;
-            hashCodes[index] = hashCode;
+            hashCodes[index] = hashCodeOfKey;
             size++;
             return newValue;
         } else { /*existing value found*/
-            var newValue = remappingFunction.apply((E)entries[index]);
+            var newValue = remappingFunction.apply(entries[index]);
             if(newValue == null) {
                 entries[index] = null;
                 size--;
@@ -290,12 +185,43 @@ public class FastHashSet<E> implements Set<E> {
         }
     }
 
-    private int findIndex(final E e, final int hashCode) {
+    public TripleSetWithIndexingValue compute(final Object key, Function<TripleSetWithIndexingValue, TripleSetWithIndexingValue> remappingFunction) {
+        var hashCodeOfKey = key.hashCode();
+        var index = findIndex(key, hashCodeOfKey);
+        if(index < 0) { /*value does not exist yet*/
+            var newValue = remappingFunction.apply(null);
+            if(newValue == null) {
+                return null;
+            }
+            if(grow()) {
+                index = findEmptySlotWithoutEqualityCheck(hashCodeOfKey);
+            } else {
+                index = ~index;
+            }
+            entries[index] = newValue;
+            hashCodes[index] = hashCodeOfKey;
+            size++;
+            return newValue;
+        } else { /*existing value found*/
+            var newValue = remappingFunction.apply(entries[index]);
+            if(newValue == null) {
+                entries[index] = null;
+                size--;
+                rearrangeNeighbours(index);
+                return null;
+            } else {
+                entries[index] = newValue;
+                return newValue;
+            }
+        }
+    }
+
+    private int findIndex(final Object key, final int hashCode) {
         var index = calcStartIndexByHashCode(hashCode);
         while(true) {
             if(null == entries[index]) {
                 return ~index;
-            } else if(hashCode == hashCodes[index] && e.equals(entries[index])) {
+            } else if(hashCode == hashCodes[index] && key.equals(entries[index].getIndexingValue())) {
                 return index;
             } else if(--index < 0){
                 index += entries.length;
@@ -312,54 +238,6 @@ public class FastHashSet<E> implements Set<E> {
                 index += entries.length;
             }
         }
-    }
-
-    /**
-     * Removes a single instance of the specified element from this
-     * collection, if it is present (optional operation).  More formally,
-     * removes an element {@code e} such that
-     * {@code Objects.equals(o, e)}, if
-     * this collection contains one or more such elements.  Returns
-     * {@code true} if this collection contained the specified element (or
-     * equivalently, if this collection changed as a result of the call).
-     *
-     * @param o element to be removed from this collection, if present
-     * @return {@code true} if an element was removed as a result of this call
-     * @throws ClassCastException            if the type of the specified element
-     *                                       is incompatible with this collection
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException          if the specified element is null and this
-     *                                       collection does not permit null elements
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws UnsupportedOperationException if the {@code remove} operation
-     *                                       is not supported by this collection
-     */
-    @Override
-    public boolean remove(Object o) {
-        var e = (E)o;
-        return remove(e, getHashCode(e));
-    }
-
-    public boolean remove(E e, int hashCode) {
-        var index = findIndex(e, hashCode);
-        if (index < 0) {
-            return false;
-        }
-        entries[index] = null;
-        size--;
-        rearrangeNeighbours(index);
-        return true;
-    }
-
-    public void removeUnsafe(E e) {
-        removeUnsafe(e, getHashCode(e));
-    }
-
-    public void removeUnsafe(E e, int hashCode) {
-        var index = findIndex(e, hashCode);
-        entries[index] = null;
-        size--;
-        rearrangeNeighbours(index);
     }
 
     private void rearrangeNeighbours(int index) {
@@ -459,190 +337,37 @@ public class FastHashSet<E> implements Set<E> {
     }
 
     /**
-     * Returns {@code true} if this collection contains all of the elements
-     * in the specified collection.
-     *
-     * @param c collection to be checked for containment in this collection
-     * @return {@code true} if this collection contains all of the elements
-     * in the specified collection
-     * @throws ClassCastException   if the types of one or more elements
-     *                              in the specified collection are incompatible with this
-     *                              collection
-     *                              (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException if the specified collection contains one
-     *                              or more null elements and this collection does not permit null
-     *                              elements
-     *                              (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>),
-     *                              or if the specified collection is null.
-     * @see #contains(Object)
-     */
-    @Override
-    public boolean containsAll(Collection<?> c) {
-        for (Object o : c) {
-            if(!this.contains(o)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Adds all of the elements in the specified collection to this collection
-     * (optional operation).  The behavior of this operation is undefined if
-     * the specified collection is modified while the operation is in progress.
-     * (This implies that the behavior of this call is undefined if the
-     * specified collection is this collection, and this collection is
-     * nonempty.)
-     *
-     * @param c collection containing elements to be added to this collection
-     * @return {@code true} if this collection changed as a result of the call
-     * @throws UnsupportedOperationException if the {@code addAll} operation
-     *                                       is not supported by this collection
-     * @throws ClassCastException            if the class of an element of the specified
-     *                                       collection prevents it from being added to this collection
-     * @throws NullPointerException          if the specified collection contains a
-     *                                       null element and this collection does not permit null elements,
-     *                                       or if the specified collection is null
-     * @throws IllegalArgumentException      if some property of an element of the
-     *                                       specified collection prevents it from being added to this
-     *                                       collection
-     * @throws IllegalStateException         if not all the elements can be added at
-     *                                       this time due to insertion restrictions
-     * @see #add(Object)
-     */
-    @Override
-    public boolean addAll(Collection<? extends E> c) {
-        grow(size + c.size());
-        boolean modified = false;
-        int index;
-        int hashCode;
-        for (E t : c) {
-            if((index=findIndex(t, hashCode = getHashCode(t))) < 0) {
-                entries[~index] = t;
-                hashCodes[~index] = hashCode;
-                size++;
-                modified = true;
-            }
-        }
-        return modified;
-    }
-
-    /**
-     * Removes all of this collection's elements that are also contained in the
-     * specified collection (optional operation).  After this call returns,
-     * this collection will contain no elements in common with the specified
-     * collection.
-     *
-     * @param c collection containing elements to be removed from this collection
-     * @return {@code true} if this collection changed as a result of the
-     * call
-     * @throws UnsupportedOperationException if the {@code removeAll} method
-     *                                       is not supported by this collection
-     * @throws ClassCastException            if the types of one or more elements
-     *                                       in this collection are incompatible with the specified
-     *                                       collection
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException          if this collection contains one or more
-     *                                       null elements and the specified collection does not support
-     *                                       null elements
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>),
-     *                                       or if the specified collection is null
-     * @see #remove(Object)
-     * @see #contains(Object)
-     */
-    @Override
-    public boolean removeAll(Collection<?> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Retains only the elements in this collection that are contained in the
-     * specified collection (optional operation).  In other words, removes from
-     * this collection all of its elements that are not contained in the
-     * specified collection.
-     *
-     * @param c collection containing elements to be retained in this collection
-     * @return {@code true} if this collection changed as a result of the call
-     * @throws UnsupportedOperationException if the {@code retainAll} operation
-     *                                       is not supported by this collection
-     * @throws ClassCastException            if the types of one or more elements
-     *                                       in this collection are incompatible with the specified
-     *                                       collection
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException          if this collection contains one or more
-     *                                       null elements and the specified collection does not permit null
-     *                                       elements
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>),
-     *                                       or if the specified collection is null
-     * @see #remove(Object)
-     * @see #contains(Object)
-     */
-    @Override
-    public boolean retainAll(Collection<?> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
      * Removes all of the elements from this collection (optional operation).
      * The collection will be empty after this method returns.
      *
      * @throws UnsupportedOperationException if the {@code clear} operation
      *                                       is not supported by this collection
      */
-    @Override
     public void clear() {
-        entries = new Object[MINIMUM_SIZE];
+        entries = new TripleSetWithIndexingValue[MINIMUM_SIZE];
         hashCodes = new int[MINIMUM_SIZE];
         size = 0;
     }
 
-    /**
-     * Returns a sequential {@code Stream} with this collection as its source.
-     *
-     * <p>This method should be overridden when the {@link #spliterator()}
-     * method cannot return a spliterator that is {@code IMMUTABLE},
-     * {@code CONCURRENT}, or <em>late-binding</em>. (See {@link #spliterator()}
-     * for details.)
-     *
-     * @return a sequential {@code Stream} over the elements in this collection
-     * @implSpec The default implementation creates a sequential {@code Stream} from the
-     * collection's {@code Spliterator}.
-     * @since 1.8
-     */
-    @Override
-    public Stream<E> stream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized<>(entries, size), false);
+
+    public Stream<TripleSetWithIndexingValue> stream() {
+        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), false);
     }
 
-    /**
-     * Returns a possibly parallel {@code Stream} with this collection as its
-     * source.  It is allowable for this method to return a sequential stream.
-     *
-     * <p>This method should be overridden when the {@link #spliterator()}
-     * method cannot return a spliterator that is {@code IMMUTABLE},
-     * {@code CONCURRENT}, or <em>late-binding</em>. (See {@link #spliterator()}
-     * for details.)
-     *
-     * @return a possibly parallel {@code Stream} over the elements in this
-     * collection
-     * @implSpec The default implementation creates a parallel {@code Stream} from the
-     * collection's {@code Spliterator}.
-     * @since 1.8
-     */
-    @Override
-    public Stream<E> parallelStream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized<>(entries, size), true);
+
+    public Stream<TripleSetWithIndexingValue> parallelStream() {
+        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), true);
     }
 
-    private static class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
+    private static class ArrayWithNullsSpliteratorSized implements Spliterator<TripleSetWithIndexingValue> {
 
-        private final Object[] entries;
+        private final TripleSetWithIndexingValue[] entries;
         private final int maxPos;
         private int pos = -1;
         private int maxRemaining;
         private boolean hasBeenSplit = false;
 
-        public ArrayWithNullsSpliteratorSized(final Object[] entries, final int size) {
+        public ArrayWithNullsSpliteratorSized(final TripleSetWithIndexingValue[] entries, final int size) {
             this.entries = entries;
             this.maxPos = entries.length - 1;
             this.maxRemaining = size;
@@ -661,12 +386,12 @@ public class FastHashSet<E> implements Set<E> {
          * @throws NullPointerException if the specified action is null
          */
         @Override
-        public boolean tryAdvance(Consumer<? super E> action) {
+        public boolean tryAdvance(Consumer<? super TripleSetWithIndexingValue> action) {
             if(0 < maxRemaining) {
                 while (pos < maxPos) {
                     if (null != entries[++pos]) {
                         maxRemaining--;
-                        action.accept((E) entries[pos]);
+                        action.accept(entries[pos]);
                         return true;
                     }
                 }
@@ -687,11 +412,11 @@ public class FastHashSet<E> implements Set<E> {
          * it returns {@code false}.  It should be overridden whenever possible.
          */
         @Override
-        public void forEachRemaining(Consumer<? super E> action) {
+        public void forEachRemaining(Consumer<? super TripleSetWithIndexingValue> action) {
             while(0 < maxRemaining && pos < maxPos) {
                 if(null != entries[++pos]) {
                     maxRemaining--;
-                    action.accept((E) entries[pos]);
+                    action.accept(entries[pos]);
                 }
             }
         }
@@ -736,7 +461,7 @@ public class FastHashSet<E> implements Set<E> {
          * performance.
          */
         @Override
-        public Spliterator<E> trySplit() {
+        public Spliterator<TripleSetWithIndexingValue> trySplit() {
             if(entries.length - pos < 10) {
                 return null;
             }
@@ -806,14 +531,14 @@ public class FastHashSet<E> implements Set<E> {
         }
     }
 
-    private static class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
+    private static class ArrayWithNullsSubSpliteratorUnSized implements Spliterator<TripleSetWithIndexingValue> {
 
-        private final Object[] entries;
+        private final TripleSetWithIndexingValue[] entries;
         private int pos;
         private final int maxPos;
         private int maxRemaining;
 
-        public ArrayWithNullsSubSpliteratorUnSized(final Object[] entries, final int fromIndex, final int toIndex, final int maxSize) {
+        public ArrayWithNullsSubSpliteratorUnSized(final TripleSetWithIndexingValue[] entries, final int fromIndex, final int toIndex, final int maxSize) {
             this.entries = entries;
             this.maxRemaining = maxSize;
             this.pos = fromIndex - 1;
@@ -838,12 +563,12 @@ public class FastHashSet<E> implements Set<E> {
          * @throws NullPointerException if the specified action is null
          */
         @Override
-        public boolean tryAdvance(Consumer<? super E> action) {
+        public boolean tryAdvance(Consumer<? super TripleSetWithIndexingValue> action) {
             if(0 < maxRemaining) {
                 while (pos < maxPos) {
                     if (null != entries[++pos]) {
                         maxRemaining--;
-                        action.accept((E) entries[pos]);
+                        action.accept(entries[pos]);
                         return true;
                     }
                 }
@@ -864,11 +589,11 @@ public class FastHashSet<E> implements Set<E> {
          * it returns {@code false}.  It should be overridden whenever possible.
          */
         @Override
-        public void forEachRemaining(Consumer<? super E> action) {
+        public void forEachRemaining(Consumer<? super TripleSetWithIndexingValue> action) {
             while(0 < maxRemaining && pos < maxPos) {
                 if(null != entries[++pos]) {
                     maxRemaining--;
-                    action.accept((E) entries[pos]);
+                    action.accept(entries[pos]);
                 }
             }
         }
@@ -913,7 +638,7 @@ public class FastHashSet<E> implements Set<E> {
          * performance.
          */
         @Override
-        public Spliterator<E> trySplit() {
+        public Spliterator<TripleSetWithIndexingValue> trySplit() {
             if(maxPos - pos < 10) {
                 return null;
             }
@@ -978,13 +703,13 @@ public class FastHashSet<E> implements Set<E> {
         }
     }
 
-    private static class ArrayWithNullsIterator<E> implements Iterator<E> {
+    private static class ArrayWithNullsIterator implements Iterator<TripleSetWithIndexingValue> {
 
-        private final Object[] entries;
+        private final TripleSetWithIndexingValue[] entries;
         private int remaining;
         private int pos = -1;
 
-        private ArrayWithNullsIterator(final Object[] entries, final int size) {
+        private ArrayWithNullsIterator(final TripleSetWithIndexingValue[] entries, final int size) {
             this.entries = entries;
             this.remaining = size;
         }
@@ -1008,10 +733,10 @@ public class FastHashSet<E> implements Set<E> {
          * @throws NoSuchElementException if the iteration has no more elements
          */
         @Override
-        public E next() {
+        public TripleSetWithIndexingValue next() {
             if(0 < remaining--) {
                 while(entries[++pos] == null);
-                return (E) entries[pos];
+                return entries[pos];
             }
             throw new NoSuchElementException();
         }

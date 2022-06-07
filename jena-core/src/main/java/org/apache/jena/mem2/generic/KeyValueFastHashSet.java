@@ -605,6 +605,7 @@ public class KeyValueFastHashSet<K, V extends KeyValueFastHashSet.KeyedValue<K>>
     @Override
     public void clear() {
         entries = new Object[MINIMUM_SIZE];
+        hashCodes = new int[MINIMUM_SIZE];
         size = 0;
     }
 
