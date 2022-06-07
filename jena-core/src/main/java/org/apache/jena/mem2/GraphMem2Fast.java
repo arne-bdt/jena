@@ -158,8 +158,8 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
         public boolean contains(Object o) {
             var triple = (Triple)o;
             for (Triple t : this) {
-                if(triple.getObject().sameValueAs(t.getObject())
-                        && triple.getPredicate().equals(t.getPredicate())) {
+                if(triple.getPredicate().equals(t.getPredicate())
+                        && triple.getObject().sameValueAs(t.getObject())) {
                     return true;
                 }
             }
@@ -223,8 +223,8 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
 
         @Override
         protected Predicate<Triple> getContainsPredicate(final Triple value) {
-            return t -> value.getObject().sameValueAs(t.getObject())
-                    && value.getPredicate().equals(t.getPredicate());
+            return t ->  value.getPredicate().equals(t.getPredicate())
+                    && value.getObject().sameValueAs(t.getObject());
         }
     }
 
@@ -586,8 +586,8 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
                 if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
                     if(pm.isConcrete()) { // SPO:SPO
                         return bySubjectIndex.stream().filter(
-                                t -> om.sameValueAs(t.getObject())
-                                        && pm.equals(t.getPredicate()));
+                                t -> pm.equals(t.getPredicate())
+                                        && om.sameValueAs(t.getObject()));
                     } else { // SPO:S*O
                         return bySubjectIndex.stream().filter(
                                 t -> om.sameValueAs(t.getObject()));
@@ -601,8 +601,8 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
                     if(bySubjectIndex.size() <= byObjectIndex.size()) {
                         if (pm.isConcrete()) { // SPO:SPO
                             return bySubjectIndex.stream().filter(
-                                    t -> om.sameValueAs(t.getObject())
-                                            && pm.equals(t.getPredicate()));
+                                    t -> pm.equals(t.getPredicate())
+                                            && om.sameValueAs(t.getObject()));
                         } else { // SPO:S*O
                             return bySubjectIndex.stream().filter(
                                     t -> om.sameValueAs(t.getObject()));
@@ -682,8 +682,8 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
                 if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
                     if(pm.isConcrete()) { // SPO:SPO
                         return new IteratorFiltering(bySubjectIndex.iterator(),
-                                t -> om.sameValueAs(t.getObject())
-                                        && pm.equals(t.getPredicate()),
+                                t -> pm.equals(t.getPredicate())
+                                        && om.sameValueAs(t.getObject()),
                                 this);
                     } else { // SPO:S*O
                         return new IteratorFiltering(bySubjectIndex.iterator(),
@@ -699,8 +699,8 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
                     if(bySubjectIndex.size() <= byObjectIndex.size()) {
                         if (pm.isConcrete()) { // SPO:SPO
                             return new IteratorFiltering(bySubjectIndex.iterator(),
-                                    t -> om.sameValueAs(t.getObject())
-                                            && pm.equals(t.getPredicate()),
+                                    t -> pm.equals(t.getPredicate())
+                                            && om.sameValueAs(t.getObject()),
                                     this);
                         } else { // SPO:S*O
                             return new IteratorFiltering(bySubjectIndex.iterator(),

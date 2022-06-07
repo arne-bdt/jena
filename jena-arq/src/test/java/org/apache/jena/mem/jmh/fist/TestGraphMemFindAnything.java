@@ -26,6 +26,7 @@ import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.*;
 import org.apache.jena.riot.RDFDataMgr;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -41,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
 
+@Ignore
 @State(Scope.Benchmark)
 public class TestGraphMemFindAnything {
 
@@ -61,8 +63,8 @@ public class TestGraphMemFindAnything {
     @Param({
             "GraphMem",
             "GraphMem2",
-            "GraphMem2EqualsOk",
             "GraphMem3",
+            "GraphMem4",
 //            "GraphMem2Fast",
 //            "GraphMem3Fast"
     })
@@ -87,6 +89,9 @@ public class TestGraphMemFindAnything {
 
             case "GraphMem3Fast":
                 return new GraphMem3Fast();
+
+            case "GraphMem4":
+                return new GraphMem4();
 
             default:
                 throw new IllegalArgumentException();

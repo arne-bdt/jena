@@ -61,8 +61,8 @@ public class TestGraphMemAdd {
     @Param({
             "GraphMem",
             "GraphMem2",
-            "GraphMem2EqualsOk",
             "GraphMem3",
+            "GraphMem4",
 //            "GraphMem2Fast",
 //            "GraphMem3Fast"
     })
@@ -87,6 +87,9 @@ public class TestGraphMemAdd {
 
             case "GraphMem3Fast":
                 return new GraphMem3Fast();
+
+            case "GraphMem4":
+                return new GraphMem4();
 
             default:
                 throw new IllegalArgumentException();

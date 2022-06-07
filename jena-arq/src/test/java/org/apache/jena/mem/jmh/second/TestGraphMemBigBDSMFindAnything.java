@@ -41,6 +41,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertTrue;
 
+@Ignore
 @State(Scope.Benchmark)
 public class TestGraphMemBigBDSMFindAnything {
 
@@ -50,8 +51,8 @@ public class TestGraphMemBigBDSMFindAnything {
     @Param({
             "GraphMem",
             "GraphMem2",
-            "GraphMem2EqualsOk",
             "GraphMem3",
+            "GraphMem4",
 //            "GraphMem2Fast",
 //            "GraphMem3Fast"
     })
@@ -76,6 +77,9 @@ public class TestGraphMemBigBDSMFindAnything {
 
             case "GraphMem3Fast":
                 return new GraphMem3Fast();
+
+            case "GraphMem4":
+                return new GraphMem4();
 
             default:
                 throw new IllegalArgumentException();

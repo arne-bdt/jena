@@ -24,9 +24,10 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
+import org.apache.jena.mem2.generic.KeyValueFastHashSet2;
+import org.apache.jena.mem2.generic.KeyValueLowMemoryHashSet;
 import org.apache.jena.mem2.generic.ListSetBase;
 import org.apache.jena.mem2.generic.LowMemoryHashSet;
-import org.apache.jena.mem2.generic.KeyValueLowMemoryHashSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -64,19 +65,19 @@ import java.util.stream.Stream;
  * supported this in some cases. The implementation of ModelExpansion.addDomainTypes relayed on this behaviour, but it
  * has been fixed.
  */
-public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
+public class GraphMem4 extends GraphMemBase implements GraphWithPerform {
 
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
     private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
 
-    private final KeyValueLowMemoryHashSet<Object, TripleSetWithKey> triplesBySubject = new KeyValueLowMemoryHashSet<>(); //256
-    private final KeyValueLowMemoryHashSet<Object, TripleSetWithKey>  triplesByPredicate = new KeyValueLowMemoryHashSet<>(); //64
-    private final KeyValueLowMemoryHashSet<Object, TripleSetWithKey>  triplesByObject = new KeyValueLowMemoryHashSet<>(); //512
+    private final KeyValueFastHashSet2<Object, TripleSetWithKey> triplesBySubject = new KeyValueFastHashSet2<>(); //256
+    private final KeyValueFastHashSet2<Object, TripleSetWithKey>  triplesByPredicate = new KeyValueFastHashSet2<>(); //64
+    private final KeyValueFastHashSet2<Object, TripleSetWithKey>  triplesByObject = new KeyValueFastHashSet2<>(); //512
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 
-    private interface TripleSetWithKey extends Set<Triple>, KeyValueLowMemoryHashSet.KeyedValue<Object>  {
+    private interface TripleSetWithKey extends Set<Triple>, KeyValueFastHashSet2.KeyedValue<Object>  {
 
         void addUnsafe(Triple t);
 
@@ -226,7 +227,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
             return t ->  value.getPredicate().equals(t.getPredicate())
                     && value.getObject().sameValueAs(t.getObject());
         }
-
         @Override
         public Object getKey() {
             return this.findAny().getSubject().getIndexingValue();
@@ -285,7 +285,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         }
     }
 
-    public GraphMem2() {
+    public GraphMem4() {
         super();
     }
 
@@ -531,7 +531,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
      * fewer predicates than subjects or objects.
      * @return
      */
-    private KeyValueLowMemoryHashSet<Object, TripleSetWithKey> getMapWithFewestKeys() {
+    private KeyValueFastHashSet2<Object, TripleSetWithKey> getMapWithFewestKeys() {
         var subjectCount = this.triplesBySubject.size();
         var predicateCount = this.triplesByPredicate.size();
         var objectCount = this.triplesByObject.size();
