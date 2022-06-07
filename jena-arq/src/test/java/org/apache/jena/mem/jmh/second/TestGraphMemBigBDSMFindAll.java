@@ -50,7 +50,7 @@ public class TestGraphMemBigBDSMFindAll {
             "GraphMem",
             "GraphMem2",
             "GraphMem3",
-            "GraphMem4",
+            "GraphMem4Fast",
 //            "GraphMem2Fast",
 //            "GraphMem3Fast"
     })
@@ -76,8 +76,8 @@ public class TestGraphMemBigBDSMFindAll {
             case "GraphMem3Fast":
                 return new GraphMem3Fast();
 
-            case "GraphMem4":
-                return new GraphMem4();
+            case "GraphMem4Fast":
+                return new GraphMem4Fast();
 
             default:
                 throw new IllegalArgumentException();

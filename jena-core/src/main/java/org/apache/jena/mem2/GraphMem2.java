@@ -26,7 +26,7 @@ import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.generic.ListSetBase;
 import org.apache.jena.mem2.generic.LowMemoryHashSet;
-import org.apache.jena.mem2.generic.KeyValueLowMemoryHashSet;
+import org.apache.jena.mem2.generic.KeyValueFastHashSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -70,14 +70,15 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
 
-    private final KeyValueLowMemoryHashSet<Object, TripleSetWithKey> triplesBySubject = new KeyValueLowMemoryHashSet<>(); //256
-    private final KeyValueLowMemoryHashSet<Object, TripleSetWithKey>  triplesByPredicate = new KeyValueLowMemoryHashSet<>(); //64
-    private final KeyValueLowMemoryHashSet<Object, TripleSetWithKey>  triplesByObject = new KeyValueLowMemoryHashSet<>(); //512
+    private final KeyValueFastHashSet<Object, TripleSetWithKey> triplesBySubject = new KeyValueFastHashSet<>(); //256
+    private final KeyValueFastHashSet<Object, TripleSetWithKey>  triplesByPredicate = new KeyValueFastHashSet<>(); //64
+    private final KeyValueFastHashSet<Object, TripleSetWithKey>  triplesByObject = new KeyValueFastHashSet<>(); //512
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 
-    private interface TripleSetWithKey extends Set<Triple>, KeyValueLowMemoryHashSet.KeyedValue<Object>  {
+    private interface TripleSetWithKey extends Set<Triple>, KeyValueFastHashSet.KeyedValue<Object>  {
 
+        Object getKey();
         void addUnsafe(Triple t);
 
         default boolean add(Triple t, int hashCode) {
@@ -101,43 +102,39 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithKey {
 
-        private final int hashCodeOfKey;
 
-        public AbstractTriplesListSet(final int hashCodeOfKey) {
+        public AbstractTriplesListSet() {
             super(INITIAL_SIZE_FOR_ARRAY_LISTS);
-            this.hashCodeOfKey = hashCodeOfKey;
         }
 
         @Override
-        public int getHashCodeOfKey() {
-            return hashCodeOfKey;
+        public boolean equals(Object o) {
+            return this.getKey().equals(o);
         }
 
+        @Override
+        public int hashCode() {
+            return this.getKey().hashCode();
+        }
     }
 
     private static abstract class AbstractLowMemoryTripleHashSet extends LowMemoryHashSet<Triple> implements TripleSetWithKey {
-        private final int hashCodeOfKey;
-
-        public AbstractLowMemoryTripleHashSet(int initialCapacity, TripleSetWithKey setWithKey) {
-            super(initialCapacity, setWithKey);
-            this.hashCodeOfKey = setWithKey.getHashCodeOfKey();
-        }
 
         public AbstractLowMemoryTripleHashSet(TripleSetWithKey setWithKey) {
             super(setWithKey);
-            this.hashCodeOfKey = setWithKey.getHashCodeOfKey();
         }
         @Override
-        public int getHashCodeOfKey() {
-            return this.hashCodeOfKey;
+        public boolean equals(Object o) {
+            return this.getKey().equals(o);
+        }
+
+        @Override
+        public int hashCode() {
+            return this.getKey().hashCode();
         }
     }
 
     private static class TripleListSetForSubjects extends AbstractTriplesListSet {
-
-        public TripleListSetForSubjects(final int hashCodeOfKey) {
-            super(hashCodeOfKey);
-        }
 
         @Override
         public boolean contains(Object o) {
@@ -159,10 +156,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     private static class TripleListSetForPredicates extends AbstractTriplesListSet {
 
-        public TripleListSetForPredicates(final int hashCodeOfKey) {
-            super(hashCodeOfKey);
-        }
-
         @Override
         public boolean contains(Object o) {
             var triple = (Triple)o;
@@ -183,10 +176,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
 
     private static class TripleListSetForObjects extends AbstractTriplesListSet {
-
-        public TripleListSetForObjects(final int hashCodeOfKey) {
-            super(hashCodeOfKey);
-        }
 
         @Override
         public boolean contains(Object o) {
@@ -321,7 +310,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     indexingValue, hashCodeOfIndexingValue,
                     ts -> {
                         if(ts == null) {
-                            return new TripleListSetForSubjects(hashCodeOfIndexingValue);
+                            return new TripleListSetForSubjects();
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             return new TripleHashSetForSubjects(ts);
                         }
@@ -339,7 +328,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                 indexingValue, hashCodeOfIndexingValue,
                     ts -> {
                         if(ts == null) {
-                            ts = new TripleListSetForPredicates(hashCodeOfIndexingValue);
+                            ts = new TripleListSetForPredicates();
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForPredicates(ts);
                         }
@@ -355,7 +344,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     indexingValue, hashCodeOfIndexingValue,
                     ts -> {
                         if(ts == null) {
-                            ts = new TripleListSetForObjects(hashCodeOfIndexingValue);
+                            ts = new TripleListSetForObjects();
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForObjects(ts);
                         }
@@ -531,7 +520,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
      * fewer predicates than subjects or objects.
      * @return
      */
-    private KeyValueLowMemoryHashSet<Object, TripleSetWithKey> getMapWithFewestKeys() {
+    private KeyValueFastHashSet<Object, TripleSetWithKey> getMapWithFewestKeys() {
         var subjectCount = this.triplesBySubject.size();
         var predicateCount = this.triplesByPredicate.size();
         var objectCount = this.triplesByObject.size();

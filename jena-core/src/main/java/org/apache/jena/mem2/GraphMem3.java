@@ -24,7 +24,9 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
-import org.apache.jena.mem2.generic.*;
+import org.apache.jena.mem2.generic.ListSetBase;
+import org.apache.jena.mem2.generic.LowMemoryHashSet;
+import org.apache.jena.mem2.generic.KeyValueFastHashSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -79,27 +81,33 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         Object getKey();
         void addUnsafe(Triple t);
 
+        boolean areOperationsWithHashCodesSupported();
+
         default boolean add(Triple t, int hashCode) {
-            return this.add(t);
+            throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
         }
 
         default void addUnsafe(Triple t, int hashCode) {
-            this.addUnsafe(t);
+            throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
         }
 
         default boolean remove(Triple t, int hashCode) {
-            return remove(t);
+            throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
         }
 
         void removeUnsafe(Triple t);
 
         default void removeUnsafe(Triple t, int hashCode) {
-            this.removeUnsafe(t);
+            throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
         }
     }
 
     private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithKey {
 
+        @Override
+        public boolean areOperationsWithHashCodesSupported() {
+            return false;
+        }
 
         public AbstractTriplesListSet() {
             super(INITIAL_SIZE_FOR_ARRAY_LISTS);
@@ -118,8 +126,9 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
 
     private static abstract class AbstractLowMemoryTripleHashSet extends LowMemoryHashSet<Triple> implements TripleSetWithKey {
 
-        public AbstractLowMemoryTripleHashSet(int initialCapacity, TripleSetWithKey setWithKey) {
-            super(initialCapacity, setWithKey);
+        @Override
+        public boolean areOperationsWithHashCodesSupported() {
+            return true;
         }
 
         public AbstractLowMemoryTripleHashSet(TripleSetWithKey setWithKey) {
@@ -217,6 +226,7 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
             return t ->  value.getPredicate().equals(t.getPredicate())
                     && value.getObject().sameValueAs(t.getObject());
         }
+
         @Override
         public Object getKey() {
             return this.findAny().getSubject().getIndexingValue();
@@ -305,19 +315,27 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
         var hashCodeOfObject = t.getObject().hashCode();
         subject:
         {
+            final boolean[] added = {false};
             var indexingValue = t.getSubject().getIndexingValue();
             var hashCodeOfIndexingValue = indexingValue == t.getSubject() ? hashCodeOfSubject : indexingValue.hashCode();
-            var withSameSubjectKey = this.triplesBySubject.compute(
+            this.triplesBySubject.compute(
                     indexingValue, hashCodeOfIndexingValue,
                     ts -> {
                         if(ts == null) {
-                            return new TripleListSetForSubjects();
-                        } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
-                            return new TripleHashSetForSubjects(ts);
+                            ts = new TripleListSetForSubjects();
+                            ts.addUnsafe(t);
+                            added[0] = true;
+                        } else if(ts.areOperationsWithHashCodesSupported()) {
+                            added[0] = ts.add(t, TripleHashSetForSubjects.combineNodeHashes(hashCodeOfPredicate, hashCodeOfObject));
+                        } else if (ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET){
+                            ts = new TripleHashSetForSubjects(ts);
+                            added[0] = ts.add(t, TripleHashSetForSubjects.combineNodeHashes(hashCodeOfPredicate, hashCodeOfObject));
+                        } else {
+                            added[0] = ts.add(t);
                         }
                         return ts;
                     });
-            if(!withSameSubjectKey.add(t,  TripleHashSetForSubjects.combineNodeHashes(hashCodeOfPredicate, hashCodeOfObject))) {
+            if(!added[0]) {
                 return;
             }
         }
@@ -330,10 +348,15 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForPredicates();
+                            ts.addUnsafe(t);
+                        } else if (ts.areOperationsWithHashCodesSupported()) {
+                            ts.addUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForPredicates(ts);
+                            ts.addUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
+                        } else {
+                            ts.addUnsafe(t);
                         }
-                        ts.addUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
                         return ts;
                     });
         }
@@ -346,10 +369,15 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForObjects();
+                            ts.addUnsafe(t);
+                        } else if (ts.areOperationsWithHashCodesSupported()) {
+                            ts.addUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForObjects(ts);
+                            ts.addUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
+                        } else {
+                            ts.addUnsafe(t);
                         }
-                        ts.addUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
                         return ts;
                     });
         }
@@ -376,7 +404,9 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             return null;
-                        } else if(ts.remove(t, TripleHashSetForSubjects.combineNodeHashes(hashCodeOfPredicate, hashCodeOfObject))) {
+                        } else if(ts.areOperationsWithHashCodesSupported()
+                                ? ts.remove(t, TripleHashSetForSubjects.combineNodeHashes(hashCodeOfPredicate, hashCodeOfObject))
+                                : ts.remove(t)) {
                             removed[0] = true;
                             if(ts.isEmpty()) {
                                 return null; /*thereby remove key*/
@@ -393,7 +423,11 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
             this.triplesByPredicate.compute(
                     t.getPredicate().getIndexingValue(),
                     ts -> {
-                        ts.removeUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
+                        if(ts.areOperationsWithHashCodesSupported()) {
+                            ts.removeUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
+                        } else {
+                            ts.removeUnsafe(t);
+                        }
                         return ts.isEmpty() ? null : ts;
                     });
         }
@@ -402,7 +436,11 @@ public class GraphMem3 extends GraphMemBase implements GraphWithPerform {
             this.triplesByObject.compute(
                     t.getObject().getIndexingValue(),
                     ts -> {
-                        ts.removeUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
+                        if(ts.areOperationsWithHashCodesSupported()) {
+                            ts.removeUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
+                        } else {
+                            ts.removeUnsafe(t);
+                        }
                         return ts.isEmpty() ? null : ts;
                     });
         }

@@ -22,10 +22,8 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
-import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.*;
-import org.apache.jena.riot.RDFDataMgr;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -52,7 +50,7 @@ public class TestGraphMemBigBDSMFindAnything {
             "GraphMem",
             "GraphMem2",
             "GraphMem3",
-            "GraphMem4",
+            "GraphMem4Fast",
 //            "GraphMem2Fast",
 //            "GraphMem3Fast"
     })
@@ -78,8 +76,8 @@ public class TestGraphMemBigBDSMFindAnything {
             case "GraphMem3Fast":
                 return new GraphMem3Fast();
 
-            case "GraphMem4":
-                return new GraphMem4();
+            case "GraphMem4Fast":
+                return new GraphMem4Fast();
 
             default:
                 throw new IllegalArgumentException();

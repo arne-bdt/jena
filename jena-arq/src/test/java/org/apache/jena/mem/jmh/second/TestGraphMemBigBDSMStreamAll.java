@@ -23,7 +23,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.*;
-import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -34,7 +33,6 @@ import org.openjdk.jmh.runner.options.TimeValue;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -53,7 +51,7 @@ public class TestGraphMemBigBDSMStreamAll {
             "GraphMem",
             "GraphMem2",
             "GraphMem3",
-            "GraphMem4",
+            "GraphMem4Fast",
 //            "GraphMem2Fast",
 //            "GraphMem3Fast"
     })
@@ -79,8 +77,8 @@ public class TestGraphMemBigBDSMStreamAll {
             case "GraphMem3Fast":
                 return new GraphMem3Fast();
 
-            case "GraphMem4":
-                return new GraphMem4();
+            case "GraphMem4Fast":
+                return new GraphMem4Fast();
 
             default:
                 throw new IllegalArgumentException();
