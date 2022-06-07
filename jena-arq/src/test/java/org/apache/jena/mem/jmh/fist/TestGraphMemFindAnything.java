@@ -58,12 +58,15 @@ public class TestGraphMemFindAnything {
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem",
-            "GraphMem2",
+//            "GraphMem",
+//            "GraphMem2",
             "GraphMem3",
-            "GraphMem4Fast",
+            "GraphMem4",
+            "GraphMem5",
 //            "GraphMem2Fast",
-//            "GraphMem3Fast"
+            "GraphMem3Fast",
+            "GraphMem4Fast",
+            "GraphMem5Fast",
     })
     public String param1_GraphImplementation;
 
@@ -87,8 +90,17 @@ public class TestGraphMemFindAnything {
             case "GraphMem3Fast":
                 return new GraphMem3Fast();
 
+            case "GraphMem4":
+                return new GraphMem4();
+
             case "GraphMem4Fast":
                 return new GraphMem4Fast();
+
+            case "GraphMem5":
+                return new GraphMem5();
+
+            case "GraphMem5Fast":
+                return new GraphMem5Fast();
 
             default:
                 throw new IllegalArgumentException();

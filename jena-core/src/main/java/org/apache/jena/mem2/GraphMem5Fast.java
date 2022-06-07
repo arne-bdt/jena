@@ -25,7 +25,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.generic.FastHashSet;
-import org.apache.jena.mem2.generic.ListSetBase;
+import org.apache.jena.mem2.specialized.FastTripleHashSetWithIndexingValueBase;
 import org.apache.jena.mem2.specialized.HashSetOfTripleSets;
 import org.apache.jena.mem2.specialized.TripleListSetWithIndexingValueBase;
 import org.apache.jena.mem2.specialized.TripleSetWithIndexingValue;
@@ -66,7 +66,7 @@ import java.util.stream.Stream;
  * supported this in some cases. The implementation of ModelExpansion.addDomainTypes relayed on this behaviour, but it
  * has been fixed.
  */
-public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
+public class GraphMem5Fast extends GraphMemBase implements GraphWithPerform {
 
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
     private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
@@ -93,12 +93,7 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
         }
     }
 
-    private static abstract class AbstractFastTripleHashSet extends FastHashSet<Triple> implements TripleSetWithIndexingValue {
-
-        @Override
-        public boolean areOperationsWithHashCodesSupported() {
-            return true;
-        }
+    private static abstract class AbstractFastTripleHashSet extends FastTripleHashSetWithIndexingValueBase {
 
         private final Object indexingValue;
 
@@ -110,16 +105,6 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
         @Override
         public Object getIndexingValue() {
             return this.indexingValue;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            return this.indexingValue.equals(o);
-        }
-
-        @Override
-        public int hashCode() {
-            return this.indexingValue.hashCode();
         }
     }
 
@@ -223,7 +208,7 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
     }
 
 
-    public GraphMem4Fast() {
+    public GraphMem5Fast() {
         super();
     }
 
