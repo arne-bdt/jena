@@ -78,6 +78,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 
     private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithIndexingValue {
+
         @Override
         public boolean areOperationsWithHashCodesSupported() {
             return false;

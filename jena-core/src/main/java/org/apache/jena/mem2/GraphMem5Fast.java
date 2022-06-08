@@ -24,7 +24,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
-import org.apache.jena.mem2.specialized.FastTripleHashSetWithIndexingValueBase;
+import org.apache.jena.mem2.specialized.FastTripleHashSetWithIndexingValue;
 import org.apache.jena.mem2.specialized.HashSetOfTripleSets;
 import org.apache.jena.mem2.specialized.TripleListSetWithIndexingValueBase;
 import org.apache.jena.mem2.specialized.TripleSetWithIndexingValue;
@@ -92,20 +92,6 @@ public class GraphMem5Fast extends GraphMemBase implements GraphWithPerform {
         }
     }
 
-    private static abstract class AbstractFastTripleHashSet extends FastTripleHashSetWithIndexingValueBase {
-
-        private final Object indexingValue;
-
-        public AbstractFastTripleHashSet(TripleSetWithIndexingValue setWithKey) {
-            super(setWithKey);
-            this.indexingValue = setWithKey.getIndexingValue();
-        }
-
-        @Override
-        public Object getIndexingValue() {
-            return this.indexingValue;
-        }
-    }
 
     private static class TripleListSetForSubjects extends AbstractTriplesListSet {
 
@@ -165,7 +151,7 @@ public class GraphMem5Fast extends GraphMemBase implements GraphWithPerform {
         }
     }
 
-    private static class TripleHashSetForSubjects extends AbstractFastTripleHashSet {
+    private static class TripleHashSetForSubjects extends FastTripleHashSetWithIndexingValue {
 
         public TripleHashSetForSubjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -179,7 +165,7 @@ public class GraphMem5Fast extends GraphMemBase implements GraphWithPerform {
     }
 
 
-    private static class TripleHashSetForPredicates extends AbstractFastTripleHashSet {
+    private static class TripleHashSetForPredicates extends FastTripleHashSetWithIndexingValue {
 
         public TripleHashSetForPredicates(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -193,7 +179,7 @@ public class GraphMem5Fast extends GraphMemBase implements GraphWithPerform {
     }
 
 
-    private static class TripleHashSetForObjects extends AbstractFastTripleHashSet {
+    private static class TripleHashSetForObjects extends FastTripleHashSetWithIndexingValue {
 
         public TripleHashSetForObjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);

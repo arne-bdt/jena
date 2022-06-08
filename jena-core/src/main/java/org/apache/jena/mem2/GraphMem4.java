@@ -25,9 +25,8 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.generic.ListSetBase;
-import org.apache.jena.mem2.generic.LowMemoryHashSet;
 import org.apache.jena.mem2.specialized.HashSetOfTripleSets;
-import org.apache.jena.mem2.specialized.TripleListSetWithIndexingValueBase;
+import org.apache.jena.mem2.specialized.LowMemoryTripleHashSetWithIndexingValueBase;
 import org.apache.jena.mem2.specialized.TripleSetWithIndexingValue;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
@@ -78,30 +77,15 @@ public class GraphMem4 extends GraphMemBase implements GraphWithPerform {
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 
-    private static abstract class AbstractTriplesListSet extends TripleListSetWithIndexingValueBase {
-        public AbstractTriplesListSet() {
-            super(INITIAL_SIZE_FOR_ARRAY_LISTS);
-        }
-    }
-
-    private static abstract class AbstractLowMemoryTripleHashSet extends LowMemoryHashSet<Triple> implements TripleSetWithIndexingValue {
+    private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithIndexingValue {
 
         @Override
         public boolean areOperationsWithHashCodesSupported() {
-            return true;
+            return false;
         }
 
-        public AbstractLowMemoryTripleHashSet(TripleSetWithIndexingValue setWithKey) {
-            super(setWithKey);
-        }
-        @Override
-        public boolean equals(Object o) {
-            return this.getIndexingValue().equals(o);
-        }
-
-        @Override
-        public int hashCode() {
-            return this.getIndexingValue().hashCode();
+        public AbstractTriplesListSet() {
+            super(INITIAL_SIZE_FOR_ARRAY_LISTS);
         }
     }
 
@@ -166,7 +150,7 @@ public class GraphMem4 extends GraphMemBase implements GraphWithPerform {
         }
     }
 
-    private static class TripleHashSetForSubjects extends AbstractLowMemoryTripleHashSet {
+    private static class TripleHashSetForSubjects extends LowMemoryTripleHashSetWithIndexingValueBase {
 
         public TripleHashSetForSubjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -194,7 +178,7 @@ public class GraphMem4 extends GraphMemBase implements GraphWithPerform {
     }
 
 
-    private static class TripleHashSetForPredicates extends AbstractLowMemoryTripleHashSet {
+    private static class TripleHashSetForPredicates extends LowMemoryTripleHashSetWithIndexingValueBase {
 
         public TripleHashSetForPredicates(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -220,7 +204,7 @@ public class GraphMem4 extends GraphMemBase implements GraphWithPerform {
     }
 
 
-    private static class TripleHashSetForObjects extends AbstractLowMemoryTripleHashSet {
+    private static class TripleHashSetForObjects extends LowMemoryTripleHashSetWithIndexingValueBase {
 
         public TripleHashSetForObjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);

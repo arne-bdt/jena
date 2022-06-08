@@ -25,7 +25,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.generic.ListSetBase;
-import org.apache.jena.mem2.specialized.FastTripleHashSetWithIndexingValueBase;
+import org.apache.jena.mem2.specialized.FastTripleHashSetWithIndexingValue;
 import org.apache.jena.mem2.specialized.HashSetOfTripleSets;
 import org.apache.jena.mem2.specialized.TripleSetWithIndexingValue;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -162,7 +162,7 @@ public class GraphMem3Fast extends GraphMemBase implements GraphWithPerform {
         }
     }
 
-    private static class TripleHashSetForSubjects extends FastTripleHashSetWithIndexingValueBase {
+    private static class TripleHashSetForSubjects extends FastTripleHashSetWithIndexingValue {
 
         public TripleHashSetForSubjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -181,7 +181,7 @@ public class GraphMem3Fast extends GraphMemBase implements GraphWithPerform {
     }
 
 
-    private static class TripleHashSetForPredicates extends FastTripleHashSetWithIndexingValueBase {
+    private static class TripleHashSetForPredicates extends FastTripleHashSetWithIndexingValue {
 
         public TripleHashSetForPredicates(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -199,7 +199,7 @@ public class GraphMem3Fast extends GraphMemBase implements GraphWithPerform {
     }
 
 
-    private static class TripleHashSetForObjects extends FastTripleHashSetWithIndexingValueBase {
+    private static class TripleHashSetForObjects extends FastTripleHashSetWithIndexingValue {
 
         public TripleHashSetForObjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);

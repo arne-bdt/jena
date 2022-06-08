@@ -47,11 +47,6 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
         return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
     }
 
-    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
-    protected int calcStartIndexByHashCode(final Triple value) {
-        return calcStartIndexByHashCode(getHashCode(value));
-    }
-
     protected Predicate<Triple> getContainsPredicate(final Triple value) {
         return other -> value.equals(other);
     }
@@ -71,11 +66,7 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
     }
 
     public LowMemoryTripleHashSetWithIndexingValueBase(Set<? extends Triple> set) {
-        this(set.size(), set);
-    }
-
-    public LowMemoryTripleHashSetWithIndexingValueBase(int initialCapacity, Set<? extends Triple> set) {
-        this.entries = new Triple[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
+        this.entries = new Triple[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
         int index;
         for (Triple e : set) {
             if((index = findIndex(e, getHashCode(e))) < 0) {
@@ -83,6 +74,10 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
                 size++;
             }
         }
+    }
+
+    public LowMemoryTripleHashSetWithIndexingValueBase(int initialCapacity, Set<? extends Triple> set) {
+
     }
 
     private int calcNewSize() {
@@ -232,7 +227,7 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
     }
 
     public Triple getIfPresent(Triple value) {
-        var index = calcStartIndexByHashCode(value);
+        var index = calcStartIndexByHashCode(getHashCode(value));
         while(true) {
             if(null == entries[index]) {
                 return null;
@@ -389,7 +384,8 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
             if(null == entries[i]) {
                 break;
             } else {
-                neighbour = new ObjectsWithStartIndexIndexAndDistance(entries.length, calcStartIndexByHashCode(entries[i]), i);
+                neighbour = new ObjectsWithStartIndexIndexAndDistance(
+                        entries.length, calcStartIndexByHashCode(getHashCode(entries[i])), i);
                 if(neighbour.distance > 0) {
                     neighbours.add(neighbour);
                 }
@@ -404,7 +400,8 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
             if(null == entries[i]) {
                 break;
             } else {
-                neighbour = new ObjectsWithStartIndexIndexAndDistance(entries.length, calcStartIndexByHashCode(entries[i]), i);
+                neighbour = new ObjectsWithStartIndexIndexAndDistance(
+                        entries.length, calcStartIndexByHashCode(getHashCode(entries[i])), i);
                 if(neighbour.distance > 0) {
                     neighbours.add(neighbour);
                 }

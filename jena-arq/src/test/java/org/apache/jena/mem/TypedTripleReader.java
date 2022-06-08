@@ -51,7 +51,7 @@ public class TypedTripleReader {
             "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n" +
             "PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>\n" +
             "\n" +
-            "SELECT ?property ?dataType ?primitiveType\n" +
+            "SELECT ?property ?primitiveType\n" +
             "WHERE {\n" +
             "\t ?property cims:dataType ?dataType.\n" +
             "\t\t{\n" +

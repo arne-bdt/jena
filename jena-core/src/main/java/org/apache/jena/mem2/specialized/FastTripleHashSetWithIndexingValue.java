@@ -32,7 +32,7 @@ import java.util.stream.StreamSupport;
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
  */
-public abstract class FastTripleHashSetWithIndexingValueBase implements TripleSetWithIndexingValue {
+public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexingValue {
     @Override
     public boolean areOperationsWithHashCodesSupported() {
         return true;
@@ -58,23 +58,16 @@ public abstract class FastTripleHashSetWithIndexingValueBase implements TripleSe
     protected Triple[] entries;
     protected int[] hashCodes;
 
-    public FastTripleHashSetWithIndexingValueBase() {
-        this.entries = new Triple[MINIMUM_SIZE];
-        this.hashCodes = new int[MINIMUM_SIZE];
+    private final Object indexingValue;
 
+    @Override
+    public Object getIndexingValue() {
+        return this.indexingValue;
     }
 
-    public FastTripleHashSetWithIndexingValueBase(int initialCapacity) {
-        this.entries = new Triple[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
-        this.hashCodes = new int[entries.length];
-    }
-
-    public FastTripleHashSetWithIndexingValueBase(Set<? extends Triple> set) {
-        this(set.size(), set);
-    }
-
-    public FastTripleHashSetWithIndexingValueBase(int initialCapacity, Set<? extends Triple> set) {
-        this.entries = new Triple[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
+    public FastTripleHashSetWithIndexingValue(TripleSetWithIndexingValue set) {
+        this.indexingValue = set.getIndexingValue();
+        this.entries = new Triple[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
         int index;
         int hashCode;
@@ -408,7 +401,8 @@ public abstract class FastTripleHashSetWithIndexingValueBase implements TripleSe
             if(null == entries[i]) {
                 break;
             } else {
-                neighbour = new ObjectsWithStartIndexIndexAndDistance(entries.length, calcStartIndexByHashCode(hashCodes[i]), i);
+                neighbour = new ObjectsWithStartIndexIndexAndDistance(
+                        entries.length, calcStartIndexByHashCode(hashCodes[i]), i);
                 if(neighbour.distance > 0) {
                     neighbours.add(neighbour);
                 }
@@ -423,7 +417,8 @@ public abstract class FastTripleHashSetWithIndexingValueBase implements TripleSe
             if(null == entries[i]) {
                 break;
             } else {
-                neighbour = new ObjectsWithStartIndexIndexAndDistance(entries.length, calcStartIndexByHashCode(hashCodes[i]), i);
+                neighbour = new ObjectsWithStartIndexIndexAndDistance(
+                        entries.length, calcStartIndexByHashCode(hashCodes[i]), i);
                 if(neighbour.distance > 0) {
                     neighbours.add(neighbour);
                 }
@@ -639,7 +634,7 @@ public abstract class FastTripleHashSetWithIndexingValueBase implements TripleSe
         return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), true);
     }
 
-    private static class ArrayWithNullsSpliteratorSized implements Spliterator<org.apache.jena.graph.Triple> {
+    private static class ArrayWithNullsSpliteratorSized implements Spliterator<Triple> {
 
         private final Triple[] entries;
         private final int maxPos;
