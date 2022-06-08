@@ -24,9 +24,9 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
-import org.apache.jena.mem2.generic.FastHashSet;
+import org.apache.jena.mem2.generic.ListSetBase;
+import org.apache.jena.mem2.specialized.FastTripleHashSetWithIndexingValueBase;
 import org.apache.jena.mem2.specialized.HashSetOfTripleSets;
-import org.apache.jena.mem2.specialized.TripleListSetWithIndexingValueBase;
 import org.apache.jena.mem2.specialized.TripleSetWithIndexingValue;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
@@ -77,27 +77,19 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 
-    private static abstract class AbstractTriplesListSet extends TripleListSetWithIndexingValueBase {
-
-        private final Object indexingValue;
-
-        public AbstractTriplesListSet(final Object indexingValue) {
-            super(INITIAL_SIZE_FOR_ARRAY_LISTS);
-            this.indexingValue = indexingValue;
-        }
-
-        @Override
-        public Object getIndexingValue() {
-            return this.indexingValue;
-        }
-    }
-
-    private static abstract class AbstractFastTripleHashSet extends FastHashSet<Triple> implements TripleSetWithIndexingValue {
+    private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithIndexingValue {
 
         @Override
         public boolean areOperationsWithHashCodesSupported() {
-            return true;
+            return false;
         }
+
+        public AbstractTriplesListSet() {
+            super(INITIAL_SIZE_FOR_ARRAY_LISTS);
+        }
+    }
+
+    private static abstract class AbstractFastTripleHashSet extends FastTripleHashSetWithIndexingValueBase {
 
         private final Object indexingValue;
 
@@ -110,23 +102,9 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
         public Object getIndexingValue() {
             return this.indexingValue;
         }
-
-        @Override
-        public boolean equals(Object o) {
-            return this.indexingValue.equals(o);
-        }
-
-        @Override
-        public int hashCode() {
-            return this.indexingValue.hashCode();
-        }
     }
 
     private static class TripleListSetForSubjects extends AbstractTriplesListSet {
-
-        public TripleListSetForSubjects(Object key) {
-            super(key);
-        }
 
         @Override
         public boolean contains(Object o) {
@@ -139,13 +117,14 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
             }
             return false;
         }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.get(0).getSubject().getIndexingValue();
+        }
     }
 
     private static class TripleListSetForPredicates extends AbstractTriplesListSet {
-
-        public TripleListSetForPredicates(Object key) {
-            super(key);
-        }
 
         @Override
         public boolean contains(Object o) {
@@ -158,14 +137,15 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
             }
             return false;
         }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.get(0).getPredicate().getIndexingValue();
+        }
     }
 
 
     private static class TripleListSetForObjects extends AbstractTriplesListSet {
-
-        public TripleListSetForObjects(Object key) {
-            super(key);
-        }
 
         @Override
         public boolean contains(Object o) {
@@ -177,6 +157,11 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
                 }
             }
             return false;
+        }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.get(0).getObject().getIndexingValue();
         }
     }
 
@@ -251,12 +236,11 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
         subject:
         {
             final boolean[] added = {false};
-            var indexingValue = t.getSubject().getIndexingValue();
             this.triplesBySubject.compute(
-                    indexingValue,
+                    t.getSubject().getIndexingValue(),
                     ts -> {
                         if(ts == null) {
-                            ts = new TripleListSetForSubjects(indexingValue);
+                            ts = new TripleListSetForSubjects();
                             ts.addUnsafe(t);
                             added[0] = true;
                         } else if(ts.areOperationsWithHashCodesSupported()) {
@@ -275,12 +259,11 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
         }
         predicate:
         {
-            var indexingValue = t.getPredicate().getIndexingValue();
             this.triplesByPredicate.compute(
-                    indexingValue,
+                    t.getPredicate().getIndexingValue(),
                     ts -> {
                         if(ts == null) {
-                            ts = new TripleListSetForPredicates(indexingValue);
+                            ts = new TripleListSetForPredicates();
                             ts.addUnsafe(t);
                         } else if (ts.areOperationsWithHashCodesSupported()) {
                             ts.addUnsafe(t, hashCode);
@@ -295,12 +278,11 @@ public class GraphMem4Fast extends GraphMemBase implements GraphWithPerform {
         }
         object:
         {
-            var indexingValue = t.getObject().getIndexingValue();
             this.triplesByObject.compute(
-                    indexingValue,
+                    t.getObject().getIndexingValue(),
                     ts -> {
                         if(ts == null) {
-                            ts = new TripleListSetForObjects(indexingValue);
+                            ts = new TripleListSetForObjects();
                             ts.addUnsafe(t);
                         } else if (ts.areOperationsWithHashCodesSupported()) {
                             ts.addUnsafe(t, hashCode);
