@@ -24,6 +24,7 @@ import org.apache.jena.datatypes.xsd.impl.XSDDouble;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem.sorted.GraphMemUsingHashMapSorted;
@@ -42,31 +43,11 @@ public abstract class TestGraphMemVariantsBase {
 
 
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
-            Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-            Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-            //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-            //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-            Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted())
-            //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-            //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment()),
-//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
-//            Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
-            //Pair.of("GraphMem", () -> new GraphMem()),
-            //Pair.of("GraphMem", () -> new GraphMem()),
-            //Pair.of("GraphMem", () -> new GraphMem())
-            //Pair.of("GraphMemHash", () -> new GraphMemHash()),
-            //Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries()),
-            //Pair.of("GraphMemHashNoEntries", () -> new GraphMemHashNoEntries())
-            //Pair.of("GraphMem", () -> new GraphMem()),
-            //Pair.of("GraphMemHash", () -> new GraphMemHash())
-            //Pair.of("GraphMem", () -> new GraphMem()),
-            //Pair.of("GraphMem", () -> new GraphMem()),
-            //Pair.of("GraphMemSimple", () -> new GraphMemSimple()),
-            //Pair.of("GraphMemUsingHashMapSorted", () -> new GraphMemUsingHashMapSorted()),
-            //Pair.of("GraphMemUsingHashMapSortedExperiment", () -> new GraphMemUsingHashMapSortedExperiment())
-            //Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap()),
+            Pair.of("GraphMem", () -> new GraphMem()),
 
+            Pair.of("GraphMem2", () -> new GraphMem2()),
+
+            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast())
     );
 
     protected static Random random = new Random();

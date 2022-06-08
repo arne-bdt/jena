@@ -52,15 +52,7 @@ public abstract class TestGraphMemVariantsBase {
 
             Pair.of("GraphMem2", () -> new GraphMem2()),
 
-            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast()),
-
-            Pair.of("GraphMem4Fast", () -> new GraphMem4Fast())
-
-            //Pair.of("GraphMem2EqualsOk", () -> new GraphMem2EqualsOk())
-
-            //Pair.of("GraphMem3Fast", () -> new GraphMem3Fast())
-
-            //Pair.of("GraphMemUsingHashMap", () -> new GraphMemUsingHashMap())
+            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast())
     );
 
     protected static Random random = new Random();
