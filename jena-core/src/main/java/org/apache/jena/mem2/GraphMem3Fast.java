@@ -24,10 +24,10 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
-import org.apache.jena.mem2.generic.FastHashSet;
+import org.apache.jena.mem2.generic.ListSetBase;
+import org.apache.jena.mem2.specialized.FastTripleHashSetWithIndexingValueBase;
 import org.apache.jena.mem2.specialized.HashSetOfTripleSets;
 import org.apache.jena.mem2.specialized.TripleSetWithIndexingValue;
-import org.apache.jena.mem2.generic.ListSetBase;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -84,56 +84,8 @@ public class GraphMem3Fast extends GraphMemBase implements GraphWithPerform {
             return false;
         }
 
-        private final Object indexingValue;
-
         public AbstractTriplesListSet(final Object indexingValue) {
             super(INITIAL_SIZE_FOR_ARRAY_LISTS);
-            this.indexingValue = indexingValue;
-        }
-
-        @Override
-        public Object getIndexingValue() {
-            return this.indexingValue;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            return this.getIndexingValue().equals(o);
-        }
-
-        @Override
-        public int hashCode() {
-            return this.getIndexingValue().hashCode();
-        }
-    }
-
-    private static abstract class AbstractFastTripleHashSet extends FastHashSet<Triple> implements TripleSetWithIndexingValue {
-
-        @Override
-        public boolean areOperationsWithHashCodesSupported() {
-            return true;
-        }
-
-        private final Object indexingValue;
-
-        public AbstractFastTripleHashSet(TripleSetWithIndexingValue setWithKey) {
-            super(setWithKey);
-            this.indexingValue = setWithKey.getIndexingValue();
-        }
-
-        @Override
-        public Object getIndexingValue() {
-            return this.indexingValue;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            return this.indexingValue.equals(o);
-        }
-
-        @Override
-        public int hashCode() {
-            return this.indexingValue.hashCode();
         }
     }
 
@@ -154,6 +106,11 @@ public class GraphMem3Fast extends GraphMemBase implements GraphWithPerform {
             }
             return false;
         }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.get(0).getSubject().getIndexingValue();
+        }
     }
 
     private static class TripleListSetForPredicates extends AbstractTriplesListSet {
@@ -172,6 +129,11 @@ public class GraphMem3Fast extends GraphMemBase implements GraphWithPerform {
                 }
             }
             return false;
+        }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.get(0).getPredicate().getIndexingValue();
         }
     }
 
@@ -193,9 +155,14 @@ public class GraphMem3Fast extends GraphMemBase implements GraphWithPerform {
             }
             return false;
         }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.get(0).getObject().getIndexingValue();
+        }
     }
 
-    private static class TripleHashSetForSubjects extends AbstractFastTripleHashSet {
+    private static class TripleHashSetForSubjects extends FastTripleHashSetWithIndexingValueBase {
 
         public TripleHashSetForSubjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -206,10 +173,15 @@ public class GraphMem3Fast extends GraphMemBase implements GraphWithPerform {
             return t ->  value.getPredicate().equals(t.getPredicate())
                     && value.getObject().sameValueAs(t.getObject());
         }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.findAny().getSubject().getIndexingValue();
+        }
     }
 
 
-    private static class TripleHashSetForPredicates extends AbstractFastTripleHashSet {
+    private static class TripleHashSetForPredicates extends FastTripleHashSetWithIndexingValueBase {
 
         public TripleHashSetForPredicates(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -220,10 +192,14 @@ public class GraphMem3Fast extends GraphMemBase implements GraphWithPerform {
             return t -> value.getSubject().equals(t.getSubject())
                     && value.getObject().sameValueAs(t.getObject());
         }
+        @Override
+        public Object getIndexingValue() {
+            return this.findAny().getPredicate().getIndexingValue();
+        }
     }
 
 
-    private static class TripleHashSetForObjects extends AbstractFastTripleHashSet {
+    private static class TripleHashSetForObjects extends FastTripleHashSetWithIndexingValueBase {
 
         public TripleHashSetForObjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -233,6 +209,11 @@ public class GraphMem3Fast extends GraphMemBase implements GraphWithPerform {
         protected Predicate<Triple> getContainsPredicate(final Triple value) {
             return t -> value.getSubject().equals(t.getSubject())
                     && value.getPredicate().equals(t.getPredicate());
+        }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.findAny().getObject().getIndexingValue();
         }
     }
 

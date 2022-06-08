@@ -33,16 +33,6 @@ import java.util.function.UnaryOperator;
 public abstract class TripleListSetWithIndexingValueBase extends ArrayList<Triple> implements TripleSetWithIndexingValue {
 
     @Override
-    public boolean equals(Object o) {
-        return this.getIndexingValue().equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-        return this.getIndexingValue().hashCode();
-    }
-
-    @Override
     public boolean areOperationsWithHashCodesSupported() {
         return false;
     }

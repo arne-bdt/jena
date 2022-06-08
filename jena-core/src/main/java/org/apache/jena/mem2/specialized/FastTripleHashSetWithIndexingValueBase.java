@@ -33,17 +33,6 @@ import java.util.stream.StreamSupport;
  * It´s purpose is to support fast remove operations.
  */
 public abstract class FastTripleHashSetWithIndexingValueBase implements TripleSetWithIndexingValue {
-
-    @Override
-    public boolean equals(Object o) {
-        return this.getIndexingValue().equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-        return this.getIndexingValue().hashCode();
-    }
-
     @Override
     public boolean areOperationsWithHashCodesSupported() {
         return true;

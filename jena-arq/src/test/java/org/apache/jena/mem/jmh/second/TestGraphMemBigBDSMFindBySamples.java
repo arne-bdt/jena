@@ -50,15 +50,10 @@ public class TestGraphMemBigBDSMFindBySamples {
     public int param2_sampleSize;
 
     @Param({
-//            "GraphMem",
-//            "GraphMem2",
-            "GraphMem3",
-            "GraphMem4",
-            "GraphMem5",
-//            "GraphMem2Fast",
+            "GraphMem",
+            "GraphMem2",
+            "GraphMem2Fast",
             "GraphMem3Fast",
-            "GraphMem4Fast",
-            "GraphMem5Fast",
     })
     public String param1_GraphImplementation;
 

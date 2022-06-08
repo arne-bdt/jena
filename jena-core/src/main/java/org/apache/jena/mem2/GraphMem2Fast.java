@@ -24,9 +24,10 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
-import org.apache.jena.mem2.generic.FastHashSet;
 import org.apache.jena.mem2.generic.ListSetBase;
-import org.apache.jena.mem2.generic.KeyValueFastHashSet;
+import org.apache.jena.mem2.specialized.FastTripleHashSetWithIndexingValueBase;
+import org.apache.jena.mem2.specialized.HashSetOfTripleSets;
+import org.apache.jena.mem2.specialized.TripleSetWithIndexingValue;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -70,83 +71,44 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
     private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
 
-    private final KeyValueFastHashSet<Object, TripleSetWithKey> triplesBySubject = new KeyValueFastHashSet<>(); //256
-    private final KeyValueFastHashSet<Object, TripleSetWithKey>  triplesByPredicate = new KeyValueFastHashSet<>(); //64
-    private final KeyValueFastHashSet<Object, TripleSetWithKey>  triplesByObject = new KeyValueFastHashSet<>(); //512
+    private final HashSetOfTripleSets triplesBySubject = new HashSetOfTripleSets(); //256
+    private final HashSetOfTripleSets triplesByPredicate = new HashSetOfTripleSets(); //64
+    private final HashSetOfTripleSets triplesByObject = new HashSetOfTripleSets(); //512
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 
-    private interface TripleSetWithKey extends Set<Triple>, KeyValueFastHashSet.KeyedValue<Object>  {
+    private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithIndexingValue {
 
-        Object getKey();
-        void addUnsafe(Triple t);
-
-        default boolean add(Triple t, int hashCode) {
-            return this.add(t);
+        @Override
+        public boolean areOperationsWithHashCodesSupported() {
+            return false;
         }
 
-        default void addUnsafe(Triple t, int hashCode) {
-            this.addUnsafe(t);
-        }
+        private final Object indexingValue;
 
-        default boolean remove(Triple t, int hashCode) {
-            return remove(t);
-        }
-
-        void removeUnsafe(Triple t);
-
-        default void removeUnsafe(Triple t, int hashCode) {
-            this.removeUnsafe(t);
-        }
-    }
-
-    private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithKey {
-
-        private final Object key;
-
-        public AbstractTriplesListSet(final Object key) {
+        public AbstractTriplesListSet(final Object indexingValue) {
             super(INITIAL_SIZE_FOR_ARRAY_LISTS);
-            this.key = key;
+            this.indexingValue = indexingValue;
         }
 
         @Override
-        public Object getKey() {
-            return this.key;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            return this.key.equals(o);
-        }
-
-        @Override
-        public int hashCode() {
-            return this.key.hashCode();
+        public Object getIndexingValue() {
+            return this.indexingValue;
         }
     }
 
-    private static abstract class AbstractFastTripleHashSet extends FastHashSet<Triple> implements TripleSetWithKey {
+    private static abstract class AbstractFastTripleHashSet extends FastTripleHashSetWithIndexingValueBase {
 
-        private final Object key;
+        private final Object indexingValue;
 
-        public AbstractFastTripleHashSet(TripleSetWithKey setWithKey) {
+        public AbstractFastTripleHashSet(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
-            this.key = setWithKey.getKey();
+            this.indexingValue = setWithKey.getIndexingValue();
         }
 
         @Override
-        public Object getKey() {
-            return this.key;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            return this.key.equals(o);
-        }
-
-        @Override
-        public int hashCode() {
-            return this.key.hashCode();
+        public Object getIndexingValue() {
+            return this.indexingValue;
         }
     }
 
@@ -210,7 +172,7 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
 
     private static class TripleHashSetForSubjects extends AbstractFastTripleHashSet {
 
-        public TripleHashSetForSubjects(TripleSetWithKey setWithKey) {
+        public TripleHashSetForSubjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
         }
 
@@ -224,7 +186,7 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
 
     private static class TripleHashSetForPredicates extends AbstractFastTripleHashSet {
 
-        public TripleHashSetForPredicates(TripleSetWithKey setWithKey) {
+        public TripleHashSetForPredicates(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
         }
 
@@ -238,7 +200,7 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
 
     private static class TripleHashSetForObjects extends AbstractFastTripleHashSet {
 
-        public TripleHashSetForObjects(TripleSetWithKey setWithKey) {
+        public TripleHashSetForObjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
         }
 
@@ -285,13 +247,16 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForSubjects(indexingValue);
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnsafe(t);
                             added[0] = true;
-                            return ts;
-                        } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
+                        } else if(ts.areOperationsWithHashCodesSupported()) {
+                            added[0] = ts.add(t, hashCode);
+                        } else if (ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET){
                             ts = new TripleHashSetForSubjects(ts);
+                            added[0] = ts.add(t, hashCode);
+                        } else {
+                            added[0] = ts.add(t);
                         }
-                        added[0] = ts.add(t, hashCode);
                         return ts;
                     });
             if(!added[0]) {
@@ -306,10 +271,15 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForPredicates(indexingValue);
+                            ts.addUnsafe(t);
+                        } else if (ts.areOperationsWithHashCodesSupported()) {
+                            ts.addUnsafe(t, hashCode);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForPredicates(ts);
+                            ts.addUnsafe(t, hashCode);
+                        } else {
+                            ts.addUnsafe(t);
                         }
-                        ts.addUnsafe(t, hashCode);
                         return ts;
                     });
         }
@@ -321,10 +291,15 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForObjects(indexingValue);
+                            ts.addUnsafe(t);
+                        } else if (ts.areOperationsWithHashCodesSupported()) {
+                            ts.addUnsafe(t, hashCode);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForObjects(ts);
+                            ts.addUnsafe(t, hashCode);
+                        } else {
+                            ts.addUnsafe(t);
                         }
-                        ts.addUnsafe(t, hashCode);
                         return ts;
                     });
         }
@@ -349,7 +324,9 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             return null;
-                        } else if(ts.remove(t, hashCode)) {
+                        } else if(ts.areOperationsWithHashCodesSupported()
+                                ? ts.remove(t, hashCode)
+                                : ts.remove(t)) {
                             removed[0] = true;
                             if(ts.isEmpty()) {
                                 return null; /*thereby remove key*/
@@ -366,7 +343,11 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
             this.triplesByPredicate.compute(
                     t.getPredicate().getIndexingValue(),
                     ts -> {
-                        ts.removeUnsafe(t, hashCode);
+                        if(ts.areOperationsWithHashCodesSupported()) {
+                            ts.removeUnsafe(t, hashCode);
+                        } else {
+                            ts.removeUnsafe(t);
+                        }
                         return ts.isEmpty() ? null : ts;
                     });
         }
@@ -375,7 +356,11 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
             this.triplesByObject.compute(
                     t.getObject().getIndexingValue(),
                     ts -> {
-                        ts.removeUnsafe(t, hashCode);
+                        if(ts.areOperationsWithHashCodesSupported()) {
+                            ts.removeUnsafe(t, hashCode);
+                        } else {
+                            ts.removeUnsafe(t);
+                        }
                         return ts.isEmpty() ? null : ts;
                     });
         }
@@ -494,7 +479,7 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
      * fewer predicates than subjects or objects.
      * @return
      */
-    private KeyValueFastHashSet<Object, TripleSetWithKey> getMapWithFewestKeys() {
+    private HashSetOfTripleSets getMapWithFewestKeys() {
         var subjectCount = this.triplesBySubject.size();
         var predicateCount = this.triplesByPredicate.size();
         var objectCount = this.triplesByObject.size();
@@ -746,15 +731,15 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
     }
 
     private static class ListsOfTriplesIterator implements ExtendedIterator<Triple> {
-        private static final Iterator<TripleSetWithKey> EMPTY_SET_ITERATOR = Collections.emptyIterator();
+        private static final Iterator<TripleSetWithIndexingValue> EMPTY_SET_ITERATOR = Collections.emptyIterator();
         private static final Iterator<Triple> EMPTY_TRIPLES_ITERATOR = Collections.emptyIterator();
         private final Graph graph;
 
-        private Iterator<TripleSetWithKey> baseIterator;
+        private Iterator<TripleSetWithIndexingValue> baseIterator;
         private Iterator<Triple> subIterator;
         private Triple current;
 
-        public ListsOfTriplesIterator(Iterator<TripleSetWithKey> baseIterator, Graph graph) {
+        public ListsOfTriplesIterator(Iterator<TripleSetWithIndexingValue> baseIterator, Graph graph) {
             this.graph = graph;
             this.baseIterator = baseIterator;
             subIterator = baseIterator.hasNext() ? baseIterator.next().iterator() : EMPTY_TRIPLES_ITERATOR;

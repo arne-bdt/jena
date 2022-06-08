@@ -45,8 +45,8 @@ public class TestGraphMemDelete {
     }
 
     @Param({
-            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
-            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
+//            "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl",
+//            "./../jena-examples/src/main/resources/data/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
             "C:/temp/res_test/xxx_CGMES_SSH.xml",
             "C:/temp/res_test/xxx_CGMES_TP.xml",
@@ -59,15 +59,10 @@ public class TestGraphMemDelete {
     public String param0_GraphUri;
 
     @Param({
-//            "GraphMem",
-//            "GraphMem2",
-            "GraphMem3",
-            "GraphMem4",
-            "GraphMem5",
-//            "GraphMem2Fast",
+            "GraphMem",
+            "GraphMem2",
+            "GraphMem2Fast",
             "GraphMem3Fast",
-            "GraphMem4Fast",
-            "GraphMem5Fast",
     })
     public String param1_GraphImplementation;
 
