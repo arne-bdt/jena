@@ -47,7 +47,6 @@ public class TestGraphMemVariants_load extends TestGraphMemVariantsBase {
      * http://wbsg.informatik.uni-mannheim.de/bizer/berlinsparqlbenchmark/spec/BenchmarkRules/index.html#datagenerator
      * Generated with: java -cp lib/* benchmark.generator.Generator -pc 50000 -s ttl -ud
      */
-    @Ignore
     @Test
     public void BSBM_50000() {
         loadGraphsMeasureTimeAndMemory(graphImplementationsToTest, 1,
@@ -126,7 +125,7 @@ public class TestGraphMemVariants_load extends TestGraphMemVariantsBase {
         final var triplesPerGraph = loadTriples(graphMultiplier, graphUris);
         for (Pair<String, Supplier<Graph>> graphSuppliersWithName : graphVariantSuppliersWithNames) {
             System.out.println("graph variant: '" + graphSuppliersWithName.getKey() + "'");
-            for(int i=0; i<3; i++) {
+            for(int i=0; i<1; i++) {
                 var graphs = fillGraphs(graphSuppliersWithName.getValue(), triplesPerGraph);
             }
         }

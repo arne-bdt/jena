@@ -61,7 +61,8 @@ public class TestGraphMemFindAnything {
             "GraphMem",
             "GraphMem2",
             "GraphMem2Fast",
-            "GraphMem3Fast",
+//            "GraphMem3Fast",
+            "GraphMem4Fast",
     })
     public String param1_GraphImplementation;
 
