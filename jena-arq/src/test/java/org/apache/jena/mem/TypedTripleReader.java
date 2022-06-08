@@ -130,7 +130,7 @@ public class TypedTripleReader {
                 .source(graphUri)
                 .base("urn:uuid")
                 .lang(lang)
-                .parse(targetGraph);
+                .parse(streamSink);
     }
 
     private static class StreamTypedTriples implements StreamRDF {
@@ -152,9 +152,10 @@ public class TypedTripleReader {
             if(triple.getObject().isLiteral()) {
                 var dType = typedProperties.get(URI.create(triple.getPredicate().getURI()));
                 if(dType != null) {
-                    sink.add(Triple.create(triple.getSubject(),
-                            triple.getPredicate(),
-                            NodeFactory.createLiteral(triple.getObject().getLiteralLexicalForm(), dType)));
+                    sink.add(Triple.create(
+                                triple.getSubject(),
+                                triple.getPredicate(),
+                                NodeFactory.createLiteral(triple.getObject().getLiteralLexicalForm(), dType)));
                 } else {
                     sink.add(triple);
                 }
@@ -244,7 +245,9 @@ public class TypedTripleReader {
         RDFDataMgr.read(g, rdfSchemaUri);
         var dataset = new DatasetGraphMapLink(g);
         var rowSet = QueryExecDataset.newBuilder().query(query).dataset(dataset).build().select();
-        return rowSet.stream().collect(Collectors.toMap(vars -> URI.create(vars.get("property").getURI()), vars -> getDataType(vars.get("primitiveType").getLiteralLexicalForm())));
+        return rowSet.stream().collect(Collectors.toMap(
+                vars -> URI.create(vars.get("property").getURI()),
+                vars -> getDataType(vars.get("primitiveType").getLiteralLexicalForm())));
     }
 
     private static RDFDatatype getDataType(String primitiveType) {
