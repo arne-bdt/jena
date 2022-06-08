@@ -828,7 +828,9 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         public Triple removeNext() {
-            throw new NotImplementedException();
+            var result = next();
+            remove();
+            return result;
         }
 
         @Override
@@ -928,7 +930,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         public void remove() {
-            if(current != null) {
+            if(current == null) {
                 throw new IllegalStateException();
             }
             if(this.filter == FILTER_ANY) {
@@ -948,7 +950,9 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
         @Override
         public Triple removeNext() {
-            throw new NotImplementedException();
+            var result = next();
+            remove();
+            return result;
         }
 
         @Override
@@ -1017,10 +1021,9 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
          */
         @Override
         public Triple removeNext() {
-            throw new NotImplementedException();
-//            Triple result = next();
-//            remove();
-//            return result;
+            var result = next();
+            remove();
+            return result;
         }
 
         /**

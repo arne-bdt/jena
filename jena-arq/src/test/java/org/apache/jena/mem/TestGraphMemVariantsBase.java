@@ -20,22 +20,11 @@ package org.apache.jena.mem;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.jena.arq.junit.riot.VocabLangRDF;
-import org.apache.jena.datatypes.BaseDatatype;
-import org.apache.jena.datatypes.DatatypeFormatException;
-import org.apache.jena.datatypes.RDFDatatype;
-import org.apache.jena.datatypes.TypeMapper;
-import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.datatypes.xsd.impl.XSDDouble;
-import org.apache.jena.datatypes.xsd.impl.XSDFloat;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.graph.impl.LiteralLabel;
 import org.apache.jena.mem2.*;
-import org.apache.jena.rdfs.assembler.VocabRDFS;
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.math.BigDecimal;
