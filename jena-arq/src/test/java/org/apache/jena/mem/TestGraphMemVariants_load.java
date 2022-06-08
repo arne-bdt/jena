@@ -31,13 +31,13 @@ public class TestGraphMemVariants_load extends TestGraphMemVariantsBase {
 
     @Test
     public void pizza_owl_rdf() {
-        loadGraphsMeasureTimeAndMemory(graphImplementationsToTest, 100,
+        loadGraphsMeasureTimeAndMemory(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/pizza.owl.rdf");
     }
 
     @Test
     public void cheeses_ttl() {
-        loadGraphsMeasureTimeAndMemory(graphImplementationsToTest, 50,
+        loadGraphsMeasureTimeAndMemory(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl");
     }
 

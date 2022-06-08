@@ -84,24 +84,12 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
             return false;
         }
 
-        private final Object indexingValue;
-
-        public AbstractTriplesListSet(final Object indexingValue) {
+        public AbstractTriplesListSet() {
             super(INITIAL_SIZE_FOR_ARRAY_LISTS);
-            this.indexingValue = indexingValue;
-        }
-
-        @Override
-        public Object getIndexingValue() {
-            return this.indexingValue;
         }
     }
 
     private static class TripleListSetForSubjects extends AbstractTriplesListSet {
-
-        public TripleListSetForSubjects(Object key) {
-            super(key);
-        }
 
         @Override
         public boolean contains(Object o) {
@@ -114,13 +102,14 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
             }
             return false;
         }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.get(0).getSubject().getIndexingValue();
+        }
     }
 
     private static class TripleListSetForPredicates extends AbstractTriplesListSet {
-
-        public TripleListSetForPredicates(Object key) {
-            super(key);
-        }
 
         @Override
         public boolean contains(Object o) {
@@ -133,14 +122,15 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
             }
             return false;
         }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.get(0).getPredicate().getIndexingValue();
+        }
     }
 
 
     private static class TripleListSetForObjects extends AbstractTriplesListSet {
-
-        public TripleListSetForObjects(Object key) {
-            super(key);
-        }
 
         @Override
         public boolean contains(Object o) {
@@ -153,12 +143,26 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
             }
             return false;
         }
+
+        @Override
+        public Object getIndexingValue() {
+            return this.get(0).getObject().getIndexingValue();
+        }
     }
 
     private static class TripleHashSetForSubjects extends FastTripleHashSetWithIndexingValue {
 
         public TripleHashSetForSubjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
+        }
+
+        public static int combineNodeHashes(final int hashCodeOfPredicate, final int hashCodeOfObject) {
+            return (31 * hashCodeOfObject) ^ hashCodeOfPredicate;
+        }
+
+        @Override
+        protected int getHashCode(final Triple value) {
+            return combineNodeHashes(value.getPredicate().hashCode(), value.getObject().hashCode());
         }
 
         @Override
@@ -175,6 +179,14 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
             super(setWithKey);
         }
 
+        public static int combineNodeHashes(final int hashCodeOfSubject, final int hashCodeOfObject) {
+            return (127 * hashCodeOfSubject) ^ hashCodeOfObject;
+        }
+        @Override
+        protected int getHashCode(final Triple value) {
+            return combineNodeHashes(value.getSubject().hashCode(), value.getObject().hashCode());
+        }
+
         @Override
         protected Predicate<Triple> getContainsPredicate(final Triple value) {
             return t -> value.getSubject().equals(t.getSubject())
@@ -187,6 +199,14 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
 
         public TripleHashSetForObjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
+        }
+
+        public static int combineNodeHashes(final int hashCodeOfSubject, final int hashCodeOfPredicate) {
+            return (31 * hashCodeOfSubject) ^ hashCodeOfPredicate;
+        }
+        @Override
+        protected int getHashCode(Triple value) {
+            return combineNodeHashes(value.getSubject().hashCode(), value.getPredicate().hashCode());
         }
 
         @Override
@@ -222,23 +242,26 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
     @SuppressWarnings("java:S1199")
     @Override
     public void performAdd(final Triple t) {
-        var hashCode = t.hashCode();
+        var hashCodeOfSubject = t.getSubject().hashCode();
+        var hashCodeOfPredicate = t.getPredicate().hashCode();
+        var hashCodeOfObject = t.getObject().hashCode();
         subject:
         {
             final boolean[] added = {false};
             var indexingValue = t.getSubject().getIndexingValue();
             this.triplesBySubject.compute(
                     indexingValue,
+                    indexingValue == t.getSubject() ? hashCodeOfSubject : indexingValue.hashCode(),
                     ts -> {
                         if(ts == null) {
-                            ts = new TripleListSetForSubjects(indexingValue);
+                            ts = new TripleListSetForSubjects();
                             ts.addUnsafe(t);
                             added[0] = true;
                         } else if(ts.areOperationsWithHashCodesSupported()) {
-                            added[0] = ts.add(t, hashCode);
+                            added[0] = ts.add(t, TripleHashSetForSubjects.combineNodeHashes(hashCodeOfPredicate, hashCodeOfObject));
                         } else if (ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET){
                             ts = new TripleHashSetForSubjects(ts);
-                            added[0] = ts.add(t, hashCode);
+                            added[0] = ts.add(t, TripleHashSetForSubjects.combineNodeHashes(hashCodeOfPredicate, hashCodeOfObject));
                         } else {
                             added[0] = ts.add(t);
                         }
@@ -253,15 +276,16 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
             var indexingValue = t.getPredicate().getIndexingValue();
             this.triplesByPredicate.compute(
                     indexingValue,
+                    indexingValue == t.getPredicate() ? hashCodeOfPredicate : indexingValue.hashCode(),
                     ts -> {
                         if(ts == null) {
-                            ts = new TripleListSetForPredicates(indexingValue);
+                            ts = new TripleListSetForPredicates();
                             ts.addUnsafe(t);
                         } else if (ts.areOperationsWithHashCodesSupported()) {
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForPredicates(ts);
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
                         } else {
                             ts.addUnsafe(t);
                         }
@@ -273,15 +297,16 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
             var indexingValue = t.getObject().getIndexingValue();
             this.triplesByObject.compute(
                     indexingValue,
+                    indexingValue == t.getObject() ? hashCodeOfObject : indexingValue.hashCode(),
                     ts -> {
                         if(ts == null) {
-                            ts = new TripleListSetForObjects(indexingValue);
+                            ts = new TripleListSetForObjects();
                             ts.addUnsafe(t);
                         } else if (ts.areOperationsWithHashCodesSupported()) {
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForObjects(ts);
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
                         } else {
                             ts.addUnsafe(t);
                         }
@@ -300,17 +325,21 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
     @SuppressWarnings("java:S1199")
     @Override
     public void performDelete(Triple t) {
-        var hashCode = t.hashCode();
+        var hashCodeOfSubject = t.getSubject().hashCode();
+        var hashCodeOfPredicate = t.getPredicate().hashCode();
+        var hashCodeOfObject = t.getObject().hashCode();
         subject:
         {
             final boolean[] removed = {false};
+            var indexingValue = t.getSubject().getIndexingValue();
             this.triplesBySubject.compute(
-                    t.getSubject().getIndexingValue(),
+                    indexingValue,
+                    indexingValue == t.getSubject() ? hashCodeOfSubject : indexingValue.hashCode(),
                     ts -> {
                         if(ts == null) {
                             return null;
                         } else if(ts.areOperationsWithHashCodesSupported()
-                                ? ts.remove(t, hashCode)
+                                ? ts.remove(t, TripleHashSetForSubjects.combineNodeHashes(hashCodeOfPredicate, hashCodeOfObject))
                                 : ts.remove(t)) {
                             removed[0] = true;
                             if(ts.isEmpty()) {
@@ -325,11 +354,13 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
         }
         predicate:
         {
+            var indexingValue = t.getPredicate().getIndexingValue();
             this.triplesByPredicate.compute(
-                    t.getPredicate().getIndexingValue(),
+                    indexingValue,
+                    indexingValue == t.getPredicate() ? hashCodeOfPredicate : indexingValue.hashCode(),
                     ts -> {
                         if(ts.areOperationsWithHashCodesSupported()) {
-                            ts.removeUnsafe(t, hashCode);
+                            ts.removeUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
                         } else {
                             ts.removeUnsafe(t);
                         }
@@ -338,11 +369,13 @@ public class GraphMem2Fast extends GraphMemBase implements GraphWithPerform {
         }
         object:
         {
+            var indexingValue = t.getObject().getIndexingValue();
             this.triplesByObject.compute(
-                    t.getObject().getIndexingValue(),
+                    indexingValue,
+                    indexingValue == t.getObject() ? hashCodeOfObject : indexingValue.hashCode(),
                     ts -> {
                         if(ts.areOperationsWithHashCodesSupported()) {
-                            ts.removeUnsafe(t, hashCode);
+                            ts.removeUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
                         } else {
                             ts.removeUnsafe(t);
                         }

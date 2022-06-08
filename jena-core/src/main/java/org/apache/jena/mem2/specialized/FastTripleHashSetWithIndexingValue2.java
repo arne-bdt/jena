@@ -32,14 +32,10 @@ import java.util.stream.StreamSupport;
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
  */
-public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexingValue {
+public class FastTripleHashSetWithIndexingValue2 implements TripleSetWithIndexingValue {
     @Override
     public boolean areOperationsWithHashCodesSupported() {
         return true;
-    }
-
-    protected int getHashCode(final Triple value) {
-        return value.hashCode();
     }
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
@@ -65,14 +61,14 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
         return this.indexingValue;
     }
 
-    public FastTripleHashSetWithIndexingValue(TripleSetWithIndexingValue set) {
+    public FastTripleHashSetWithIndexingValue2(TripleSetWithIndexingValue set) {
         this.indexingValue = set.getIndexingValue();
         this.entries = new Triple[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
         int index;
         int hashCode;
         for (Triple t : set) {
-            if((index = findIndex(t, hashCode = getHashCode(t))) < 0) {
+            if((index = findIndex(t, hashCode = t.hashCode())) < 0) {
                 entries[~index] = t;
                 hashCodes[~index] = hashCode;
                 size++;
@@ -146,7 +142,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
     public boolean contains(Object o) {
         final var e = (Triple)o;
         final int hashCode;
-        var index = calcStartIndexByHashCode(hashCode = getHashCode(e));
+        var index = calcStartIndexByHashCode(hashCode = e.hashCode());
         if(null == entries[index]) {
             return false;
         }
@@ -200,7 +196,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
 
     @Override
     public boolean add(Triple value) {
-        return add(value, getHashCode(value));
+        return add(value, value.hashCode());
     }
 
     public boolean add(Triple value, int hashCode) {
@@ -216,7 +212,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
     }
 
     public void addUnsafe(Triple value) {
-        addUnsafe(value, getHashCode(value));
+        addUnsafe(value, value.hashCode());
     }
 
     public void addUnsafe(Triple value, int hashCode) {
@@ -230,7 +226,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
     public Triple addIfAbsent(Triple value) {
         grow();
         final int hashCode;
-        var index = findIndex(value, hashCode = getHashCode(value));
+        final var index = findIndex(value, hashCode = value.hashCode());
         if(index < 0) {
             entries[~index] = value;
             hashCodes[~index] = hashCode;
@@ -242,7 +238,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
 
     public Triple getIfPresent(Triple value) {
         final int hashCode;
-        var index = calcStartIndexByHashCode(hashCode = getHashCode(value));
+        var index = calcStartIndexByHashCode(hashCode = value.hashCode());
         while(true) {
             if(null == entries[index]) {
                 return null;
@@ -256,7 +252,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
 
     public Triple compute(Triple value, Function<Triple, Triple> remappingFunction) {
         final int hashCode;
-        var index = findIndex(value, hashCode = getHashCode(value));
+        var index = findIndex(value, hashCode = value.hashCode());
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
@@ -335,7 +331,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
     @Override
     public boolean remove(Object o) {
         var e = (Triple)o;
-        return remove(e, getHashCode(e));
+        return remove(e, e.hashCode());
     }
 
     public boolean remove(Triple e, int hashCode) {
@@ -350,7 +346,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
     }
 
     public void removeUnsafe(Triple e) {
-        removeUnsafe(e, getHashCode(e));
+        removeUnsafe(e, e.hashCode());
     }
 
     public void removeUnsafe(Triple e, int hashCode) {
@@ -517,7 +513,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
         int index;
         int hashCode;
         for (Triple t : c) {
-            if((index=findIndex(t, hashCode = getHashCode(t))) < 0) {
+            if((index=findIndex(t, hashCode = t.hashCode())) < 0) {
                 entries[~index] = t;
                 hashCodes[~index] = hashCode;
                 size++;

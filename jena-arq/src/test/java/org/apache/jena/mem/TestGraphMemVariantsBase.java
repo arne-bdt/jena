@@ -54,8 +54,6 @@ public abstract class TestGraphMemVariantsBase {
 
             Pair.of("GraphMem2Fast", () -> new GraphMem2Fast()),
 
-            Pair.of("GraphMem3Fast", () -> new GraphMem3Fast()),
-
             Pair.of("GraphMem4Fast", () -> new GraphMem4Fast())
 
             //Pair.of("GraphMem2EqualsOk", () -> new GraphMem2EqualsOk())
