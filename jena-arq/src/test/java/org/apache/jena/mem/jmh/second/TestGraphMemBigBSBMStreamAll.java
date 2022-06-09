@@ -19,12 +19,10 @@
 package org.apache.jena.mem.jmh.second;
 
 import org.apache.jena.graph.Graph;
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.*;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -36,12 +34,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-
-@Ignore
 @State(Scope.Benchmark)
-public class TestGraphMemBigBDSMFindAnything {
+public class TestGraphMemBigBSBMStreamAll {
 
     @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;
@@ -82,58 +80,22 @@ public class TestGraphMemBigBDSMFindAnything {
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
         // Trial level: to be executed before/after each run of the benchmark.
-        this.sut = createGraph();
         this.triples = TypedTripleReader.read(param0_GraphUri);
-        triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
+        this.sut = createGraph();
+        this.triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
+    }
+    @Benchmark
+    public void graphStream() {
+        var found = sut.stream().collect(Collectors.toList());
+        assertEquals(sut.size(), found.size());
     }
 
-    @Benchmark
-    public void graphFindBySamples_Subject_ANY_ANY() {
-        for (Triple sample : triples) {
-            var it = sut.find(sample.getSubject(), Node.ANY, Node.ANY);
-            assertTrue(it.hasNext());
-        }
-    }
-
-    @Benchmark
-    public void graphFindBySamples_ANY_Predicate_ANY() {
-        for (Triple sample : triples) {
-            var it = sut.find(Node.ANY, sample.getPredicate(), Node.ANY);
-            assertTrue(it.hasNext());
-        }
-    }
-
-    @Benchmark
-    public void graphFindBySamples_ANY_ANY_Object() {
-        for (Triple sample : triples) {
-            var it = sut.find(Node.ANY, Node.ANY, sample.getObject());
-            assertTrue(it.hasNext());
-        }
-    }
-
-    @Benchmark
-    public void graphFindBySamples_Subject_Predicate_ANY() {
-        for (Triple sample : triples) {
-            var it = sut.find(sample.getSubject(), sample.getPredicate(), Node.ANY);
-            assertTrue(it.hasNext());
-        }
-    }
-
-    @Benchmark
-    public void graphFindBySamples_Subject_ANY_Object() {
-        for (Triple sample : triples) {
-            var it = sut.find(sample.getSubject(), Node.ANY, sample.getObject());
-            assertTrue(it.hasNext());
-        }
-    }
-
-    @Benchmark
-    public void graphFindBySamples_ANY_Predicate_Object() {
-        for (Triple sample : triples) {
-            var it = sut.find(Node.ANY, sample.getPredicate(), sample.getObject());
-            assertTrue(it.hasNext());
-        }
-    }
+      /*not enough heap space on my machine, to run this test*/
+//    @Benchmark
+//    public void graphStreamParallel() {
+//        var found = sut.stream().parallel().collect(Collectors.toList());
+//        assertEquals(sut.size(), found.size());
+//    }
 
     @Test
     public void benchmark() throws Exception {
@@ -145,7 +107,7 @@ public class TestGraphMemBigBDSMFindAnything {
                 .mode (Mode.AverageTime)
                 .timeUnit(TimeUnit.MILLISECONDS)
                 .warmupTime(TimeValue.NONE)
-                .warmupIterations(5)
+                .warmupIterations(3)
                 .measurementTime(TimeValue.NONE)
                 .measurementIterations(15)
                 .threads(1)
@@ -154,6 +116,7 @@ public class TestGraphMemBigBDSMFindAnything {
                 .shouldDoGC(true)
                 //.jvmArgs("-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintInlining")
                 .jvmArgs("-Xmx12G")
+                .jvmArgsAppend("-Djava.util.concurrent.ForkJoinPool.common.parallelism=8")
                 //.addProfiler(WinPerfAsmProfiler.class)
                 .resultFormat(ResultFormatType.JSON)
                 .result(this.getClass().getSimpleName() + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".json")

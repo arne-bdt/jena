@@ -23,6 +23,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.*;
+import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -32,11 +33,12 @@ import org.openjdk.jmh.runner.options.TimeValue;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @State(Scope.Benchmark)
-public class TestGraphMemBigBDSMAdd {
+public class TestGraphMemBigBSBMDelete {
 
     public String getParam0_GraphUri() {
         return param0_GraphUri;
@@ -65,29 +67,35 @@ public class TestGraphMemBigBDSMAdd {
         }
     }
 
-    private List<Triple> triples;
+    private List<Triple> triplesToAdd;
+    private List<Triple> triplesToDelete;
+    private Graph sut;
 
     @Setup(Level.Invocation)
-    public void setupInvokation() throws Exception {
+    public void setupInvokation() {
+        this.sut = createGraph();
+        triplesToAdd.forEach(sut::add);
         // Invocation level: to be executed for each benchmark method execution.
     }
 
     @Setup(Level.Iteration)
-    public void setupIteration() throws Exception {
+    public void setupIteration() {
         // Iteration level: to be executed before/after each iteration of the benchmark.
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         // Trial level: to be executed before/after each run of the benchmark.
-        this.triples = TypedTripleReader.read(param0_GraphUri);
+        this.triplesToAdd = TypedTripleReader.read(param0_GraphUri);
+        this.triplesToDelete = new ArrayList<>(triplesToAdd.size());
+        this.triplesToAdd.forEach(t -> triplesToDelete.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
     }
 
 
     @Benchmark
-    public void graphAdd() {
-        var sut = createGraph();
-        triples.forEach(sut::add);
+    public void graphDelete() {
+        triplesToDelete.forEach(t -> this.sut.delete(t));
+        Assert.assertTrue(this.sut.isEmpty());
     }
 
     @Test
@@ -100,7 +108,7 @@ public class TestGraphMemBigBDSMAdd {
                 .mode (Mode.AverageTime)
                 .timeUnit(TimeUnit.SECONDS)
                 .warmupTime(TimeValue.NONE)
-                .warmupIterations(5)
+                .warmupIterations(3)
                 .measurementTime(TimeValue.NONE)
                 .measurementIterations(10)
                 .threads(1)

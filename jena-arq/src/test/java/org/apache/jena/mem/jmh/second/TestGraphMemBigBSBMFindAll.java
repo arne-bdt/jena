@@ -23,7 +23,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.*;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -40,7 +39,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.assertEquals;
 
 @State(Scope.Benchmark)
-public class TestGraphMemBigBDSMFindAll {
+public class TestGraphMemBigBSBMFindAll {
 
     @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;

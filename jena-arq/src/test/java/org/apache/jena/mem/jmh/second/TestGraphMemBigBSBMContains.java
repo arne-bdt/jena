@@ -23,7 +23,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.*;
-import org.junit.Ignore;
+import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -35,12 +35,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+
 @State(Scope.Benchmark)
-public class TestGraphMemBigBDSMStreamAll {
+public class TestGraphMemBigBSBMContains {
 
     @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;
@@ -66,6 +65,7 @@ public class TestGraphMemBigBDSMStreamAll {
     }
 
     private List<Triple> triples;
+    private List<Triple> samples;
     private Graph sut;
 
     @Setup(Level.Invocation)
@@ -85,18 +85,12 @@ public class TestGraphMemBigBDSMStreamAll {
         this.sut = createGraph();
         this.triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
     }
-    @Benchmark
-    public void graphStream() {
-        var found = sut.stream().collect(Collectors.toList());
-        assertEquals(sut.size(), found.size());
-    }
 
-      /*not enough heap space on my machine, to run this test*/
-//    @Benchmark
-//    public void graphStreamParallel() {
-//        var found = sut.stream().parallel().collect(Collectors.toList());
-//        assertEquals(sut.size(), found.size());
-//    }
+
+    @Benchmark
+    public void graphContains() {
+        triples.forEach(t -> Assert.assertTrue(sut.contains(t)));
+    }
 
     @Test
     public void benchmark() throws Exception {

@@ -71,7 +71,7 @@ public abstract class TestGraphMemVariantsBase {
             }
             stopwatch.stop();
             var memoryAfter = runGcAndGetUsedMemoryInMB();
-            System.out.println("Size of triples in ArrayList: " + (int)(memoryAfter-memoryBefore) + " MB - time to load: " + stopwatch.formatTime());
+            System.out.println(String.format("Size of triples in ArrayList: %5.3f MB - time to load: %s", (memoryAfter-memoryBefore), stopwatch.formatTime()));
         }
         return triplesPerGraph;
     }

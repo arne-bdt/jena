@@ -19,11 +19,12 @@
 package org.apache.jena.mem.jmh.second;
 
 import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.*;
-import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -33,16 +34,14 @@ import org.openjdk.jmh.runner.options.TimeValue;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@State(Scope.Benchmark)
-public class TestGraphMemBigBDSMDelete {
+import static org.junit.Assert.assertTrue;
 
-    public String getParam0_GraphUri() {
-        return param0_GraphUri;
-    }
+@Ignore
+@State(Scope.Benchmark)
+public class TestGraphMemBigBSBMFindAnything {
 
     @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;
@@ -67,35 +66,73 @@ public class TestGraphMemBigBDSMDelete {
         }
     }
 
-    private List<Triple> triplesToAdd;
-    private List<Triple> triplesToDelete;
+    private List<Triple> triples;
     private Graph sut;
 
     @Setup(Level.Invocation)
-    public void setupInvokation() {
-        this.sut = createGraph();
-        triplesToAdd.forEach(sut::add);
+    public void setupInvokation() throws Exception {
         // Invocation level: to be executed for each benchmark method execution.
     }
 
     @Setup(Level.Iteration)
-    public void setupIteration() {
+    public void setupIteration() throws Exception {
         // Iteration level: to be executed before/after each iteration of the benchmark.
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() {
+    public void setupTrial() throws Exception {
         // Trial level: to be executed before/after each run of the benchmark.
-        this.triplesToAdd = TypedTripleReader.read(param0_GraphUri);
-        this.triplesToDelete = new ArrayList<>(triplesToAdd.size());
-        this.triplesToAdd.forEach(t -> triplesToDelete.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
+        this.sut = createGraph();
+        this.triples = TypedTripleReader.read(param0_GraphUri);
+        triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
     }
 
+    @Benchmark
+    public void graphFindBySamples_Subject_ANY_ANY() {
+        for (Triple sample : triples) {
+            var it = sut.find(sample.getSubject(), Node.ANY, Node.ANY);
+            assertTrue(it.hasNext());
+        }
+    }
 
     @Benchmark
-    public void graphDelete() {
-        triplesToDelete.forEach(t -> this.sut.delete(t));
-        Assert.assertTrue(this.sut.isEmpty());
+    public void graphFindBySamples_ANY_Predicate_ANY() {
+        for (Triple sample : triples) {
+            var it = sut.find(Node.ANY, sample.getPredicate(), Node.ANY);
+            assertTrue(it.hasNext());
+        }
+    }
+
+    @Benchmark
+    public void graphFindBySamples_ANY_ANY_Object() {
+        for (Triple sample : triples) {
+            var it = sut.find(Node.ANY, Node.ANY, sample.getObject());
+            assertTrue(it.hasNext());
+        }
+    }
+
+    @Benchmark
+    public void graphFindBySamples_Subject_Predicate_ANY() {
+        for (Triple sample : triples) {
+            var it = sut.find(sample.getSubject(), sample.getPredicate(), Node.ANY);
+            assertTrue(it.hasNext());
+        }
+    }
+
+    @Benchmark
+    public void graphFindBySamples_Subject_ANY_Object() {
+        for (Triple sample : triples) {
+            var it = sut.find(sample.getSubject(), Node.ANY, sample.getObject());
+            assertTrue(it.hasNext());
+        }
+    }
+
+    @Benchmark
+    public void graphFindBySamples_ANY_Predicate_Object() {
+        for (Triple sample : triples) {
+            var it = sut.find(Node.ANY, sample.getPredicate(), sample.getObject());
+            assertTrue(it.hasNext());
+        }
     }
 
     @Test
@@ -106,11 +143,11 @@ public class TestGraphMemBigBDSMDelete {
                 .include(this.getClass().getName())
                 // Set the following options as needed
                 .mode (Mode.AverageTime)
-                .timeUnit(TimeUnit.SECONDS)
+                .timeUnit(TimeUnit.MILLISECONDS)
                 .warmupTime(TimeValue.NONE)
-                .warmupIterations(3)
+                .warmupIterations(5)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(10)
+                .measurementIterations(15)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)

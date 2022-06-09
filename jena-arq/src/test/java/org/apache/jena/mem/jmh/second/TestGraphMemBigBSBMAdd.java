@@ -19,12 +19,10 @@
 package org.apache.jena.mem.jmh.second;
 
 import org.apache.jena.graph.Graph;
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.*;
-import org.apache.jena.util.iterator.ExtendedIterator;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -34,20 +32,18 @@ import org.openjdk.jmh.runner.options.TimeValue;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertTrue;
-
 @State(Scope.Benchmark)
-public class TestGraphMemBigBDSMFindBySamples {
+public class TestGraphMemBigBSBMAdd {
+
+    public String getParam0_GraphUri() {
+        return param0_GraphUri;
+    }
 
     @Param({"./../jena-examples/src/main/resources/data/BSBM_50000.ttl.gz"})
     public String param0_GraphUri;
-
-    @Param({"100"})
-    public int param2_sampleSize;
 
     @Param({
             "GraphMem",
@@ -69,8 +65,7 @@ public class TestGraphMemBigBDSMFindBySamples {
         }
     }
 
-    private List<Triple> samples;
-    private Graph sut;
+    private List<Triple> triples;
 
     @Setup(Level.Invocation)
     public void setupInvokation() throws Exception {
@@ -85,79 +80,14 @@ public class TestGraphMemBigBDSMFindBySamples {
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
         // Trial level: to be executed before/after each run of the benchmark.
-        this.sut = createGraph();
-        var triples = TypedTripleReader.read(param0_GraphUri);
-        triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
-
-        this.samples = new ArrayList<>(param2_sampleSize);
-        var sampleIncrement = triples.size() / param2_sampleSize;
-        for(var i=0; i< triples.size(); i+=sampleIncrement) {
-            this.samples.add(triples.get(i));
-        }
+        this.triples = TypedTripleReader.read(param0_GraphUri);
     }
+
 
     @Benchmark
-    public void graphFindBySamples_Subject_ANY_ANY() {
-        var total = 0;
-        for (Triple sample : samples) {
-            total += count(sut.find(sample.getSubject(), Node.ANY, Node.ANY));
-        }
-        assertTrue(total > 0);
-    }
-
-    @Benchmark
-    public void graphFindBySamples_ANY_Predicate_ANY() {
-        var total = 0;
-        for (Triple sample : samples) {
-            total += count(sut.find(Node.ANY, sample.getPredicate(), Node.ANY));
-        }
-        assertTrue(total > 0);
-    }
-
-    @Benchmark
-    public void graphFindBySamples_ANY_ANY_Object() {
-        var total = 0;
-        for (Triple sample : samples) {
-            total += count(sut.find(Node.ANY, Node.ANY, sample.getObject()));
-        }
-        assertTrue(total > 0);
-    }
-
-    @Benchmark
-    public void graphFindBySamples_Subject_Predicate_ANY() {
-        var total = 0;
-        for (Triple sample : samples) {
-            total += count(sut.find(sample.getSubject(), sample.getPredicate(), Node.ANY));
-        }
-        assertTrue(total > 0);
-    }
-
-    @Benchmark
-    public void graphFindBySamples_Subject_ANY_Object() {
-        var total = 0;
-        for (Triple sample : samples) {
-            total += count(sut.find(sample.getSubject(), Node.ANY, sample.getObject()));
-        }
-        assertTrue(total > 0);
-    }
-
-    @Benchmark
-    public void graphFindBySamples_ANY_Predicate_Object() {
-        var total = 0;
-        for (Triple sample : samples) {
-            total += count(sut.find(Node.ANY, sample.getPredicate(), sample.getObject()));
-        }
-        assertTrue(total > 0);
-    }
-
-    private static int count(final ExtendedIterator extendedIterator) {
-        var count = 0;
-        while(extendedIterator.hasNext()) {
-            extendedIterator.next();
-            count++;
-        }
-        extendedIterator.close();
-        return count;
+    public void graphAdd() {
+        var sut = createGraph();
+        triples.forEach(sut::add);
     }
 
     @Test
@@ -168,11 +98,11 @@ public class TestGraphMemBigBDSMFindBySamples {
                 .include(this.getClass().getName())
                 // Set the following options as needed
                 .mode (Mode.AverageTime)
-                .timeUnit(TimeUnit.MILLISECONDS)
+                .timeUnit(TimeUnit.SECONDS)
                 .warmupTime(TimeValue.NONE)
                 .warmupIterations(5)
                 .measurementTime(TimeValue.NONE)
-                .measurementIterations(15)
+                .measurementIterations(10)
                 .threads(1)
                 .forks(1)
                 .shouldFailOnError(true)
