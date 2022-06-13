@@ -318,9 +318,9 @@ public class TripleSetWithNodeHashes implements Set<Triple> {
             }
         } else if(pm.isConcrete()) { // SPO:*P?
             if(om.isConcrete()) {   // SPO:*PO
-                return new ArrayWithNullsIteratorSubjectPredicateAny(
+                return new ArrayWithNullsIteratorAnyPredicateObject(
                         entries,
-                        hashCodesOfSubjectIndexingValue, hashCodesOfPredicateIndexingValue,
+                        hashCodesOfPredicateIndexingValue, hashCodesOfObjectIndexingValue,
                         sm, pm);
             } else {  // SPO:*P*
                 return new ArrayWithNullsIteratorAnyPredicateAny(

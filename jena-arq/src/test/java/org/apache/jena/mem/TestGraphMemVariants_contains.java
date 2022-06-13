@@ -33,13 +33,13 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
 
     @Test
     public void pizza_owl_rdf() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 400,
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/pizza.owl.rdf");
     }
 
     @Test
     public void cheeses_ttl() {
-        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 400,
+        loadGraphsMeasureTimeAndMemory_contains(graphImplementationsToTest, 1,
                 "./../jena-examples/src/main/resources/data/cheeses-0.1.ttl");
     }
 
@@ -145,6 +145,7 @@ public class TestGraphMemVariants_contains extends TestGraphMemVariantsBase {
                     for(int k=0; k<50; k++) {
                         for (Triple t : triples) {
                             if (!graph.contains(Triple.create(t.getSubject(), t.getPredicate(), t.getObject()))) {
+                                graph.contains(Triple.create(t.getSubject(), t.getPredicate(), t.getObject()));
                                 Assert.fail();
                             }
                         }

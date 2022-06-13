@@ -22,7 +22,6 @@ import org.apache.jena.graph.Triple;
 
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -32,7 +31,7 @@ import java.util.stream.StreamSupport;
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
  */
-public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexingValue {
+public abstract class FastTripleHashSetWithIndexingValue2 implements TripleSetWithIndexingValue2 {
     @Override
     public boolean areOperationsWithHashCodesSupported() {
         return true;
@@ -47,12 +46,17 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
         return other -> value.equals(other);
     }
 
+    protected abstract int combineNodeHashes(final int hashCodeOfNode1, final int hashCodeOfNode2);
+
+    protected abstract int getHashCodeOfNode1(final Triple triple);
+    protected abstract int getHashCodeOfNode2(final Triple triple);
 
     private static int MINIMUM_SIZE = 16;
     private static float loadFactor = 0.5f;
     protected int size = 0;
     protected Triple[] entries;
-    protected int[] hashCodes;
+    protected int[] hashCodesOfNode1;
+    protected int[] hashCodesOfNode2;
 
     private final Object indexingValue;
 
@@ -61,14 +65,17 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
         return this.indexingValue;
     }
 
-    public FastTripleHashSetWithIndexingValue(TripleSetWithIndexingValue set) {
+    public FastTripleHashSetWithIndexingValue2(TripleSetWithIndexingValue2 set) {
         this.indexingValue = set.getIndexingValue();
         this.entries = new Triple[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
-        this.hashCodes = new int[entries.length];
-        int index, hashCode;
+        this.hashCodesOfNode1 = new int[entries.length];
+        this.hashCodesOfNode2 = new int[entries.length];
+        int index, hashCodeOfNode1, hashCodeOfNode2;
         for (Triple t : set) {
-            entries[index = findEmptySlotWithoutEqualityCheck(hashCode = t.hashCode())] = t;
-            hashCodes[index] = hashCode;
+            index = findEmptySlotWithoutEqualityCheck(combineNodeHashes(hashCodeOfNode1 = getHashCodeOfNode1(t), hashCodeOfNode2 = getHashCodeOfNode2(t)));
+            entries[index] = t;
+            hashCodesOfNode1[index] = hashCodeOfNode1;
+            hashCodesOfNode2[index] = hashCodeOfNode2;
             size++;
         }
     }
@@ -80,37 +87,42 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
         return -1;
     }
 
-    private void grow(final int minCapacity) {
-        final var oldEntries = this.entries;
-        final var oldHashCodes = this.hashCodes;
-        this.entries = new Triple[Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1];
-        this.hashCodes = new int[entries.length];
-        for(int i=0; i<oldEntries.length; i++) {
-            if(null != oldEntries[i]) {
-                var newSlot = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
-                this.entries[newSlot] = oldEntries[i];
-                this.hashCodes[newSlot] = oldHashCodes[i];
-            }
-        }
+    private void growToMinCapacity(final int minCapacity) {
+        grow(Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1);
     }
 
-    private boolean grow() {
+    private boolean growIfNeeded() {
         final var newSize = calcNewSize();
         if(newSize < 0) {
             return false;
         }
+        grow(newSize);
+        return true;
+    }
+
+    private void grow() {
+        final var newSize = calcNewSize();
+        if(newSize < 0) {
+            return;
+        }
+        grow(newSize);
+    }
+
+    private void grow(final int newSize) {
         final var oldEntries = this.entries;
-        final var oldHashCodes = this.hashCodes;
+        final var hashCodesOfNode1 = this.hashCodesOfNode1;
+        final var hashCodesOfNode2 = this.hashCodesOfNode2;
         this.entries = new Triple[newSize];
-        this.hashCodes = new int[newSize];
+        this.hashCodesOfNode1 = new int[newSize];
+        this.hashCodesOfNode2 = new int[newSize];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
-                var newSlot = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
+                var newSlot = findEmptySlotWithoutEqualityCheck(combineNodeHashes(hashCodesOfNode1[i], hashCodesOfNode2[i]));
                 this.entries[newSlot] = oldEntries[i];
-                this.hashCodes[newSlot] = oldHashCodes[i];
+                this.hashCodesOfNode1[newSlot] = hashCodesOfNode1[i];
+                this.hashCodesOfNode2[newSlot] = hashCodesOfNode2[i];
             }
         }
-        return true;
     }
 
     /**
@@ -137,14 +149,17 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
 
     @Override
     public boolean contains(Object o) {
-        final var e = (Triple)o;
-        final int hashCode;
-        var index = calcStartIndexByHashCode(hashCode = e.hashCode());
+        final var t = (Triple)o;
+        final int hashCodeOfNode1, hashCodeOfNode2;
+        var index = calcStartIndexByHashCode(
+                combineNodeHashes(hashCodeOfNode1 = getHashCodeOfNode1(t), hashCodeOfNode2 = getHashCodeOfNode2(t)));
         if(null == entries[index]) {
             return false;
         }
-        var predicate = getContainsPredicate(e);
-        if(hashCode == hashCodes[index] && predicate.test(entries[index])) {
+        var predicate = getContainsPredicate(t);
+        if(hashCodeOfNode1 == hashCodesOfNode1[index]
+                && hashCodeOfNode2 == hashCodesOfNode2[index]
+                && predicate.test(entries[index])) {
             return true;
         } else if(--index < 0){
             index += entries.length;
@@ -152,7 +167,9 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
         while(true) {
             if(null == entries[index]) {
                 return false;
-            } else if(hashCode == hashCodes[index] && predicate.test(entries[index])) {
+            } else if(hashCodeOfNode1 == hashCodesOfNode1[index]
+                    && hashCodeOfNode2 == hashCodesOfNode2[index]
+                    && predicate.test(entries[index])) {
                 return true;
             } else if(--index < 0){
                 index += entries.length;
@@ -166,6 +183,20 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
         return new ArrayWithNullsIterator(entries, size);
     }
 
+    @Override
+    public Iterator<Triple> iterator(int hashCodeOfNode1, int hashCodeOfNode2) {
+        return new ArrayWithNullsIteratorTwoNodes(entries, hashCodesOfNode1, hashCodesOfNode2, hashCodeOfNode1, hashCodeOfNode2);
+    }
+
+    @Override
+    public Iterator<Triple> iteratorByNode1(int hashCodeOfNode1) {
+        return new ArrayWithNullsIteratorOneNode(entries, hashCodesOfNode1, hashCodeOfNode1);
+    }
+
+    @Override
+    public Iterator<Triple> iteratorByNode2(int hashCodeOfNode2) {
+        return new ArrayWithNullsIteratorOneNode(entries, hashCodesOfNode2, hashCodeOfNode2);
+    }
 
     @Override
     public Object[] toArray() {
@@ -185,111 +216,47 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
         return a;
     }
 
-    public Triple findAny() {
-        var index = -1;
-        while(entries[++index] == null);
-        return entries[index];
-    }
-
     @Override
     public boolean add(Triple value) {
-        return add(value, value.hashCode());
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean add(Triple value, int hashCode) {
+    public boolean add(Triple value, int hashCodeOfNode1, int hashCodeOfNode2) {
         grow();
-        var index = findIndex(value, hashCode);
+        var index = findIndex(value, hashCodeOfNode1, hashCodeOfNode2);
         if(index < 0) {
-            entries[~index] = value;
-            hashCodes[~index] = hashCode;
+            entries[index = ~index] = value;
+            hashCodesOfNode1[index] = hashCodeOfNode1;
+            hashCodesOfNode2[index] = hashCodeOfNode2;
             size++;
             return true;
         }
         return false;
     }
 
-    @Override
     public void addUnsafe(Triple value) {
-        addUnsafe(value, value.hashCode());
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public void addUnsafe(Triple value, int hashCode) {
+    public void addUnsafe(Triple value, int hashCodeOfNode1, int hashCodeOfNode2) {
         grow();
-        var index = findEmptySlotWithoutEqualityCheck(hashCode);
+        var index = findEmptySlotWithoutEqualityCheck(combineNodeHashes(hashCodeOfNode1, hashCodeOfNode2));
         entries[index] = value;
-        hashCodes[index] = hashCode;
+        hashCodesOfNode1[index] = hashCodeOfNode1;
+        hashCodesOfNode2[index] = hashCodeOfNode2;
         size++;
     }
 
-    public Triple addIfAbsent(Triple value) {
-        grow();
-        final int hashCode;
-        final var index = findIndex(value, hashCode = value.hashCode());
-        if(index < 0) {
-            entries[~index] = value;
-            hashCodes[~index] = hashCode;
-            size++;
-            return value;
-        }
-        return entries[index];
-    }
-
-    public Triple getIfPresent(Triple value) {
-        final int hashCode;
-        var index = calcStartIndexByHashCode(hashCode = value.hashCode());
-        while(true) {
-            if(null == entries[index]) {
-                return null;
-            } else if(hashCode == hashCodes[index] && value.equals(entries[index])) {
-                return entries[index];
-            } else if(--index < 0){
-                index += entries.length;
-            }
-        }
-    }
-
-    public Triple compute(Triple value, Function<Triple, Triple> remappingFunction) {
-        final int hashCode;
-        var index = findIndex(value, hashCode = value.hashCode());
-        if(index < 0) { /*value does not exist yet*/
-            var newValue = remappingFunction.apply(null);
-            if(newValue == null) {
-                return null;
-            }
-            if(!value.equals(newValue)) {
-                throw new IllegalArgumentException("remapped value is not equal to value");
-            }
-            if(grow()) {
-                index = findEmptySlotWithoutEqualityCheck(hashCode);
-            } else {
-                index = ~index;
-            }
-            entries[index] = newValue;
-            hashCodes[index] = hashCode;
-            size++;
-            return newValue;
-        } else { /*existing value found*/
-            var newValue = remappingFunction.apply(entries[index]);
-            if(newValue == null) {
-                entries[index] = null;
-                size--;
-                rearrangeNeighbours(index);
-                return null;
-            } else {
-                entries[index] = newValue;
-                return newValue;
-            }
-        }
-    }
-
-    private int findIndex(final Triple e, final int hashCode) {
-        var index = calcStartIndexByHashCode(hashCode);
+    private int findIndex(final Triple e, final int hashCodeOfNode1, final int hashCodeOfNode2) {
+        var index = calcStartIndexByHashCode(combineNodeHashes(hashCodeOfNode1, hashCodeOfNode2));
         while(true) {
             if(null == entries[index]) {
                 return ~index;
-            } else if(hashCode == hashCodes[index] && e.equals(entries[index])) {
+            } else if(hashCodeOfNode1 == hashCodesOfNode1[index]
+                    && hashCodeOfNode2 == hashCodesOfNode2[index]
+                    && e.equals(entries[index])) {
                 return index;
             } else if(--index < 0){
                 index += entries.length;
@@ -330,28 +297,31 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
      */
     @Override
     public boolean remove(Object o) {
-        var e = (Triple)o;
-        return remove(e, e.hashCode());
+        throw new UnsupportedOperationException();
     }
 
-    public boolean remove(Triple e, int hashCode) {
-        var index = findIndex(e, hashCode);
+    @Override
+    public boolean remove(Triple t, int hashCodeOfNode1, int hashCodeOfNode2) {
+        var index = findIndex(t, hashCodeOfNode1, hashCodeOfNode2);
         if (index < 0) {
             return false;
         }
         entries[index] = null;
+        hashCodesOfNode1[index] = 0;
+        hashCodesOfNode2[index] = 0;
         size--;
         rearrangeNeighbours(index);
         return true;
     }
 
     public void removeUnsafe(Triple e) {
-        removeUnsafe(e, e.hashCode());
+        throw new UnsupportedOperationException();
     }
 
-    public void removeUnsafe(Triple e, int hashCode) {
-        var index = findIndex(e, hashCode);
+    public void removeUnsafe(Triple e, int hashCodeOfNode1, int hashCodeOfNode2) {
+        var index = findIndex(e, hashCodeOfNode1, hashCodeOfNode2);
         entries[index] = null;
+        hashCodesOfNode1[index] = hashCodesOfNode2[index] = 0;
         size--;
         rearrangeNeighbours(index);
     }
@@ -373,8 +343,10 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
                 if (neighbour.isTargetIndexNearerToStartIndex(index)){
                     var oldIndexOfNeighbour = neighbour.currentIndex;
                     entries[index] = entries[oldIndexOfNeighbour];
-                    hashCodes[index] = hashCodes[oldIndexOfNeighbour];
+                    hashCodesOfNode1[index] = hashCodesOfNode1[oldIndexOfNeighbour];
+                    hashCodesOfNode2[index] = hashCodesOfNode2[oldIndexOfNeighbour];
                     entries[oldIndexOfNeighbour] = null;
+                    hashCodesOfNode1[oldIndexOfNeighbour] = hashCodesOfNode2[oldIndexOfNeighbour] = 0;
                     neighbour.setCurrentIndex(index);
                     index = oldIndexOfNeighbour;
                     Arrays.sort(neighbours, ObjectsWithStartIndexIndexAndDistance.distanceComparator);
@@ -398,7 +370,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
                 break;
             } else {
                 neighbour = new ObjectsWithStartIndexIndexAndDistance(
-                        entries.length, calcStartIndexByHashCode(hashCodes[i]), i);
+                        entries.length, calcStartIndexByHashCode(combineNodeHashes(hashCodesOfNode1[i], hashCodesOfNode2[i])), i);
                 if(neighbour.distance > 0) {
                     neighbours.add(neighbour);
                 }
@@ -414,7 +386,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
                 break;
             } else {
                 neighbour = new ObjectsWithStartIndexIndexAndDistance(
-                        entries.length, calcStartIndexByHashCode(hashCodes[i]), i);
+                        entries.length, calcStartIndexByHashCode(combineNodeHashes(hashCodesOfNode1[i], hashCodesOfNode2[i])), i);
                 if(neighbour.distance > 0) {
                     neighbours.add(neighbour);
                 }
@@ -508,19 +480,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
      */
     @Override
     public boolean addAll(Collection<? extends Triple> c) {
-        grow(size + c.size());
-        boolean modified = false;
-        int index;
-        int hashCode;
-        for (Triple t : c) {
-            if((index=findIndex(t, hashCode = t.hashCode())) < 0) {
-                entries[~index] = t;
-                hashCodes[~index] = hashCode;
-                size++;
-                modified = true;
-            }
-        }
-        return modified;
+        throw new UnsupportedOperationException();
     }
 
     /**
@@ -588,7 +548,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
     @Override
     public void clear() {
         entries = new Triple[MINIMUM_SIZE];
-        hashCodes = new int[MINIMUM_SIZE];
+        hashCodesOfNode1 = new int[MINIMUM_SIZE];
         size = 0;
     }
 
@@ -1010,6 +970,73 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
                 return entries[pos];
             }
             throw new NoSuchElementException();
+        }
+    }
+
+    private static class ArrayWithNullsIteratorOneNode implements Iterator<Triple> {
+
+        protected final Triple[] entries;
+        protected final int[] hashCodesOfNode1;
+        protected final int hashCodeOfNode1;
+        protected boolean hasCurrent = false;
+
+        protected int pos;
+
+        private ArrayWithNullsIteratorOneNode(final Triple[] entries, final int[] hashCodesOfNode1, final int hashCodeOfNode1) {
+            this.entries = entries;
+            this.hashCodesOfNode1 = hashCodesOfNode1;
+            this.hashCodeOfNode1 = hashCodeOfNode1;
+            pos = entries.length;
+        }
+
+        @Override
+        public boolean hasNext() {
+            if(hasCurrent) {
+                return true;
+            }
+            while(pos-- > 0) {
+                if(hashCodeOfNode1 == hashCodesOfNode1[pos]
+                        && entries[pos] != null) {
+                    return hasCurrent = true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public Triple next() {
+            if (hasCurrent || hasNext()) {
+                hasCurrent = false;
+                return entries[pos];
+            }
+            throw new NoSuchElementException();
+        }
+    }
+
+    private static class ArrayWithNullsIteratorTwoNodes extends ArrayWithNullsIteratorOneNode {
+
+        protected final int[] hashCodesOfNode2;
+        protected final int hashCodeOfNode2;
+
+        private ArrayWithNullsIteratorTwoNodes(final Triple[] entries, int[] hashCodesOfNode1, int[] hashCodesOfNode2, final int hashCodeOfNode1, final int hashCodeOfNode2) {
+            super(entries, hashCodesOfNode1, hashCodeOfNode1);
+            this.hashCodesOfNode2 = hashCodesOfNode2;
+            this.hashCodeOfNode2 = hashCodeOfNode2;
+        }
+
+        @Override
+        public boolean hasNext() {
+            if(hasCurrent) {
+                return true;
+            }
+            while(pos-- > 0) {
+                if(hashCodeOfNode1 == hashCodesOfNode1[pos]
+                        && hashCodeOfNode2 == hashCodesOfNode2[pos]
+                        && entries[pos] != null) {
+                    return hasCurrent = true;
+                }
+            }
+            return false;
         }
     }
 }

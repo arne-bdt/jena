@@ -50,7 +50,8 @@ public class TestGraphMemBigBSBMDelete {
     @Param({
             "GraphMem",
             "GraphMem2",
-            "GraphMem2Fast"
+            "GraphMem2Fast",
+            "GraphMem2Fast2"
     })
     public String param1_GraphImplementation;
 
@@ -62,6 +63,8 @@ public class TestGraphMemBigBSBMDelete {
                 return new GraphMem2();
             case "GraphMem2Fast":
                 return new GraphMem2Fast();
+            case "GraphMem2Fast2":
+                return new GraphMem2Fast2();
             default:
                 throw new IllegalArgumentException();
         }

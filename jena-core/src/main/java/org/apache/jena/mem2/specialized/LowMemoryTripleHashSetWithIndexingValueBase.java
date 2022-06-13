@@ -67,12 +67,9 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
 
     public LowMemoryTripleHashSetWithIndexingValueBase(Set<? extends Triple> set) {
         this.entries = new Triple[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
-        int index;
         for (Triple e : set) {
-            if((index = findIndex(e, getHashCode(e))) < 0) {
-                entries[~index] = e;
-                size++;
-            }
+            entries[findEmptySlotWithoutEqualityCheck(getHashCode(e))] = e;
+            size++;
         }
     }
 
