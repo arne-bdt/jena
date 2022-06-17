@@ -37,13 +37,11 @@ public abstract class TestGraphMemVariantsBase {
 
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
 
-            //Pair.of("GraphMem", () -> new GraphMem()),
+            Pair.of("GraphMem", () -> new GraphMem()),
 
-            //Pair.of("GraphMem2", () -> new GraphMem2()),
+            Pair.of("GraphMem2", () -> new GraphMem2()),
 
-            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast()),
-
-            Pair.of("GraphMem2Fast2", () -> new GraphMem2Fast2())
+            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast())
     );
 
     protected static Random random = new Random();
