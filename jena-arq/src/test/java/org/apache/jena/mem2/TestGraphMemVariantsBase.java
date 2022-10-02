@@ -25,18 +25,12 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
-import org.apache.jena.mem.GraphMemWithArrayListOnly;
 import org.apache.jena.mem.TypedTripleReader;
-import org.apache.jena.mem.sorted.GraphMemUsingHashMapSorted;
-import org.apache.jena.mem.sorted.experiment.GraphMemUsingHashMapSortedExperiment;
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public abstract class TestGraphMemVariantsBase {
 
@@ -45,9 +39,9 @@ public abstract class TestGraphMemVariantsBase {
     protected List<Pair<String, Supplier<Graph>>> graphImplementationsToTest = List.of(
             Pair.of("GraphMem", () -> new GraphMem()),
 
-            Pair.of("GraphMem2", () -> new GraphMem2()),
+            Pair.of("GraphMem2", () -> new GraphMem2LowMemory()),
 
-            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast())
+            Pair.of("GraphMem2Fast", () -> new GraphMem2())
     );
 
     protected static Random random = new Random();

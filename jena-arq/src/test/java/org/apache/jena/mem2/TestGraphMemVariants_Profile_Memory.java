@@ -118,7 +118,7 @@ public class TestGraphMemVariants_Profile_Memory extends TestGraphMemVariantsBas
         RDFDataMgr.read(loadingGraph, graphUri);
         var allTriples = new ArrayList<>(loadingGraph.triples);
 
-        var sut = new GraphMem2();
+        var sut = new GraphMem2LowMemory();
         allTriples.forEach(sut::add);
 
         var sut2 = new GraphMem();

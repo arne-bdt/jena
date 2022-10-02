@@ -34,7 +34,7 @@ import java.util.stream.StreamSupport;
  */
 public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements TripleSetWithIndexingValue {
     @Override
-    public boolean areOperationsWithHashCodesSupported() {
+    public final boolean areOperationsWithHashCodesSupported() {
         return true;
     }
 

@@ -41,7 +41,7 @@ public abstract class TestGraphMemVariantsBase {
 
             Pair.of("GraphMem2", () -> new GraphMem2()),
 
-            Pair.of("GraphMem2Fast", () -> new GraphMem2Fast())
+            Pair.of("GraphMem2LowMemory", () -> new GraphMem2LowMemory())
     );
 
     protected static Random random = new Random();

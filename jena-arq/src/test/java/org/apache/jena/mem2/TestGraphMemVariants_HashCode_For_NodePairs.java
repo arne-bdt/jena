@@ -101,6 +101,13 @@ public class TestGraphMemVariants_HashCode_For_NodePairs extends TestGraphMemVar
         var collisionsSP = new CollisionSummary(byHashCodeSP);
         var collisionsPS = new CollisionSummary(byHashCodePS);
         int i=0;
+        System.out.println(String.format("OP: %2.6f - PO: %2.6f - SO: %2.6f - OS:  %2.6f - SP: %2.6f - PS: %2.6f",
+                collisionsOP.collisionsPerNodePerCent,
+                collisionsPO.collisionsPerNodePerCent,
+                collisionsSO.collisionsPerNodePerCent,
+                collisionsOS.collisionsPerNodePerCent,
+                collisionsSP.collisionsPerNodePerCent,
+                collisionsPS.collisionsPerNodePerCent));
     }
 
     private static class CollisionSummary {
@@ -173,7 +180,10 @@ public class TestGraphMemVariants_HashCode_For_NodePairs extends TestGraphMemVar
 
         @Override
         public int hashCode() {
-            return (31 * one.hashCode()) ^ two.hashCode();
+            var hash = 17 * 37 +one.hashCode();
+            return hash * 37 + two.hashCode();
+
+            //return (31 * one.hashCode()) ^ two.hashCode();
             //return (31 * one.hashCode()) + two.hashCode();
             //return (127 * one.hashCode()) ^ two.hashCode();
             //return (one.hashCode() >> 1) ^ two.hashCode();

@@ -57,8 +57,8 @@ public class TestGraphMemBigBSBMStreamAll {
                 return new GraphMem();
             case "GraphMem2":
                 return new GraphMem2();
-            case "GraphMem2Fast":
-                return new GraphMem2Fast();
+            case "GraphMem2LowMemory":
+                return new GraphMem2LowMemory();
             default:
                 throw new IllegalArgumentException();
         }

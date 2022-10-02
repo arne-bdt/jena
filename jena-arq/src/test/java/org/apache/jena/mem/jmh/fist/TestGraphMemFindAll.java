@@ -23,7 +23,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TypedTripleReader;
 import org.apache.jena.mem2.*;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
@@ -69,8 +68,8 @@ public class TestGraphMemFindAll {
                 return new GraphMem();
             case "GraphMem2":
                 return new GraphMem2();
-            case "GraphMem2Fast":
-                return new GraphMem2Fast();
+            case "GraphMem2LowMemory":
+                return new GraphMem2LowMemory();
             default:
                 throw new IllegalArgumentException();
         }

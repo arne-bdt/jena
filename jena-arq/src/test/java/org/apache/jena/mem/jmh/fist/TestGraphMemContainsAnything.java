@@ -23,8 +23,8 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TypedTripleReader;
+import org.apache.jena.mem2.GraphMem2LowMemory;
 import org.apache.jena.mem2.GraphMem2;
-import org.apache.jena.mem2.GraphMem2Fast;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -72,8 +72,8 @@ public class TestGraphMemContainsAnything {
                 return new GraphMem();
             case "GraphMem2":
                 return new GraphMem2();
-            case "GraphMem2Fast":
-                return new GraphMem2Fast();
+            case "GraphMem2LowMemory":
+                return new GraphMem2LowMemory();
             default:
                 throw new IllegalArgumentException();
         }

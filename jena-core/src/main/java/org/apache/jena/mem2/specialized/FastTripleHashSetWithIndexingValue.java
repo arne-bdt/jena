@@ -34,7 +34,7 @@ import java.util.stream.StreamSupport;
  */
 public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexingValue {
     @Override
-    public boolean areOperationsWithHashCodesSupported() {
+    public final boolean areOperationsWithHashCodesSupported() {
         return true;
     }
 
