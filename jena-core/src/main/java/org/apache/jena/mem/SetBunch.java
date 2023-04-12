@@ -29,7 +29,7 @@ import org.apache.jena.util.iterator.WrappedIterator ;
 
 /**
     @deprecated
-    This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+    This class is only needed for the deprecated {@link GraphMem}.
  */
 @Deprecated(since = "4.5.0")
 public class SetBunch implements TripleBunch

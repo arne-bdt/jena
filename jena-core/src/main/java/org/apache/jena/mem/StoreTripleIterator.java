@@ -30,7 +30,7 @@ import org.apache.jena.graph.* ;
      can be removed from the other two maps, which are passed in when this 
      StoreTripleIterator is created.
      @deprecated
-     This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+     This class is only needed for the deprecated {@link GraphMem}.
 */
 @Deprecated(since = "4.5.0")
 public class StoreTripleIterator extends TrackingTripleIterator

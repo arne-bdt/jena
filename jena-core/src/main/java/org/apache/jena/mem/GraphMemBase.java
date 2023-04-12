@@ -18,9 +18,7 @@
 
 package org.apache.jena.mem;
 
-import org.apache.jena.graph.Triple ;
 import org.apache.jena.graph.impl.GraphBase ;
-import org.apache.jena.graph.impl.TripleStore ;
 
 /**
      GraphMemBase - a common base class for GraphMem and SmallGraphMem.
@@ -41,7 +39,7 @@ public abstract class GraphMemBase extends GraphBase {
     /**
      * initialise a GraphMemBase with its count set to 1.
      */
-    public GraphMemBase() {
+    protected GraphMemBase() {
         count = 1;
     }
 

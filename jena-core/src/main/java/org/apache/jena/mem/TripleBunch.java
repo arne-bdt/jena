@@ -26,7 +26,7 @@ import org.apache.jena.util.iterator.ExtendedIterator ;
     bunch is expected to store triples that share some useful property 
     (such as having the same subject or predicate).
     @deprecated
-    This interface is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+    This interface is only needed for the deprecated {@link GraphMem}.
 */
 @Deprecated(since = "4.5.0")
 public interface TripleBunch 

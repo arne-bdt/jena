@@ -27,7 +27,7 @@ import org.apache.jena.graph.impl.TripleStore ;
     ripped out from the heart of GraphMem as part of simplifying the reification code.
     A GraphTripleStore is a searchable repository for triples. 
     @deprecated
-    This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+    This class is only needed for the deprecated {@link GraphMem}.
 */
 @Deprecated(since = "4.5.0")
 public class GraphTripleStore extends GraphTripleStoreBase implements TripleStore

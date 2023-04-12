@@ -41,6 +41,12 @@ public abstract class FastHashSetBase<E> implements Set<E> {
     protected E[] entries;
     protected int[] hashCodes;
 
+    /**
+     * This method must be overridden by subclasses to create an array of the correct type.
+     * It is used to avoid the performance penalty of using reflection to create an array.
+     * @param length
+     * @return
+     */
     protected abstract E[] createEntryArray(final int length);
 
     public FastHashSetBase() {

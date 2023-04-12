@@ -24,7 +24,7 @@ import org.apache.jena.graph.impl.TripleStore ;
 
 /**
    @deprecated
-   This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+   This class is only needed for the deprecated {@link GraphMem}.
  */
 @Deprecated(since = "4.5.0")
 public class GraphTripleStoreMem extends GraphTripleStoreBase implements TripleStore

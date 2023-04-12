@@ -30,7 +30,7 @@ import org.apache.jena.util.iterator.NiceIterator ;
     (because, if it gets big enough for this linear growth to be bad, it should anyways
     have been replaced by a more efficient set-of-triples implementation).
     @deprecated
-    This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+    This class is only needed for the deprecated {@link GraphMem}.
  */
 @Deprecated(since = "4.5.0")
 public class ArrayBunch implements TripleBunch

@@ -26,7 +26,7 @@ import org.apache.jena.util.iterator.ExtendedIterator ;
     A pruned (and slightly stewed) version of Map, containing just those operations
     required by NodeToTriplesMaps. BunchMaps contain only TripleBunch's.
     @deprecated
-    This interface is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+    This interface is only needed for the deprecated {@link GraphMem}.
 */
 @Deprecated(since = "4.5.0")
 public interface BunchMap

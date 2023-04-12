@@ -43,7 +43,7 @@ import java.util.stream.Stream;
  * This implementation basically follows the same pattern as GraphMem:
  * - all triples are stored in three hash maps:
  *   - one with subjects as key, one with predicates as key and one with objects as key
- * Main differences between GraphMemUsingHashMap and GraphMem:
+ * Main differences between GraphMem2 and GraphMem:
  * - GraphMem2 optimizes find operations by
  *   - implementing every possible permutation to avoid unnecessary repeated condition checks (Node.isConcrete)
  *   - careful order of conditions to fail as fast as possible

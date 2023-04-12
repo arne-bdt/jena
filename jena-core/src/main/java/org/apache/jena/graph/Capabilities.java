@@ -19,7 +19,6 @@
 package org.apache.jena.graph;
 
 import org.apache.jena.mem.GraphMem;
-import org.apache.jena.mem.GraphMemUsingHashMap;
 
 /**
  * Interface for expressing capabilities.
@@ -46,7 +45,7 @@ public interface Capabilities {
     /**
      * Answer true iff this graph compares literals for equality by value in find()
      * operations, rather just applying RDFTerm equality. Only applies to
-     * {@link GraphMemUsingHashMap} and the deperecated {@link GraphMem}.
+     * {@link GraphMem}.
      * TDB models have this effect because of canonicalization for
      * certain datatypes and ranges, SDB models don't.
      */

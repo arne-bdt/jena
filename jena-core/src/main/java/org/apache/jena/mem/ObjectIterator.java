@@ -31,7 +31,7 @@ import org.apache.jena.util.iterator.NiceIterator ;
     mapping that indexing value to all the triples that use it, and then
     filtering those triples for their objects, removing duplicates.
     @deprecated
-    This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+    This class is only needed for the deprecated {@link GraphMem}.
 */
 @Deprecated(since = "4.5.0")
 public abstract class ObjectIterator extends NiceIterator<Node>

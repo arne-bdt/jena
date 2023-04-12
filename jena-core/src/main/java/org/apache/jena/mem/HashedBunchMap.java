@@ -25,7 +25,7 @@ import org.apache.jena.shared.BrokenException ;
 /**
     An implementation of BunchMap that does open-addressed hashing.
     @deprecated
-    This class is only needed for the deprecated {@link GraphMem}, which is replaced by {@link GraphMemUsingHashMap}
+    This class is only needed for the deprecated {@link GraphMem}.
 */
 @Deprecated(since = "4.5.0")
 public class HashedBunchMap extends HashCommon<Object> implements BunchMap

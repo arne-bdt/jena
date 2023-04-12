@@ -18,8 +18,8 @@
 
 package org.apache.jena.graph;
 
-import org.apache.jena.graph.impl.GraphBase ;
-import org.apache.jena.mem.GraphMemUsingHashMap;
+import org.apache.jena.graph.impl.GraphBase;
+import org.apache.jena.mem.GraphMem;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 import org.apache.jena.util.iterator.NullIterator ;
 
@@ -41,13 +41,13 @@ public class Factory
         { return Factory.createGraphMem( ); }
 
     public static Graph createGraphMem()
-        { return new GraphMemUsingHashMap(); }
+        { return new GraphMem(); }
 
     /** @deprecated To be removed */
     @Deprecated
     public static Graph createGraphMemWithTransactionHandler( final TransactionHandler th )
         {
-        Graph g = new GraphMemUsingHashMap()
+        Graph g = new GraphMem()
             {
             @Override
             public TransactionHandler getTransactionHandler()
