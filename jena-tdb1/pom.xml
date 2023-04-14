@@ -135,6 +135,10 @@
           <windowtitle>Apache Jena TDB</windowtitle>
           <doctitle>Apache Jena TDB ${project.version}</doctitle>
           <excludePackageNames>org.apache.jena.tdb.*</excludePackageNames>
+          <additionalOptions>
+            <option>--add-modules</option>
+            <option>java.management</option>
+          </additionalOptions>
         </configuration>
       </plugin>
 

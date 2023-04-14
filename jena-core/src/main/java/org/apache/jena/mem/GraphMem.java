@@ -29,10 +29,18 @@ import org.apache.jena.util.iterator.ExtendedIterator ;
 @Deprecated
 public class GraphMem extends GraphMemBase
 {
-    public GraphMem()
-    { super(  ); }
+    /**
+     * This Graph's TripleStore. Visible for <i>read-only</i> purposes only.
+     */
+    public final TripleStore store;
 
-    @Override protected TripleStore createTripleStore()
+    public GraphMem()
+    {
+        super(  );
+        store = createTripleStore();
+    }
+
+    protected TripleStore createTripleStore()
     { return new GraphTripleStoreMem( this ); }
 
     @Override protected void destroy()

@@ -259,6 +259,10 @@
               <packages>org.apache.jena.riot</packages>
             </group>
           </groups>
+          <additionalOptions>
+            <option>--add-modules</option>
+            <option>java.management,java.net.http,java.scripting,java.xml.crypto</option>
+          </additionalOptions>
         </configuration>
       </plugin>
     </plugins>

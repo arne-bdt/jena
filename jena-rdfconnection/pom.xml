@@ -140,6 +140,10 @@
         <configuration>
           <windowtitle>Apache Jena RDF Connection</windowtitle>
           <doctitle>Apache Jena RDF Connection ${project.version}</doctitle>
+          <additionalOptions>
+            <option>--add-modules</option>
+            <option>java.net.http</option>
+          </additionalOptions>
         </configuration>
       </plugin>
 

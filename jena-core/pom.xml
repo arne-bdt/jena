@@ -205,6 +205,10 @@
               <packages>org.apache.jena.assembler</packages>
             </group>
           </groups>
+          <additionalOptions>
+            <option>--add-modules</option>
+            <option>java.xml.crypto</option>
+          </additionalOptions>
         </configuration>
       </plugin>
 

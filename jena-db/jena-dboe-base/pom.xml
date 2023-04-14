@@ -84,6 +84,12 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
+        <configuration>
+          <additionalOptions>
+            <option>--add-modules</option>
+            <option>java.management</option>
+          </additionalOptions>
+        </configuration>
       </plugin>
 
     </plugins>
