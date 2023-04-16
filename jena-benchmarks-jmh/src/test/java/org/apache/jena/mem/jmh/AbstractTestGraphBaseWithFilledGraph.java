@@ -19,6 +19,8 @@
 package org.apache.jena.mem.jmh;
 
 import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Setup;
@@ -36,6 +38,19 @@ public abstract class AbstractTestGraphBaseWithFilledGraph extends AbstractJmhTe
         // Add the same triples to the graph under test as new instances so that they are not reference equals.
         // This is important because the graph under test must not use reference equality as shortcut during the
         // benchmark.
-        this.triples.forEach(t -> sut.add(Triple.create(t.getSubject(), t.getPredicate(), t.getObject())));
+        this.triples.forEach(t -> sut.add(Triple.create(cloneNode(t.getSubject()), cloneNode(t.getPredicate()), cloneNode(t.getObject()))));
+    }
+
+    public static Node cloneNode(Node node) {
+        if(node.isLiteral()) {
+            return NodeFactory.createLiteralByValue(node.getLiteralValue(), node.getLiteralLanguage(), node.getLiteralDatatype());
+        }
+        if(node.isURI()) {
+            return NodeFactory.createURI(node.getURI());
+        }
+        if(node.isBlank()) {
+            return NodeFactory.createBlankNode(node.getBlankNodeLabel());
+        }
+        throw new IllegalArgumentException("Only literals, URIs and blank nodes are supported");
     }
 }

@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem.jmh;
 
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -29,10 +30,16 @@ import org.openjdk.jmh.runner.Runner;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.jena.mem.jmh.AbstractTestGraphBaseWithFilledGraph.cloneNode;
 import static org.junit.Assert.assertTrue;
 
 @State(Scope.Benchmark)
-public class TestGraphFindBySamples extends AbstractTestGraphBaseWithFilledGraph {
+public class TestGraphFindBySamples extends AbstractJmhTestGraphBase {
+
+    /**
+     * The graph under test. This is initialized in {@link #fillTriplesList()}.
+     */
+    protected Graph sut;
 
     @Param({"500"})
     public int param2_sampleSize;
@@ -42,6 +49,11 @@ public class TestGraphFindBySamples extends AbstractTestGraphBaseWithFilledGraph
     @Setup(Level.Trial)
     public void fillTriplesList() throws Exception {
         super.fillTriplesList();
+        this.sut = createGraph();
+        // Add the same triples to the graph under test as new instances so that they are not reference equals.
+        // This is important because the graph under test must not use reference equality as shortcut during the
+        // benchmark.
+        this.triples.forEach(t -> sut.add(Triple.create(cloneNode(t.getSubject()), cloneNode(t.getPredicate()), cloneNode(t.getObject()))));
 
         this.samples = new ArrayList<>(param2_sampleSize);
         var sampleIncrement = triples.size() / param2_sampleSize;

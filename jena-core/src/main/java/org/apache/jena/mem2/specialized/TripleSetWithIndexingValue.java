@@ -16,21 +16,14 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.set;
+package org.apache.jena.mem2.specialized;
 
 import org.apache.jena.graph.Triple;
 
 import java.util.Set;
 
-/**
- * A set of triples that can be indexed by a value.
- */
 public interface TripleSetWithIndexingValue extends Set<Triple> {
 
-    /**
-     * The indexing value is a node that all triples in the set have in common.
-     * It should be either a subject,a predicate or an object that all triples in the set have in common.
-     */
     Object getIndexingValue();
 
     void addUnsafe(Triple t);
