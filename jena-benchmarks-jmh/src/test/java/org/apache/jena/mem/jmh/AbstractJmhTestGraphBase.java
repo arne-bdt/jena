@@ -60,6 +60,7 @@ public abstract class AbstractJmhTestGraphBase {
     @Param({
             //"GraphMem",
             "GraphMem2",
+            "GraphMemUsingHashMap",
             //"GraphMem2LowMemory",
             //"GraphMemUsingOneIndex",
             //"GraphMemUsingTwoIndices"
@@ -82,6 +83,8 @@ public abstract class AbstractJmhTestGraphBase {
                 return new GraphMemUsingOneIndex();
             case "GraphMemUsingTwoIndices":
                 return new GraphMemUsingTwoIndices();
+            case "GraphMemUsingHashMap":
+                return new GraphMemAddOnly();
             default:
                 throw new IllegalArgumentException();
         }
