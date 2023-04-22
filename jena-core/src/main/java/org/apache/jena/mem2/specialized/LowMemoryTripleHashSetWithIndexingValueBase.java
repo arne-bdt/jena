@@ -202,11 +202,11 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
         return false;
     }
 
-    public void addUnsafe(Triple value) {
-        addUnsafe(value, getHashCode(value));
+    public void addUnchecked(Triple value) {
+        addUnchecked(value, getHashCode(value));
     }
 
-    public void addUnsafe(Triple value, int hashCode) {
+    public void addUnchecked(Triple value, int hashCode) {
         grow();
         entries[findEmptySlotWithoutEqualityCheck(hashCode)] = value;
         size++;
@@ -330,11 +330,11 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
         return true;
     }
 
-    public void removeUnsafe(Triple e) {
-        removeUnsafe(e, getHashCode(e));
+    public void removeUnchecked(Triple e) {
+        removeUnchecked(e, getHashCode(e));
     }
 
-    public void removeUnsafe(Triple e, int hashCode) {
+    public void removeUnchecked(Triple e, int hashCode) {
         var index = findIndex(e, hashCode);
         entries[index] = null;
         size--;

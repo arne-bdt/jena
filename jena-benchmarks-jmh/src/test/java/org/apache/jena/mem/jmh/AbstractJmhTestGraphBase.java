@@ -60,7 +60,8 @@ public abstract class AbstractJmhTestGraphBase {
     @Param({
             //"GraphMem",
             "GraphMem2",
-            "GraphMem2B",
+            "GraphMemWithAdaptiveTripleStore",
+            //"GraphMem2Match",
             //"GraphMemUsingHashMap",
             //"GraphMem2LowMemory",
             //"GraphMemUsingOneIndex",
@@ -78,12 +79,14 @@ public abstract class AbstractJmhTestGraphBase {
                 return new GraphMem();
             case "GraphMem2":
                 return new GraphMem2();
-            case "GraphMem2B":
-                return new GraphMem2B();
+            case "GraphMemWithAdaptiveTripleStore":
+                return new GraphMemWithAdaptiveTripleStore();
+            case "GraphMem2Match":
+                return new GraphMem2Match();
             case "GraphMem2LowMemory":
                 return new GraphMem2LowMemory();
             case "GraphMemUsingOneIndex":
-                return new GraphMemUsingOneIndex();
+                return new GraphMemWithAdaptiveTripleStore();
             case "GraphMemUsingTwoIndices":
                 return new GraphMemUsingTwoIndices();
             case "GraphMemUsingHashMap":

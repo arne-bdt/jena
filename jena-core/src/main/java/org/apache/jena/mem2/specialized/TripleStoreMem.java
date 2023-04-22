@@ -80,7 +80,7 @@ public class TripleStoreMem {
         public void addWithHashCodesUnsafe(TripleWithHashCodes tripleWithHashCodes) {
             this.getOrCreate(tripleWithHashCodes.hashes[2], () -> new TriplesByNode())
                     .getOrCreate(tripleWithHashCodes.hashes[3], () -> new TripleSet())
-                    .addUnsafe(tripleWithHashCodes.triple, tripleWithHashCodes.hashes[0]);
+                    .addUnchecked(tripleWithHashCodes.triple, tripleWithHashCodes.hashes[0]);
         }
 
         public void removeWithHashCodesUnsafe(TripleWithHashCodes tripleWithHashCodes) {
@@ -88,7 +88,7 @@ public class TripleStoreMem {
                     (p) -> {
                         p.removeIf(tripleWithHashCodes.hashes[3],
                                 (o) -> {
-                                    o.removeUnsafe(tripleWithHashCodes.triple, tripleWithHashCodes.hashes[0]);
+                                    o.removeUnchecked(tripleWithHashCodes.triple, tripleWithHashCodes.hashes[0]);
                                     return o.isEmpty();
                                 });
                         return p.isEmpty();
@@ -105,7 +105,7 @@ public class TripleStoreMem {
         public void addWithHashCodesUnsafe(TripleWithHashCodes tripleWithHashCodes) {
             this.getOrCreate(tripleWithHashCodes.hashes[3], () -> new TriplesByNode())
                     .getOrCreate(tripleWithHashCodes.hashes[1], () -> new TripleSet())
-                    .addUnsafe(tripleWithHashCodes.triple, tripleWithHashCodes.hashes[0]);
+                    .addUnchecked(tripleWithHashCodes.triple, tripleWithHashCodes.hashes[0]);
         }
 
         public void removeWithHashCodesUnsafe(TripleWithHashCodes tripleWithHashCodes) {
@@ -113,7 +113,7 @@ public class TripleStoreMem {
                     (o) -> {
                         o.removeIf(tripleWithHashCodes.hashes[1],
                                 (s) -> {
-                                    s.removeUnsafe(tripleWithHashCodes.triple, tripleWithHashCodes.hashes[0]);
+                                    s.removeUnchecked(tripleWithHashCodes.triple, tripleWithHashCodes.hashes[0]);
                                     return s.isEmpty();
                                 });
                         return o.isEmpty();

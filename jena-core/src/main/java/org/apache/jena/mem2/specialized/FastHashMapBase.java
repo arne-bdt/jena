@@ -20,6 +20,7 @@ package org.apache.jena.mem2.specialized;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -235,6 +236,37 @@ public abstract class FastHashMapBase<E> implements Collection<E> {
         }
         return entries[index];
     }
+
+    public void compute(int hashCode, Function<E, E> remappingFunction) {
+        var index = findIndex(hashCode);
+        if(index < 0) { /*value does not exist yet*/
+            var newValue = remappingFunction.apply(null);
+            if(newValue == null) {
+                return;
+            }
+//            if(hashCode != newValue.hashCode()
+//                throw new IllegalArgumentException("remapped value is not equal to value");
+//            }
+            if(grow()) {
+                index = findEmptySlotWithoutEqualityCheck(hashCode);
+            } else {
+                index = ~index;
+            }
+            entries[index] = newValue;
+            hashCodes[index] = hashCode;
+            size++;
+        } else { /*existing value found*/
+            var newValue = remappingFunction.apply(entries[index]);
+            if(newValue == null) {
+                entries[index] = null;
+                size--;
+                rearrangeNeighbours(index);
+            } else {
+                entries[index] = newValue;
+            }
+        }
+    }
+
 
     public void removeIf(int hashCode, Predicate<E> predicate) {
         var index = findIndex(hashCode);

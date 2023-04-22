@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.store;
+package org.apache.jena.mem2.store.adaptive;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
@@ -26,41 +26,22 @@ import java.util.Iterator;
 import java.util.stream.Stream;
 
 /**
- * A store of triples used in the {@link GraphMemWithAdaptiveTripleStore} implementation.
  *
  * @see GraphMemWithAdaptiveTripleStore
  */
-public interface TripleStore {
+public interface QueryableTripleSet {
 
-    /**
-     * Add a triple to the map.
-     *
-     * @param triple to add
-     */
-    void add(final Triple triple);
+    public int countTriples();
 
-    /**
-     * Remove a triple from the map.
-     *
-     * @param triple to remove
-     */
-    void remove(final Triple triple);
+    public int indexSize();
 
-    /**
-     * Remove all triples from the map.
-     */
-    void clear();
+    public QueryableTripleSet addTriple(final Triple triple);
 
-    /**
-     * Return the number of triples in the map.
-     */
-    int countTriples();
+    public QueryableTripleSet addTripleUnchecked(final Triple triple);
 
-    /**
-     * Return true if the map is empty.
-     */
-    boolean isEmpty();
+    public boolean removeTriple(final Triple triple);
 
+    public void removeTripleUnchecked(final Triple triple);
 
     /**
      * Answer true if the graph contains any triple matching <code>t</code>.
@@ -69,16 +50,7 @@ public interface TripleStore {
      *
      * @param tripleMatch triple match pattern, which may be contained
      */
-    boolean contains(final Triple tripleMatch);
-
-    /**
-     * Returns a {@link Stream} of all triples in the graph.
-     * Note: {@link Stream#parallel()} is supported.
-     *
-     * @return a stream  of triples in this graph.
-     */
-    Stream<Triple> stream();
-
+    boolean containsMatch(final Triple tripleMatch);
 
     /**
      * Returns a {@link Stream} of Triples matching the given pattern.
@@ -86,9 +58,17 @@ public interface TripleStore {
      * @param tripleMatch triple match pattern
      * @return a stream  of triples in this graph matching the pattern.
      */
-    Stream<Triple> stream(final Triple tripleMatch);
+    Stream<Triple> streamTriples(final Triple tripleMatch);
+
+    /**
+     * Returns a {@link Stream} of all Triples.
+     * Note: {@link Stream#parallel()} is supported.
+     * @return a stream of all triples in this set.
+     */
+    Stream<Triple> streamTriples();
+
     /**
      * Returns an {@link ExtendedIterator} of all triples in the graph matching the given triple match.
      */
-    Iterator<Triple> find(final Triple tripleMatch);
+    Iterator<Triple> findTriples(final Triple tripleMatch);
 }

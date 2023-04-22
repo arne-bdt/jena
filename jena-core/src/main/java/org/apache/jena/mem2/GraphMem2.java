@@ -225,7 +225,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForSubjects();
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                             added[0] = true;
                         } else if(ts.areOperationsWithHashCodesSupported()) {
                             added[0] = ts.add(t, hashCode);
@@ -248,14 +248,14 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForPredicates();
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         } else if (ts.areOperationsWithHashCodesSupported()) {
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnchecked(t, hashCode);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForPredicates(ts);
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnchecked(t, hashCode);
                         } else {
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         }
                         return ts;
                     });
@@ -267,14 +267,14 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForObjects();
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         } else if (ts.areOperationsWithHashCodesSupported()) {
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnchecked(t, hashCode);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForObjects(ts);
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnchecked(t, hashCode);
                         } else {
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         }
                         return ts;
                     });
@@ -320,9 +320,9 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     t.getPredicate().getIndexingValue(),
                     ts -> {
                         if(ts.areOperationsWithHashCodesSupported()) {
-                            ts.removeUnsafe(t, hashCode);
+                            ts.removeUnchecked(t, hashCode);
                         } else {
-                            ts.removeUnsafe(t);
+                            ts.removeUnchecked(t);
                         }
                         return ts.isEmpty() ? null : ts;
                     });
@@ -333,9 +333,9 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
                     t.getObject().getIndexingValue(),
                     ts -> {
                         if(ts.areOperationsWithHashCodesSupported()) {
-                            ts.removeUnsafe(t, hashCode);
+                            ts.removeUnchecked(t, hashCode);
                         } else {
-                            ts.removeUnsafe(t);
+                            ts.removeUnchecked(t);
                         }
                         return ts.isEmpty() ? null : ts;
                     });

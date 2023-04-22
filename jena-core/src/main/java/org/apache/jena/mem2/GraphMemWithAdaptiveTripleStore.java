@@ -24,7 +24,7 @@ import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.iterator.IteratorWrapperWithRemove;
-import org.apache.jena.mem2.store.TripleStoreUsingOneIndex;
+import org.apache.jena.mem2.store.adaptive.AdaptiveTripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.stream.Stream;
@@ -32,9 +32,9 @@ import java.util.stream.Stream;
 /**
  * A graph that stores triples in memory. This class is not thread-safe.
  */
-public class GraphMemUsingOneIndex extends GraphMemBase implements GraphWithPerform {
+public class GraphMemWithAdaptiveTripleStore extends GraphMemBase implements GraphWithPerform {
 
-   final TripleStore tripleStore = new TripleStoreUsingOneIndex();
+   final TripleStore tripleStore = new AdaptiveTripleStore();
 
     /**
      * Subclasses over-ride this method to release any resources they no
@@ -99,7 +99,7 @@ public class GraphMemUsingOneIndex extends GraphMemBase implements GraphWithPerf
      */
     @Override
     public Stream<Triple> stream(final Node sm, final Node pm, final Node om) {
-        return this.tripleStore.stream(sm, pm, om);
+        return this.tripleStore.stream(Triple.createMatch(sm, pm, om));
     }
 
     /**

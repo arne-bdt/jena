@@ -76,7 +76,7 @@ public abstract class ListSetBase<E> extends ArrayList<E> implements Set<E> {
         return true;
     }
 
-    public void addUnsafe(E e) {
+    public void addUnchecked(E e) {
         super.add(e);
     }
 
@@ -98,7 +98,7 @@ public abstract class ListSetBase<E> extends ArrayList<E> implements Set<E> {
         return super.remove(o);
     }
 
-    public void removeUnsafe(E elementToRemove) {
+    public void removeUnchecked(E elementToRemove) {
         super.remove(elementToRemove);
     }
 

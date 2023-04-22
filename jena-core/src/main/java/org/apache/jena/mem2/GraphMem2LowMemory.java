@@ -266,7 +266,7 @@ public class GraphMem2LowMemory extends GraphMemBase implements GraphWithPerform
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForSubjects();
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                             added[0] = true;
                         } else if(ts.areOperationsWithHashCodesSupported()) {
                             added[0] = ts.add(t, TripleHashSetForSubjects.combineNodeHashes(hashCodeOfPredicate, hashCodeOfObject));
@@ -291,14 +291,14 @@ public class GraphMem2LowMemory extends GraphMemBase implements GraphWithPerform
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForPredicates();
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         } else if (ts.areOperationsWithHashCodesSupported()) {
-                            ts.addUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
+                            ts.addUnchecked(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForPredicates(ts);
-                            ts.addUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
+                            ts.addUnchecked(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
                         } else {
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         }
                         return ts;
                     });
@@ -312,14 +312,14 @@ public class GraphMem2LowMemory extends GraphMemBase implements GraphWithPerform
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForObjects();
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         } else if (ts.areOperationsWithHashCodesSupported()) {
-                            ts.addUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
+                            ts.addUnchecked(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForObjects(ts);
-                            ts.addUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
+                            ts.addUnchecked(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
                         } else {
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         }
                         return ts;
                     });
@@ -371,9 +371,9 @@ public class GraphMem2LowMemory extends GraphMemBase implements GraphWithPerform
                     indexingValue == t.getPredicate() ? hashCodeOfPredicate : indexingValue.hashCode(),
                     ts -> {
                         if(ts.areOperationsWithHashCodesSupported()) {
-                            ts.removeUnsafe(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
+                            ts.removeUnchecked(t, TripleHashSetForPredicates.combineNodeHashes(hashCodeOfSubject, hashCodeOfObject));
                         } else {
-                            ts.removeUnsafe(t);
+                            ts.removeUnchecked(t);
                         }
                         return ts.isEmpty() ? null : ts;
                     });
@@ -386,9 +386,9 @@ public class GraphMem2LowMemory extends GraphMemBase implements GraphWithPerform
                     indexingValue == t.getObject() ? hashCodeOfObject : indexingValue.hashCode(),
                     ts -> {
                         if(ts.areOperationsWithHashCodesSupported()) {
-                            ts.removeUnsafe(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
+                            ts.removeUnchecked(t, TripleHashSetForObjects.combineNodeHashes(hashCodeOfSubject, hashCodeOfPredicate));
                         } else {
-                            ts.removeUnsafe(t);
+                            ts.removeUnchecked(t);
                         }
                         return ts.isEmpty() ? null : ts;
                     });

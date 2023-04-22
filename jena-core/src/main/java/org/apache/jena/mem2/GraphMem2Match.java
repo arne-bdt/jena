@@ -24,7 +24,9 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.generic.ListSetBase;
-import org.apache.jena.mem2.specialized.*;
+import org.apache.jena.mem2.specialized.FastTripleHashSetWithIndexingValue;
+import org.apache.jena.mem2.specialized.HashSetOfTripleSets;
+import org.apache.jena.mem2.specialized.TripleSetWithIndexingValue;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -62,15 +64,15 @@ import java.util.stream.Stream;
  * supported this in some cases. The implementation of ModelExpansion.addDomainTypes relayed on this behaviour, but it
  * has been fixed.
  */
-public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
+public class GraphMem2Match extends GraphMemBase implements GraphWithPerform {
 
     private static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
     private static final int THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE = 80;
 
 
-    private final HashSetOfTripleSetsB triplesBySubject = new HashSetOfTripleSetsB(); //256
-    private final HashSetOfTripleSetsB triplesByPredicate = new HashSetOfTripleSetsB(); //64
-    private final HashSetOfTripleSetsB triplesByObject = new HashSetOfTripleSetsB(); //512
+    private final HashSetOfTripleSets triplesBySubject = new HashSetOfTripleSets(); //256
+    private final HashSetOfTripleSets triplesByPredicate = new HashSetOfTripleSets(); //64
+    private final HashSetOfTripleSets triplesByObject = new HashSetOfTripleSets(); //512
 
     private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
 
@@ -92,8 +94,8 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
         public boolean contains(Object o) {
             var triple = (Triple)o;
             for (Triple t : this) {
-                if(triple.getPredicate().equals(t.getPredicate())
-                        && triple.getObject().sameValueAs(t.getObject())) {
+                if(triple.getPredicate().matches(t.getPredicate())
+                        && triple.getObject().matches(t.getObject())) {
                     return true;
                 }
             }
@@ -112,8 +114,8 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
         public boolean contains(Object o) {
             var triple = (Triple)o;
             for (Triple t : this) {
-                if(triple.getSubject().equals(t.getSubject())
-                        && triple.getObject().sameValueAs(t.getObject())) {
+                if(triple.getSubject().matches(t.getSubject())
+                        && triple.getObject().matches(t.getObject())) {
                     return true;
                 }
             }
@@ -133,8 +135,8 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
         public boolean contains(Object o) {
             var triple = (Triple)o;
             for (Triple t : this) {
-                if(triple.getSubject().equals(t.getSubject())
-                        && triple.getPredicate().equals(t.getPredicate())) {
+                if(triple.getSubject().matches(t.getSubject())
+                        && triple.getPredicate().matches(t.getPredicate())) {
                     return true;
                 }
             }
@@ -147,7 +149,7 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
         }
     }
 
-    private static class TripleHashSetForSubjects extends FastTripleHashSetWithIndexingValueB {
+    private static class TripleHashSetForSubjects extends FastTripleHashSetWithIndexingValue {
 
         public TripleHashSetForSubjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -155,13 +157,13 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
 
         @Override
         protected Predicate<Triple> getContainsPredicate(final Triple value) {
-            return t ->  value.getPredicate().equals(t.getPredicate())
-                    && value.getObject().sameValueAs(t.getObject());
+            return t ->  value.getPredicate().matches(t.getPredicate())
+                    && value.getObject().matches(t.getObject());
         }
     }
 
 
-    private static class TripleHashSetForPredicates extends FastTripleHashSetWithIndexingValueB {
+    private static class TripleHashSetForPredicates extends FastTripleHashSetWithIndexingValue {
 
         public TripleHashSetForPredicates(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -169,13 +171,13 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
 
         @Override
         protected Predicate<Triple> getContainsPredicate(final Triple value) {
-            return t -> value.getSubject().equals(t.getSubject())
-                    && value.getObject().sameValueAs(t.getObject());
+            return t -> value.getSubject().matches(t.getSubject())
+                    && value.getObject().matches(t.getObject());
         }
     }
 
 
-    private static class TripleHashSetForObjects extends FastTripleHashSetWithIndexingValueB {
+    private static class TripleHashSetForObjects extends FastTripleHashSetWithIndexingValue {
 
         public TripleHashSetForObjects(TripleSetWithIndexingValue setWithKey) {
             super(setWithKey);
@@ -183,13 +185,13 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
 
         @Override
         protected Predicate<Triple> getContainsPredicate(final Triple value) {
-            return t -> value.getSubject().equals(t.getSubject())
-                    && value.getPredicate().equals(t.getPredicate());
+            return t -> value.getSubject().matches(t.getSubject())
+                    && value.getPredicate().matches(t.getPredicate());
         }
     }
 
 
-    public GraphMem2B() {
+    public GraphMem2Match() {
         super();
     }
 
@@ -223,7 +225,7 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForSubjects();
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                             added[0] = true;
                         } else if(ts.areOperationsWithHashCodesSupported()) {
                             added[0] = ts.add(t, hashCode);
@@ -246,14 +248,14 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForPredicates();
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         } else if (ts.areOperationsWithHashCodesSupported()) {
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnchecked(t, hashCode);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForPredicates(ts);
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnchecked(t, hashCode);
                         } else {
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         }
                         return ts;
                     });
@@ -265,14 +267,14 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
                     ts -> {
                         if(ts == null) {
                             ts = new TripleListSetForObjects();
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         } else if (ts.areOperationsWithHashCodesSupported()) {
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnchecked(t, hashCode);
                         } else if(ts.size() == THRESHOLD_FOR_LOW_MEMORY_HASH_SET) {
                             ts = new TripleHashSetForObjects(ts);
-                            ts.addUnsafe(t, hashCode);
+                            ts.addUnchecked(t, hashCode);
                         } else {
-                            ts.addUnsafe(t);
+                            ts.addUnchecked(t);
                         }
                         return ts;
                     });
@@ -318,9 +320,9 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
                     t.getPredicate().getIndexingValue(),
                     ts -> {
                         if(ts.areOperationsWithHashCodesSupported()) {
-                            ts.removeUnsafe(t, hashCode);
+                            ts.removeUnchecked(t, hashCode);
                         } else {
-                            ts.removeUnsafe(t);
+                            ts.removeUnchecked(t);
                         }
                         return ts.isEmpty() ? null : ts;
                     });
@@ -331,9 +333,9 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
                     t.getObject().getIndexingValue(),
                     ts -> {
                         if(ts.areOperationsWithHashCodesSupported()) {
-                            ts.removeUnsafe(t, hashCode);
+                            ts.removeUnchecked(t, hashCode);
                         } else {
-                            ts.removeUnsafe(t);
+                            ts.removeUnchecked(t);
                         }
                         return ts.isEmpty() ? null : ts;
                     });
@@ -453,7 +455,7 @@ public class GraphMem2B extends GraphMemBase implements GraphWithPerform {
      * fewer predicates than subjects or objects.
      * @return
      */
-    private HashSetOfTripleSetsB getMapWithFewestKeys() {
+    private HashSetOfTripleSets getMapWithFewestKeys() {
         var subjectCount = this.triplesBySubject.size();
         var predicateCount = this.triplesByPredicate.size();
         var objectCount = this.triplesByObject.size();

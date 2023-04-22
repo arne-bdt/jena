@@ -65,6 +65,18 @@ public abstract class FastHashSetBase<E> implements Set<E> {
         }
     }
 
+    public FastHashSetBase(Stream<E> distinctStream, int size) {
+        this.entries = createEntryArray(Integer.highestOneBit(((int)(size/loadFactor)+1)) << 1);
+        this.hashCodes = new int[entries.length];
+        distinctStream.forEach(t -> {
+            final int index, hashCode;
+            entries[index = findEmptySlotWithoutEqualityCheck(hashCode = t.hashCode())] = t;
+            hashCodes[index] = hashCode;
+        });
+        this.size = size;
+    }
+
+
     private int calcNewSize() {
         if(size >= entries.length*loadFactor && entries.length <= 1 << 30) { /*grow*/
             return entries.length << 1;
@@ -186,8 +198,8 @@ public abstract class FastHashSetBase<E> implements Set<E> {
 
     @Override
     public boolean add(E value) {
-        //return add(value, value.hashCode());
-        throw new UnsupportedOperationException();
+        return add(value, value.hashCode());
+        //throw new UnsupportedOperationException();
     }
 
     public boolean add(E value, int hashCode) {
@@ -202,12 +214,12 @@ public abstract class FastHashSetBase<E> implements Set<E> {
         return false;
     }
 
-    public void addUnsafe(E value) {
-        //addUnsafe(value, value.hashCode());
-        throw new UnsupportedOperationException();
+    public void addUnchecked(E value) {
+        addUnchecked(value, value.hashCode());
+        //throw new UnsupportedOperationException();
     }
 
-    public void addUnsafe(E value, int hashCode) {
+    public void addUnchecked(E value, int hashCode) {
         grow();
         var index = findEmptySlotWithoutEqualityCheck(hashCode);
         entries[index] = value;
@@ -254,9 +266,9 @@ public abstract class FastHashSetBase<E> implements Set<E> {
             if(newValue == null) {
                 return null;
             }
-            if(!value.equals(newValue)) {
-                throw new IllegalArgumentException("remapped value is not equal to value");
-            }
+//            if(!value.equals(newValue)) {
+//                throw new IllegalArgumentException("remapped value is not equal to value");
+//            }
             if(grow()) {
                 index = findEmptySlotWithoutEqualityCheck(hashCode);
             } else {
@@ -342,12 +354,12 @@ public abstract class FastHashSetBase<E> implements Set<E> {
         return true;
     }
 
-    public void removeUnsafe(E e) {
+    public void removeUnchecked(E e) {
         throw new UnsupportedOperationException();
         //removeUnsafe(e, e.hashCode());
     }
 
-    public void removeUnsafe(E e, int hashCode) {
+    public void removeUnchecked(E e, int hashCode) {
         var index = findIndex(e, hashCode);
         entries[index] = null;
         size--;

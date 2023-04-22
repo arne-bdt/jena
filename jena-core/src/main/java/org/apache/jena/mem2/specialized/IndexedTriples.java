@@ -210,12 +210,12 @@ public class IndexedTriples implements TripleSetWithIndexingValue {
     }
 
     @Override
-    public void addUnsafe(Triple value) {
-        addUnsafe(value, value.hashCode());
+    public void addUnchecked(Triple value) {
+        addUnchecked(value, value.hashCode());
     }
 
     @Override
-    public void addUnsafe(Triple value, int hashCode) {
+    public void addUnchecked(Triple value, int hashCode) {
         grow();
         var index = findEmptySlotWithoutEqualityCheck(hashCode);
         entries[index] = value;
@@ -345,11 +345,11 @@ public class IndexedTriples implements TripleSetWithIndexingValue {
         return true;
     }
 
-    public void removeUnsafe(Triple e) {
-        removeUnsafe(e, e.hashCode());
+    public void removeUnchecked(Triple e) {
+        removeUnchecked(e, e.hashCode());
     }
 
-    public void removeUnsafe(Triple e, int hashCode) {
+    public void removeUnchecked(Triple e, int hashCode) {
         var index = findIndex(e, hashCode);
         entries[index] = null;
         size--;

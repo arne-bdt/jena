@@ -26,7 +26,7 @@ public interface TripleSetWithIndexingValue extends Set<Triple> {
 
     Object getIndexingValue();
 
-    void addUnsafe(Triple t);
+    void addUnchecked(Triple t);
 
     boolean areOperationsWithHashCodesSupported();
 
@@ -34,7 +34,7 @@ public interface TripleSetWithIndexingValue extends Set<Triple> {
         throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
     }
 
-    default void addUnsafe(Triple t, int hashCode) {
+    default void addUnchecked(Triple t, int hashCode) {
         throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
     }
 
@@ -42,9 +42,9 @@ public interface TripleSetWithIndexingValue extends Set<Triple> {
         throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
     }
 
-    void removeUnsafe(Triple t);
+    void removeUnchecked(Triple t);
 
-    default void removeUnsafe(Triple t, int hashCode) {
+    default void removeUnchecked(Triple t, int hashCode) {
         throw new UnsupportedOperationException("This default implementation only exists to avoid casts and keep the compiler calm.");
     }
 }

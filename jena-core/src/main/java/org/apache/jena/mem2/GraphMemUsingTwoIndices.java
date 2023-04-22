@@ -24,7 +24,6 @@ import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.iterator.IteratorWrapperWithRemove;
 import org.apache.jena.mem2.store.TripleStore;
-import org.apache.jena.mem2.store.TripleStoreUsingTwoIndices;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.stream.Stream;
@@ -34,7 +33,7 @@ import java.util.stream.Stream;
  */
 public class GraphMemUsingTwoIndices extends GraphMemBase implements GraphWithPerform {
 
-   final TripleStore tripleStore = new TripleStoreUsingTwoIndices();
+   final TripleStore tripleStore = null; // = new TripleStoreUsingTwoIndices();
 
     /**
      * Subclasses over-ride this method to release any resources they no
@@ -99,7 +98,7 @@ public class GraphMemUsingTwoIndices extends GraphMemBase implements GraphWithPe
      */
     @Override
     public Stream<Triple> stream(final Node sm, final Node pm, final Node om) {
-        return this.tripleStore.stream(sm, pm, om);
+        return this.tripleStore.stream(Triple.createMatch(sm, pm, om));
     }
 
     /**
