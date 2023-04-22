@@ -26,7 +26,7 @@ import org.apache.jena.mem2.store.adaptive.base.AdaptiveTripleListSetBase;
 public class TripleListSet__P extends AdaptiveTripleListSetBase implements QueryableTripleSetWithIndexingValue {
 
     @Override
-    protected boolean matches(Triple triple, Triple tripleMatch) {
+    protected boolean matches(Triple tripleMatch, Triple triple)  {
         return tripleMatch.getPredicate().matches(triple.getPredicate())
                 && tripleMatch.getObject().matches(triple.getObject())
                 && tripleMatch.getSubject().matches(triple.getSubject());

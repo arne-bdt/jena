@@ -30,7 +30,7 @@ public class TripleListSetOSP extends AdaptiveTripleListSetBase {
     }
 
     @Override
-    protected boolean matches(Triple triple, Triple tripleMatch) {
+    protected boolean matches(Triple tripleMatch, Triple triple)  {
         return tripleMatch.getObject().matches(triple.getObject())
                 && tripleMatch.getSubject().matches(triple.getSubject())
                 && tripleMatch.getPredicate().matches(triple.getPredicate());

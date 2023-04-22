@@ -338,9 +338,9 @@ public abstract class FastHashSetBase<E> implements Set<E> {
      */
     @Override
     public boolean remove(Object o) {
-        throw new UnsupportedOperationException();
-//        var e = (E)o;
-//        return remove(e, e.hashCode());
+        //throw new UnsupportedOperationException();
+        var e = (E)o;
+        return remove(e, e.hashCode());
     }
 
     public boolean remove(E e, int hashCode) {
@@ -355,8 +355,8 @@ public abstract class FastHashSetBase<E> implements Set<E> {
     }
 
     public void removeUnchecked(E e) {
-        throw new UnsupportedOperationException();
-        //removeUnsafe(e, e.hashCode());
+        //throw new UnsupportedOperationException();
+        removeUnchecked(e, e.hashCode());
     }
 
     public void removeUnchecked(E e, int hashCode) {
