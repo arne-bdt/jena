@@ -30,6 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -37,7 +38,7 @@ import java.util.function.Predicate;
  *  Wrapper for Iterator<Triple> which supports .remove and .removeNext, which deletes triples from the graph.
  *  It is done by simply replacing the wrapped iterator with .toList().iterator().
  */
-public class IteratorWrapperWithRemove implements ExtendedIterator<Triple> {
+public class IteratorWrapperWithRemove extends NiceIterator<Triple> {
     private Iterator<Triple> iterator;
     private final Graph graph;
     private boolean isStillIteratorWithNoRemove = true;
@@ -50,92 +51,6 @@ public class IteratorWrapperWithRemove implements ExtendedIterator<Triple> {
     public IteratorWrapperWithRemove(Iterator<Triple> iteratorWithNoRemove, Graph graph) {
         this.iterator = iteratorWithNoRemove;
         this.graph = graph;
-    }
-
-    /**
-     * Close the iterator. Other operations on this iterator may now throw an exception.
-     * A ClosableIterator may be closed as many times as desired - the subsequent
-     * calls do nothing.
-     */
-    @Override
-    public void close() {
-        /*this class can only wrap Iterator<>, which has no close method*/
-    }
-
-    /**
-     * Answer the next object, and remove it. Equivalent to next(); remove().
-     */
-    @Override
-    public Triple removeNext() {
-        var result = next();
-        remove();
-        return result;
-    }
-
-    /**
-     * return a new iterator which delivers all the elements of this iterator and
-     * then all the elements of the other iterator. Does not copy either iterator;
-     * they are consumed as the result iterator is consumed.
-     *
-     * @param other iterator to append
-     */
-    @Override
-    public <X extends Triple> ExtendedIterator<Triple> andThen(Iterator<X> other) {
-        return NiceIterator.andThen( this, other );
-    }
-
-    /**
-     * return a new iterator containing only the elements of _this_ which
-     * pass the filter _f_. The order of the elements is preserved. Does not
-     * copy _this_, which is consumed as the result is consumed.
-     *
-     * @param f filter predicate
-     */
-    @Override
-    public ExtendedIterator<Triple> filterKeep(Predicate<Triple> f) {
-        return new FilterIterator<>( f, this );
-    }
-
-    /**
-     * return a new iterator containing only the elements of _this_ which
-     * are rejected by the filter _f_. The order of the elements is preserved.
-     * Does not copy _this_, which is consumed as the result is consumed.
-     *
-     * @param f filter predicate
-     */
-    @Override
-    public ExtendedIterator<Triple> filterDrop(Predicate<Triple> f) {
-        return new FilterIterator<>( f.negate(), this );
-    }
-
-    /**
-     * return a new iterator where each element is the result of applying
-     * _map1_ to the corresponding element of _this_. _this_ is not
-     * copied; it is consumed as the result is consumed.
-     *
-     * @param map1 mapping function
-     */
-    @Override
-    public <U> ExtendedIterator<U> mapWith(Function<Triple, U> map1) {
-        return new Map1Iterator<>( map1, this );
-    }
-
-    /**
-     * Answer a list of the [remaining] elements of this iterator, in order,
-     * consuming this iterator.
-     */
-    @Override
-    public List<Triple> toList() {
-        return NiceIterator.asList(this);
-    }
-
-    /**
-     * Answer a set of the [remaining] elements of this iterator,
-     * consuming this iterator.
-     */
-    @Override
-    public Set<Triple> toSet() {
-        return NiceIterator.asSet(this);
     }
 
     /**
@@ -159,6 +74,11 @@ public class IteratorWrapperWithRemove implements ExtendedIterator<Triple> {
     @Override
     public Triple next() {
         return current = this.iterator.next();
+    }
+
+    @Override
+    public void forEachRemaining(Consumer<? super Triple> action) {
+        this.iterator.forEachRemaining(action);
     }
 
     /**
@@ -185,7 +105,7 @@ public class IteratorWrapperWithRemove implements ExtendedIterator<Triple> {
      */
     @Override
     public void remove() {
-        if(isStillIteratorWithNoRemove) {
+        if (isStillIteratorWithNoRemove) {
             var currentBeforeToList = current;
             this.iterator = this.toList().iterator();
             this.isStillIteratorWithNoRemove = false;

@@ -18,10 +18,15 @@
 
 package org.apache.jena.mem2.store.adaptive.base;
 
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.iterator.IteratorFiltering;
+import org.apache.jena.mem2.iterator.IteratorWrapperWithRemove;
+import org.apache.jena.mem2.iterator.NestedIterator;
 import org.apache.jena.mem2.specialized.FastHashSetBase;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSetWithIndexingValue;
+import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Iterator;
 import java.util.function.Predicate;
@@ -49,8 +54,8 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple> implemen
     }
 
     @Override
-    public int indexSize() {
-        return super.size;
+    public int countIndexSize() {
+        return 0;
     }
 
     @Override
@@ -113,8 +118,13 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple> implemen
     }
 
     @Override
-    public Iterator<Triple> findTriples(final Triple tripleMatch) {
-        return this.streamTriples(tripleMatch).iterator();
+    public ExtendedIterator<Triple> findTriples(final Triple tripleMatch, final Graph graphForIteratorRemove) {
+        return new IteratorFiltering(super.iterator(), this.getMatchPredicate(tripleMatch), graphForIteratorRemove);
+    }
+
+    @Override
+    public ExtendedIterator<Triple> findAll(Graph graphForIteratorRemove) {
+        return new IteratorWrapperWithRemove(super.iterator(), graphForIteratorRemove);
     }
 
     @Override

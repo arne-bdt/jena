@@ -20,6 +20,7 @@ package org.apache.jena.mem2.map;
 
 import org.apache.jena.graph.Triple;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.stream.Stream;
@@ -218,11 +219,11 @@ public class TriplesMapWithTwoIndicesUsingFastHashSets implements TriplesMapWith
     public Iterator<Triple> find(final int level0IndexingHashCode, final int level1IndexingHashCode) {
         var l1 = this.index0.getIfPresent(level0IndexingHashCode);
         if(l1 == null) {
-            return emptyIterator;
+            return Collections.emptyIterator();
         }
         var tripleSet = l1.getIfPresent(level1IndexingHashCode);
         if(tripleSet == null) {
-            return emptyIterator;
+            return Collections.emptyIterator();
         }
         return tripleSet.iterator();
     }
@@ -231,15 +232,15 @@ public class TriplesMapWithTwoIndicesUsingFastHashSets implements TriplesMapWith
     public Iterator<Triple> find(final int level0IndexingHashCode, final int level1IndexingHashCode, final int tripleHashCode, final Triple triple) {
         var l1 = this.index0.getIfPresent(level0IndexingHashCode);
         if(l1 == null) {
-            return emptyIterator;
+            return Collections.emptyIterator();
         }
         var tripleSet = l1.getIfPresent(level1IndexingHashCode);
         if(tripleSet == null) {
-            return emptyIterator;
+            return Collections.emptyIterator();
         }
         var t = tripleSet.getIfPresent(triple, tripleHashCode);
         if(t == null) {
-            return emptyIterator;
+            return Collections.emptyIterator();
         }
         return new SingleElementIterator<>(t);
     }
@@ -248,24 +249,9 @@ public class TriplesMapWithTwoIndicesUsingFastHashSets implements TriplesMapWith
     public Iterator<Triple> find(int level0IndexingHashCode) {
         var l1 = this.index0.getIfPresent(level0IndexingHashCode);
         if(l1 == null) {
-            return emptyIterator;
+            return Collections.emptyIterator();
         }
         return l1.stream().flatMap(FastHashSetBase::stream).iterator();
-    }
-
-    private static Iterator<Triple> emptyIterator = new EmptyIterator<>();
-
-    private static class EmptyIterator<E> implements Iterator<E> {
-
-        @Override
-        public boolean hasNext() {
-            return false;
-        }
-
-        @Override
-        public E next() {
-            throw new NoSuchElementException();
-        }
     }
 
     private static class SingleElementIterator<E> implements Iterator<E> {

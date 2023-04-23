@@ -18,6 +18,9 @@
 
 package org.apache.jena.mem2.specialized;
 
+import org.apache.jena.mem2.iterator.ArrayWithNullsIterator;
+import org.apache.jena.mem2.spliterator.ArrayWithNullsSpliteratorSized;
+
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;

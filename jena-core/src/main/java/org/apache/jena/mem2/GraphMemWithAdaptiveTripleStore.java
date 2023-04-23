@@ -34,7 +34,7 @@ import java.util.stream.Stream;
  */
 public class GraphMemWithAdaptiveTripleStore extends GraphMemBase implements GraphWithPerform {
 
-   final TripleStore tripleStore = new AdaptiveTripleStore();
+   final TripleStore tripleStore = new AdaptiveTripleStore(this);
 
     /**
      * Subclasses over-ride this method to release any resources they no
@@ -107,7 +107,7 @@ public class GraphMemWithAdaptiveTripleStore extends GraphMemBase implements Gra
      */
     @Override
     public ExtendedIterator<Triple> graphBaseFind(Triple tripleMatch) {
-        return new IteratorWrapperWithRemove(this.tripleStore.find(tripleMatch), this);
+        return this.tripleStore.find(tripleMatch);
     }
 
     /**

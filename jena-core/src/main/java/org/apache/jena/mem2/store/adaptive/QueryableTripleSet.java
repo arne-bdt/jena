@@ -18,11 +18,11 @@
 
 package org.apache.jena.mem2.store.adaptive;
 
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.Iterator;
 import java.util.stream.Stream;
 
 /**
@@ -33,7 +33,9 @@ public interface QueryableTripleSet {
 
     public int countTriples();
 
-    public int indexSize();
+    public int countIndexSize();
+
+    public boolean isEmpty();
 
     public QueryableTripleSet addTriple(final Triple triple, final int hashCode);
 
@@ -70,5 +72,10 @@ public interface QueryableTripleSet {
     /**
      * Returns an {@link ExtendedIterator} of all triples in the graph matching the given triple match.
      */
-    Iterator<Triple> findTriples(final Triple tripleMatch);
+    ExtendedIterator<Triple> findTriples(final Triple tripleMatch, final Graph graphForIteratorRemove);
+
+    /**
+     * Returns an {@link ExtendedIterator} of all triples in the graph.
+     */
+    ExtendedIterator<Triple> findAll(final Graph graphForIteratorRemove);
 }

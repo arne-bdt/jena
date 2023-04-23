@@ -62,10 +62,8 @@ public abstract class AbstractJmhTestGraphBase {
             "GraphMem2",
             "GraphMemWithAdaptiveTripleStore",
             //"GraphMem2Match",
-            //"GraphMemUsingHashMap",
             //"GraphMem2LowMemory",
-            //"GraphMemUsingOneIndex",
-            //"GraphMemUsingTwoIndices"
+            //"GraphMemAddOnly"
     })
     public String param1_GraphImplementation;
 
@@ -85,11 +83,7 @@ public abstract class AbstractJmhTestGraphBase {
                 return new GraphMem2Match();
             case "GraphMem2LowMemory":
                 return new GraphMem2LowMemory();
-            case "GraphMemUsingOneIndex":
-                return new GraphMemWithAdaptiveTripleStore();
-            case "GraphMemUsingTwoIndices":
-                return new GraphMemUsingTwoIndices();
-            case "GraphMemUsingHashMap":
+            case "GraphMemAddOnly":
                 return new GraphMemAddOnly();
             default:
                 throw new IllegalArgumentException();

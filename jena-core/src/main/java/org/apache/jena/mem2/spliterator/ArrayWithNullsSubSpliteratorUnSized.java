@@ -1,20 +1,43 @@
-package org.apache.jena.mem2.specialized;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.jena.mem2.spliterator;
 
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
-public class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
+public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
 
     private final E[] entries;
+    private int pos;
     private final int maxPos;
-    private int pos = -1;
     private int maxRemaining;
-    private boolean hasBeenSplit = false;
 
-    public ArrayWithNullsSpliteratorSized(final E[] entries, final int size) {
+    public ArrayWithNullsSubSpliteratorUnSized(final E[] entries, final int fromIndex, final int toIndex, final int maxSize) {
         this.entries = entries;
-        this.maxPos = entries.length - 1;
-        this.maxRemaining = size;
+        this.maxRemaining = maxSize;
+        this.pos = fromIndex - 1;
+        this.maxPos = toIndex - 1;
+        this.updateMaxRemaining();
+    }
+
+    private void updateMaxRemaining() {
+        this.maxRemaining = Math.min(this.maxRemaining, entries.length - (maxPos - pos));
     }
 
     /**
@@ -106,16 +129,15 @@ public class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
      */
     @Override
     public Spliterator<E> trySplit() {
-        if (entries.length - pos < 10) {
+        if (maxPos - pos < 10) {
             return null;
         }
-        var mid = (pos + 1 + entries.length) >>> 1;
+        var mid = (pos + maxPos + 2) >>> 1;
         var remainingInSubSpliterator = this.maxRemaining;
         var fromIndexForSubSpliterator = pos + 1;
         this.pos = mid - 1;
-        this.maxRemaining = Math.min(this.maxRemaining, entries.length - pos);
+        this.updateMaxRemaining();
         remainingInSubSpliterator = Math.min(remainingInSubSpliterator, mid - fromIndexForSubSpliterator);
-        this.hasBeenSplit = true;
         return new ArrayWithNullsSubSpliteratorUnSized(entries, fromIndexForSubSpliterator, mid, remainingInSubSpliterator);
     }
 
@@ -167,10 +189,6 @@ public class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
      */
     @Override
     public int characteristics() {
-        if (this.hasBeenSplit) {
-            return DISTINCT | NONNULL | IMMUTABLE;
-        } else {
-            return DISTINCT | SIZED | NONNULL | IMMUTABLE;
-        }
+        return DISTINCT | NONNULL | IMMUTABLE;
     }
 }

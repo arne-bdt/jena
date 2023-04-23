@@ -18,11 +18,14 @@
 
 package org.apache.jena.mem2.store.adaptive.base;
 
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.iterator.IteratorFiltering;
+import org.apache.jena.mem2.iterator.IteratorWrapperWithRemove;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
+import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -40,8 +43,8 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
     }
 
     @Override
-    public int indexSize() {
-        return this.size();
+    public int countIndexSize() {
+        return 0;
     }
 
     @Override
@@ -87,8 +90,13 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
     }
 
     @Override
-    public Iterator<Triple> findTriples(final Triple tripleMatch) {
-        return this.streamTriples(tripleMatch).iterator();
+    public ExtendedIterator<Triple> findTriples(final Triple tripleMatch, final Graph graphForIteratorRemove) {
+        return new IteratorFiltering(super.iterator(), this.getMatchPredicate(tripleMatch), graphForIteratorRemove);
+    }
+
+    @Override
+    public ExtendedIterator<Triple> findAll(Graph graphForIteratorRemove) {
+        return new IteratorWrapperWithRemove(super.iterator(), graphForIteratorRemove);
     }
 
     @Override

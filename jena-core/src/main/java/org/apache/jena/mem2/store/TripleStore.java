@@ -79,7 +79,6 @@ public interface TripleStore {
      */
     Stream<Triple> stream();
 
-
     /**
      * Returns a {@link Stream} of Triples matching the given pattern.
      * Note: {@link Stream#parallel()} is supported.
@@ -90,5 +89,5 @@ public interface TripleStore {
     /**
      * Returns an {@link ExtendedIterator} of all triples in the graph matching the given triple match.
      */
-    Iterator<Triple> find(final Triple tripleMatch);
+    ExtendedIterator<Triple> find(final Triple tripleMatch);
 }

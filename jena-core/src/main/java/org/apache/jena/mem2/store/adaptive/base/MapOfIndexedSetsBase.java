@@ -18,13 +18,15 @@
 
 package org.apache.jena.mem2.store.adaptive.base;
 
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.iterator.NestedIterator;
 import org.apache.jena.mem2.specialized.FastHashMapBase;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
+import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.NiceIterator;
 
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.stream.Stream;
 
 public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTripleSet> implements QueryableTripleSet {
@@ -50,8 +52,8 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     }
 
     @Override
-    public int indexSize() {
-        return this.size();
+    public int countIndexSize() {
+        return this.size() + super.stream().mapToInt(QueryableTripleSet::countIndexSize).sum();
     }
 
     @Override
@@ -91,7 +93,7 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
             if (set == null) {
                 return null;
             }
-            if(tripleRemoved[0] = set.removeTriple(triple, hashCode) && 0 == set.indexSize()) {
+            if(tripleRemoved[0] = set.removeTriple(triple, hashCode) && set.isEmpty()) {
                 return null;
             }
             return set;
@@ -103,7 +105,7 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     public void removeTripleUnchecked(final Triple triple, final int hashCode) {
         this.compute(getHashCodeOfIndexingValue(triple), (set) -> {
             set.removeTripleUnchecked(triple, hashCode);
-            if(0 == set.indexSize()) {
+            if(set.isEmpty()) {
                 return null;
             }
             return set;
@@ -135,19 +137,22 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     }
 
     @Override
-    public Iterator<Triple> findTriples(final Triple tripleMatch) {
+    public ExtendedIterator<Triple> findTriples(final Triple tripleMatch, final Graph graphForIteratorRemove) {
         var set = super.getIfPresent(getHashCodeOfIndexingValue(tripleMatch));
         if(set == null) {
-            if(getIndexingNode(tripleMatch).isConcrete()) {
-                return Collections.emptyIterator();
-            }
-            return stream().flatMap(s -> s.streamTriples(tripleMatch)).iterator();
+            return NiceIterator.emptyIterator();
         }
-        return set.findTriples(tripleMatch);
+        return set.findTriples(tripleMatch, graphForIteratorRemove);
+    }
+
+    @Override
+    public ExtendedIterator<Triple> findAll(Graph graphForIteratorRemove) {
+        return new NestedIterator<>(super.iterator(), (set) -> set.findAll(graphForIteratorRemove));
     }
 
     @Override
     public Stream<Triple> streamTriples() {
         return super.stream().flatMap(QueryableTripleSet::streamTriples);
     }
+
 }

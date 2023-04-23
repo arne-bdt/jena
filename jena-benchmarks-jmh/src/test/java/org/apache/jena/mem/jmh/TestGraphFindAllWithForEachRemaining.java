@@ -31,15 +31,13 @@ import java.util.ArrayList;
 import static org.junit.Assert.assertEquals;
 
 @State(Scope.Benchmark)
-public class TestGraphFindAll extends AbstractTestGraphBaseWithFilledGraph {
+public class TestGraphFindAllWithForEachRemaining extends AbstractTestGraphBaseWithFilledGraph {
 
     @Benchmark
     public ArrayList<Triple> graphFind() {
         var found = new ArrayList<Triple>(sut.size());
         var it = sut.find();
-        while(it.hasNext()) {
-            found.add(it.next());
-        }
+        it.forEachRemaining(found::add);
         it.close();
         assertEquals(sut.size(), found.size());
         return found;

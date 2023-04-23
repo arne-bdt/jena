@@ -18,14 +18,15 @@
 
 package org.apache.jena.mem2.store.adaptive;
 
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.pattern.PatternClassifier;
 import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.mem2.store.adaptive.set.TripleListSetOSP;
 import org.apache.jena.mem2.store.adaptive.set.TripleListSetPOS;
 import org.apache.jena.mem2.store.adaptive.set.TripleListSetSPO;
+import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.Iterator;
 import java.util.stream.Stream;
 
 public class AdaptiveTripleStore implements TripleStore {
@@ -38,9 +39,11 @@ public class AdaptiveTripleStore implements TripleStore {
     private QueryableTripleSet pos;
     private QueryableTripleSet osp;
 
+    private final Graph graphForIteratorRemove;
 
-    public AdaptiveTripleStore() {
+    public AdaptiveTripleStore(final Graph graphForIteratorRemove) {
         this.clear();
+        this.graphForIteratorRemove = graphForIteratorRemove;
     }
 
 
@@ -81,7 +84,7 @@ public class AdaptiveTripleStore implements TripleStore {
 
     @Override
     public boolean isEmpty() {
-        return this.spo.indexSize() == 0;
+        return this.spo.isEmpty();
     }
 
     @Override
@@ -102,7 +105,7 @@ public class AdaptiveTripleStore implements TripleStore {
                 return this.osp.containsMatch(tripleMatch);
 
             case ___:
-                return this.spo.indexSize() != 0;
+                return !this.spo.isEmpty();
 
             default:
                 throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
@@ -140,24 +143,24 @@ public class AdaptiveTripleStore implements TripleStore {
     }
 
     @Override
-    public Iterator<Triple> find(Triple tripleMatch) {
+    public ExtendedIterator<Triple> find(Triple tripleMatch) {
         switch (PatternClassifier.classify(tripleMatch)) {
 
             case SPO:
             case SP_:
             case S__:
-                return this.spo.findTriples(tripleMatch);
+                return this.spo.findTriples(tripleMatch, graphForIteratorRemove);
 
             case _PO:
             case _P_:
-                return this.pos.findTriples(tripleMatch);
+                return this.pos.findTriples(tripleMatch, graphForIteratorRemove);
 
             case S_O:
             case __O:
-                return this.osp.findTriples(tripleMatch);
+                return this.osp.findTriples(tripleMatch, graphForIteratorRemove);
 
             case ___:
-                return this.stream().iterator();
+                return this.getMapWithFewestTopLevelIndices().findAll(graphForIteratorRemove);
 
             default:
                 throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
@@ -171,21 +174,22 @@ public class AdaptiveTripleStore implements TripleStore {
      * @return
      */
     private QueryableTripleSet getMapWithFewestTopLevelIndices() {
-        final var subjectIndexSize = this.spo.indexSize();
-        final var predicateIndexSize = this.pos.indexSize();
-        final var objectIndexSize = this.osp.indexSize();
-        if(subjectIndexSize < predicateIndexSize) {
-            if(subjectIndexSize < objectIndexSize) {
-                return this.spo;
-            } else {
-                return this.osp;
-            }
-        } else {
-            if(predicateIndexSize < objectIndexSize) {
-                return this.pos;
-            } else {
-                return this.osp;
-            }
-        }
+//        final var subjectIndexSize = this.spo.countIndexSize();
+//        final var predicateIndexSize = this.pos.countIndexSize();
+//        final var objectIndexSize = this.osp.countIndexSize();
+//        if(subjectIndexSize < predicateIndexSize) {
+//            if(subjectIndexSize < objectIndexSize) {
+//                return this.spo;
+//            } else {
+//                return this.osp;
+//            }
+//        } else {
+//            if(predicateIndexSize < objectIndexSize) {
+//                return this.pos;
+//            } else {
+//                return this.osp;
+//            }
+//        }
+        return this.spo;
     }
 }
