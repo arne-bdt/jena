@@ -20,6 +20,7 @@ package org.apache.jena.mem2.store.adaptive.base;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
+import org.apache.jena.mem2.store.adaptive.TripleWithIndexingHashCodes;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -45,42 +46,52 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
     }
 
     @Override
-    public QueryableTripleSet addTriple(Triple triple) {
+    public QueryableTripleSet addTriple(TripleWithIndexingHashCodes triple) {
         if (super.contains(triple)) {
             return null;
         }
-        super.add(triple);
+        super.add(triple.getTriple());
         return this;
     }
 
     @Override
-    public QueryableTripleSet addTripleUnchecked(Triple triple) {
-        super.add(triple);
+    public QueryableTripleSet addTripleUnchecked(TripleWithIndexingHashCodes triple) {
+        super.add(triple.getTriple());
         return this;
     }
 
     @Override
-    public boolean removeTriple(Triple triple) {
-        return super.remove(triple);
+    public boolean removeTriple(TripleWithIndexingHashCodes triple) {
+        return super.remove(triple.getTriple());
     }
 
     @Override
-    public void removeTripleUnchecked(Triple triple) {
-        super.remove(triple);
+    public void removeTripleUnchecked(TripleWithIndexingHashCodes triple) {
+        super.remove(triple.getTriple());
     }
 
     @Override
-    public boolean containsMatch(Triple tripleMatch) {
-        return this.streamTriples(tripleMatch).findAny().isPresent();
+    public boolean containsMatch(TripleWithIndexingHashCodes tripleMatch) {
+        return this.containsTriple(tripleMatch); /*no optimization possible here*/
     }
 
     @Override
-    public Stream<Triple> streamTriples(Triple tripleMatch) {
-        return super.stream().filter(triple -> this.matches(tripleMatch, triple));
+    public boolean containsTriple(TripleWithIndexingHashCodes concreteTriple) {
+       for (var triple : this) {
+           if (this.matches(concreteTriple.getTriple(), triple)) {
+               return true;
+           }
+       }
+       return false;
     }
 
     @Override
-    public Iterator<Triple> findTriples(Triple tripleMatch) {
+    public Stream<Triple> streamTriples(TripleWithIndexingHashCodes tripleMatch) {
+        return super.stream().filter(triple -> this.matches(tripleMatch.getTriple(), triple));
+    }
+
+    @Override
+    public Iterator<Triple> findTriples(TripleWithIndexingHashCodes tripleMatch) {
         return this.streamTriples(tripleMatch).iterator();
     }
 

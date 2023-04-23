@@ -35,13 +35,13 @@ public interface QueryableTripleSet {
 
     public int indexSize();
 
-    public QueryableTripleSet addTriple(final Triple triple);
+    public QueryableTripleSet addTriple(final TripleWithIndexingHashCodes triple);
 
-    public QueryableTripleSet addTripleUnchecked(final Triple triple);
+    public QueryableTripleSet addTripleUnchecked(final TripleWithIndexingHashCodes triple);
 
-    public boolean removeTriple(final Triple triple);
+    public boolean removeTriple(final TripleWithIndexingHashCodes triple);
 
-    public void removeTripleUnchecked(final Triple triple);
+    public void removeTripleUnchecked(final TripleWithIndexingHashCodes triple);
 
     /**
      * Answer true if the graph contains any triple matching <code>t</code>.
@@ -50,7 +50,9 @@ public interface QueryableTripleSet {
      *
      * @param tripleMatch triple match pattern, which may be contained
      */
-    boolean containsMatch(final Triple tripleMatch);
+    boolean containsMatch(final TripleWithIndexingHashCodes tripleMatch);
+
+    boolean containsTriple(final TripleWithIndexingHashCodes concreteTriple);
 
     /**
      * Returns a {@link Stream} of Triples matching the given pattern.
@@ -58,7 +60,7 @@ public interface QueryableTripleSet {
      * @param tripleMatch triple match pattern
      * @return a stream  of triples in this graph matching the pattern.
      */
-    Stream<Triple> streamTriples(final Triple tripleMatch);
+    Stream<Triple> streamTriples(final TripleWithIndexingHashCodes tripleMatch);
 
     /**
      * Returns a {@link Stream} of all Triples.
@@ -70,5 +72,5 @@ public interface QueryableTripleSet {
     /**
      * Returns an {@link ExtendedIterator} of all triples in the graph matching the given triple match.
      */
-    Iterator<Triple> findTriples(final Triple tripleMatch);
+    Iterator<Triple> findTriples(final TripleWithIndexingHashCodes tripleMatch);
 }

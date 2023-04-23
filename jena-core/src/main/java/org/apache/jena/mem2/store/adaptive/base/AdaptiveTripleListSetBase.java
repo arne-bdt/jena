@@ -21,6 +21,7 @@ package org.apache.jena.mem2.store.adaptive.base;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.store.adaptive.AdaptiveTripleStore;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
+import org.apache.jena.mem2.store.adaptive.TripleWithIndexingHashCodes;
 
 public abstract class AdaptiveTripleListSetBase extends TripleListSetBase {
 
@@ -32,7 +33,7 @@ public abstract class AdaptiveTripleListSetBase extends TripleListSetBase {
     protected abstract QueryableTripleSet transition();
 
     @Override
-    public QueryableTripleSet addTriple(Triple triple) {
+    public QueryableTripleSet addTriple(TripleWithIndexingHashCodes triple) {
         if (this.size() == AdaptiveTripleStore.THRESHOLD_FOR_ARRAY_LISTS) {
             return transition().addTriple(triple);
         }
@@ -40,7 +41,7 @@ public abstract class AdaptiveTripleListSetBase extends TripleListSetBase {
     }
 
     @Override
-    public QueryableTripleSet addTripleUnchecked(Triple triple) {
+    public QueryableTripleSet addTripleUnchecked(TripleWithIndexingHashCodes triple) {
         if (this.size() == AdaptiveTripleStore.THRESHOLD_FOR_ARRAY_LISTS) {
             return transition().addTripleUnchecked(triple);
         }

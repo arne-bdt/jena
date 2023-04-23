@@ -31,7 +31,7 @@ import java.util.stream.StreamSupport;
  */
 public abstract class FastHashSetBase<E> implements Set<E> {
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
-    private int calcStartIndexByHashCode(final int hashCode) {
+    protected int calcStartIndexByHashCode(final int hashCode) {
         //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
         return hashCode & (entries.length-1);
     }
@@ -65,15 +65,9 @@ public abstract class FastHashSetBase<E> implements Set<E> {
         }
     }
 
-    public FastHashSetBase(Stream<E> distinctStream, int size) {
+    public FastHashSetBase(int size) {
         this.entries = createEntryArray(Integer.highestOneBit(((int)(size/loadFactor)+1)) << 1);
         this.hashCodes = new int[entries.length];
-        distinctStream.forEach(t -> {
-            final int index, hashCode;
-            entries[index = findEmptySlotWithoutEqualityCheck(hashCode = t.hashCode())] = t;
-            hashCodes[index] = hashCode;
-        });
-        this.size = size;
     }
 
 
@@ -198,8 +192,8 @@ public abstract class FastHashSetBase<E> implements Set<E> {
 
     @Override
     public boolean add(E value) {
-        return add(value, value.hashCode());
-        //throw new UnsupportedOperationException();
+        //return add(value, value.hashCode());
+        throw new UnsupportedOperationException();
     }
 
     public boolean add(E value, int hashCode) {
@@ -215,8 +209,8 @@ public abstract class FastHashSetBase<E> implements Set<E> {
     }
 
     public void addUnchecked(E value) {
-        addUnchecked(value, value.hashCode());
-        //throw new UnsupportedOperationException();
+        //addUnchecked(value, value.hashCode());
+        throw new UnsupportedOperationException();
     }
 
     public void addUnchecked(E value, int hashCode) {
@@ -241,8 +235,8 @@ public abstract class FastHashSetBase<E> implements Set<E> {
 //    }
 
     public E getIfPresent(E value) {
-        throw new UnsupportedOperationException();
-        //return getIfPresent(value, entries.hashCode());
+        //throw new UnsupportedOperationException();
+        return getIfPresent(value, entries.hashCode());
     }
 
     public E getIfPresent(E value, int hashCode) {

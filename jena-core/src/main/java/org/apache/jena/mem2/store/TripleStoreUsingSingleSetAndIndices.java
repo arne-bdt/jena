@@ -20,7 +20,7 @@
 //
 //import org.apache.jena.graph.Node;
 //import org.apache.jena.graph.Triple;
-//import org.apache.jena.mem2.TripleWithIndexingHashCodes;
+//import org.apache.jena.mem2.store.adaptive.TripleWithIndexingHashCodes;
 //import org.apache.jena.mem2.map.FastHashSetBase;
 //import org.apache.jena.mem2.map.IntIntSetBase;
 //import org.apache.jena.mem2.map.TriplesMapWithOneIndex;

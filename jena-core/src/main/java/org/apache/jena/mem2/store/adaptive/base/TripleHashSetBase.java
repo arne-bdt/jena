@@ -22,17 +22,19 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.specialized.FastHashSetBase;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSetWithIndexingValue;
+import org.apache.jena.mem2.store.adaptive.TripleWithIndexingHashCodes;
 
 import java.util.Iterator;
 import java.util.stream.Stream;
 
 public abstract class TripleHashSetBase extends FastHashSetBase<Triple> implements QueryableTripleSetWithIndexingValue {
 
-    private final Object indexingValue;
+    private final int indexingValueHashCode;
 
     public TripleHashSetBase(QueryableTripleSetWithIndexingValue set) {
-        super(set.streamTriples(), set.countTriples());
-        this.indexingValue = set.getIndexingValue();
+        super(set.countTriples());
+        set.streamTriples().forEach(t -> super.addUnchecked(t, TripleWithIndexingHashCodes.calcHashCodeBasedOnIndexingValues(t)));
+        this.indexingValueHashCode = set.getIndexValueHashCode();
     }
 
     protected abstract boolean matches(final Triple tripleMatch, final Triple triple);
@@ -53,37 +55,61 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple> implemen
     }
 
     @Override
-    public QueryableTripleSet addTriple(Triple triple) {
-        if(super.add(triple)) {
+    public QueryableTripleSet addTriple(TripleWithIndexingHashCodes triple) {
+        if(super.add(triple.getTriple(), triple.hashCode())) {
             return this;
         }
         return null;
     }
 
     @Override
-    public QueryableTripleSet addTripleUnchecked(Triple triple) {
-        super.addUnchecked(triple);
+    public QueryableTripleSet addTripleUnchecked(TripleWithIndexingHashCodes triple) {
+        super.addUnchecked(triple.getTriple(), triple.hashCode());
         return this;
     }
 
     @Override
-    public boolean removeTriple(Triple triple) {
-        return super.remove(triple);
+    public boolean removeTriple(TripleWithIndexingHashCodes triple) {
+        return super.remove(triple.getTriple(), triple.hashCode());
     }
 
     @Override
-    public void removeTripleUnchecked(Triple triple) {
-        super.removeUnchecked(triple);
+    public void removeTripleUnchecked(TripleWithIndexingHashCodes triple) {
+        super.removeUnchecked(triple.getTriple(), triple.hashCode());
     }
 
     @Override
-    public boolean containsMatch(Triple tripleMatch) {
-        return this.streamTriples(tripleMatch).findAny().isPresent();
+    public boolean containsTriple(TripleWithIndexingHashCodes concreteTriple) {
+        var hashCode = concreteTriple.hashCode();
+        var index = super.calcStartIndexByHashCode(hashCode);
+        if(null == entries[index]) {
+            return false;
+        }
+        if(hashCode == hashCodes[index] && concreteTriple.getTriple().matches(entries[index])) {
+            return true;
+        } else if(--index < 0){
+            index += entries.length;
+        }
+        while(true) {
+            if(null == entries[index]) {
+                return false;
+            } else if(hashCode == hashCodes[index] && concreteTriple.getTriple().matches(entries[index])) {
+                return true;
+            } else if(--index < 0){
+                index += entries.length;
+            }
+        }
+    }
+
+
+    @Override
+    public boolean containsMatch(TripleWithIndexingHashCodes tripleMatch) {
+        return super.stream().anyMatch(triple -> this.matches(tripleMatch.getTriple(), triple));
     }
 
     @Override
-    public Stream<Triple> streamTriples(Triple tripleMatch) {
-        return super.stream().filter(triple -> this.matches(tripleMatch, triple));
+    public Stream<Triple> streamTriples(TripleWithIndexingHashCodes tripleMatch) {
+        return super.stream().filter(triple -> this.matches(tripleMatch.getTriple(), triple));
     }
 
     @Override
@@ -92,12 +118,12 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple> implemen
     }
 
     @Override
-    public Iterator<Triple> findTriples(Triple tripleMatch) {
+    public Iterator<Triple> findTriples(TripleWithIndexingHashCodes tripleMatch) {
         return this.streamTriples(tripleMatch).iterator();
     }
 
     @Override
-    public Object getIndexingValue() {
-        return this.indexingValue;
+    public int getIndexValueHashCode() {
+        return this.indexingValueHashCode;
     }
 }

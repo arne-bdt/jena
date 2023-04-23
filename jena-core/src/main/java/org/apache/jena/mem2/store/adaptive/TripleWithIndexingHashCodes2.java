@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2;
+package org.apache.jena.mem2.store.adaptive;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
@@ -23,7 +23,7 @@ import org.apache.jena.graph.Triple;
 /**
  * A triple with a cached hash codes for the triple itself and the indexing values of subject, predicate and object.
  */
-public class TripleWithIndexingHashCodes {
+public class TripleWithIndexingHashCodes2 {
     /**
      * The hash code of the triple is cached in the first element of this array.
      * The hash codes of the subject, predicate and object are cached in the
@@ -48,7 +48,7 @@ public class TripleWithIndexingHashCodes {
         return hashes[3];
     }
 
-    public TripleWithIndexingHashCodes(Triple triple) {
+    public TripleWithIndexingHashCodes2(Triple triple) {
         this.triple = triple;
         this.hashes = new int[] {
             0,
@@ -60,6 +60,12 @@ public class TripleWithIndexingHashCodes {
          * same as in {@link Triple#hashCode(Node, Node, Node)}
          **/
         this.hashes[0] = (hashes[1] >> 1) ^ hashes[2] ^ (hashes[3] << 1);
+    }
+
+    public static int calcHashCodeBasedOnIndexingValues(Triple triple) {
+        return (triple.getSubject().getIndexingValue().hashCode() >> 1)
+                ^ triple.getPredicate().getIndexingValue().hashCode()
+                ^ (triple.getObject().getIndexingValue().hashCode() << 1);
     }
 
     @Override
@@ -75,10 +81,10 @@ public class TripleWithIndexingHashCodes {
         if (obj == null) {
             return false;
         }
-        if (!(obj instanceof TripleWithIndexingHashCodes)) {
+        if (!(obj instanceof TripleWithIndexingHashCodes2)) {
             return false;
         }
-        var other = (TripleWithIndexingHashCodes) obj;
+        var other = (TripleWithIndexingHashCodes2) obj;
         /*compare only the triple hash code - which is a combination of the other hashCodes  */
         if (this.hashes[0] != other.hashes[0]) {
             return false;

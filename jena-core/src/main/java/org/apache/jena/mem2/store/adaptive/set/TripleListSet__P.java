@@ -33,8 +33,8 @@ public class TripleListSet__P extends AdaptiveTripleListSetBase implements Query
     }
 
     @Override
-    public Object getIndexingValue() {
-        return this.get(0).getSubject().getIndexingValue();
+    public int getIndexValueHashCode() {
+        return this.get(0).getSubject().getIndexingValue().hashCode();
     }
 
     @Override

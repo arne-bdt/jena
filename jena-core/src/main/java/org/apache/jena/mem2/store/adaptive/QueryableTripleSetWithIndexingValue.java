@@ -25,5 +25,5 @@ import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
  * @see GraphMemWithAdaptiveTripleStore
  */
 public interface QueryableTripleSetWithIndexingValue extends QueryableTripleSet {
-    public Object getIndexingValue();
+    public int getIndexValueHashCode();
 }

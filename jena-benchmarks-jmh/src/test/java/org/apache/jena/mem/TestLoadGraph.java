@@ -1,19 +1,68 @@
 package org.apache.jena.mem;
 
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.apache.jena.mem.jmh.AbstractTestGraphBaseWithFilledGraph.cloneNode;
+import static org.junit.Assert.assertEquals;
 
 @Ignore
 public class TestLoadGraph {
 
+    List<Triple> triples;
+    List<Triple> clones;
+
+    Graph sut0;
+    Graph sut1;
+
+    @Before
+    public void setUp() throws Exception {
+        this.triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read("C:/temp/res_test/xxx_CGMES_SSH.xml");
+        this.clones = new ArrayList<>(triples.size());
+        sut0 = new GraphMem2();
+        sut1 = new GraphMemWithAdaptiveTripleStore();
+        triples.forEach(t -> {
+            clones.add(Triple.create(cloneNode(t.getSubject()), cloneNode(t.getPredicate()), cloneNode(t.getObject())));
+            sut0.add(t);
+            sut1.add(t);
+        });
+    }
+
     @Test
-    public void testLoadGraph() {
-        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read("./testing/pizza.owl.rdf");
-        var sut = new GraphMem();
-        triples.forEach(t -> sut.add(Triple.create(cloneNode(t.getSubject()), cloneNode(t.getPredicate()), cloneNode(t.getObject()))));
+    public void testContains() {
+        for(int i=0; i<100; i++) {
+            for (var t : clones) {
+                Assert.assertTrue(sut0.contains(t));
+                Assert.assertTrue(sut1.contains(t));
+            }
+        }
+    }
+
+    @Test
+    public void testFindAll() {
+        for(var i=0; i<100; i++) {
+            findAll(sut0);
+            findAll(sut1);
+        }
+    }
+
+    private static void findAll(Graph sut) {
+        var found = new ArrayList<Triple>(sut.size());
+        var it = sut.find();
+        while(it.hasNext()) {
+            found.add(it.next());
+        }
+        it.close();
+        assertEquals(sut.size(), found.size());
     }
 
 }

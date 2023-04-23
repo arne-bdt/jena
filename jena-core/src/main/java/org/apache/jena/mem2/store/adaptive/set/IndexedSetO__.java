@@ -21,6 +21,7 @@ package org.apache.jena.mem2.store.adaptive.set;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
+import org.apache.jena.mem2.store.adaptive.TripleWithIndexingHashCodes;
 import org.apache.jena.mem2.store.adaptive.base.MapOfIndexedSetsBase;
 
 public class IndexedSetO__ extends MapOfIndexedSetsBase {
@@ -36,5 +37,10 @@ public class IndexedSetO__ extends MapOfIndexedSetsBase {
     @Override
     protected Node getIndexingNode(Triple tripleMatch) {
         return tripleMatch.getObject();
+    }
+
+    @Override
+    protected int getHashCodeOfIndexingValue(TripleWithIndexingHashCodes triple) {
+        return triple.getObjectIndexingHashCode();
     }
 }

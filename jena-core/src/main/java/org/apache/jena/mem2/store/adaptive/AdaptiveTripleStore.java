@@ -46,22 +46,24 @@ public class AdaptiveTripleStore implements TripleStore {
 
     @Override
     public void add(Triple triple) {
-        var set = this.spo.addTriple(triple);
+        var t = new TripleWithIndexingHashCodes(triple);
+        var set = this.spo.addTriple(t);
         if (null == set) {
             return;
         }
         if(set != this.spo) {
             this.spo = set;
         }
-        this.pos = this.pos.addTripleUnchecked(triple);
-        this.osp = this.osp.addTripleUnchecked(triple);
+        this.pos = this.pos.addTripleUnchecked(t);
+        this.osp = this.osp.addTripleUnchecked(t);
     }
 
     @Override
     public void remove(Triple triple) {
-        if(this.spo.removeTriple(triple)) {
-            this.pos.removeTripleUnchecked(triple);
-            this.osp.removeTripleUnchecked(triple);
+        var t = new TripleWithIndexingHashCodes(triple);
+        if(this.spo.removeTriple(t)) {
+            this.pos.removeTripleUnchecked(t);
+            this.osp.removeTripleUnchecked(t);
         }
     }
 
@@ -87,17 +89,19 @@ public class AdaptiveTripleStore implements TripleStore {
         switch (PatternClassifier.classify(tripleMatch)) {
 
             case SPO:
+                return this.spo.containsTriple(new TripleWithIndexingHashCodes(tripleMatch));
+
             case SP_:
             case S__:
-                return this.spo.containsMatch(tripleMatch);
+                return this.spo.containsMatch(new TripleWithIndexingHashCodes(tripleMatch));
 
             case _PO:
             case _P_:
-                return this.pos.containsMatch(tripleMatch);
+                return this.pos.containsMatch(new TripleWithIndexingHashCodes(tripleMatch));
 
             case S_O:
             case __O:
-                return this.osp.containsMatch(tripleMatch);
+                return this.osp.containsMatch(new TripleWithIndexingHashCodes(tripleMatch));
 
             case ___:
                 return this.spo.indexSize() != 0;
@@ -119,15 +123,15 @@ public class AdaptiveTripleStore implements TripleStore {
             case SPO:
             case SP_:
             case S__:
-                return this.spo.streamTriples(tripleMatch);
+                return this.spo.streamTriples(new TripleWithIndexingHashCodes(tripleMatch));
 
             case _PO:
             case _P_:
-                return this.pos.streamTriples(tripleMatch);
+                return this.pos.streamTriples(new TripleWithIndexingHashCodes(tripleMatch));
 
             case S_O:
             case __O:
-                return this.osp.streamTriples(tripleMatch);
+                return this.osp.streamTriples(new TripleWithIndexingHashCodes(tripleMatch));
 
             case ___:
                 return this.stream();
@@ -144,15 +148,15 @@ public class AdaptiveTripleStore implements TripleStore {
             case SPO:
             case SP_:
             case S__:
-                return this.spo.findTriples(tripleMatch);
+                return this.spo.findTriples(new TripleWithIndexingHashCodes(tripleMatch));
 
             case _PO:
             case _P_:
-                return this.pos.findTriples(tripleMatch);
+                return this.pos.findTriples(new TripleWithIndexingHashCodes(tripleMatch));
 
             case S_O:
             case __O:
-                return this.osp.findTriples(tripleMatch);
+                return this.osp.findTriples(new TripleWithIndexingHashCodes(tripleMatch));
 
             case ___:
                 return this.stream().iterator();

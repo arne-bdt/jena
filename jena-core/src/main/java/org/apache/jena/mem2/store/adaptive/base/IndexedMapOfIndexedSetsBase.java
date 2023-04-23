@@ -22,15 +22,15 @@ import org.apache.jena.mem2.store.adaptive.QueryableTripleSetWithIndexingValue;
 
 public abstract class IndexedMapOfIndexedSetsBase extends MapOfIndexedSetsBase implements QueryableTripleSetWithIndexingValue {
 
-    private final Object indexingValue;
+    private final int indexingValueHashCode;
 
     public IndexedMapOfIndexedSetsBase(QueryableTripleSetWithIndexingValue tripleSet) {
         super(tripleSet);
-        this.indexingValue = tripleSet.getIndexingValue();
+        this.indexingValueHashCode = tripleSet.getIndexValueHashCode();
     }
 
     @Override
-    public Object getIndexingValue() {
-        return this.indexingValue;
+    public int getIndexValueHashCode() {
+        return this.indexingValueHashCode;
     }
 }

@@ -22,6 +22,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.specialized.FastHashMapBase;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
+import org.apache.jena.mem2.store.adaptive.TripleWithIndexingHashCodes;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -31,7 +32,7 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
 
     public MapOfIndexedSetsBase(QueryableTripleSet tripleSet) {
         super();
-        tripleSet.streamTriples().forEach(this::addTripleUnchecked);
+        tripleSet.streamTriples().forEach(t -> this.addTripleUnchecked(new TripleWithIndexingHashCodes(t)));
     }
 
     @Override
@@ -43,9 +44,7 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
 
     protected abstract Node getIndexingNode(Triple tripleMatch);
 
-    protected int getHashCodeOfIndexingValue(Triple triple) {
-        return getIndexingNode(triple).hashCode();
-    }
+    protected abstract int getHashCodeOfIndexingValue(TripleWithIndexingHashCodes triple);
 
     @Override
     public int countTriples() {
@@ -58,7 +57,7 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     }
 
     @Override
-    public QueryableTripleSet addTriple(Triple triple) {
+    public QueryableTripleSet addTriple(TripleWithIndexingHashCodes triple) {
         boolean tripleExists[] = {true};
         this.compute(getHashCodeOfIndexingValue(triple), (set) -> {
             if (set == null) {
@@ -76,7 +75,7 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     }
 
     @Override
-    public QueryableTripleSet addTripleUnchecked(Triple triple) {
+    public QueryableTripleSet addTripleUnchecked(TripleWithIndexingHashCodes triple) {
         super.compute(getHashCodeOfIndexingValue(triple), (set) -> {
             if (set == null) {
                 set = createEntry();
@@ -88,7 +87,7 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     }
 
     @Override
-    public boolean removeTriple(Triple triple) {
+    public boolean removeTriple(TripleWithIndexingHashCodes triple) {
         boolean tripleRemoved[] = {false};
         this.compute(getHashCodeOfIndexingValue(triple), (set) -> {
             if (set == null) {
@@ -103,7 +102,7 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     }
 
     @Override
-    public void removeTripleUnchecked(Triple triple) {
+    public void removeTripleUnchecked(TripleWithIndexingHashCodes triple) {
         this.compute(getHashCodeOfIndexingValue(triple), (set) -> {
             set.removeTripleUnchecked(triple);
             if(0 == set.indexSize()) {
@@ -114,19 +113,31 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     }
 
     @Override
-    public boolean containsMatch(Triple tripleMatch) {
-        var set = super.getIfPresent(getHashCodeOfIndexingValue(tripleMatch));
+    public boolean containsTriple(TripleWithIndexingHashCodes concreteTriple) {
+        var set = super.getIfPresent(getHashCodeOfIndexingValue(concreteTriple));
         if(set == null) {
             return false;
+        }
+        return set.containsTriple(concreteTriple);
+    }
+
+    @Override
+    public boolean containsMatch(TripleWithIndexingHashCodes tripleMatch) {
+        var set = super.getIfPresent(getHashCodeOfIndexingValue(tripleMatch));
+        if(set == null) {
+            if(getIndexingNode(tripleMatch.getTriple()).isConcrete()) {
+                return false;
+            }
+            return stream().anyMatch(s -> s.containsMatch(tripleMatch));
         }
         return set.containsMatch(tripleMatch);
     }
 
     @Override
-    public Stream<Triple> streamTriples(Triple tripleMatch) {
+    public Stream<Triple> streamTriples(TripleWithIndexingHashCodes tripleMatch) {
         var set = super.getIfPresent(getHashCodeOfIndexingValue(tripleMatch));
         if(set == null) {
-            if(getIndexingNode(tripleMatch).isConcrete()) {
+            if(getIndexingNode(tripleMatch.getTriple()).isConcrete()) {
                 return Stream.empty();
             }
             return stream().flatMap(s -> s.streamTriples(tripleMatch));
@@ -135,10 +146,10 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     }
 
     @Override
-    public Iterator<Triple> findTriples(Triple tripleMatch) {
+    public Iterator<Triple> findTriples(TripleWithIndexingHashCodes tripleMatch) {
         var set = super.getIfPresent(getHashCodeOfIndexingValue(tripleMatch));
         if(set == null) {
-            if(getIndexingNode(tripleMatch).isConcrete()) {
+            if(getIndexingNode(tripleMatch.getTriple()).isConcrete()) {
                 return Collections.emptyIterator();
             }
             return stream().flatMap(s -> s.streamTriples(tripleMatch)).iterator();
