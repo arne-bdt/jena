@@ -19,19 +19,24 @@
 package org.apache.jena.mem2.store.adaptive.set;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.store.adaptive.AdaptiveTripleStore;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
 import org.apache.jena.mem2.store.adaptive.base.AdaptiveTripleListSetBase;
+
+import java.util.function.Predicate;
 
 public class TripleListSetSPO extends AdaptiveTripleListSetBase {
 
     protected QueryableTripleSet transition() {
-        return new IndexedSetS__(this);
+        final var set = new IndexedSetS__(this.size());
+        for(var triple : this) {
+            set.addTripleUnchecked(triple, triple.hashCode());
+        }
+        return set;
     }
 
     @Override
-    protected boolean matches(Triple tripleMatch, Triple triple)  {
-        return tripleMatch.getSubject().matches(triple.getSubject())
+    protected Predicate<Triple> getMatchPredicate(Triple tripleMatch) {
+        return triple -> tripleMatch.getSubject().matches(triple.getSubject())
                 && tripleMatch.getPredicate().matches(triple.getPredicate())
                 && tripleMatch.getObject().matches(triple.getObject());
     }

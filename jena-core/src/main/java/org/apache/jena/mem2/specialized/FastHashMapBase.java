@@ -56,6 +56,11 @@ public abstract class FastHashMapBase<E> implements Collection<E> {
         this.hashCodes = new int[entries.length];
     }
 
+    public FastHashMapBase(final int minCapacity) {
+        this.entries = createEntryArray(Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1);
+        this.hashCodes = new int[entries.length];
+    }
+
     private int calcNewSize() {
         if(size >= entries.length*loadFactor && entries.length <= 1 << 30) { /*grow*/
             return entries.length << 1;

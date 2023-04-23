@@ -20,11 +20,10 @@ package org.apache.jena.mem2.store.adaptive.base;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
-import org.apache.jena.mem2.store.adaptive.TripleWithIndexingHashCodes;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.function.IntFunction;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public abstract class TripleListSetBase extends ArrayList<Triple> implements QueryableTripleSet {
@@ -33,7 +32,7 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
         super(initialCapacity);
     }
 
-    protected abstract boolean matches(final Triple tripleMatch, final Triple triple);
+    protected abstract Predicate<Triple> getMatchPredicate(final Triple tripleMatch);
 
     @Override
     public int countTriples() {
@@ -46,58 +45,50 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
     }
 
     @Override
-    public QueryableTripleSet addTriple(TripleWithIndexingHashCodes triple) {
+    public QueryableTripleSet addTriple(final Triple triple, final int hashCode) {
         if (super.contains(triple)) {
             return null;
         }
-        super.add(triple.getTriple());
+        super.add(triple);
         return this;
     }
 
     @Override
-    public QueryableTripleSet addTripleUnchecked(TripleWithIndexingHashCodes triple) {
-        super.add(triple.getTriple());
+    public QueryableTripleSet addTripleUnchecked(final Triple triple, final int hashCode) {
+        super.add(triple);
         return this;
     }
 
     @Override
-    public boolean removeTriple(TripleWithIndexingHashCodes triple) {
-        return super.remove(triple.getTriple());
+    public boolean removeTriple(final Triple triple, final int hashCode) {
+        return super.remove(triple);
     }
 
     @Override
-    public void removeTripleUnchecked(TripleWithIndexingHashCodes triple) {
-        super.remove(triple.getTriple());
+    public void removeTripleUnchecked(final Triple triple, final int hashCode) {
+        super.remove(triple);
     }
 
     @Override
-    public boolean containsMatch(TripleWithIndexingHashCodes tripleMatch) {
-        return this.containsTriple(tripleMatch); /*no optimization possible here*/
+    public boolean containsMatch(final Triple tripleMatch) {
+        final var matcher = this.getMatchPredicate(tripleMatch);
+        for (var t : this) {
+            if (matcher.test(t)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
-    public boolean containsTriple(TripleWithIndexingHashCodes concreteTriple) {
-       for (var triple : this) {
-           if (this.matches(concreteTriple.getTriple(), triple)) {
-               return true;
-           }
-       }
-       return false;
+    public Stream<Triple> streamTriples(final Triple tripleMatch) {
+        final var matcher = this.getMatchPredicate(tripleMatch);
+        return super.stream().filter(matcher);
     }
 
     @Override
-    public Stream<Triple> streamTriples(TripleWithIndexingHashCodes tripleMatch) {
-        return super.stream().filter(triple -> this.matches(tripleMatch.getTriple(), triple));
-    }
-
-    @Override
-    public Iterator<Triple> findTriples(TripleWithIndexingHashCodes tripleMatch) {
+    public Iterator<Triple> findTriples(final Triple tripleMatch) {
         return this.streamTriples(tripleMatch).iterator();
-    }
-
-    @Override
-    public <T> T[] toArray(IntFunction<T[]> generator) {
-        return super.toArray(generator);
     }
 
     @Override

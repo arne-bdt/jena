@@ -20,15 +20,13 @@ package org.apache.jena.mem2.store.adaptive.set;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.store.adaptive.AdaptiveTripleStore;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
-import org.apache.jena.mem2.store.adaptive.TripleWithIndexingHashCodes;
 import org.apache.jena.mem2.store.adaptive.base.MapOfIndexedSetsBase;
 
 public class IndexedSetS__ extends MapOfIndexedSetsBase {
 
-    public IndexedSetS__(QueryableTripleSet tripleSet) {
-        super(tripleSet);
+    public IndexedSetS__(final int minCapacity) {
+        super(minCapacity);
     }
 
     @Override
@@ -37,12 +35,12 @@ public class IndexedSetS__ extends MapOfIndexedSetsBase {
     }
 
     @Override
-    protected Node getIndexingNode(Triple tripleMatch) {
+    protected Node getIndexingNode(final Triple tripleMatch) {
         return tripleMatch.getSubject();
     }
 
     @Override
-    protected int getHashCodeOfIndexingValue(TripleWithIndexingHashCodes triple) {
-        return triple.getSubjectIndexingHashCode();
+    protected int getHashCodeOfIndexingValue(final Triple triple) {
+        return triple.getSubject().getIndexingValue().hashCode();
     }
 }

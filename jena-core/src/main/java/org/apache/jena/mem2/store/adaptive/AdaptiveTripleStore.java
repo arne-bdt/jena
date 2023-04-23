@@ -32,7 +32,7 @@ public class AdaptiveTripleStore implements TripleStore {
 
     public static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
 
-    public static int THRESHOLD_FOR_ARRAY_LISTS = 30;//60-350;
+    public static int THRESHOLD_FOR_ARRAY_LISTS = 60;//60-350;
 
     private QueryableTripleSet spo;
     private QueryableTripleSet pos;
@@ -45,25 +45,25 @@ public class AdaptiveTripleStore implements TripleStore {
 
 
     @Override
-    public void add(Triple triple) {
-        var t = new TripleWithIndexingHashCodes(triple);
-        var set = this.spo.addTriple(t);
+    public void add(final Triple triple) {
+        final var hashCode = triple.hashCode();
+        var set = this.spo.addTriple(triple, hashCode);
         if (null == set) {
             return;
         }
         if(set != this.spo) {
             this.spo = set;
         }
-        this.pos = this.pos.addTripleUnchecked(t);
-        this.osp = this.osp.addTripleUnchecked(t);
+        this.pos = this.pos.addTripleUnchecked(triple, hashCode);
+        this.osp = this.osp.addTripleUnchecked(triple, hashCode);
     }
 
     @Override
-    public void remove(Triple triple) {
-        var t = new TripleWithIndexingHashCodes(triple);
-        if(this.spo.removeTriple(t)) {
-            this.pos.removeTripleUnchecked(t);
-            this.osp.removeTripleUnchecked(t);
+    public void remove(final Triple triple) {
+        final var hashCode = triple.hashCode();
+        if(this.spo.removeTriple(triple, hashCode)) {
+            this.pos.removeTripleUnchecked(triple, hashCode);
+            this.osp.removeTripleUnchecked(triple, hashCode);
         }
     }
 
@@ -89,19 +89,17 @@ public class AdaptiveTripleStore implements TripleStore {
         switch (PatternClassifier.classify(tripleMatch)) {
 
             case SPO:
-                return this.spo.containsTriple(new TripleWithIndexingHashCodes(tripleMatch));
-
             case SP_:
             case S__:
-                return this.spo.containsMatch(new TripleWithIndexingHashCodes(tripleMatch));
+                return this.spo.containsMatch(tripleMatch);
 
             case _PO:
             case _P_:
-                return this.pos.containsMatch(new TripleWithIndexingHashCodes(tripleMatch));
+                return this.pos.containsMatch(tripleMatch);
 
             case S_O:
             case __O:
-                return this.osp.containsMatch(new TripleWithIndexingHashCodes(tripleMatch));
+                return this.osp.containsMatch(tripleMatch);
 
             case ___:
                 return this.spo.indexSize() != 0;
@@ -123,15 +121,15 @@ public class AdaptiveTripleStore implements TripleStore {
             case SPO:
             case SP_:
             case S__:
-                return this.spo.streamTriples(new TripleWithIndexingHashCodes(tripleMatch));
+                return this.spo.streamTriples(tripleMatch);
 
             case _PO:
             case _P_:
-                return this.pos.streamTriples(new TripleWithIndexingHashCodes(tripleMatch));
+                return this.pos.streamTriples(tripleMatch);
 
             case S_O:
             case __O:
-                return this.osp.streamTriples(new TripleWithIndexingHashCodes(tripleMatch));
+                return this.osp.streamTriples(tripleMatch);
 
             case ___:
                 return this.stream();
@@ -148,15 +146,15 @@ public class AdaptiveTripleStore implements TripleStore {
             case SPO:
             case SP_:
             case S__:
-                return this.spo.findTriples(new TripleWithIndexingHashCodes(tripleMatch));
+                return this.spo.findTriples(tripleMatch);
 
             case _PO:
             case _P_:
-                return this.pos.findTriples(new TripleWithIndexingHashCodes(tripleMatch));
+                return this.pos.findTriples(tripleMatch);
 
             case S_O:
             case __O:
-                return this.osp.findTriples(new TripleWithIndexingHashCodes(tripleMatch));
+                return this.osp.findTriples(tripleMatch);
 
             case ___:
                 return this.stream().iterator();

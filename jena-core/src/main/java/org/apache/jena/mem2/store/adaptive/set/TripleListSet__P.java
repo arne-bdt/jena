@@ -23,11 +23,13 @@ import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSetWithIndexingValue;
 import org.apache.jena.mem2.store.adaptive.base.AdaptiveTripleListSetBase;
 
+import java.util.function.Predicate;
+
 public class TripleListSet__P extends AdaptiveTripleListSetBase implements QueryableTripleSetWithIndexingValue {
 
     @Override
-    protected boolean matches(Triple tripleMatch, Triple triple)  {
-        return tripleMatch.getPredicate().matches(triple.getPredicate())
+    protected Predicate<Triple> getMatchPredicate(Triple tripleMatch) {
+        return triple -> tripleMatch.getPredicate().matches(triple.getPredicate())
                 && tripleMatch.getObject().matches(triple.getObject())
                 && tripleMatch.getSubject().matches(triple.getSubject());
     }
@@ -39,6 +41,10 @@ public class TripleListSet__P extends AdaptiveTripleListSetBase implements Query
 
     @Override
     protected QueryableTripleSet transition() {
-        return new IndexedSet__P(this);
+        final var set = new IndexedSet__P(this.getIndexValueHashCode(), this.size());
+        for (var triple : this) {
+            set.addTripleUnchecked(triple, triple.hashCode());
+        }
+        return set;
     }
 }

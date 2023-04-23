@@ -65,8 +65,8 @@ public abstract class FastHashSetBase<E> implements Set<E> {
         }
     }
 
-    public FastHashSetBase(int size) {
-        this.entries = createEntryArray(Integer.highestOneBit(((int)(size/loadFactor)+1)) << 1);
+    public FastHashSetBase(int minCapacity) {
+        this.entries = createEntryArray(Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1);
         this.hashCodes = new int[entries.length];
     }
 

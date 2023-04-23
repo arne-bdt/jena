@@ -18,23 +18,21 @@
 
 package org.apache.jena.mem2.store.adaptive.set;
 
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
-import org.apache.jena.mem2.store.adaptive.QueryableTripleSetWithIndexingValue;
-import org.apache.jena.mem2.store.adaptive.base.IndexedMapOfIndexedSetsBase;
+
 import org.apache.jena.mem2.store.adaptive.base.TripleHashSetBase;
-import org.apache.jena.mem2.store.adaptive.base.TripleListSetBase;
+
+import java.util.function.Predicate;
 
 public class IndexedSet__O extends TripleHashSetBase {
 
-    public IndexedSet__O(QueryableTripleSetWithIndexingValue tripleSet) {
-        super(tripleSet);
+    public IndexedSet__O(final int indexingValueHashCode, final int minCapacity) {
+        super(indexingValueHashCode, minCapacity);
     }
 
     @Override
-    protected boolean matches(Triple tripleMatch, Triple triple) {
-        return tripleMatch.getObject().matches(triple.getObject())
+    protected Predicate<Triple> getMatchPredicate(Triple tripleMatch) {
+        return triple -> tripleMatch.getObject().matches(triple.getObject())
                 && tripleMatch.getSubject().matches(triple.getSubject())
                 && tripleMatch.getPredicate().matches(triple.getPredicate());
     }

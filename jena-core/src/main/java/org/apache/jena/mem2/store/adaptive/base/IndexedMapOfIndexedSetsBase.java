@@ -24,9 +24,9 @@ public abstract class IndexedMapOfIndexedSetsBase extends MapOfIndexedSetsBase i
 
     private final int indexingValueHashCode;
 
-    public IndexedMapOfIndexedSetsBase(QueryableTripleSetWithIndexingValue tripleSet) {
-        super(tripleSet);
-        this.indexingValueHashCode = tripleSet.getIndexValueHashCode();
+    public IndexedMapOfIndexedSetsBase(final int indexingValueHashCode, final int minCapacity) {
+        super(minCapacity);
+        this.indexingValueHashCode = indexingValueHashCode;
     }
 
     @Override
