@@ -19,6 +19,7 @@
 package org.apache.jena.util.iterator;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -121,6 +122,16 @@ public class NiceIterator<T> implements ExtendedIterator<T>
                 if (!hasNext()) noElements( "concatenation" );
                 removeFrom = current;
                 return current.next();
+                }
+
+            @Override public void forEachRemaining(Consumer<? super T> action)
+                {
+                current.forEachRemaining(action);
+                while(index < pending.size())
+                    {
+                    current = advance();
+                    current.forEachRemaining(action);
+                    }
                 }
 
             @Override public void close()

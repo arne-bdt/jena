@@ -155,10 +155,7 @@ public class ProtobufRDF {
         try {
             List<Var> vars = rowSet.getResultVars();
             try ( Binding2Protobuf b2p = new Binding2Protobuf(out, vars, false) ) {
-                for ( ; rowSet.hasNext() ; ) {
-                    Binding b = rowSet.next();
-                    b2p.output(b);
-                }
+                rowSet.forEachRemaining(b2p::output);
             }
         } finally { IO.flush(out); }
     }

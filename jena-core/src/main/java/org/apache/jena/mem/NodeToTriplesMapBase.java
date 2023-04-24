@@ -19,6 +19,7 @@
 package org.apache.jena.mem;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 import org.apache.jena.graph.* ;
 import org.apache.jena.graph.Triple.Field ;
@@ -137,7 +138,17 @@ public abstract class NodeToTriplesMapBase
                     }
                 }
 
-            @Override public void remove()
+            @Override public void forEachRemaining(Consumer<? super Triple> action)
+                {
+                if (current != null) current.forEachRemaining(action);
+                nodes.forEachRemaining(next ->
+                    {
+                    current = NodeToTriplesMapBase.this.iterator(next, emptier);
+                    current.forEachRemaining(action);
+                    });
+                }
+
+                @Override public void remove()
                 { current.remove(); }
             };
         }

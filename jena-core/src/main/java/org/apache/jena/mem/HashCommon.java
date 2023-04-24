@@ -19,6 +19,7 @@
 package org.apache.jena.mem;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 import org.apache.jena.shared.BrokenException ;
 import org.apache.jena.shared.JenaException ;
@@ -329,6 +330,12 @@ public abstract class HashCommon<Key>
             return movedKeys.get( index++ );
             }
 
+        @Override public void forEachRemaining(Consumer<? super Key> action)
+            {
+            if (changes > initialChanges) throw new ConcurrentModificationException();
+            for(; index < movedKeys.size(); index++) action.accept( movedKeys.get( index ) );
+            }
+
         @Override public void remove()
             { 
             if (changes > initialChanges) throw new ConcurrentModificationException();
@@ -370,6 +377,17 @@ public abstract class HashCommon<Key>
             if (changes > initialChanges) throw new ConcurrentModificationException();
             if (hasNext() == false) noElements( "HashCommon keys" );
             return keys[index++];
+            }
+
+        @Override public void forEachRemaining(Consumer<? super Key> action)
+            {
+            if (changes > initialChanges) throw new ConcurrentModificationException();
+            Key key;
+            while (index < capacity)
+                {
+                key = keys[index++];
+                if (key != null) action.accept(key);
+                }
             }
 
         @Override public void remove()

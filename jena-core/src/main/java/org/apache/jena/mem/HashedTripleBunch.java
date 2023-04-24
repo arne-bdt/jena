@@ -28,7 +28,7 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     public HashedTripleBunch( TripleBunch b )
         {
         super( nextSize( (int) (b.size() / loadFactor) ) );
-        for (Iterator<Triple> it = b.iterator(); it.hasNext();) add( it.next() );
+        b.iterator().forEachRemaining(this::add);
         changes = 0;
         }
 

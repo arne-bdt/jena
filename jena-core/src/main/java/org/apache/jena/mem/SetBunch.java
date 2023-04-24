@@ -32,10 +32,7 @@ public class SetBunch implements TripleBunch
     protected Set<Triple> elements = new HashSet<>(20);
     
     public SetBunch( TripleBunch b )
-        { 
-        for (Iterator<Triple> it = b.iterator(); it.hasNext();) 
-            elements.add( it.next() );
-        }
+        { b.iterator().forEachRemaining(elements::add); }
 
     protected static boolean equalsObjectOK( Triple t )
         { 

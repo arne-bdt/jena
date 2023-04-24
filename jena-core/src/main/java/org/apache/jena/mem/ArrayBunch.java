@@ -19,6 +19,7 @@
 package org.apache.jena.mem;
 
 import java.util.ConcurrentModificationException ;
+import java.util.function.Consumer;
 
 import org.apache.jena.graph.Triple ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
@@ -122,7 +123,14 @@ public class ArrayBunch implements TripleBunch
                 if (i == 0) noElements( "no elements left in ArrayBunch iteration" );
                 return e[--i]; 
                 }
-            
+
+            @Override
+                public void forEachRemaining(Consumer<? super Triple> action)
+                {
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                while (i > 0) action.accept(e[--i]);
+                }
+
             @Override public void remove()
                 {
                 if (changes > initialChanges) throw new ConcurrentModificationException();

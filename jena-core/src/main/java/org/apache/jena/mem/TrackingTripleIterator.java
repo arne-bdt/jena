@@ -19,6 +19,7 @@
 package org.apache.jena.mem;
 
 import java.util.Iterator;
+import java.util.function.Consumer;
 
 import org.apache.jena.graph.* ;
 import org.apache.jena.util.iterator.WrappedIterator ;
@@ -44,5 +45,9 @@ public class TrackingTripleIterator extends WrappedIterator<Triple>
     */
     @Override
     public Triple next()
-        { return current = super.next(); }       
+        { return current = super.next(); }
+
+    @Override
+        public void forEachRemaining(Consumer<? super Triple> action)
+        { super.forEachRemaining(triple -> action.accept(current = triple)); }
     }
