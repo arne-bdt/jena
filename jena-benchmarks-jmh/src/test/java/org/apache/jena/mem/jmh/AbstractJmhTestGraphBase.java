@@ -59,7 +59,7 @@ public abstract class AbstractJmhTestGraphBase {
     public String param0_GraphUri;
 
     @Param({
-            "GraphMemOld",
+            //"GraphMemOld",
             "GraphMem",
             "GraphMem2",
             //"GraphMemWithAdaptiveTripleStore",

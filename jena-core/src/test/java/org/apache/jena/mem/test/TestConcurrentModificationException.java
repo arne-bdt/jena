@@ -37,8 +37,7 @@ public abstract class TestConcurrentModificationException extends ModelTestBase
     public static TestSuite suite()
         { 
         TestSuite result = new TestSuite();
-        result.addTestSuite( TestArrayBunchCME.class ); 
-        result.addTestSuite( TestSetBunchCME.class ); 
+        result.addTestSuite( TestArrayBunchCME.class );
         result.addTestSuite( TestHashedBunchCME.class ); 
         return result;
         }
@@ -51,16 +50,7 @@ public abstract class TestConcurrentModificationException extends ModelTestBase
         @Override public TripleBunch getBunch()
             { return new ArrayBunch(); }
         }
-    
-    public static class TestSetBunchCME extends TestConcurrentModificationException
-        {
-        public TestSetBunchCME(String name)
-            { super( name ); }
 
-        @Override public TripleBunch getBunch()
-            { return new SetBunch( new ArrayBunch() ); }
-        }
-    
     public static class TestHashedBunchCME extends TestConcurrentModificationException
         {
         public TestHashedBunchCME(String name)

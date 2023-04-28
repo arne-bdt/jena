@@ -339,7 +339,7 @@ public class HashSetOfTripleSets {
     }
 
     /**
-     * Removes all of the elements from this collection (optional operation).
+     * Removes all the elements from this collection (optional operation).
      * The collection will be empty after this method returns.
      *
      * @throws UnsupportedOperationException if the {@code clear} operation

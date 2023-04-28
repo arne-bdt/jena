@@ -155,11 +155,61 @@ public abstract class NodeToTriplesMapBase
         }
 
 
-        public Stream<Triple> streamAll() {
-            /*TODO: Implement Spliterator*/
-            return StreamSupport.stream(this.bunchMap.spliterator(), false)
-                    .flatMap(bunch -> StreamSupport.stream(bunch.spliterator(), false));
-        }
+        public Stream<Triple> streamAll()
+            {
+                return StreamSupport.stream(bunchMap.spliterator(), false)
+                        .flatMap(bunch -> StreamSupport.stream(bunch.spliterator(), false));
+            }
 
         public abstract Stream<Triple> stream( Node index, Node n2, Node n3 );
+
+        private static class NestedSpliterator implements Spliterator<Triple>
+            {
+                private final Spliterator<TripleBunch> bunchSpliterator;
+                private int estimatedSize;
+                private Spliterator<Triple> current = Spliterators.emptySpliterator();
+
+                public NestedSpliterator(Spliterator<TripleBunch> bunchSpliterator, int estimatedSize)
+                    {
+                    this.bunchSpliterator = bunchSpliterator;
+                        this.estimatedSize = estimatedSize;
+                    }
+
+                @Override
+                public boolean tryAdvance(Consumer<? super Triple> action) {
+                    if (current.tryAdvance(action)) return true;
+                    while (bunchSpliterator.tryAdvance(bunch -> current = bunch.spliterator()))
+                        {
+                        if (current.tryAdvance(action)) return true;
+                        }
+                    return false;
+                }
+
+                @Override
+                public void forEachRemaining(Consumer<? super Triple> action)
+                    {
+                    current.forEachRemaining(action);
+                    bunchSpliterator.forEachRemaining(bunch
+                            -> bunch.spliterator()
+                            .forEachRemaining(action));
+                    }
+
+                @Override
+                public Spliterator<Triple> trySplit()
+                    {
+                    var slice = bunchSpliterator.trySplit();
+                    if (slice == null) return null;
+                    this.estimatedSize = this.estimatedSize >>> 1;
+                    return new NestedSpliterator(slice, this.estimatedSize);
+                    }
+
+                @Override
+                public long estimateSize()
+                    {
+                    return this.estimatedSize;
+                    }
+
+                @Override
+                public int characteristics() { return DISTINCT | NONNULL | IMMUTABLE; }
+            }
     }

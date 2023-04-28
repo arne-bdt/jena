@@ -22,6 +22,8 @@ import org.apache.jena.graph.* ;
 import org.apache.jena.graph.impl.TripleStore ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 
+import java.util.stream.Stream;
+
 /** @deprecated This implementation of GraphMem will be replaced by a new implementation at Jena 4.6.0.
  *   Application should be using {@link Factory#createDefaultGraph()} for a general purpose graph or {@link Factory#createGraphMem()}
  *   to specific this style of implementation.
@@ -77,6 +79,11 @@ public class GraphMem extends GraphMemBase
     {
         clearStore();
         getEventManager().notifyEvent(this, GraphEvents.removeAll ) ;
+    }
+
+    @Override
+    public Stream<Triple> stream(Node s, Node p, Node o) {
+        return store.stream(s, p, o);
     }
 
     /**

@@ -105,8 +105,6 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     public ExtendedIterator<Triple> iterator( final NotifyEmpty container )
         { return keyIterator( container ); }
 
-        @Override
-        public Spliterator<Triple> spliterator() {
-            return null;
-        }
+    @Override public Spliterator<Triple> spliterator()
+        { return super.keySpliterator(); }
     }

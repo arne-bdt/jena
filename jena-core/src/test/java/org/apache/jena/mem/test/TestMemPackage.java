@@ -34,7 +34,6 @@ public class TestMemPackage extends TestCase
         TestSuite result = new TestSuite();
         result.addTest( TestGraphTripleStoreMem.suite() );
         result.addTest( new TestSuite( TestArrayTripleBunch.class ) );
-        result.addTest( new TestSuite( TestWrappedSetTripleBunch.class ) );
         result.addTest( new TestSuite( TestHashedTripleBunch.class ) );
         result.addTestSuite( TestHashedBunchMap.class );
         result.addTestSuite( TestHashCommon.class );
