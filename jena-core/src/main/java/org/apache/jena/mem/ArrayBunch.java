@@ -19,6 +19,7 @@
 package org.apache.jena.mem;
 
 import java.util.ConcurrentModificationException ;
+import java.util.Spliterator;
 import java.util.function.Consumer;
 
 import org.apache.jena.graph.Triple ;
@@ -109,35 +110,81 @@ public class ArrayBunch implements TripleBunch
             protected final int initialChanges = changes;
             
             protected int i = size;
-            protected final Triple [] e = elements;
             
             @Override public boolean hasNext()
                 { 
-                if (changes > initialChanges) throw new ConcurrentModificationException();
-                return i > 0; 
+                return i > 0;
                 }
         
             @Override public Triple next()
                 {
-                if (changes > initialChanges) throw new ConcurrentModificationException();
+                if (changes != initialChanges) throw new ConcurrentModificationException();
                 if (i == 0) noElements( "no elements left in ArrayBunch iteration" );
-                return e[--i]; 
+                return elements[--i];
                 }
 
             @Override
                 public void forEachRemaining(Consumer<? super Triple> action)
                 {
-                if (changes > initialChanges) throw new ConcurrentModificationException();
-                while (i > 0) action.accept(e[--i]);
+                while (i > 0) action.accept(elements[--i]);
+                if (changes != initialChanges) throw new ConcurrentModificationException();
                 }
 
             @Override public void remove()
                 {
-                if (changes > initialChanges) throw new ConcurrentModificationException();
+                if (changes != initialChanges) throw new ConcurrentModificationException();
                 int last = --size;
-                e[i] = e[last];
-                e[last] = null;
+                elements[i] = elements[last];
+                elements[last] = null;
                 if (size == 0) container.emptied();
+                }
+            };
+        }
+
+        @Override
+        public Spliterator<Triple> spliterator() {
+
+            return new Spliterator<Triple>() {
+
+                protected final int initialChanges = changes;
+
+                int i = size;
+
+                @Override
+                public boolean tryAdvance(Consumer<? super Triple> action) {
+                    if(i > 0) {
+                        action.accept(elements[--i]);
+                        if (changes != initialChanges) throw new ConcurrentModificationException();
+                        return true;
+                    }
+                    return false;
+                }
+
+                @Override
+                public void forEachRemaining(Consumer<? super Triple> action) {
+                    while (i > 0) action.accept(elements[--i]);
+                    if (changes != initialChanges) throw new ConcurrentModificationException();
+                }
+
+                @Override
+                public Spliterator<Triple> trySplit() {
+                    /* the number of elements here should always be small, so splitting is not wise  */
+                    return null;
+                }
+
+                @Override
+                public long estimateSize() {
+                    return i;
+                }
+
+                @Override
+                public long getExactSizeIfKnown() {
+                    return i;
+                }
+
+                @Override
+                public int characteristics() {
+                    return DISTINCT | SIZED | NONNULL | IMMUTABLE;
                 }
             };
         }

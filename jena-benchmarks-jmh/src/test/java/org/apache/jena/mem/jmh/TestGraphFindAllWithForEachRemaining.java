@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem.jmh;
 
+import org.apache.jena.atlas.iterator.ActionCount;
 import org.apache.jena.graph.Triple;
 import org.junit.Assert;
 import org.junit.Test;
@@ -34,13 +35,13 @@ import static org.junit.Assert.assertEquals;
 public class TestGraphFindAllWithForEachRemaining extends AbstractTestGraphBaseWithFilledGraph {
 
     @Benchmark
-    public ArrayList<Triple> graphFind() {
-        var found = new ArrayList<Triple>(sut.size());
+    public long graphFind() {
+        var actionCounter = new ActionCount<>();
         var it = sut.find();
-        it.forEachRemaining(found::add);
+        it.forEachRemaining(actionCounter::accept);
         it.close();
-        assertEquals(sut.size(), found.size());
-        return found;
+        assertEquals(sut.size(), actionCounter.getCount());
+        return actionCounter.getCount();
     }
 
     @Test

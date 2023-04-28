@@ -22,17 +22,17 @@ import junit.framework.TestSuite;
 import org.apache.jena.graph.Graph ;
 import org.apache.jena.graph.impl.TripleStore ;
 import org.apache.jena.graph.test.AbstractTestTripleStore ;
-import org.apache.jena.mem.GraphTripleStore ;
+import org.apache.jena.mem.GraphTripleStoreMem;
 
-public class TestGraphTripleStore extends AbstractTestTripleStore
+public class TestGraphTripleStoreMem extends AbstractTestTripleStore
     {
-    public TestGraphTripleStore( String name )
+    public TestGraphTripleStoreMem(String name )
         { super( name ); }
     
     public static TestSuite suite()
-        { return new TestSuite( TestGraphTripleStore.class ); }
+        { return new TestSuite( TestGraphTripleStoreMem.class ); }
     
     @Override
     public TripleStore getTripleStore()
-        { return new GraphTripleStore( Graph.emptyGraph ); }
+        { return new GraphTripleStoreMem( Graph.emptyGraph ); }
     }

@@ -21,6 +21,8 @@ package org.apache.jena.graph.impl;
 import org.apache.jena.graph.* ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 
+import java.util.stream.Stream;
+
 /**
      TripleStore - interface for bulk storage of triples used in composed graphs.
 */
@@ -76,6 +78,12 @@ public interface TripleStore
          match the pattern <code>m = (S, P, O)</code>.
     */
     public abstract ExtendedIterator<Triple> find( Triple t );
+
+    /**
+     Answer an ExtendedIterator returning all the triples from this store that
+     match the pattern <code>m = (S, P, O)</code>.
+     */
+    public abstract Stream<Triple> stream(Node sm, Node pm, Node om);
 
     /**
         Clear this store, ie remove all triples from it.

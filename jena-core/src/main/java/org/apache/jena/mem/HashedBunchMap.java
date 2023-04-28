@@ -18,6 +18,8 @@
 
 package org.apache.jena.mem;
 
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function ;
 
 import org.apache.jena.shared.BrokenException ;
@@ -127,4 +129,179 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
     */
     @Override protected void moveAssociatedValues( int here, int scan )
         { values[here] = values[scan]; }
+
+    @Override public Iterator<TripleBunch> iterator()
+        {
+        return new Iterator<TripleBunch>()
+            {
+            final int initialChanges = changes;
+            int remaining = size;
+            int pos = capacity;
+
+            @Override public boolean hasNext()
+                {
+                return 0 < remaining;
+                }
+
+            @Override public TripleBunch next()
+                {
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                while (0 < pos)
+                    {
+                    if(null != values[--pos])
+                        {
+                        remaining--;
+                        return values[pos];
+                        }
+                    }
+                throw new NoSuchElementException();
+                }
+
+            @Override public void forEachRemaining(Consumer<? super TripleBunch> action)
+                {
+                while (0 < pos)
+                    {
+                    if(null != values[--pos])
+                        {
+                        remaining--;
+                        action.accept(values[pos]);
+                        }
+                    }
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                }
+
+            @Override
+                public void remove() {
+                    if (changes > initialChanges) throw new ConcurrentModificationException();
+                    HashedBunchMap.super.removeFrom(pos);
+                }
+            };
+        }
+
+    @Override public Spliterator<TripleBunch> spliterator()
+        {
+        return new Spliterator<TripleBunch>()
+            {
+            final int initialChanges = changes;
+            private int pos = capacity;
+            private int remaining = size;
+            private boolean hasBeenSplit = false;
+
+            @Override public boolean tryAdvance(Consumer<? super TripleBunch> action)
+                {
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                while (0 < pos)
+                    {
+                    if(null != values[--pos])
+                        {
+                        remaining--;
+                        action.accept(values[pos]);
+                        return true;
+                        }
+                    }
+                return false;
+                }
+            @Override public void forEachRemaining(Consumer<? super TripleBunch> action)
+                {
+                while (0 < pos)
+                    {
+                    if(null != values[--pos])
+                        {
+                        remaining--;
+                        action.accept(values[pos]);
+                        }
+                    }
+                }
+            @Override public Spliterator<TripleBunch> trySplit()
+                {
+                if (remaining < 2 || this.pos < 2) return null;
+                final var toIndex = this.pos;
+                this.pos = (this.pos >>> 1);
+                this.remaining = remaining >>> 1;
+                this.hasBeenSplit = true;
+                return new ArrayWithNullsSubSpliteratorUnSized(this.pos, toIndex, remaining, initialChanges);
+                }
+
+            @Override public long estimateSize() {
+                return remaining;
+            }
+
+            @Override public int characteristics()
+                {
+                return this.hasBeenSplit
+                        ? DISTINCT | NONNULL | IMMUTABLE
+                        : DISTINCT | NONNULL | IMMUTABLE | SIZED;
+                }
+            };
+        }
+
+        final class ArrayWithNullsSubSpliteratorUnSized implements Spliterator<TripleBunch> {
+
+            final int initialChanges;
+            private final int fromIndex;
+            private int pos;
+            private int estimatedSize;
+
+            /**
+             * Create a spliterator for the given array, with the given size.
+             * @param fromIndex the index of the first element, inclusive
+             * @param toIndex   the index of the last element, exclusive
+             * @param estimatedSize the estimated size
+             */
+            public ArrayWithNullsSubSpliteratorUnSized(final int fromIndex, final int toIndex, final int estimatedSize, final int initialChanges) {
+                this.fromIndex = fromIndex;
+                this.pos = toIndex;
+                this.estimatedSize = estimatedSize;
+                this.initialChanges = initialChanges;
+            }
+
+             @Override
+            public boolean tryAdvance(Consumer<? super TripleBunch> action) {
+                 if (changes > initialChanges) throw new ConcurrentModificationException();
+                 while (fromIndex < pos) {
+                    if(null != values[--pos]) {
+                        estimatedSize--;
+                        action.accept(values[pos]);
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            public void forEachRemaining(Consumer<? super TripleBunch> action) {
+                while (fromIndex < pos) {
+                    if(null != values[--pos]) {
+                        estimatedSize--;
+                        action.accept(values[pos]);
+                    }
+                }
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+            }
+
+
+            @Override
+            public Spliterator<TripleBunch> trySplit() {
+                var entriesCount = pos - fromIndex;
+                if (entriesCount < 2) {
+                    return null;
+                }
+                final var toIndexOfSubIterator = this.pos;
+                this.pos = fromIndex + (entriesCount >>> 1);
+                this.estimatedSize = estimatedSize >>> 1;
+                return new ArrayWithNullsSubSpliteratorUnSized(this.pos, toIndexOfSubIterator, estimatedSize, initialChanges);
+            }
+
+            @Override
+            public long estimateSize() {
+                return estimatedSize;
+            }
+
+            @Override
+            public int characteristics() {
+                return DISTINCT | NONNULL | IMMUTABLE;
+            }
+        }
+
+
     }

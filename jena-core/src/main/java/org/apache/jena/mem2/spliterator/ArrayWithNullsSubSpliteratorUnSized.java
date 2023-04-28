@@ -24,21 +24,24 @@ import java.util.function.Consumer;
 public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
 
     private final E[] entries;
+    private final int fromIndex;
     private int pos;
-    private final int maxPos;
-    private int maxRemaining;
+    private int estimatedSize;
 
-    public ArrayWithNullsSubSpliteratorUnSized(final E[] entries, final int fromIndex, final int toIndex, final int maxSize) {
+    /**
+     * Create a spliterator for the given array, with the given size.
+     * @param entries   the array
+     * @param fromIndex the index of the first element, inclusive
+     * @param toIndex   the index of the last element, exclusive
+     * @param estimatedSize the estimated size
+     */
+    public ArrayWithNullsSubSpliteratorUnSized(final E[] entries, final int fromIndex, final int toIndex, final int estimatedSize) {
         this.entries = entries;
-        this.maxRemaining = maxSize;
-        this.pos = fromIndex - 1;
-        this.maxPos = toIndex - 1;
-        this.updateMaxRemaining();
+        this.fromIndex = fromIndex;
+        this.pos = toIndex;
+        this.estimatedSize = estimatedSize;
     }
 
-    private void updateMaxRemaining() {
-        this.maxRemaining = Math.min(this.maxRemaining, entries.length - (maxPos - pos));
-    }
 
     /**
      * If a remaining element exists, performs the given action on it,
@@ -54,13 +57,11 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      */
     @Override
     public boolean tryAdvance(Consumer<? super E> action) {
-        if (0 < maxRemaining) {
-            while (pos < maxPos) {
-                if (null != entries[++pos]) {
-                    maxRemaining--;
-                    action.accept(entries[pos]);
-                    return true;
-                }
+        while (fromIndex < pos) {
+            if(null != entries[--pos]) {
+                estimatedSize--;
+                action.accept(entries[pos]);
+                return true;
             }
         }
         return false;
@@ -80,9 +81,9 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      */
     @Override
     public void forEachRemaining(Consumer<? super E> action) {
-        while (0 < maxRemaining && pos < maxPos) {
-            if (null != entries[++pos]) {
-                maxRemaining--;
+        while (fromIndex < pos) {
+            if(null != entries[--pos]) {
+                estimatedSize--;
                 action.accept(entries[pos]);
             }
         }
@@ -129,16 +130,14 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      */
     @Override
     public Spliterator<E> trySplit() {
-        if (maxPos - pos < 10) {
+        var entriesCount = pos - fromIndex;
+        if (entriesCount < 2) {
             return null;
         }
-        var mid = (pos + maxPos + 2) >>> 1;
-        var remainingInSubSpliterator = this.maxRemaining;
-        var fromIndexForSubSpliterator = pos + 1;
-        this.pos = mid - 1;
-        this.updateMaxRemaining();
-        remainingInSubSpliterator = Math.min(remainingInSubSpliterator, mid - fromIndexForSubSpliterator);
-        return new ArrayWithNullsSubSpliteratorUnSized(entries, fromIndexForSubSpliterator, mid, remainingInSubSpliterator);
+        final var toIndexOfSubIterator = this.pos;
+        this.pos = fromIndex + (entriesCount >>> 1);
+        this.estimatedSize = estimatedSize >>> 1;
+        return new ArrayWithNullsSubSpliteratorUnSized(entries, this.pos, toIndexOfSubIterator, estimatedSize);
     }
 
     /**
@@ -164,7 +163,7 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      */
     @Override
     public long estimateSize() {
-        return maxRemaining;
+        return estimatedSize;
     }
 
     /**

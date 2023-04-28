@@ -319,21 +319,20 @@ public abstract class HashCommon<Key>
 
         @Override public boolean hasNext()
             { 
-            if (changes > initialChanges) throw new ConcurrentModificationException( "changes " + changes + " > initialChanges " + initialChanges );
-            return index < movedKeys.size(); 
+            return index < movedKeys.size();
             }
 
         @Override public Key next()
             {
-            if (changes > initialChanges) throw new ConcurrentModificationException();
-            if (hasNext() == false) noElements( "" );
-            return movedKeys.get( index++ );
+            if (changes > initialChanges) throw new ConcurrentModificationException( "changes " + changes + " > initialChanges " + initialChanges );
+            if (index < movedKeys.size()) return movedKeys.get( index++ );
+            return noElements( "" );
             }
 
         @Override public void forEachRemaining(Consumer<? super Key> action)
             {
-            if (changes > initialChanges) throw new ConcurrentModificationException();
             for(; index < movedKeys.size(); index++) action.accept( movedKeys.get( index ) );
+            if (changes > initialChanges) throw new ConcurrentModificationException();
             }
 
         @Override public void remove()
@@ -367,7 +366,6 @@ public abstract class HashCommon<Key>
 
         @Override public boolean hasNext()
             {
-            if (changes > initialChanges) throw new ConcurrentModificationException();
             while (index < capacity && keys[index] == null) index += 1;
             return index < capacity;
             }
@@ -381,13 +379,13 @@ public abstract class HashCommon<Key>
 
         @Override public void forEachRemaining(Consumer<? super Key> action)
             {
-            if (changes > initialChanges) throw new ConcurrentModificationException();
             Key key;
             while (index < capacity)
                 {
                 key = keys[index++];
                 if (key != null) action.accept(key);
                 }
+            if (changes > initialChanges) throw new ConcurrentModificationException();
             }
 
         @Override public void remove()

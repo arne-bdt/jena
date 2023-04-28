@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem.jmh;
 
+import org.apache.jena.atlas.iterator.ActionCount;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
@@ -29,6 +30,7 @@ import org.openjdk.jmh.runner.Runner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.jena.mem.jmh.AbstractTestGraphBaseWithFilledGraph.cloneNode;
 import static org.junit.Assert.assertTrue;
@@ -123,13 +125,9 @@ public class TestGraphFindBySamples extends AbstractJmhTestGraphBase {
     }
 
     private static int count(final ExtendedIterator extendedIterator) {
-        var count = 0;
-        while(extendedIterator.hasNext()) {
-            extendedIterator.next();
-            count++;
-        }
-        extendedIterator.close();
-        return count;
+        var actionCounter = new ActionCount<>();
+        extendedIterator.forEachRemaining(actionCounter::accept);
+        return (int)actionCounter.getCount();
     }
 
     @Test

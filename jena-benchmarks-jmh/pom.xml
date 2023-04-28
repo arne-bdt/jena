@@ -34,6 +34,7 @@
         <build.time.xsd>${maven.build.timestamp}</build.time.xsd>
         <automatic.module.name>org.apache.jena.benchmarks.jmh</automatic.module.name>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.test.skip>true</maven.test.skip>
         <scope>test</scope>
     </properties>
 

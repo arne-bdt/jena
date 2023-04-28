@@ -19,8 +19,8 @@
 package org.apache.jena.mem;
 
 import java.util.HashSet ;
-import java.util.Iterator ;
 import java.util.Set ;
+import java.util.Spliterator;
 
 import org.apache.jena.graph.Node ;
 import org.apache.jena.graph.Triple ;
@@ -77,8 +77,13 @@ public class SetBunch implements TripleBunch
         {
         return iterator();
         }
-    
-    @Override
+
+    @Override public Spliterator<Triple> spliterator()
+        {
+            return elements.spliterator();
+        }
+
+        @Override
     public ExtendedIterator<Triple> iterator()
         { return WrappedIterator.create( elements.iterator() ); }        
     

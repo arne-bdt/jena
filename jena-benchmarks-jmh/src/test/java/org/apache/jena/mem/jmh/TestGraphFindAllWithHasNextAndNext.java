@@ -34,15 +34,16 @@ import static org.junit.Assert.assertEquals;
 public class TestGraphFindAllWithHasNextAndNext extends AbstractTestGraphBaseWithFilledGraph {
 
     @Benchmark
-    public ArrayList<Triple> graphFind() {
-        var found = new ArrayList<Triple>(sut.size());
+    public int graphFind() {
+        var counter = 0;
         var it = sut.find();
         while(it.hasNext()) {
-            found.add(it.next());
+            it.next();
+            counter++;
         }
         it.close();
-        assertEquals(sut.size(), found.size());
-        return found;
+        assertEquals(sut.size(), counter);
+        return counter;
     }
 
     @Test
