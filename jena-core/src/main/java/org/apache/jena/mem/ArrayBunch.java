@@ -67,7 +67,7 @@ public class ArrayBunch implements TripleBunch
         { 
         if (size == elements.length) grow();
         elements[size++] = t; 
-        changes += 1;
+        changes++;
         }
     
     /**
@@ -86,7 +86,7 @@ public class ArrayBunch implements TripleBunch
     @Override
     public void remove( Triple t )
         {
-        changes += 1;
+        changes++;
         for (int i = 0; i < size; i += 1)
             {
             if (t.equals( elements[i] ))

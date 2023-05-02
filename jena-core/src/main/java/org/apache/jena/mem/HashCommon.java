@@ -236,7 +236,7 @@ public abstract class HashCommon<Key>
         about the overhead of the linear probing.
     <p>
         Iterators running over the keys may miss elements that are moved from the
-        top of the table to the bottom because of Iterator::remove. removeFrom
+        bottom of the table to the top because of Iterator::remove. removeFrom
         returns such a moved key as its result, and null otherwise.
     */
     protected Key removeFrom( int here )
@@ -259,7 +259,10 @@ public abstract class HashCommon<Key>
                     { /* Nothing. We'd have preferred an `unless` statement. */}
                 else
                     {
-                    if (here <= original && scan > original) {
+//                    if (here <= original && scan > original) {
+//                        wrappedAround = keys[scan];
+//                    }
+                    if (here >= original && scan < original) {
                         wrappedAround = keys[scan];
                     }
                     keys[here] = keys[scan];
@@ -331,7 +334,7 @@ public abstract class HashCommon<Key>
 
         @Override public void forEachRemaining(Consumer<? super Key> action)
             {
-            for(; index < movedKeys.size(); index++) action.accept( movedKeys.get( index ) );
+            while(index < movedKeys.size()) action.accept( movedKeys.get( index++ ) );
             if (changes > initialChanges) throw new ConcurrentModificationException();
             }
 
@@ -353,7 +356,7 @@ public abstract class HashCommon<Key>
         {
         protected final List<Key> movedKeys;
 
-        int index = 0;
+        int pos = capacity-1;
         final int initialChanges;
         final NotifyEmpty container;
 
@@ -366,24 +369,28 @@ public abstract class HashCommon<Key>
 
         @Override public boolean hasNext()
             {
-            while (index < capacity && keys[index] == null) index += 1;
-            return index < capacity;
+            while(-1 < pos)
+                {
+                if(null != keys[pos])
+                    return true;
+                pos--;
+                }
+            return false;
             }
 
         @Override public Key next()
             {
             if (changes > initialChanges) throw new ConcurrentModificationException();
-            if (hasNext() == false) noElements( "HashCommon keys" );
-            return keys[index++];
+            if (-1 < pos && null != keys[pos]) return keys[pos--];
+            throw new NoSuchElementException("HashCommon keys");
             }
 
         @Override public void forEachRemaining(Consumer<? super Key> action)
             {
-            Key key;
-            while (index < capacity)
+            while(-1 < pos)
                 {
-                key = keys[index++];
-                if (key != null) action.accept(key);
+                if(null != keys[pos]) action.accept(keys[pos]);
+                pos--;
                 }
             if (changes > initialChanges) throw new ConcurrentModificationException();
             }
@@ -393,7 +400,7 @@ public abstract class HashCommon<Key>
             if (changes > initialChanges) throw new ConcurrentModificationException();
             // System.err.println( ">> keyIterator::remove, size := " + size +
             // ", removing " + keys[index + 1] );
-            Key moved = removeFrom( index - 1 );
+            Key moved = removeFrom( pos + 1 );
             if (moved != null) movedKeys.add( moved );
             if (size == 0) container.emptied();
             if (size < 0) throw new BrokenException( "BROKEN" );
@@ -430,10 +437,11 @@ public abstract class HashCommon<Key>
                     {
                         if(null != keys[--pos])
                         {
-                            remaining--;
                             action.accept(keys[pos]);
                         }
                     }
+                    remaining = 0;
+                    if (changes > initialChanges) throw new ConcurrentModificationException();
                 }
                 @Override public Spliterator<Key> trySplit()
                 {
@@ -495,10 +503,10 @@ public abstract class HashCommon<Key>
             public void forEachRemaining(Consumer<? super Key> action) {
                 while (fromIndex < pos) {
                     if(null != keys[--pos]) {
-                        estimatedSize--;
                         action.accept(keys[pos]);
                     }
                 }
+                estimatedSize = 0;
                 if (changes > initialChanges) throw new ConcurrentModificationException();
             }
 

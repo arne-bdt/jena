@@ -74,7 +74,7 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     public void add( Triple t )
         {
         keys[findSlot( t )] = t;
-        changes += 1;
+        changes++;
         if (++size > threshold) grow();
         }
 
@@ -94,7 +94,7 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     @Override public void remove( Triple t )
         {
         super.remove( t );
-        changes += 1;
+        changes++;
         }
 
     @Override

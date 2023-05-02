@@ -70,7 +70,7 @@ public class GraphMem extends GraphMemBase
          Otherwise we use the default implementation.
      */
     @Override public boolean graphBaseContains( Triple t )
-    { return t.isConcrete() ? store.contains( t ) : super.graphBaseContains( t ); }
+    { return t.isConcrete() ? store.contains( t ) : store.containsMatch( t ); }
 
     /**
         Clear this GraphMem, ie remove all its triples (delegated to the store).

@@ -59,6 +59,11 @@ public interface TripleStore
     public abstract boolean contains( Triple t );
 
     /**
+         Answer true iff this triple store contains the triple match <code>t</code>.
+     */
+    public abstract boolean containsMatch( Triple t );
+
+    /**
          Answer an setwise iterator over all the subjects of triples in this store.
     */
     public ExtendedIterator<Node> listSubjects();

@@ -69,6 +69,38 @@ public class TestTripleField extends GraphTestBase
         assertTrue( Field.fieldPredicate.filterOn( node( "P" ) ).test( triple( "a P b" ) ) );
         assertFalse( Field.fieldPredicate.filterOn( node( "Q" ) ).test( triple( "a P b" ) ) );
         }
+
+    public void testTryFilterSubject()
+        {
+        assertTrue( Field.fieldSubject.tryFilter( node( "a" ) ).test( triple( "a P b" ) ) );
+        assertFalse( Field.fieldSubject.tryFilter( node( "x" ) ).test( triple( "a P b" ) ) );
+        }
+
+    public void testTryFilterObject()
+        {
+        assertTrue( Field.fieldObject.tryFilter( node( "b" ) ).test( triple( "a P b" ) ) );
+        assertFalse( Field.fieldObject.tryFilter( node( "c" ) ).test( triple( "a P b" ) ) );
+        }
+
+    public void testTryFilterPredicate()
+        {
+        assertTrue( Field.fieldPredicate.tryFilter( node( "P" ) ).test( triple( "a P b" ) ) );
+        assertFalse( Field.fieldPredicate.tryFilter( node( "Q" ) ).test( triple( "a P b" ) ) );
+        }
+
+    public void testTryFilterNodeAny()
+        {
+            assertNull( Field.fieldPredicate.tryFilter( Node.ANY ) );
+        }
+
+    public void testTryFilterNext()
+        {
+            assertTrue( Field.fieldPredicate.tryFilter( Node.ANY, Field.fieldPredicate.tryFilter( node( "P" ) ) ).test( triple( "a P b" ) ) );
+            assertFalse( Field.fieldPredicate.tryFilter( Node.ANY, Field.fieldPredicate.tryFilter( node( "Q" ) ) ).test( triple( "a P b" ) ) );
+
+            assertTrue( Field.fieldPredicate.tryFilter( node( "P" ), Field.fieldPredicate.tryFilter( Node.ANY ) ).test( triple( "a P b" ) ) );
+            assertFalse( Field.fieldPredicate.tryFilter( node( "Q" ), Field.fieldPredicate.tryFilter( Node.ANY ) ).test( triple( "a P b" ) ) );
+        }
     
     public void testFilterByTriple()
         {

@@ -105,8 +105,13 @@ public class NiceIterator<T> implements ExtendedIterator<T>
 
             @Override public boolean hasNext()
                 {
-                while (current.hasNext() == false && index < pending.size()) current = advance();
-                return current.hasNext();
+                if (current.hasNext()) return true;
+                while (index < pending.size())
+                    {
+                    current = advance();
+                    if(current.hasNext()) return true;
+                    }
+                return false;
                 }
 
             private Iterator< ? extends T> advance()

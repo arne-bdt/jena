@@ -137,8 +137,10 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
        TripleBunch s = bunchMap.get( indexValue );
 //       System.err.println( ">> ntmf::iterator: " + (s == null ? (Object) "None" : s.getClass()) );
        if (s == null) return NullIterator.<Triple>instance();
-       final Predicate<Triple> filter = f2.filterOn( n2 ).and( f3.filterOn( n3 ) );
-       return create(s.iterator( new NotifyMe( indexValue ))).filterKeep(filter);
+       final Predicate<Triple> filter = f2.tryFilter( n2, f3.tryFilter(n3));;
+       return null == filter
+               ? s.iterator( new NotifyMe( indexValue ) )
+               : s.iterator( new NotifyMe( indexValue )).filterKeep(filter);
        }    
 
     protected TripleBunch get( Object index )
@@ -150,13 +152,4 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     */
     @Override public ExtendedIterator<Triple> iteratorForIndexed( Object y )
         { return get( y ).iterator();  }
-
-    @Override public Stream<Triple> stream(Node index, Node n2, Node n3)
-        {
-        Object indexValue = index.getIndexingValue();
-        TripleBunch s = bunchMap.get( indexValue );
-        if (s == null) return Stream.empty();
-        final Predicate<Triple> filter = f2.filterOn( n2 ).and( f3.filterOn( n3 ) );
-        return StreamSupport.stream(s.spliterator(), false).filter(filter);
-        }
     }

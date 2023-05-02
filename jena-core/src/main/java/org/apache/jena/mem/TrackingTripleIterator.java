@@ -28,6 +28,8 @@ import org.apache.jena.util.iterator.WrappedIterator ;
     A WrappedIterator which remembers the last object next'ed in a
     protected instance variable, so that subclasses have access to it 
     during .remove.
+    After a call to {@link TrackingTripleIterator#forEachRemaining} current is null. So calling #remove after
+    #forEachRemaining is not supported.
 */
 public class TrackingTripleIterator extends WrappedIterator<Triple>
     {
@@ -49,5 +51,10 @@ public class TrackingTripleIterator extends WrappedIterator<Triple>
 
     @Override
         public void forEachRemaining(Consumer<? super Triple> action)
-        { super.forEachRemaining(triple -> action.accept(current = triple)); }
+        {
+            /** The behavior of {@link java.util.Iterator#remove}is undefined after a call to forEachRemaining.
+               So it should be okay, to not waste performance here. */
+            this.current = null;
+            super.forEachRemaining(action);
+        }
     }

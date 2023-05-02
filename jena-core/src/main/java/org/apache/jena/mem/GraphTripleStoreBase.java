@@ -130,8 +130,24 @@ public abstract class GraphTripleStoreBase implements TripleStore
      @Override
     public boolean contains( Triple t )
          { return subjects.containsBySameValueAs( t ); }
-     
-     public boolean containsByEquality( Triple t )
+
+     @Override
+    public boolean containsMatch(Triple t)
+         {
+         Node pm = t.getPredicate();
+         Node om = t.getObject();
+         Node sm = t.getSubject();
+         if (sm.isConcrete())
+             return subjects.containsMatch( sm, pm, om );
+         else if (om.isConcrete())
+             return objects.containsMatch( om, sm, pm );
+         else if (pm.isConcrete())
+             return predicates.containsMatch( pm, om, sm );
+         else
+             return !this.isEmpty();
+         }
+
+        public boolean containsByEquality(Triple t )
          { return subjects.contains( t ); }
      
      /** 
@@ -188,13 +204,19 @@ public abstract class GraphTripleStoreBase implements TripleStore
         @Override
     public Stream<Triple> stream(Node sm, Node pm, Node om)
         {
-            if (sm.isConcrete())
-                return subjects.stream( sm, pm, om );
-            else if (om.isConcrete())
-                return objects.stream( om, sm, pm );
-            else if (pm.isConcrete())
-                return predicates.stream( pm, om, sm );
-            else
-                return subjects.streamAll();
+        if (null == sm) sm = Node.ANY;
+        if (null == pm) pm = Node.ANY;
+        if (null == om) om = Node.ANY;
+
+        if (sm.isConcrete())
+            return subjects.stream( sm, pm, om );
+        else if (om.isConcrete())
+            return objects.stream( om, sm, pm );
+        else if (pm.isConcrete())
+            return predicates.stream( pm, om, sm );
+        else
+            return subjects.streamAll();
         }
     }
+
+

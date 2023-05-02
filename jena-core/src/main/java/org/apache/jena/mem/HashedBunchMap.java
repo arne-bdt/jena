@@ -135,37 +135,31 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
         return new Iterator<TripleBunch>()
             {
             final int initialChanges = changes;
-            int remaining = size;
-            int pos = capacity;
+            int pos = capacity-1;
 
             @Override public boolean hasNext()
                 {
-                return 0 < remaining;
+                while(-1 < pos)
+                    {
+                        if(null != values[pos]) return true;
+                        pos--;
+                    }
+                return false;
                 }
 
             @Override public TripleBunch next()
                 {
                 if (changes > initialChanges) throw new ConcurrentModificationException();
-                while (0 < pos)
-                    {
-                    if(null != values[--pos])
-                        {
-                        remaining--;
-                        return values[pos];
-                        }
-                    }
+                if (-1 < pos && null != values[pos]) return values[pos--];
                 throw new NoSuchElementException();
                 }
 
             @Override public void forEachRemaining(Consumer<? super TripleBunch> action)
                 {
-                while (0 < pos)
+                while(-1 < pos)
                     {
-                    if(null != values[--pos])
-                        {
-                        remaining--;
-                        action.accept(values[pos]);
-                        }
+                    if(null != values[pos]) action.accept(values[pos]);
+                    pos--;
                     }
                 if (changes > initialChanges) throw new ConcurrentModificationException();
                 }
@@ -173,7 +167,7 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
             @Override
                 public void remove() {
                     if (changes > initialChanges) throw new ConcurrentModificationException();
-                    HashedBunchMap.super.removeFrom(pos);
+                    HashedBunchMap.super.removeFrom(pos + 1);
                 }
             };
         }
@@ -207,10 +201,11 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
                     {
                     if(null != values[--pos])
                         {
-                        remaining--;
                         action.accept(values[pos]);
                         }
                     }
+                remaining = 0;
+                if (changes > initialChanges) throw new ConcurrentModificationException();
                 }
             @Override public Spliterator<TripleBunch> trySplit()
                 {
@@ -272,10 +267,10 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
             public void forEachRemaining(Consumer<? super TripleBunch> action) {
                 while (fromIndex < pos) {
                     if(null != values[--pos]) {
-                        estimatedSize--;
                         action.accept(values[pos]);
                     }
                 }
+                estimatedSize = 0;
                 if (changes > initialChanges) throw new ConcurrentModificationException();
             }
 

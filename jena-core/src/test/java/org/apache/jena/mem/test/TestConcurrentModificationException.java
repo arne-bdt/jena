@@ -78,6 +78,7 @@ public abstract class TestConcurrentModificationException extends ModelTestBase
         TripleBunch b = getBunch();
         b.add( NodeCreateUtils.createTriple( "a P b" ) );
         b.add( NodeCreateUtils.createTriple( "c Q d" ) );
+        b.add( NodeCreateUtils.createTriple( "e R f" ) );
         ExtendedIterator<Triple> it = b.iterator();
         it.next();
         b.remove( NodeCreateUtils.createTriple( "a P b" ) );
