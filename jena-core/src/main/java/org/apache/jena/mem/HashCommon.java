@@ -259,12 +259,8 @@ public abstract class HashCommon<Key>
                     { /* Nothing. We'd have preferred an `unless` statement. */}
                 else
                     {
-//                    if (here <= original && scan > original) {
-//                        wrappedAround = keys[scan];
-//                    }
-                    if (here >= original && scan < original) {
-                        wrappedAround = keys[scan];
-                    }
+                    if (here >= original && scan < original)
+                        { wrappedAround = keys[scan]; }
                     keys[here] = keys[scan];
                     moveAssociatedValues( here, scan );
                     here = scan;

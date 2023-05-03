@@ -103,13 +103,16 @@ public class NiceIterator<T> implements ExtendedIterator<T>
             private Iterator<? extends T> current = a;
             private Iterator<? extends T> removeFrom = null;
 
+            boolean hasNext = false;
+
             @Override public boolean hasNext()
                 {
-                if (current.hasNext()) return true;
+                if (hasNext) return true;
+                if (current.hasNext()) return hasNext = true;
                 while (index < pending.size())
                     {
                     current = advance();
-                    if(current.hasNext()) return true;
+                    if(current.hasNext()) return hasNext = true;
                     }
                 return false;
                 }
@@ -126,6 +129,7 @@ public class NiceIterator<T> implements ExtendedIterator<T>
                 {
                 if (!hasNext()) noElements( "concatenation" );
                 removeFrom = current;
+                hasNext = false;
                 return current.next();
                 }
 
