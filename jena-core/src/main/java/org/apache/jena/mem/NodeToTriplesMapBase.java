@@ -20,11 +20,9 @@ package org.apache.jena.mem;
 
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.apache.jena.ext.com.google.common.base.Predicates;
 import org.apache.jena.graph.* ;
 import org.apache.jena.graph.Triple.Field ;
 import org.apache.jena.util.iterator.* ;
@@ -168,10 +166,10 @@ public abstract class NodeToTriplesMapBase
             Object indexValue = index.getIndexingValue();
             TripleBunch s = bunchMap.get( indexValue );
             if (s == null) return Stream.empty();
-            final Predicate<Triple> filter = f2.tryFilter( n2, f3.tryFilter(n3));
-            return filter == null
-                    ? StreamSupport.stream(s.spliterator(), false)
-                    : StreamSupport.stream(s.spliterator(), false).filter(filter);
+            var filter = FieldFilter.filterOn(f2, n2, f3, n3);
+            return filter.hasFilter()
+                    ? StreamSupport.stream(s.spliterator(), false).filter(filter.getFilter())
+                    : StreamSupport.stream(s.spliterator(), false);
             }
 
         public boolean containsMatch( Node index, Node n2, Node n3 )
@@ -179,8 +177,8 @@ public abstract class NodeToTriplesMapBase
             Object indexValue = index.getIndexingValue();
             TripleBunch s = bunchMap.get( indexValue );
             if (s == null) return false;
-            final Predicate<Triple> filter = f2.tryFilter( n2, f3.tryFilter(n3));
-            if (filter == null) return true;
-            return StreamSupport.stream(s.spliterator(), false).anyMatch(filter);
+            var filter = FieldFilter.filterOn(f2, n2, f3, n3);
+            if (filter.hasFilter()) return true;
+            return StreamSupport.stream(s.spliterator(), false).anyMatch(filter.getFilter());
             }
     }

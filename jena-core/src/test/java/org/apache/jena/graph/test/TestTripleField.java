@@ -70,38 +70,24 @@ public class TestTripleField extends GraphTestBase
         assertFalse( Field.fieldPredicate.filterOn( node( "Q" ) ).test( triple( "a P b" ) ) );
         }
 
-    public void testTryFilterSubject()
+    public void testFilterOnConcreteSubject()
         {
-        assertTrue( Field.fieldSubject.tryFilter( node( "a" ) ).test( triple( "a P b" ) ) );
-        assertFalse( Field.fieldSubject.tryFilter( node( "x" ) ).test( triple( "a P b" ) ) );
+        assertTrue( Field.fieldSubject.filterOnConcrete( node( "a" ) ).test( triple( "a P b" ) ) );
+        assertFalse( Field.fieldSubject.filterOnConcrete( node( "x" ) ).test( triple( "a P b" ) ) );
         }
 
-    public void testTryFilterObject()
+    public void testFilterOnConcreteObject()
         {
-        assertTrue( Field.fieldObject.tryFilter( node( "b" ) ).test( triple( "a P b" ) ) );
-        assertFalse( Field.fieldObject.tryFilter( node( "c" ) ).test( triple( "a P b" ) ) );
+        assertTrue( Field.fieldObject.filterOnConcrete( node( "b" ) ).test( triple( "a P b" ) ) );
+        assertFalse( Field.fieldObject.filterOnConcrete( node( "c" ) ).test( triple( "a P b" ) ) );
         }
 
-    public void testTryFilterPredicate()
+    public void testFilterOnConcretePredicate()
         {
-        assertTrue( Field.fieldPredicate.tryFilter( node( "P" ) ).test( triple( "a P b" ) ) );
-        assertFalse( Field.fieldPredicate.tryFilter( node( "Q" ) ).test( triple( "a P b" ) ) );
+        assertTrue( Field.fieldPredicate.filterOnConcrete( node( "P" ) ).test( triple( "a P b" ) ) );
+        assertFalse( Field.fieldPredicate.filterOnConcrete( node( "Q" ) ).test( triple( "a P b" ) ) );
         }
 
-    public void testTryFilterNodeAny()
-        {
-            assertNull( Field.fieldPredicate.tryFilter( Node.ANY ) );
-        }
-
-    public void testTryFilterNext()
-        {
-            assertTrue( Field.fieldPredicate.tryFilter( Node.ANY, Field.fieldPredicate.tryFilter( node( "P" ) ) ).test( triple( "a P b" ) ) );
-            assertFalse( Field.fieldPredicate.tryFilter( Node.ANY, Field.fieldPredicate.tryFilter( node( "Q" ) ) ).test( triple( "a P b" ) ) );
-
-            assertTrue( Field.fieldPredicate.tryFilter( node( "P" ), Field.fieldPredicate.tryFilter( Node.ANY ) ).test( triple( "a P b" ) ) );
-            assertFalse( Field.fieldPredicate.tryFilter( node( "Q" ), Field.fieldPredicate.tryFilter( Node.ANY ) ).test( triple( "a P b" ) ) );
-        }
-    
     public void testFilterByTriple()
         {
         assertTrue( Field.fieldSubject.filterOn( triple( "s P o" ) ).test( triple( "s Q p" ) ) );
