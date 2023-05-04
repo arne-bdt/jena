@@ -110,10 +110,10 @@ public class ArrayBunch implements TripleBunch
             protected final int initialChanges = changes;
             
             protected int i = size;
-            
+
             @Override public boolean hasNext()
                 { 
-                return i > 0;
+                return 0 < i;
                 }
         
             @Override public Triple next()
@@ -126,7 +126,7 @@ public class ArrayBunch implements TripleBunch
             @Override
                 public void forEachRemaining(Consumer<? super Triple> action)
                 {
-                while (i > 0) action.accept(elements[--i]);
+                while (0 < i) action.accept(elements[--i]);
                 if (changes != initialChanges) throw new ConcurrentModificationException();
                 }
 
@@ -151,18 +151,25 @@ public class ArrayBunch implements TripleBunch
                 int i = size;
 
                 @Override
-                public boolean tryAdvance(Consumer<? super Triple> action) {
-                    if(i > 0) {
+                public boolean tryAdvance(Consumer<? super Triple> action)
+                    {
+                    if(0 < i)
+                        {
                         action.accept(elements[--i]);
                         if (changes != initialChanges) throw new ConcurrentModificationException();
                         return true;
-                    }
+                        }
                     return false;
-                }
+                    }
 
                 @Override
                 public void forEachRemaining(Consumer<? super Triple> action) {
-                    while (i > 0) action.accept(elements[--i]);
+                    i--;
+                    while (-1 < i)
+                        {
+                        action.accept(elements[i]);
+                        i--;
+                        }
                     if (changes != initialChanges) throw new ConcurrentModificationException();
                 }
 

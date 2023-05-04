@@ -178,7 +178,7 @@ public abstract class NodeToTriplesMapBase
             TripleBunch s = bunchMap.get( indexValue );
             if (s == null) return false;
             var filter = FieldFilter.filterOn(f2, n2, f3, n3);
-            if (filter.hasFilter()) return true;
+            if (!filter.hasFilter()) return true;
             return StreamSupport.stream(s.spliterator(), false).anyMatch(filter.getFilter());
             }
     }
