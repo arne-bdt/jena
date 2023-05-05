@@ -20,24 +20,34 @@ package org.apache.jena.mem;
 
 import java.util.Spliterator;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
+/**
+ * A spliterator for sparse arrays. This spliterator will iterate over the array
+ * skipping null entries.
+ *
+ * This spliterator supports splitting into sub-spliterators.
+ *
+ * The spliterator will check for concurrent modifications by invoking a {@link Runnable}
+ * before each action.
+ *
+ * @param <E> the type of the array elements
+ */
 public class SparseArraySpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
     private int pos;
-    private int estimatedElementsCount;
+    private final double fillRatio;
     private final Runnable checkForConcurrentModification;
 
     /**
      * Create a spliterator for the given array, with the given size.
-     * @param entries   the array
+     * @param entries the array
      * @param estimatedElementsCount the estimated size
      */
     public SparseArraySpliterator(final E[] entries, final int estimatedElementsCount, final Runnable checkForConcurrentModification) {
         this.entries = entries;
         this.pos = entries.length;
-        this.estimatedElementsCount = estimatedElementsCount;
+        this.fillRatio = (double)estimatedElementsCount / (double)entries.length;
         this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
@@ -139,9 +149,8 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
             return null;
         }
         final var toIndexOfSubIterator = this.pos;
-        this.estimatedElementsCount = 1 + remaining >>> 1;
         this.pos = pos >>> 1;
-        return new SparseArraySubSpliterator(entries, this.pos, toIndexOfSubIterator, estimatedElementsCount, checkForConcurrentModification);
+        return new SparseArraySubSpliterator(entries, this.pos, toIndexOfSubIterator, fillRatio, checkForConcurrentModification);
     }
 
     /**
@@ -167,7 +176,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
      */
     @Override
     public long estimateSize() {
-        return (long) ((double) estimatedElementsCount / entries.length  * pos) + 1;
+        return (long) (this.fillRatio  * pos) + 1;
     }
 
     /**
