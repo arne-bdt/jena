@@ -126,7 +126,7 @@ public class ArrayBunch implements TripleBunch
             @Override
                 public void forEachRemaining(Consumer<? super Triple> action)
                 {
-                while (0 < i) action.accept(elements[--i]);
+                while(0 < i--) action.accept(elements[i]);
                 if (changes != initialChanges) throw new ConcurrentModificationException();
                 }
 
@@ -164,12 +164,7 @@ public class ArrayBunch implements TripleBunch
 
                 @Override
                 public void forEachRemaining(Consumer<? super Triple> action) {
-                    i--;
-                    while (-1 < i)
-                        {
-                        action.accept(elements[i]);
-                        i--;
-                        }
+                    while(0 < i--) action.accept(elements[i]);
                     if (changes != initialChanges) throw new ConcurrentModificationException();
                 }
 
