@@ -159,7 +159,7 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
 
     @Override
     public Iterator<Triple> iterator() {
-        return new ArrayWithNullsIterator(entries, size);
+        return new ArrayWithNullsIterator(entries);
     }
 
 

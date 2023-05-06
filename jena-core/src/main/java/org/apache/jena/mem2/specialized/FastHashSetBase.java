@@ -164,7 +164,7 @@ public abstract class FastHashSetBase<E> implements Set<E> {
 
     @Override
     public Iterator<E> iterator() {
-        return new ArrayWithNullsIterator(entries, size);
+        return new ArrayWithNullsIterator(entries);
     }
 
 

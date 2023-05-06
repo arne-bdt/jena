@@ -164,7 +164,7 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
 
     @Override
     public Iterator<Triple> iterator() {
-        return new ArrayWithNullsIterator(entries, size);
+        return new ArrayWithNullsIterator(entries);
     }
 
 

@@ -21,18 +21,32 @@ package org.apache.jena.mem2.spliterator;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
+/**
+ * A spliterator for sparse arrays. This spliterator will iterate over the array
+ * skipping null entries.
+ *
+ * This spliterator supports splitting into sub-spliterators.
+ *
+ * @param <E> the type of the array elements
+ */
 public class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
 
     private final E[] entries;
     private int pos;
-    private int remaining;
-    private boolean hasBeenSplit = false;
+    private final double fillRatio;
 
-    public ArrayWithNullsSpliteratorSized(final E[] entries, final int size) {
+    /**
+     * Create a spliterator for the given array, with the given size.
+     * @param entries the array
+     * @param estimatedElementsCount the estimated size
+     */
+    public ArrayWithNullsSpliteratorSized(final E[] entries, final int estimatedElementsCount) {
         this.entries = entries;
         this.pos = entries.length;
-        this.remaining = size;
+        this.fillRatio = (double)estimatedElementsCount / (double)entries.length;
     }
+
+
 
     /**
      * If a remaining element exists, performs the given action on it,
@@ -48,9 +62,8 @@ public class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
      */
     @Override
     public boolean tryAdvance(Consumer<? super E> action) {
-        while (0 < pos) {
-            if(null != entries[--pos]) {
-                remaining--;
+        while(-1 < --pos) {
+            if(null != entries[pos]) {
                 action.accept(entries[pos]);
                 return true;
             }
@@ -72,11 +85,12 @@ public class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
      */
     @Override
     public void forEachRemaining(Consumer<? super E> action) {
-        while (0 < pos) {
-            if(null != entries[--pos]) {
-                remaining--;
+        pos--;
+        while (-1 < pos) {
+            if(null != entries[pos]) {
                 action.accept(entries[pos]);
             }
+            pos--;
         }
     }
 
@@ -121,14 +135,16 @@ public class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
      */
     @Override
     public Spliterator<E> trySplit() {
-        if (remaining < 2 || this.pos < 2) {
+        if (pos < 2) {
             return null;
         }
-        final var toIndex = this.pos;
-        this.pos = (this.pos >>> 1);
-        this.remaining = remaining >>> 1;
-        this.hasBeenSplit = true;
-        return new ArrayWithNullsSubSpliteratorUnSized(entries, this.pos, toIndex, remaining);
+        var remaining = (int) this.estimateSize();
+        if (remaining < 2) {
+            return null;
+        }
+        final var toIndexOfSubIterator = this.pos;
+        this.pos = pos >>> 1;
+        return new ArrayWithNullsSubSpliteratorUnSized(entries, this.pos, toIndexOfSubIterator, fillRatio);
     }
 
     /**
@@ -154,7 +170,7 @@ public class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
      */
     @Override
     public long estimateSize() {
-        return remaining;
+        return (long) (this.fillRatio  * pos) + 1;
     }
 
     /**
@@ -179,8 +195,6 @@ public class ArrayWithNullsSpliteratorSized<E> implements Spliterator<E> {
      */
     @Override
     public int characteristics() {
-        return this.hasBeenSplit
-                ? DISTINCT | NONNULL | IMMUTABLE
-                : DISTINCT | NONNULL | IMMUTABLE | SIZED;
+        return DISTINCT | NONNULL | IMMUTABLE;
     }
 }

@@ -16,20 +16,22 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.iterator;
+package org.apache.jena.mem;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
-public class ArrayWithNullsIterator<E> implements Iterator<E> {
+public class SparseArrayIterator<E> implements Iterator<E> {
 
     private final E[] entries;
     private int pos;
+    private final Runnable checkForConcurrentModification;
 
-    public ArrayWithNullsIterator(final E[] entries) {
+    public SparseArrayIterator(final E[] entries, final Runnable checkForConcurrentModification) {
         this.entries = entries;
         this.pos = entries.length-1;
+        this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
     /**
@@ -58,6 +60,7 @@ public class ArrayWithNullsIterator<E> implements Iterator<E> {
      */
     @Override
     public E next() {
+        this.checkForConcurrentModification.run();
         if (-1 < pos && null != entries[pos]) {
             return entries[pos--];
         }
@@ -72,5 +75,6 @@ public class ArrayWithNullsIterator<E> implements Iterator<E> {
             }
             pos--;
         }
+        this.checkForConcurrentModification.run();
     }
 }

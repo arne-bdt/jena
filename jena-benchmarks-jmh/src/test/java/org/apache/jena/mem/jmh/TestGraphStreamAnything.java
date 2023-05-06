@@ -22,92 +22,93 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.runner.Runner;
 
+import java.util.Optional;
+
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 @State(Scope.Benchmark)
-public class TestGraphFindAnything extends AbstractTestGraphBaseWithFilledGraph {
+public class TestGraphStreamAnything extends AbstractTestGraphBaseWithFilledGraph {
 
     @Benchmark
-    public Triple graphFindBySamples_Subject_ANY_ANY() {
-        ExtendedIterator<Triple> it = null;
+    public Triple graphStreamBySamples_Subject_ANY_ANY() {
+        Optional<Triple> it = null;
         Triple t = null;
         for (Triple sample : triples) {
-            it = sut.find(sample.getSubject(), Node.ANY, Node.ANY);
-            assertTrue(it.hasNext());
-            t = it.next();
+            it = sut.stream(sample.getSubject(), Node.ANY, Node.ANY).findAny();
+            assertTrue(it.isPresent());
+            t = it.get();
             assertNotNull(t);
         }
         return t;
     }
 
     @Benchmark
-    public Triple graphFindBySamples_ANY_Predicate_ANY() {
-        ExtendedIterator<Triple> it = null;
+    public Triple graphStreamBySamples_ANY_Predicate_ANY() {
+        Optional<Triple> it = null;
         Triple t = null;
         for (Triple sample : triples) {
-            it = sut.find(Node.ANY, sample.getPredicate(), Node.ANY);
-            assertTrue(it.hasNext());
-            t = it.next();
+            it = sut.stream(Node.ANY, sample.getPredicate(), Node.ANY).findAny();
+            assertTrue(it.isPresent());
+            t = it.get();
             assertNotNull(t);
         }
         return t;
     }
 
     @Benchmark
-    public Triple graphFindBySamples_ANY_ANY_Object() {
-        ExtendedIterator<Triple> it = null;
+    public Triple graphStreamBySamples_ANY_ANY_Object() {
+        Optional<Triple> it = null;
         Triple t = null;
         for (Triple sample : triples) {
-            it = sut.find(Node.ANY, Node.ANY, sample.getObject());
-            assertTrue(it.hasNext());
-            t = it.next();
+            it = sut.stream(Node.ANY, Node.ANY, sample.getObject()).findAny();
+            assertTrue(it.isPresent());
+            t = it.get();
             assertNotNull(t);
         }
         return t;
     }
 
     @Benchmark
-    public Triple graphFindBySamples_Subject_Predicate_ANY() {
-        ExtendedIterator<Triple> it = null;
+    public Triple graphStreamBySamples_Subject_Predicate_ANY() {
+        Optional<Triple> it = null;
         Triple t = null;
         for (Triple sample : triples) {
-            it = sut.find(sample.getSubject(), sample.getPredicate(), Node.ANY);
-            assertTrue(it.hasNext());
-            t = it.next();
+            it = sut.stream(sample.getSubject(), sample.getPredicate(), Node.ANY).findAny();
+            assertTrue(it.isPresent());
+            t = it.get();
             assertNotNull(t);
         }
         return t;
     }
 
     @Benchmark
-    public Triple graphFindBySamples_Subject_ANY_Object() {
-        ExtendedIterator<Triple> it = null;
+    public Triple graphStreamBySamples_Subject_ANY_Object() {
+        Optional<Triple> it = null;
         Triple t = null;
         for (Triple sample : triples) {
-            it = sut.find(sample.getSubject(), Node.ANY, sample.getObject());
-            assertTrue(it.hasNext());
-            t = it.next();
+            it = sut.stream(sample.getSubject(), Node.ANY, sample.getObject()).findAny();
+            assertTrue(it.isPresent());
+            t = it.get();
             assertNotNull(t);
         }
         return t;
     }
 
     @Benchmark
-    public Triple graphFindBySamples_ANY_Predicate_Object() {
-        ExtendedIterator<Triple> it = null;
+    public Triple graphStreamBySamples_ANY_Predicate_Object() {
+        Optional<Triple> it = null;
         Triple t = null;
         for (Triple sample : triples) {
-            it = sut.find(Node.ANY, sample.getPredicate(), sample.getObject());
-            assertTrue(it.hasNext());
-            t = it.next();
+            it = sut.stream(Node.ANY, sample.getPredicate(), sample.getObject()).findAny();
+            assertTrue(it.isPresent());
+            t = it.get();
             assertNotNull(t);
         }
         return t;

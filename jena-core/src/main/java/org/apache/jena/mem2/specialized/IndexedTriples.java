@@ -164,7 +164,7 @@ public class IndexedTriples implements TripleSetWithIndexingValue {
 
     @Override
     public Iterator<Triple> iterator() {
-        return new ArrayWithNullsIterator(entries, size);
+        return new ArrayWithNullsIterator(entries);
     }
 
 

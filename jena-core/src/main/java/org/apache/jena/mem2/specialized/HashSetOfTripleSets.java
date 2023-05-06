@@ -140,7 +140,7 @@ public class HashSetOfTripleSets {
     }
 
     public Iterator<TripleSetWithIndexingValue> iterator() {
-        return new ArrayWithNullsIterator(entries, size);
+        return new ArrayWithNullsIterator(entries);
     }
 
     public TripleSetWithIndexingValue getIfPresent(final Object indexingValue) {

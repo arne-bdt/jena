@@ -21,15 +21,7 @@ package org.apache.jena.mem2.spliterator;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
-/**
- * A spliterator for sparse arrays. This spliterator will iterate over the array
- * skipping null entries.
- *
- * This spliterator supports splitting into sub-spliterators.
- *
- * @param <E>
- */
-public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
+public class SparseArraySubSpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
     private final int fromIndex;
@@ -37,22 +29,22 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
     private final int fromIndexMinusOne;
     private final int toIndex;
     private int pos;
-    private final double fillRatio;
+    private int estimatedElementsCount;
 
     /**
      * Create a spliterator for the given array, with the given size.
      * @param entries   the array
      * @param fromIndex the index of the first element, inclusive
      * @param toIndex   the index of the last element, exclusive
-     * @param fillRatio the ratio of elements containing null
+     * @param estimatedElementsCount the estimated size
      */
-    public ArrayWithNullsSubSpliteratorUnSized(final E[] entries, final int fromIndex, final int toIndex, final double fillRatio) {
+    public SparseArraySubSpliterator(final E[] entries, final int fromIndex, final int toIndex, final int estimatedElementsCount) {
         this.entries = entries;
         this.fromIndex = fromIndex;
         this.fromIndexMinusOne = fromIndex-1;
         this.toIndex = toIndex;
         this.pos = toIndex;
-        this.fillRatio = fillRatio;
+        this.estimatedElementsCount = estimatedElementsCount;
     }
 
     /**
@@ -60,8 +52,8 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      * @param entries   the array
      * @param estimatedElementsCount the estimated size
      */
-    public ArrayWithNullsSubSpliteratorUnSized(final E[] entries, final int estimatedElementsCount) {
-       this(entries, 0, entries.length, ((double)estimatedElementsCount / (double)entries.length));
+    public SparseArraySubSpliterator(final E[] entries, final int estimatedElementsCount) {
+       this(entries, 0, entries.length, estimatedElementsCount);
     }
 
 
@@ -161,8 +153,9 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
             return null;
         }
         final var toIndexOfSubIterator = this.pos;
+        this.estimatedElementsCount = 1 + remaining >>> 1;
         this.pos = fromIndex + (entriesCount >>> 1);
-        return new ArrayWithNullsSubSpliteratorUnSized(entries, this.pos, toIndexOfSubIterator, fillRatio);
+        return new SparseArraySubSpliterator(entries, this.pos, toIndexOfSubIterator, estimatedElementsCount);
     }
 
     /**
@@ -188,7 +181,7 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      */
     @Override
     public long estimateSize() {
-        return (long) (this.fillRatio  * (pos-fromIndex)) + 1;
+        return (long) ((double) estimatedElementsCount / (toIndex-fromIndex)  * (pos-fromIndex) ) + 1;
     }
 
     /**

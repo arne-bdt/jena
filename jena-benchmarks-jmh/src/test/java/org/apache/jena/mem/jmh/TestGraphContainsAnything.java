@@ -28,7 +28,6 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.runner.Runner;
 
-@Ignore
 @State(Scope.Benchmark)
 public class TestGraphContainsAnything extends AbstractTestGraphBaseWithFilledGraph {
 

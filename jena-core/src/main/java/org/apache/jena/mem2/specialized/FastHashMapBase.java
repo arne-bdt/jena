@@ -20,6 +20,7 @@ package org.apache.jena.mem2.specialized;
 
 import org.apache.jena.mem2.iterator.ArrayWithNullsIterator;
 import org.apache.jena.mem2.spliterator.ArrayWithNullsSpliteratorSized;
+import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 
 import java.util.*;
 import java.util.function.Function;
@@ -159,7 +160,7 @@ public abstract class FastHashMapBase<E> implements Collection<E> {
 
     @Override
     public Iterator<E> iterator() {
-        return new ArrayWithNullsIterator(entries, size);
+        return new ArrayWithNullsIterator(entries);
     }
 
 
@@ -568,7 +569,7 @@ public abstract class FastHashMapBase<E> implements Collection<E> {
      */
     @Override
     public Stream<E> stream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), false);
+        return StreamSupport.stream(new SparseArraySpliterator(entries, size), false);
     }
 
     /**
