@@ -23,7 +23,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TripleReaderReadingCGMES_2_4_15_WithTypedLiterals;
 import org.apache.jena.mem2.*;
-import org.apache.jena.memOld.GraphMemOld;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
@@ -59,7 +58,6 @@ public abstract class AbstractJmhTestGraphBase {
     public String param0_GraphUri;
 
     @Param({
-            "GraphMemOld",
             "GraphMem",
 //            "GraphMem2",
             //"GraphMemWithAdaptiveTripleStore",
@@ -75,8 +73,6 @@ public abstract class AbstractJmhTestGraphBase {
      */
     protected Graph createGraph() {
         switch (this.param1_GraphImplementation) {
-            case "GraphMemOld":
-                return new GraphMemOld();
             case "GraphMem":
                 return new GraphMem();
             case "GraphMem2":

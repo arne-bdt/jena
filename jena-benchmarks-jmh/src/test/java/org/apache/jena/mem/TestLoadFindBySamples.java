@@ -18,13 +18,10 @@
 
 package org.apache.jena.mem;
 
-import com.sun.source.tree.AssertTree;
-import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMem2;
-import org.apache.jena.memOld.GraphMemOld;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -51,7 +48,7 @@ public class TestLoadFindBySamples {
     public void setUp() throws Exception {
         this.triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read("C:/temp/res_test/xxx_CGMES_EQ.xml");
         sut0 = new GraphMem();
-        sut1 = new GraphMemOld();
+        sut1 = new GraphMem2();
         triples.forEach(t -> {
             sut0.add(Triple.create(cloneNode(t.getSubject()), cloneNode(t.getPredicate()), cloneNode(t.getObject())));
             sut1.add(Triple.create(cloneNode(t.getSubject()), cloneNode(t.getPredicate()), cloneNode(t.getObject())));
