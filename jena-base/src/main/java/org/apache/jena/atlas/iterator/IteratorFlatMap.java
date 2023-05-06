@@ -20,6 +20,7 @@ package org.apache.jena.atlas.iterator;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -75,6 +76,26 @@ import java.util.stream.Stream;
         if ( !hasNext() )
             throw new NoSuchElementException();
         return current.next();
+    }
+
+    @Override
+    public void forEachRemaining(Consumer<? super OUT> action) {
+        if ( finished )
+            return;
+        if ( current != null ) {
+            current.forEachRemaining(action);
+            Iter.close(current);
+            current = null;
+        }
+        while ( input.hasNext() ) {
+            IN x = input.next();
+            current = mapper.apply(x);
+            if ( current == null )
+                continue;
+            current.forEachRemaining(action);
+            Iter.close(current);
+            current = null;
+        }
     }
 
     @Override
