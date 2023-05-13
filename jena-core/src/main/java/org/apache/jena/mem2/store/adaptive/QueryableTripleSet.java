@@ -37,9 +37,9 @@ public interface QueryableTripleSet {
 
     public boolean isEmpty();
 
-    public QueryableTripleSet addTriple(final Triple triple, final int hashCode);
+    public boolean addTriple(final Triple triple, final int hashCode);
 
-    public QueryableTripleSet addTripleUnchecked(final Triple triple, final int hashCode);
+    public void addTripleUnchecked(final Triple triple, final int hashCode);
 
     public boolean removeTriple(final Triple triple, final int hashCode);
 

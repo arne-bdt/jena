@@ -22,28 +22,38 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.store.adaptive.AdaptiveTripleStore;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
 
+import java.util.function.Consumer;
+
 public abstract class AdaptiveTripleListSetBase extends TripleListSetBase {
 
 
-    public AdaptiveTripleListSetBase() {
+    private final Consumer<QueryableTripleSet> transitionConsumer;
+
+    public AdaptiveTripleListSetBase(Consumer<QueryableTripleSet> transitionConsumer) {
         super(AdaptiveTripleStore.INITIAL_SIZE_FOR_ARRAY_LISTS);
+        this.transitionConsumer = transitionConsumer;
     }
 
     protected abstract QueryableTripleSet transition();
 
     @Override
-    public QueryableTripleSet addTriple(final Triple triple, final int hashCode) {
+    public boolean addTriple(final Triple triple, final int hashCode) {
         if (this.size() == AdaptiveTripleStore.THRESHOLD_FOR_ARRAY_LISTS) {
-            return transition().addTriple(triple, hashCode);
+            var set = transition();
+            transitionConsumer.accept(set);
+            return set.addTriple(triple, hashCode);
         }
         return super.addTriple(triple, hashCode);
     }
 
     @Override
-    public QueryableTripleSet addTripleUnchecked(final Triple triple, final int hashCode) {
+    public void addTripleUnchecked(final Triple triple, final int hashCode) {
         if (this.size() == AdaptiveTripleStore.THRESHOLD_FOR_ARRAY_LISTS) {
-            return transition().addTripleUnchecked(triple, hashCode);
+            var set = transition();
+            transitionConsumer.accept(set);
+            set.addTripleUnchecked(triple, hashCode);
+        } else {
+            super.addTripleUnchecked(triple, hashCode);
         }
-        return super.addTripleUnchecked(triple, hashCode);
     }
 }

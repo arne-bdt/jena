@@ -174,11 +174,16 @@ public abstract class NodeToTriplesMapBase
 
         public boolean containsMatch( Node index, Node n2, Node n3 )
             {
-            Object indexValue = index.getIndexingValue();
-            TripleBunch s = bunchMap.get( indexValue );
-            if (s == null) return false;
+            TripleBunch s = bunchMap.get( index.getIndexingValue() );
+            if (s == null)
+                return false;
             var filter = FieldFilter.filterOn(f2, n2, f3, n3);
-            if (!filter.hasFilter()) return true;
-            return StreamSupport.stream(s.spliterator(), false).anyMatch(filter.getFilter());
+            if (!filter.hasFilter())
+                return true;
+            var spliterator = s.spliterator();
+            final boolean[] found = {false};
+            Consumer<Triple> tester = triple -> found[0] = filter.getFilter().test(triple);
+            while (!found[0] && spliterator.tryAdvance(tester));
+            return found[0];
             }
     }

@@ -23,6 +23,8 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
 import org.apache.jena.mem2.store.adaptive.base.MapOfIndexedSetsBase;
 
+import java.util.function.Consumer;
+
 public class IndexedSetS__ extends MapOfIndexedSetsBase {
 
     public IndexedSetS__(final int minCapacity) {
@@ -30,8 +32,8 @@ public class IndexedSetS__ extends MapOfIndexedSetsBase {
     }
 
     @Override
-    protected QueryableTripleSet createEntry() {
-        return new TripleListSet_PO();
+    protected QueryableTripleSet createEntry(Consumer<QueryableTripleSet> transitionConsumer) {
+        return new TripleListSet_PO(transitionConsumer);
     }
 
     @Override

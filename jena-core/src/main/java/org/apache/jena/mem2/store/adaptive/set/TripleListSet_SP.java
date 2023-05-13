@@ -19,19 +19,24 @@
 package org.apache.jena.mem2.store.adaptive.set;
 
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.FieldFilter;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSetWithIndexingValue;
 import org.apache.jena.mem2.store.adaptive.base.AdaptiveTripleListSetBase;
 
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class TripleListSet_SP extends AdaptiveTripleListSetBase implements QueryableTripleSetWithIndexingValue {
 
+    public TripleListSet_SP(Consumer<QueryableTripleSet> transitionConsumer) {
+        super(transitionConsumer);
+    }
+
     @Override
-    protected Predicate<Triple> getMatchPredicate(Triple tripleMatch) {
-        return triple -> tripleMatch.getSubject().matches(triple.getSubject())
-                && tripleMatch.getPredicate().matches(triple.getPredicate())
-                && tripleMatch.getObject().matches(triple.getObject());
+    protected FieldFilter getMatchFilter(Triple tripleMatch) {
+        return FieldFilter.filterOn(tripleMatch,
+                Triple.Field.fieldSubject, Triple.Field.fieldPredicate, Triple.Field.fieldObject);
     }
 
     @Override

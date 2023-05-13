@@ -22,6 +22,13 @@ import org.apache.jena.graph.Triple;
 
 import java.util.function.Predicate;
 
+/**
+ * A class that encapsulates a filter on fields on a triple.
+ * <p>
+ * The filter is a predicate that takes a triple and returns true if it passes
+ * the filter and false otherwise.
+ * </p>
+ */
 public class FieldFilter {
 
     public static final FieldFilter EMPTY = new FieldFilter();
@@ -48,6 +55,13 @@ public class FieldFilter {
         return filter;
     }
 
+    public static FieldFilter filterOn(Triple.Field f1, Node n1) {
+        if(n1.isConcrete()) {
+            return new FieldFilter(f1.filterOnConcrete(n1));
+        }
+        return FieldFilter.EMPTY;
+    }
+
     public static FieldFilter filterOn(Triple.Field f1, Node n1, Triple.Field f2, Node n2) {
         if(n1.isConcrete()) {
             if(n2.isConcrete()) {
@@ -55,6 +69,73 @@ public class FieldFilter {
             }
             return new FieldFilter(f1.filterOnConcrete(n1));
         } else if (n2.isConcrete()) {
+            return new FieldFilter(f2.filterOnConcrete(n2));
+        }
+        return FieldFilter.EMPTY;
+    }
+
+    public static FieldFilter filterOn(Triple.Field f1, Node n1, Triple.Field f2, Node n2, Triple.Field f3, Node n3) {
+        if(n1.isConcrete()) {
+            if(n2.isConcrete()) {
+                if(n3.isConcrete()) {
+                    return new FieldFilter(f1.filterOnConcrete(n1).and(f2.filterOnConcrete(n2)).and(f3.filterOnConcrete(n3)));
+                }
+                return new FieldFilter(f1.filterOnConcrete(n1).and(f2.filterOnConcrete(n2)));
+            }
+            if(n3.isConcrete()) {
+                return new FieldFilter(f1.filterOnConcrete(n1).and(f3.filterOnConcrete(n3)));
+            }
+            return new FieldFilter(f1.filterOnConcrete(n1));
+        } else if (n2.isConcrete()) {
+            if(n3.isConcrete()) {
+                return new FieldFilter(f2.filterOnConcrete(n2).and(f3.filterOnConcrete(n3)));
+            }
+            return new FieldFilter(f2.filterOnConcrete(n2));
+        }
+        return FieldFilter.EMPTY;
+    }
+
+    public static FieldFilter filterOn(Triple tripleMatch, Triple.Field f1) {
+        final Node n1 = f1.getField(tripleMatch);
+        if(n1.isConcrete()) {
+            return new FieldFilter(f1.filterOnConcrete(n1));
+        }
+        return FieldFilter.EMPTY;
+    }
+
+    public static FieldFilter filterOn(Triple tripleMatch, Triple.Field f1, Triple.Field f2) {
+        final Node n1 = f1.getField(tripleMatch);
+        final Node n2 = f2.getField(tripleMatch);
+        if(n1.isConcrete()) {
+            if(n2.isConcrete()) {
+                return new FieldFilter(f1.filterOnConcrete(n1).and(f2.filterOnConcrete(n2)));
+            }
+            return new FieldFilter(f1.filterOnConcrete(n1));
+        } else if (n2.isConcrete()) {
+            return new FieldFilter(f2.filterOnConcrete(n2));
+        }
+        return FieldFilter.EMPTY;
+    }
+
+    public static FieldFilter filterOn(Triple tripleMatch, Triple.Field f1, Triple.Field f2, Triple.Field f3) {
+        final Node n1 = f1.getField(tripleMatch);
+        final Node n2 = f2.getField(tripleMatch);
+        final Node n3 = f3.getField(tripleMatch);
+        if(n1.isConcrete()) {
+            if(n2.isConcrete()) {
+                if(n3.isConcrete()) {
+                    return new FieldFilter(f1.filterOnConcrete(n1).and(f2.filterOnConcrete(n2)).and(f3.filterOnConcrete(n3)));
+                }
+                return new FieldFilter(f1.filterOnConcrete(n1).and(f2.filterOnConcrete(n2)));
+            }
+            if(n3.isConcrete()) {
+                return new FieldFilter(f1.filterOnConcrete(n1).and(f3.filterOnConcrete(n3)));
+            }
+            return new FieldFilter(f1.filterOnConcrete(n1));
+        } else if (n2.isConcrete()) {
+            if(n3.isConcrete()) {
+                return new FieldFilter(f2.filterOnConcrete(n2).and(f3.filterOnConcrete(n3)));
+            }
             return new FieldFilter(f2.filterOnConcrete(n2));
         }
         return FieldFilter.EMPTY;

@@ -36,11 +36,9 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
     private final int fromIndex;
-
     private final int fromIndexMinusOne;
-    private final int toIndex;
     private int pos;
-    private final double fillRatio;
+    private final float fillRatio;
     private final Runnable checkForConcurrentModification;
 
     /**
@@ -52,11 +50,10 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
      * @param fillRatio                      the ratio of elements containing null
      * @param checkForConcurrentModification
      */
-    public SparseArraySubSpliterator(final E[] entries, final int fromIndex, final int toIndex, final double fillRatio, final Runnable checkForConcurrentModification) {
+    public SparseArraySubSpliterator(final E[] entries, final int fromIndex, final int toIndex, final float fillRatio, final Runnable checkForConcurrentModification) {
         this.entries = entries;
         this.fromIndex = fromIndex;
-        this.fromIndexMinusOne = fromIndex-1;
-        this.toIndex = toIndex;
+        this.fromIndexMinusOne = fromIndex - 1;
         this.pos = toIndex;
         this.fillRatio = fillRatio;
         this.checkForConcurrentModification = checkForConcurrentModification;
@@ -68,7 +65,7 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
      * @param estimatedElementsCount the estimated size
      */
     public SparseArraySubSpliterator(final E[] entries, final int estimatedElementsCount, final Runnable checkForConcurrentModification) {
-       this(entries, 0, entries.length, ((double)estimatedElementsCount / (double)entries.length), checkForConcurrentModification);
+       this(entries, 0, entries.length, ((float)estimatedElementsCount / (float)entries.length), checkForConcurrentModification);
     }
 
 
@@ -161,15 +158,14 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
      */
     @Override
     public Spliterator<E> trySplit() {
-        var entriesCount = pos - fromIndex;
+        final int entriesCount = pos - fromIndex;
         if (entriesCount < 2) {
             return null;
         }
-        var remaining = (int) this.estimateSize();
-        if (remaining < 2) {
+        if (this.estimateSize() < 2L) {
             return null;
         }
-        final var toIndexOfSubIterator = this.pos;
+        final int toIndexOfSubIterator = this.pos;
         this.pos = fromIndex + (entriesCount >>> 1);
         return new SparseArraySubSpliterator(entries, this.pos, toIndexOfSubIterator, fillRatio, checkForConcurrentModification);
     }
@@ -196,9 +192,8 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
      * corresponding to its maximum depth.
      */
     @Override
-    public long estimateSize() {
-        return (long) (this.fillRatio  * (pos-fromIndex)) + 1;
-    }
+    public long estimateSize() { return ((long) (fillRatio * (pos - fromIndex))) + 1L; }
+
 
     /**
      * Returns a set of characteristics of this Spliterator and its

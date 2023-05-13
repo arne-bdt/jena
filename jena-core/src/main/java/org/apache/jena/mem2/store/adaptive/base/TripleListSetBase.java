@@ -20,6 +20,7 @@ package org.apache.jena.mem2.store.adaptive.base;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.FieldFilter;
 import org.apache.jena.mem2.iterator.IteratorFiltering;
 import org.apache.jena.mem2.iterator.IteratorWrapperWithRemove;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
@@ -35,7 +36,7 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
         super(initialCapacity);
     }
 
-    protected abstract Predicate<Triple> getMatchPredicate(final Triple tripleMatch);
+    protected abstract FieldFilter getMatchFilter(final Triple tripleMatch);
 
     @Override
     public int countTriples() {
@@ -48,18 +49,16 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
     }
 
     @Override
-    public QueryableTripleSet addTriple(final Triple triple, final int hashCode) {
+    public boolean addTriple(final Triple triple, final int hashCode) {
         if (super.contains(triple)) {
-            return null;
+            return false;
         }
-        super.add(triple);
-        return this;
+        return super.add(triple);
     }
 
     @Override
-    public QueryableTripleSet addTripleUnchecked(final Triple triple, final int hashCode) {
+    public void addTripleUnchecked(final Triple triple, final int hashCode) {
         super.add(triple);
-        return this;
     }
 
     @Override
@@ -74,7 +73,11 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
 
     @Override
     public boolean containsMatch(final Triple tripleMatch) {
-        final var matcher = this.getMatchPredicate(tripleMatch);
+        final var fieldFilter = this.getMatchFilter(tripleMatch);
+        if(!fieldFilter.hasFilter()) {
+            return true;
+        }
+        final var matcher = fieldFilter.getFilter();
         for (var t : this) {
             if (matcher.test(t)) {
                 return true;
@@ -85,13 +88,20 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
 
     @Override
     public Stream<Triple> streamTriples(final Triple tripleMatch) {
-        final var matcher = this.getMatchPredicate(tripleMatch);
-        return super.stream().filter(matcher);
+        final var fieldFilter = this.getMatchFilter(tripleMatch);
+        if(!fieldFilter.hasFilter()) {
+            return super.stream();
+        }
+        return super.stream().filter(fieldFilter.getFilter());
     }
 
     @Override
     public ExtendedIterator<Triple> findTriples(final Triple tripleMatch, final Graph graphForIteratorRemove) {
-        return new IteratorFiltering(super.iterator(), this.getMatchPredicate(tripleMatch), graphForIteratorRemove);
+        final var fieldFilter = this.getMatchFilter(tripleMatch);
+        if(!fieldFilter.hasFilter()) {
+            return new IteratorWrapperWithRemove(super.iterator(), graphForIteratorRemove);
+        }
+        return new IteratorFiltering(super.iterator(), fieldFilter.getFilter(), graphForIteratorRemove);
     }
 
     @Override

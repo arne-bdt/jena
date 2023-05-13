@@ -50,15 +50,10 @@ public class AdaptiveTripleStore implements TripleStore {
     @Override
     public void add(final Triple triple) {
         final var hashCode = triple.hashCode();
-        var set = this.spo.addTriple(triple, hashCode);
-        if (null == set) {
-            return;
+        if (this.spo.addTriple(triple, hashCode)) {
+            this.pos.addTripleUnchecked(triple, hashCode);
+            this.osp.addTripleUnchecked(triple, hashCode);
         }
-        if(set != this.spo) {
-            this.spo = set;
-        }
-        this.pos = this.pos.addTripleUnchecked(triple, hashCode);
-        this.osp = this.osp.addTripleUnchecked(triple, hashCode);
     }
 
     @Override
@@ -72,9 +67,9 @@ public class AdaptiveTripleStore implements TripleStore {
 
     @Override
     public void clear() {
-        this.spo = new TripleListSetSPO();
-        this.pos = new TripleListSetPOS();
-        this.osp = new TripleListSetOSP();
+        this.spo = new TripleListSetSPO(newSet -> this.spo = newSet);
+        this.pos = new TripleListSetPOS(newSet -> this.pos = newSet);
+        this.osp = new TripleListSetOSP(newSet -> this.osp = newSet);
     }
 
     @Override

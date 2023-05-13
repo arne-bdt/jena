@@ -27,6 +27,7 @@ import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTripleSet> implements QueryableTripleSet {
@@ -40,7 +41,7 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
         return new QueryableTripleSet[length];
     }
 
-    protected abstract QueryableTripleSet createEntry();
+    protected abstract QueryableTripleSet createEntry(Consumer<QueryableTripleSet> transitionConsumer);
 
     protected abstract Node getIndexingNode(Triple tripleMatch);
 
@@ -56,34 +57,48 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
         return this.size() + super.stream().mapToInt(QueryableTripleSet::countIndexSize).sum();
     }
 
+    private boolean entryTransitioned = false;
+    private QueryableTripleSet transitionedEntry = null;
+
+    private Consumer<QueryableTripleSet> entryTransition = (QueryableTripleSet transitionedEntry) -> {
+        this.transitionedEntry = transitionedEntry;
+        this.entryTransitioned = true;
+    };
+
     @Override
-    public QueryableTripleSet addTriple(final Triple triple, final int hashCode) {
-        boolean tripleExists[] = {true};
+    public boolean addTriple(final Triple triple, final int hashCode) {
+        boolean added[] = {true};
         this.compute(getHashCodeOfIndexingValue(triple), (set) -> {
             if (set == null) {
-                set = createEntry();
-                return set.addTripleUnchecked(triple, hashCode);
-            }
-            var newSet = set.addTriple(triple, hashCode);
-            if(newSet == null) {
-                tripleExists[0] = false;
+                set = createEntry(this.entryTransition);
+                set.addTripleUnchecked(triple, hashCode);
                 return set;
             }
-            return newSet;
+            added[0] = set.addTriple(triple, hashCode);
+            if(this.entryTransitioned) {
+                this.entryTransitioned = false;
+                return this.transitionedEntry;
+            }
+            return set;
         });
-        return tripleExists[0] ? this : null;
+        return added[0];
     }
 
     @Override
-    public QueryableTripleSet addTripleUnchecked(final Triple triple, final int hashCode) {
+    public void addTripleUnchecked(final Triple triple, final int hashCode) {
         super.compute(getHashCodeOfIndexingValue(triple), (set) -> {
             if (set == null) {
-                set = createEntry();
-                return set.addTripleUnchecked(triple, hashCode);
+                set = createEntry(this.entryTransition);
+                set.addTripleUnchecked(triple, hashCode);
+                return set;
             }
-            return set.addTripleUnchecked(triple, hashCode);
+            set.addTripleUnchecked(triple, hashCode);
+            if(this.entryTransitioned) {
+                this.entryTransitioned = false;
+                return this.transitionedEntry;
+            }
+            return set;
         });
-        return this;
     }
 
     @Override

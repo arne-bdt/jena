@@ -19,6 +19,7 @@
 package org.apache.jena.mem2.store.adaptive.set;
 
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.FieldFilter;
 import org.apache.jena.mem2.store.adaptive.base.TripleHashSetBase;
 
 import java.util.function.Predicate;
@@ -30,9 +31,8 @@ public class IndexedSet__P extends TripleHashSetBase {
     }
 
     @Override
-    protected Predicate<Triple> getMatchPredicate(Triple tripleMatch) {
-        return triple -> tripleMatch.getPredicate().matches(triple.getPredicate())
-                && tripleMatch.getObject().matches(triple.getObject())
-                && tripleMatch.getSubject().matches(triple.getSubject());
+    protected FieldFilter getMatchFilter(Triple tripleMatch) {
+        return FieldFilter.filterOn(tripleMatch,
+                Triple.Field.fieldPredicate, Triple.Field.fieldObject, Triple.Field.fieldSubject);
     }
 }

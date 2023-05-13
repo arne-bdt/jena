@@ -147,9 +147,6 @@ public abstract class GraphTripleStoreBase implements TripleStore
              return !this.isEmpty();
          }
 
-        public boolean containsByEquality(Triple t )
-         { return subjects.contains( t ); }
-     
      /** 
          Answer an ExtendedIterator returning all the triples from this store that
          match the pattern <code>m = (S, P, O)</code>.

@@ -15,14 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.jena.mem2.store.adaptive.set;
 
 import org.apache.jena.graph.Triple;
 
+import org.apache.jena.mem.FieldFilter;
 import org.apache.jena.mem2.store.adaptive.base.TripleHashSetBase;
-
-import java.util.function.Predicate;
 
 public class IndexedSet__O extends TripleHashSetBase {
 
@@ -31,9 +29,8 @@ public class IndexedSet__O extends TripleHashSetBase {
     }
 
     @Override
-    protected Predicate<Triple> getMatchPredicate(Triple tripleMatch) {
-        return triple -> tripleMatch.getObject().matches(triple.getObject())
-                && tripleMatch.getSubject().matches(triple.getSubject())
-                && tripleMatch.getPredicate().matches(triple.getPredicate());
+    protected FieldFilter getMatchFilter(Triple tripleMatch) {
+        return FieldFilter.filterOn(tripleMatch,
+                Triple.Field.fieldObject, Triple.Field.fieldSubject, Triple.Field.fieldPredicate);
     }
 }

@@ -20,15 +20,13 @@ package org.apache.jena.mem2.store.adaptive.base;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.FieldFilter;
 import org.apache.jena.mem2.iterator.IteratorFiltering;
 import org.apache.jena.mem2.iterator.IteratorWrapperWithRemove;
-import org.apache.jena.mem2.iterator.NestedIterator;
 import org.apache.jena.mem2.specialized.FastHashSetBase;
-import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSetWithIndexingValue;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.Iterator;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -41,7 +39,7 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple> implemen
         this.indexingValueHashCode = indexingValueHashCode;
     }
 
-    protected abstract Predicate<Triple> getMatchPredicate(final Triple tripleMatch);
+    protected abstract FieldFilter getMatchFilter(final Triple tripleMatch);
 
     @Override
     protected Triple[] createEntryArray(int length) {
@@ -59,17 +57,13 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple> implemen
     }
 
     @Override
-    public QueryableTripleSet addTriple(final Triple triple, final int hashCode) {
-        if(super.add(triple, hashCode)) {
-            return this;
-        }
-        return null;
+    public boolean addTriple(final Triple triple, final int hashCode) {
+        return super.add(triple, hashCode);
     }
 
     @Override
-    public QueryableTripleSet addTripleUnchecked(final Triple triple, final int hashCode) {
+    public void addTripleUnchecked(final Triple triple, final int hashCode) {
         super.addUnchecked(triple, hashCode);
-        return this;
     }
 
     @Override
@@ -89,7 +83,11 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple> implemen
         if(null == entries[index]) {
             return false;
         }
-        final var matcher = this.getMatchPredicate(tripleMatch);
+        final var fieldFilter = this.getMatchFilter(tripleMatch);
+        if(!fieldFilter.hasFilter()) {
+            return true;
+        }
+        final var matcher = fieldFilter.getFilter();
         if(hashCode == hashCodes[index] && matcher.test(entries[index])) {
             return true;
         } else if(--index < 0){
@@ -108,8 +106,11 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple> implemen
 
     @Override
     public Stream<Triple> streamTriples(final Triple tripleMatch) {
-        final var matcher = this.getMatchPredicate(tripleMatch);
-        return super.stream().filter(matcher);
+        final var fieldFilter = this.getMatchFilter(tripleMatch);
+        if(!fieldFilter.hasFilter()) {
+            return super.stream();
+        }
+        return super.stream().filter(fieldFilter.getFilter());
     }
 
     @Override
@@ -119,7 +120,11 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple> implemen
 
     @Override
     public ExtendedIterator<Triple> findTriples(final Triple tripleMatch, final Graph graphForIteratorRemove) {
-        return new IteratorFiltering(super.iterator(), this.getMatchPredicate(tripleMatch), graphForIteratorRemove);
+        final var fieldFilter = this.getMatchFilter(tripleMatch);
+        if(!fieldFilter.hasFilter()) {
+            return new IteratorWrapperWithRemove(super.iterator(), graphForIteratorRemove);
+        }
+        return new IteratorFiltering(super.iterator(), fieldFilter.getFilter(), graphForIteratorRemove);
     }
 
     @Override
