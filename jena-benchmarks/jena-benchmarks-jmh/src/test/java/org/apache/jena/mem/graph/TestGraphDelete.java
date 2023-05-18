@@ -36,13 +36,25 @@ public class TestGraphDelete {
     @Param({
             "../testing/cheeses-0.1.ttl",
             "../testing/pizza.owl.rdf",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+            //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
             "../testing/BSBM/bsbm-1m.nt.gz",
+            "../testing/BSBM/bsbm-5m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
             "GraphMem (current)",
-            "GraphMem (Jena 4.8.0)",
+            "GraphMem2 (current)",
+            "GraphMem2LowMemory (current)",
+//            "DatasetGraphInMemoryDefaultGraph (current)",
+            "GraphMemWithAdaptiveTripleStore (current)"
+//            "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
     private Context trialContext;
@@ -56,8 +68,23 @@ public class TestGraphDelete {
     private List<Triple> triplesToDeleteFromSutCurrent;
     private List<org.apache.shadedJena480.graph.Triple> triplesToDeleteFromSut480;
 
-
     java.util.function.Supplier<Integer> graphDelete;
+
+//    @Test
+//    public void testGraphDelete() {
+//        //var context = new Context("GraphMemWithAdaptiveTripleStore (current)");
+//        var context = new Context("GraphMemWithAdaptiveTripleStore (current)");
+//        var sut = Releases.current.createGraph(context.getGraphClass());
+//        var triplesToAdd = Releases.current.readTriples("../testing/cheeses-0.1.ttl");
+//        triplesToAdd.forEach(sut::add);
+//        var triplesToDelete = Releases.current.cloneTriples(triplesToAdd);
+//        var remainingTriples = sut.size();
+//        for(var triple : triplesToDelete) {
+//            sut.delete(triple);
+//            Assert.assertEquals(--remainingTriples, sut.size());
+//        }
+//        Assert.assertTrue(sut.isEmpty());
+//    }
 
     @Benchmark
     public int graphDelete() {

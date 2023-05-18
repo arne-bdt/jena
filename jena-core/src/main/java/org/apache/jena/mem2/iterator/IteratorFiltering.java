@@ -18,7 +18,6 @@
 
 package org.apache.jena.mem2.iterator;
 
-import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
@@ -41,7 +40,6 @@ import java.util.function.Predicate;
 public class IteratorFiltering implements ExtendedIterator<Triple> {
 
     private final static Predicate<Triple> FILTER_ANY = t -> true;
-    private final Graph graphToRemoveFrom;
     private Predicate<Triple> filter;
     private Iterator<Triple> iterator;
     private boolean hasCurrent = false;
@@ -56,8 +54,7 @@ public class IteratorFiltering implements ExtendedIterator<Triple> {
      * @param iterator the base iterator
      * @param filter   the filter predicate for this iteration
      */
-    public IteratorFiltering(Iterator<Triple> iterator, Predicate<Triple> filter, Graph graphToRemoveFrom) {
-        this.graphToRemoveFrom = graphToRemoveFrom;
+    public IteratorFiltering(Iterator<Triple> iterator, Predicate<Triple> filter) {
         this.iterator = iterator;
         this.filter = filter;
     }
@@ -107,21 +104,6 @@ public class IteratorFiltering implements ExtendedIterator<Triple> {
             }
         }
         hasCurrent = false;
-    }
-
-    @Override
-    public void remove() {
-        if (current == null) {
-            throw new IllegalStateException();
-        }
-        if (this.filter == FILTER_ANY) {
-            graphToRemoveFrom.delete(current);
-        } else {
-            var currentBeforeToList = current;
-            this.iterator = this.toList().iterator();
-            this.filter = FILTER_ANY;
-            graphToRemoveFrom.delete(currentBeforeToList);
-        }
     }
 
     @Override

@@ -21,28 +21,42 @@ package org.apache.jena.mem2.store.adaptive.set;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
+import org.apache.jena.mem2.store.adaptive.TripleWithNodeHashes;
 import org.apache.jena.mem2.store.adaptive.base.MapOfIndexedSetsBase;
 
-import java.util.function.Consumer;
-
 public class IndexedSetS__ extends MapOfIndexedSetsBase {
+
+    @Override
+    protected Node extractKeyFromValueToAddAndRemove(TripleWithNodeHashes tripleWithNodeHashes) {
+        return tripleWithNodeHashes.getTriple().getSubject();
+    }
+
+    @Override
+    protected QueryableTripleSet extractContainedValue(TripleWithNodeHashes tripleWithNodeHashes) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    protected int extractHashCode(TripleWithNodeHashes tripleWithNodeHashes) {
+        return tripleWithNodeHashes.getSubjectHashCode();
+    }
 
     public IndexedSetS__(final int minCapacity) {
         super(minCapacity);
     }
 
     @Override
-    protected QueryableTripleSet createEntry(Consumer<QueryableTripleSet> transitionConsumer) {
-        return new TripleListSet_PO(transitionConsumer);
+    protected QueryableTripleSet createEntry() {
+        return new TripleListSet_PO();
     }
 
     @Override
-    protected Node getIndexingNode(final Triple tripleMatch) {
+    protected Node extractKey(final Triple tripleMatch) {
         return tripleMatch.getSubject();
     }
 
     @Override
-    protected int getHashCodeOfIndexingValue(final Triple triple) {
-        return triple.getSubject().getIndexingValue().hashCode();
+    public Node getIndexingNode() {
+        throw new UnsupportedOperationException();
     }
 }

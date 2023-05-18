@@ -22,7 +22,11 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
+import org.apache.jena.mem2.GraphMem2;
+import org.apache.jena.mem2.GraphMem2LowMemory;
+import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.sparql.core.DatasetGraphFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +38,19 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
         switch (graphClass) {
             case GraphMem:
                 return new GraphMem();
+
+            case GraphMem2:
+                return new GraphMem2();
+
+            case GraphMem2LowMemory:
+                return new GraphMem2LowMemory();
+
+            case GraphMemWithAdaptiveTripleStore:
+                return new GraphMemWithAdaptiveTripleStore();
+
+            case DatasetGraphInMemoryDefaultGraph:
+                return DatasetGraphFactory.createTxnMem().getDefaultGraph();
+
             default:
                 throw new IllegalArgumentException("Unknown graph class: " + graphClass);
         }
@@ -68,7 +85,7 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
     @Override
     public Node cloneNode(Node node) {
         if(node.isLiteral()) {
-            return NodeFactory.createLiteralByValue(node.getLiteralValue(), node.getLiteralLanguage(), node.getLiteralDatatype());
+            return NodeFactory.createLiteralByValue(node.getLiteralLexicalForm(), node.getLiteralLanguage(), node.getLiteralDatatype());
         }
         if(node.isURI()) {
             return NodeFactory.createURI(node.getURI());

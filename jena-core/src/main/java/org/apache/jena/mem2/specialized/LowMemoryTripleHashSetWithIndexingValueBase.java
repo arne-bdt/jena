@@ -33,7 +33,7 @@ import java.util.stream.StreamSupport;
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
  */
-public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements TripleSetWithIndexingValue {
+public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements TripleSetWithIndexingNode {
     @Override
     public final boolean areOperationsWithHashCodesSupported() {
         return true;
@@ -45,7 +45,8 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByHashCode(final int hashCode) {
-        return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        return hashCode & (entries.length-1);
     }
 
     protected Predicate<Triple> getContainsPredicate(final Triple value) {

@@ -18,7 +18,7 @@
 
 package org.apache.jena.mem2.store.adaptive;
 
-import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -31,19 +31,25 @@ import java.util.stream.Stream;
  */
 public interface QueryableTripleSet {
 
+    public Node getIndexingNode();
+
     public int countTriples();
 
     public int countIndexSize();
 
     public boolean isEmpty();
 
-    public boolean addTriple(final Triple triple, final int hashCode);
+    public boolean isReadyForTransition();
 
-    public void addTripleUnchecked(final Triple triple, final int hashCode);
+    public QueryableTripleSet createTransition();
 
-    public boolean removeTriple(final Triple triple, final int hashCode);
+    public boolean addTriple(final TripleWithNodeHashes tripleWithHashes);
 
-    public void removeTripleUnchecked(final Triple triple, final int hashCode);
+    public void addTripleUnchecked(final TripleWithNodeHashes tripleWithHashes);
+
+    public boolean removeTriple(final TripleWithNodeHashes tripleWithHashes);
+
+    public void removeTripleUnchecked(final TripleWithNodeHashes tripleWithHashes);
 
     /**
      * Answer true if the graph contains any triple matching <code>t</code>.
@@ -72,10 +78,10 @@ public interface QueryableTripleSet {
     /**
      * Returns an {@link ExtendedIterator} of all triples in the graph matching the given triple match.
      */
-    ExtendedIterator<Triple> findTriples(final Triple tripleMatch, final Graph graphForIteratorRemove);
+    ExtendedIterator<Triple> findTriples(final Triple tripleMatch);
 
     /**
      * Returns an {@link ExtendedIterator} of all triples in the graph.
      */
-    ExtendedIterator<Triple> findAll(final Graph graphForIteratorRemove);
+    ExtendedIterator<Triple> findAll();
 }

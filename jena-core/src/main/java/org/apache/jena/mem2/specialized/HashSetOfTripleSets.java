@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem2.specialized;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.mem2.iterator.ArrayWithNullsIterator;
 import org.apache.jena.mem2.spliterator.ArrayWithNullsSpliteratorSized;
 
@@ -29,37 +30,37 @@ import java.util.stream.StreamSupport;
 public class HashSetOfTripleSets {
 
     private int calcStartIndexByHashCode(final int hashCode) {
-        return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        return hashCode & (entries.length-1);
     }
 
     private static int MINIMUM_SIZE = 16;
     private static float loadFactor = 0.5f;
     protected int size = 0;
-    protected TripleSetWithIndexingValue[] entries;
+    protected TripleSetWithIndexingNode[] entries;
     protected int[] hashCodes;
 
     public HashSetOfTripleSets() {
-        this.entries = new TripleSetWithIndexingValue[MINIMUM_SIZE];
+        this.entries = new TripleSetWithIndexingNode[MINIMUM_SIZE];
         this.hashCodes = new int[MINIMUM_SIZE];
 
     }
 
     public HashSetOfTripleSets(int initialCapacity) {
-        this.entries = new TripleSetWithIndexingValue[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
+        this.entries = new TripleSetWithIndexingNode[Integer.highestOneBit(((int)(initialCapacity/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
     }
 
-    public HashSetOfTripleSets(Set<TripleSetWithIndexingValue> set) {
+    public HashSetOfTripleSets(Set<TripleSetWithIndexingNode> set) {
         this(set.size(), set);
     }
 
-    public HashSetOfTripleSets(int initialCapacity, Set<TripleSetWithIndexingValue> set) {
-        this.entries = new TripleSetWithIndexingValue[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
+    public HashSetOfTripleSets(int initialCapacity, Set<TripleSetWithIndexingNode> set) {
+        this.entries = new TripleSetWithIndexingNode[Integer.highestOneBit(((int)(Math.max(set.size(), initialCapacity)/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
         int index, hashCode;
-        Object indexingValue;
-        for (TripleSetWithIndexingValue e : set) {
-            if((index = findIndex(indexingValue = e.getIndexingValue(), hashCode = indexingValue.hashCode())) < 0) {
+        for (TripleSetWithIndexingNode e : set) {
+            if((index = findIndex(e.getIndexingNode(), hashCode = e.getIndexingNode().hashCode())) < 0) {
                 entries[~index] = e;
                 hashCodes[~index] = hashCode;
                 size++;
@@ -81,7 +82,7 @@ public class HashSetOfTripleSets {
         }
         final var oldEntries = this.entries;
         final var oldHashCodes = this.hashCodes;
-        this.entries = new TripleSetWithIndexingValue[newSize];
+        this.entries = new TripleSetWithIndexingNode[newSize];
         this.hashCodes = new int[newSize];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
@@ -114,14 +115,14 @@ public class HashSetOfTripleSets {
     }
 
     public boolean contains(Object o) {
-        var e = (TripleSetWithIndexingValue)o;
-        final var key = e.getIndexingValue();
+        var e = (TripleSetWithIndexingNode)o;
+        final var key = e.getIndexingNode();
         final var hashCode = key.hashCode();
         var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
         }
-        if(hashCode == hashCodes[index] && key.equals(entries[index].getIndexingValue())) {
+        if(hashCode == hashCodes[index] && key.equals(entries[index].getIndexingNode())) {
             return true;
         } else if(--index < 0){
             index += entries.length;
@@ -130,7 +131,7 @@ public class HashSetOfTripleSets {
             if(null == entries[index]) {
                 return false;
             } else {
-                if(hashCode == hashCodes[index] && key.equals(entries[index].getIndexingValue())) {
+                if(hashCode == hashCodes[index] && key.equals(entries[index].getIndexingNode())) {
                     return true;
                 } else if (--index < 0){
                     index += entries.length;
@@ -139,17 +140,17 @@ public class HashSetOfTripleSets {
         }
     }
 
-    public Iterator<TripleSetWithIndexingValue> iterator() {
+    public Iterator<TripleSetWithIndexingNode> iterator() {
         return new ArrayWithNullsIterator(entries);
     }
 
-    public TripleSetWithIndexingValue getIfPresent(final Object indexingValue) {
-        var hashCode = indexingValue.hashCode();
+    public TripleSetWithIndexingNode getIfPresent(final Node indexingNode) {
+        var hashCode = indexingNode.hashCode();
         var index = calcStartIndexByHashCode(hashCode);
         while(true) {
             if(null == entries[index]) {
                 return null;
-            } else if(hashCode == hashCodes[index] && indexingValue.equals(entries[index].getIndexingValue())) {
+            } else if(hashCode == hashCodes[index] && indexingNode.equals(entries[index].getIndexingNode())) {
                 return entries[index];
             } else if(--index < 0){
                 index += entries.length;
@@ -157,8 +158,8 @@ public class HashSetOfTripleSets {
         }
     }
 
-    public TripleSetWithIndexingValue compute(final Object key, final int hashCodeOfKey, Function<TripleSetWithIndexingValue, TripleSetWithIndexingValue> remappingFunction) {
-        var index = findIndex(key, hashCodeOfKey);
+    public TripleSetWithIndexingNode compute(final Node indexingNode, final int hashCodeOfKey, Function<TripleSetWithIndexingNode, TripleSetWithIndexingNode> remappingFunction) {
+        var index = findIndex(indexingNode, hashCodeOfKey);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
@@ -187,9 +188,9 @@ public class HashSetOfTripleSets {
         }
     }
 
-    public TripleSetWithIndexingValue compute(final Object key, Function<TripleSetWithIndexingValue, TripleSetWithIndexingValue> remappingFunction) {
-        var hashCodeOfKey = key.hashCode();
-        var index = findIndex(key, hashCodeOfKey);
+    public TripleSetWithIndexingNode compute(final Node indexingNode, Function<TripleSetWithIndexingNode, TripleSetWithIndexingNode> remappingFunction) {
+        var hashCodeOfKey = indexingNode.hashCode();
+        var index = findIndex(indexingNode, hashCodeOfKey);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
@@ -218,12 +219,12 @@ public class HashSetOfTripleSets {
         }
     }
 
-    private int findIndex(final Object key, final int hashCode) {
+    private int findIndex(final Node indexingNode, final int hashCode) {
         var index = calcStartIndexByHashCode(hashCode);
         while(true) {
             if(null == entries[index]) {
                 return ~index;
-            } else if(hashCode == hashCodes[index] && key.equals(entries[index].getIndexingValue())) {
+            } else if(hashCode == hashCodes[index] && indexingNode.equals(entries[index].getIndexingNode())) {
                 return index;
             } else if(--index < 0){
                 index += entries.length;
@@ -346,18 +347,18 @@ public class HashSetOfTripleSets {
      *                                       is not supported by this collection
      */
     public void clear() {
-        entries = new TripleSetWithIndexingValue[MINIMUM_SIZE];
+        entries = new TripleSetWithIndexingNode[MINIMUM_SIZE];
         hashCodes = new int[MINIMUM_SIZE];
         size = 0;
     }
 
 
-    public Stream<TripleSetWithIndexingValue> stream() {
+    public Stream<TripleSetWithIndexingNode> stream() {
         return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), false);
     }
 
 
-    public Stream<TripleSetWithIndexingValue> parallelStream() {
+    public Stream<TripleSetWithIndexingNode> parallelStream() {
         return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), true);
     }
 

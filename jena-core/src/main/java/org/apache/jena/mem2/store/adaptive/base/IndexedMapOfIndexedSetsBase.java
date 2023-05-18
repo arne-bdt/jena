@@ -18,19 +18,27 @@
 
 package org.apache.jena.mem2.store.adaptive.base;
 
-import org.apache.jena.mem2.store.adaptive.QueryableTripleSetWithIndexingValue;
+import org.apache.jena.graph.Node;
 
-public abstract class IndexedMapOfIndexedSetsBase extends MapOfIndexedSetsBase implements QueryableTripleSetWithIndexingValue {
+public abstract class IndexedMapOfIndexedSetsBase extends MapOfIndexedSetsBase {
 
-    private final int indexingValueHashCode;
+    private final Node indexingNode;
 
-    public IndexedMapOfIndexedSetsBase(final int indexingValueHashCode, final int minCapacity) {
+    @Override
+    public boolean isReadyForTransition() {
+        return false;
+    }
+
+
+
+    public IndexedMapOfIndexedSetsBase(final Node indexingNode, final int minCapacity) {
         super(minCapacity);
-        this.indexingValueHashCode = indexingValueHashCode;
+        this.indexingNode = indexingNode;
     }
 
     @Override
-    public int getIndexValueHashCode() {
-        return this.indexingValueHashCode;
+    public Node getIndexingNode() {
+        return this.indexingNode;
     }
+
 }

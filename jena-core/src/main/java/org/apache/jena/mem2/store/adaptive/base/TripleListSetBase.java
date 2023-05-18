@@ -18,16 +18,15 @@
 
 package org.apache.jena.mem2.store.adaptive.base;
 
-import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.FieldFilter;
 import org.apache.jena.mem2.iterator.IteratorFiltering;
-import org.apache.jena.mem2.iterator.IteratorWrapperWithRemove;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
+import org.apache.jena.mem2.store.adaptive.TripleFilter;
+import org.apache.jena.mem2.store.adaptive.TripleWithNodeHashes;
 import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.WrappedIterator;
 
 import java.util.ArrayList;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public abstract class TripleListSetBase extends ArrayList<Triple> implements QueryableTripleSet {
@@ -36,7 +35,7 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
         super(initialCapacity);
     }
 
-    protected abstract FieldFilter getMatchFilter(final Triple tripleMatch);
+    protected abstract TripleFilter getMatchFilter(final Triple tripleMatch);
 
     @Override
     public int countTriples() {
@@ -49,26 +48,26 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
     }
 
     @Override
-    public boolean addTriple(final Triple triple, final int hashCode) {
-        if (super.contains(triple)) {
+    public boolean addTriple(final TripleWithNodeHashes tripleWithHashes) {
+        if (super.contains(tripleWithHashes.getTriple())) {
             return false;
         }
-        return super.add(triple);
+        return super.add(tripleWithHashes.getTriple());
     }
 
     @Override
-    public void addTripleUnchecked(final Triple triple, final int hashCode) {
-        super.add(triple);
+    public void addTripleUnchecked(final TripleWithNodeHashes tripleWithHashes) {
+        super.add(tripleWithHashes.getTriple());
     }
 
     @Override
-    public boolean removeTriple(final Triple triple, final int hashCode) {
-        return super.remove(triple);
+    public boolean removeTriple(final TripleWithNodeHashes tripleWithHashes) {
+        return super.remove(tripleWithHashes.getTriple());
     }
 
     @Override
-    public void removeTripleUnchecked(final Triple triple, final int hashCode) {
-        super.remove(triple);
+    public void removeTripleUnchecked(final TripleWithNodeHashes tripleWithHashes) {
+        super.remove(tripleWithHashes.getTriple());
     }
 
     @Override
@@ -96,17 +95,17 @@ public abstract class TripleListSetBase extends ArrayList<Triple> implements Que
     }
 
     @Override
-    public ExtendedIterator<Triple> findTriples(final Triple tripleMatch, final Graph graphForIteratorRemove) {
+    public ExtendedIterator<Triple> findTriples(final Triple tripleMatch) {
         final var fieldFilter = this.getMatchFilter(tripleMatch);
         if(!fieldFilter.hasFilter()) {
-            return new IteratorWrapperWithRemove(super.iterator(), graphForIteratorRemove);
+            return WrappedIterator.createNoRemove(super.iterator());
         }
-        return new IteratorFiltering(super.iterator(), fieldFilter.getFilter(), graphForIteratorRemove);
+        return new IteratorFiltering(super.iterator(), fieldFilter.getFilter());
     }
 
     @Override
-    public ExtendedIterator<Triple> findAll(Graph graphForIteratorRemove) {
-        return new IteratorWrapperWithRemove(super.iterator(), graphForIteratorRemove);
+    public ExtendedIterator<Triple> findAll() {
+        return WrappedIterator.createNoRemove(super.iterator());
     }
 
     @Override

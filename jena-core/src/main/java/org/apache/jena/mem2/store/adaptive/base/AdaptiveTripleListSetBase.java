@@ -18,42 +18,29 @@
 
 package org.apache.jena.mem2.store.adaptive.base;
 
-import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.store.adaptive.AdaptiveTripleStore;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
-
-import java.util.function.Consumer;
+import org.apache.jena.mem2.store.adaptive.TripleWithNodeHashes;
 
 public abstract class AdaptiveTripleListSetBase extends TripleListSetBase {
 
 
-    private final Consumer<QueryableTripleSet> transitionConsumer;
-
-    public AdaptiveTripleListSetBase(Consumer<QueryableTripleSet> transitionConsumer) {
+    public AdaptiveTripleListSetBase() {
         super(AdaptiveTripleStore.INITIAL_SIZE_FOR_ARRAY_LISTS);
-        this.transitionConsumer = transitionConsumer;
     }
 
-    protected abstract QueryableTripleSet transition();
+    protected abstract QueryableTripleSet createSetForTransition();
 
-    @Override
-    public boolean addTriple(final Triple triple, final int hashCode) {
-        if (this.size() == AdaptiveTripleStore.THRESHOLD_FOR_ARRAY_LISTS) {
-            var set = transition();
-            transitionConsumer.accept(set);
-            return set.addTriple(triple, hashCode);
+    public QueryableTripleSet createTransition() {
+        final var set = createSetForTransition();
+        for(var triple : this) {
+            set.addTripleUnchecked(new TripleWithNodeHashes(triple));
         }
-        return super.addTriple(triple, hashCode);
+        return set;
     }
 
     @Override
-    public void addTripleUnchecked(final Triple triple, final int hashCode) {
-        if (this.size() == AdaptiveTripleStore.THRESHOLD_FOR_ARRAY_LISTS) {
-            var set = transition();
-            transitionConsumer.accept(set);
-            set.addTripleUnchecked(triple, hashCode);
-        } else {
-            super.addTripleUnchecked(triple, hashCode);
-        }
+    public boolean isReadyForTransition() {
+        return this.size() == AdaptiveTripleStore.THRESHOLD_FOR_ARRAY_LISTS;
     }
 }

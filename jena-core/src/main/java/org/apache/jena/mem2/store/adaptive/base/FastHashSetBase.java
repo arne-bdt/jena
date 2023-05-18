@@ -16,16 +16,13 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.specialized;
+package org.apache.jena.mem2.store.adaptive.base;
 
-import org.apache.jena.graph.Node;
-import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.iterator.ArrayWithNullsIterator;
-import org.apache.jena.mem2.spliterator.ArrayWithNullsSpliteratorSized;
+import org.apache.jena.mem2.store.adaptive.base.iterator.SparseArrayIterator;
+import org.apache.jena.mem2.store.adaptive.base.spliterator.SparseArraySpliterator;
 
 import java.util.*;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -34,46 +31,54 @@ import java.util.stream.StreamSupport;
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
  */
-public class IndexedTriples implements TripleSetWithIndexingNode {
-    @Override
-    public final boolean areOperationsWithHashCodesSupported() {
-        return true;
-    }
+public abstract class FastHashSetBase<ValueContained, ValueToAddAndRemove> implements Set<ValueContained> {
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
-    private int calcStartIndexByHashCode(final int hashCode) {
-        return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+    protected int calcStartIndexByHashCode(final int hashCode) {
+        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        return hashCode & (entries.length-1);
     }
-
-    protected Predicate<Triple> getContainsPredicate(final Triple value) {
-        return other -> value.equals(other);
-    }
-
-
-    private static int MINIMUM_SIZE = 16;
+    private static int MINIMUM_SIZE = 2;
     private static float loadFactor = 0.5f;
     protected int size = 0;
-    protected Triple[] entries;
+    protected ValueContained[] entries;
     protected int[] hashCodes;
 
-    private final Node indexingValue;
+    protected abstract ValueContained extractContainedValue(final ValueToAddAndRemove valueToAddAndRemove);
 
-    @Override
-    public Node getIndexingNode() {
-        return this.indexingValue;
+    protected abstract int extractHashCodeFromValueToAdd(final ValueToAddAndRemove valueToAddAndRemove);
+
+    protected abstract int extractHashCode(final ValueContained valueToAddAndRemove);
+
+    /**
+     * This method must be overridden by subclasses to create an array of the correct type.
+     * It is used to avoid the performance penalty of using reflection to create an array.
+     * @param length
+     * @return
+     */
+    protected abstract ValueContained[] createEntryArray(final int length);
+
+    public FastHashSetBase() {
+        this.entries = createEntryArray(MINIMUM_SIZE);
+        this.hashCodes = new int[entries.length];
     }
 
-    public IndexedTriples(TripleSetWithIndexingNode set) {
-        this.indexingValue = set.getIndexingNode();
-        this.entries = new Triple[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
+    public FastHashSetBase(Set<ValueContained> set) {
+        this.entries = createEntryArray(Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1);
         this.hashCodes = new int[entries.length];
         int index, hashCode;
-        for (Triple t : set) {
+        for (ValueContained t : set) {
             entries[index = findEmptySlotWithoutEqualityCheck(hashCode = t.hashCode())] = t;
             hashCodes[index] = hashCode;
             size++;
         }
     }
+
+    public FastHashSetBase(int minCapacity) {
+        this.entries = createEntryArray(Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1);
+        this.hashCodes = new int[entries.length];
+    }
+
 
     private int calcNewSize() {
         if(size >= entries.length*loadFactor && entries.length <= 1 << 30) { /*grow*/
@@ -85,7 +90,7 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
     private void grow(final int minCapacity) {
         final var oldEntries = this.entries;
         final var oldHashCodes = this.hashCodes;
-        this.entries = new Triple[Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1];
+        this.entries = createEntryArray(Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1);
         this.hashCodes = new int[entries.length];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
@@ -103,7 +108,7 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
         }
         final var oldEntries = this.entries;
         final var oldHashCodes = this.hashCodes;
-        this.entries = new Triple[newSize];
+        this.entries = createEntryArray(newSize);
         this.hashCodes = new int[newSize];
         for(int i=0; i<oldEntries.length; i++) {
             if(null != oldEntries[i]) {
@@ -139,14 +144,16 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
 
     @Override
     public boolean contains(Object o) {
-        final var e = (Triple)o;
-        final int hashCode;
-        var index = calcStartIndexByHashCode(hashCode = e.hashCode());
+        throw new UnsupportedOperationException();
+    }
+
+    public boolean containsValue(final ValueContained e) {
+        final var hashCode = extractHashCode(e);
+        var index = calcStartIndexByHashCode(hashCode);
         if(null == entries[index]) {
             return false;
         }
-        var predicate = getContainsPredicate(e);
-        if(hashCode == hashCodes[index] && predicate.test(entries[index])) {
+        if(hashCode == hashCodes[index] && entries[index].equals(e)) {
             return true;
         } else if(--index < 0){
             index += entries.length;
@@ -154,7 +161,7 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
         while(true) {
             if(null == entries[index]) {
                 return false;
-            } else if(hashCode == hashCodes[index] && predicate.test(entries[index])) {
+            } else if(hashCode == hashCodes[index] && entries[index].equals(e)) {
                 return true;
             } else if(--index < 0){
                 index += entries.length;
@@ -162,10 +169,14 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
         }
     }
 
-
     @Override
-    public Iterator<Triple> iterator() {
-        return new ArrayWithNullsIterator(entries);
+    public Iterator<ValueContained> iterator() {
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIterator<>(entries, checkForConcurrentModification);
     }
 
 
@@ -187,20 +198,21 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
         return a;
     }
 
-    public Triple findAny() {
+    public ValueContained findAny() {
         var index = -1;
         while(entries[++index] == null);
         return entries[index];
     }
 
     @Override
-    public boolean add(Triple value) {
-        return add(value, value.hashCode());
+    public boolean add(ValueContained value) {
+        throw new UnsupportedOperationException();
     }
 
-    @Override
-    public boolean add(Triple value, int hashCode) {
+    public boolean addValue(final ValueToAddAndRemove valueToAddAndRemove) {
         grow();
+        final ValueContained value = extractContainedValue(valueToAddAndRemove);
+        final int hashCode = extractHashCodeFromValueToAdd(valueToAddAndRemove);
         var index = findIndex(value, hashCode);
         if(index < 0) {
             entries[~index] = value;
@@ -211,13 +223,9 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
         return false;
     }
 
-    @Override
-    public void addUnchecked(Triple value) {
-        addUnchecked(value, value.hashCode());
-    }
-
-    @Override
-    public void addUnchecked(Triple value, int hashCode) {
+    public void addUnchecked(final ValueToAddAndRemove valueToAddAndRemove) {
+        final ValueContained value = extractContainedValue(valueToAddAndRemove);
+        final int hashCode = extractHashCodeFromValueToAdd(valueToAddAndRemove);
         grow();
         var index = findEmptySlotWithoutEqualityCheck(hashCode);
         entries[index] = value;
@@ -225,44 +233,49 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
         size++;
     }
 
-    public Triple addIfAbsent(Triple value) {
-        grow();
-        final int hashCode;
-        final var index = findIndex(value, hashCode = value.hashCode());
-        if(index < 0) {
-            entries[~index] = value;
-            hashCodes[~index] = hashCode;
-            size++;
-            return value;
-        }
-        return entries[index];
-    }
+//    public E addIfAbsent(E value) {
+//        grow();
+//        final int hashCode;
+//        final var index = findIndex(value, hashCode = value.hashCode());
+//        if(index < 0) {
+//            entries[~index] = value;
+//            hashCodes[~index] = hashCode;
+//            size++;
+//            return value;
+//        }
+//        return entries[index];
+//    }
 
-    public Triple getIfPresent(Triple value) {
-        final int hashCode;
-        var index = calcStartIndexByHashCode(hashCode = value.hashCode());
-        while(true) {
-            if(null == entries[index]) {
-                return null;
-            } else if(hashCode == hashCodes[index] && value.equals(entries[index])) {
-                return entries[index];
-            } else if(--index < 0){
-                index += entries.length;
-            }
-        }
-    }
+//    public ValueContained getIfPresent(Object value) {
+//        //throw new UnsupportedOperationException();
+//        return getIfPresent(value, value.hashCode());
+//    }
+//
+//    public ValueContained getIfPresent(Object value, int hashCode) {
+//        var index = calcStartIndexByHashCode(hashCode);
+//        while(true) {
+//            if(null == entries[index]) {
+//                return null;
+//            } else if(hashCode == hashCodes[index] && entries[index].equals(value)) {
+//                return entries[index];
+//            } else if(--index < 0){
+//                index += entries.length;
+//            }
+//        }
+//    }
 
-    public Triple compute(Triple value, Function<Triple, Triple> remappingFunction) {
-        final int hashCode;
-        var index = findIndex(value, hashCode = value.hashCode());
+    public ValueContained compute(final ValueToAddAndRemove valueToAddAndRemove, Function<ValueContained, ValueContained> remappingFunction) {
+        final ValueContained value = extractContainedValue(valueToAddAndRemove);
+        final int hashCode = extractHashCodeFromValueToAdd(valueToAddAndRemove);
+        var index = findIndex(value, hashCode);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
                 return null;
             }
-            if(!value.equals(newValue)) {
-                throw new IllegalArgumentException("remapped value is not equal to value");
-            }
+//            if(!value.equals(newValue)) {
+//                throw new IllegalArgumentException("remapped value is not equal to value");
+//            }
             if(grow()) {
                 index = findEmptySlotWithoutEqualityCheck(hashCode);
             } else {
@@ -286,12 +299,12 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
         }
     }
 
-    private int findIndex(final Triple e, final int hashCode) {
+    protected int findIndex(final ValueContained value, final int hashCode) {
         var index = calcStartIndexByHashCode(hashCode);
         while(true) {
             if(null == entries[index]) {
                 return ~index;
-            } else if(hashCode == hashCodes[index] && e.equals(entries[index])) {
+            } else if(hashCode == hashCodes[index] && entries[index].equals(value)) {
                 return index;
             } else if(--index < 0){
                 index += entries.length;
@@ -299,7 +312,7 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
         }
     }
 
-    private int findEmptySlotWithoutEqualityCheck(final int hashCode) {
+    protected int findEmptySlotWithoutEqualityCheck(final int hashCode) {
         var index = calcStartIndexByHashCode(hashCode);
         while(true) {
             if(null == entries[index]) {
@@ -332,12 +345,11 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
      */
     @Override
     public boolean remove(Object o) {
-        var e = (Triple)o;
-        return remove(e, e.hashCode());
+        throw new UnsupportedOperationException();
     }
 
-    public boolean remove(Triple e, int hashCode) {
-        var index = findIndex(e, hashCode);
+    public boolean removeValue(final ValueToAddAndRemove valueToAddAndRemove) {
+        var index = findIndex(extractContainedValue(valueToAddAndRemove), extractHashCodeFromValueToAdd(valueToAddAndRemove));
         if (index < 0) {
             return false;
         }
@@ -347,12 +359,8 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
         return true;
     }
 
-    public void removeUnchecked(Triple e) {
-        removeUnchecked(e, e.hashCode());
-    }
-
-    public void removeUnchecked(Triple e, int hashCode) {
-        var index = findIndex(e, hashCode);
+    public void removeUnchecked(final ValueToAddAndRemove valueToAddAndRemove) {
+        var index = findIndex(extractContainedValue(valueToAddAndRemove), extractHashCodeFromValueToAdd(valueToAddAndRemove));
         entries[index] = null;
         size--;
         rearrangeNeighbours(index);
@@ -509,12 +517,12 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
      * @see #add(Object)
      */
     @Override
-    public boolean addAll(Collection<? extends Triple> c) {
+    public boolean addAll(Collection<? extends ValueContained> c) {
         grow(size + c.size());
         boolean modified = false;
         int index;
         int hashCode;
-        for (Triple t : c) {
+        for (ValueContained t : c) {
             if((index=findIndex(t, hashCode = t.hashCode())) < 0) {
                 entries[~index] = t;
                 hashCodes[~index] = hashCode;
@@ -589,7 +597,7 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
      */
     @Override
     public void clear() {
-        entries = new Triple[MINIMUM_SIZE];
+        entries = createEntryArray(MINIMUM_SIZE);
         hashCodes = new int[MINIMUM_SIZE];
         size = 0;
     }
@@ -608,8 +616,13 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
      * @since 1.8
      */
     @Override
-    public Stream<Triple> stream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), false);
+    public Stream<ValueContained> stream() {
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), false);
     }
 
     /**
@@ -628,8 +641,13 @@ public class IndexedTriples implements TripleSetWithIndexingNode {
      * @since 1.8
      */
     @Override
-    public Stream<Triple> parallelStream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), true);
+    public Stream<ValueContained> parallelStream() {
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return StreamSupport.stream(new SparseArraySpliterator(entries, size, checkForConcurrentModification), true);
     }
 
 }

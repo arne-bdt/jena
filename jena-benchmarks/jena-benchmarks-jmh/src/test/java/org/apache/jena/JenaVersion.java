@@ -16,18 +16,6 @@
  * limitations under the License.
  */
 
-<<<<<<<< HEAD:jena-core/src/main/java/org/apache/jena/mem2/store/adaptive/QueryableTripleSetWithIndexingValue.java
-package org.apache.jena.mem2.store.adaptive;
-
-import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
-
-/**
- *
- * @see GraphMemWithAdaptiveTripleStore
- */
-public interface QueryableTripleSetWithIndexingValue extends QueryableTripleSet {
-    public int getIndexValueHashCode();
-========
 package org.apache.jena;
 
 public enum JenaVersion {
@@ -43,5 +31,4 @@ public enum JenaVersion {
     public String getVersion() {
         return version;
     }
->>>>>>>> jena_issue_1279:jena-benchmarks/jena-benchmarks-jmh/src/test/java/org/apache/jena/JenaVersion.java
 }

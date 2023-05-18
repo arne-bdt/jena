@@ -33,7 +33,11 @@ public class Context {
     }
 
     public enum GraphClass {
-        GraphMem
+        GraphMem,
+        GraphMem2,
+        GraphMem2LowMemory,
+        GraphMemWithAdaptiveTripleStore,
+        DatasetGraphInMemoryDefaultGraph,
     }
 
     private final GraphClass graphClass;
@@ -46,8 +50,28 @@ public class Context {
                 this.graphClass = GraphClass.GraphMem;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
+            case "GraphMem2 (current)":
+                this.graphClass = GraphClass.GraphMem2;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMem2LowMemory (current)":
+                this.graphClass = GraphClass.GraphMem2LowMemory;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemWithAdaptiveTripleStore (current)":
+                this.graphClass = GraphClass.GraphMemWithAdaptiveTripleStore;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "DatasetGraphInMemoryDefaultGraph (current)":
+                this.graphClass = GraphClass.DatasetGraphInMemoryDefaultGraph;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
             case "GraphMem (Jena 4.8.0)":
                 this.graphClass = GraphClass.GraphMem;
+                this.jenaVersion = JenaVersion.JENA_4_8_0;
+                break;
+            case "DatasetGraphInMemoryDefaultGraph (Jena 4.8.0)":
+                this.graphClass = GraphClass.DatasetGraphInMemoryDefaultGraph;
                 this.jenaVersion = JenaVersion.JENA_4_8_0;
                 break;
             default:

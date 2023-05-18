@@ -23,6 +23,7 @@ import org.apache.shadedJena480.graph.NodeFactory;
 import org.apache.shadedJena480.graph.Triple;
 import org.apache.shadedJena480.mem.GraphMem;
 import org.apache.shadedJena480.riot.RDFDataMgr;
+import org.apache.shadedJena480.sparql.core.DatasetGraphFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +35,11 @@ public class GraphTripleNodeHelper480 implements GraphTripleNodeHelper<Graph, Tr
         switch (graphClass) {
             case GraphMem:
                 return new GraphMem();
-            default:
+
+            case DatasetGraphInMemoryDefaultGraph:
+                return DatasetGraphFactory.createTxnMem().getDefaultGraph();
+
+                default:
                 throw new IllegalArgumentException("Unknown graph class: " + graphClass);
         }
     }
@@ -68,7 +73,7 @@ public class GraphTripleNodeHelper480 implements GraphTripleNodeHelper<Graph, Tr
     @Override
     public Node cloneNode(Node node) {
         if(node.isLiteral()) {
-            return NodeFactory.createLiteralByValue(node.getLiteralValue(), node.getLiteralLanguage(), node.getLiteralDatatype());
+            return NodeFactory.createLiteralByValue(node.getLiteralLexicalForm(), node.getLiteralLanguage(), node.getLiteralDatatype());
         }
         if(node.isURI()) {
             return NodeFactory.createURI(node.getURI());

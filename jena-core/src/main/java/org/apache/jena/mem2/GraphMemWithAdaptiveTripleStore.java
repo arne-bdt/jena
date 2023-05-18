@@ -21,9 +21,8 @@ package org.apache.jena.mem2;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
-import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.mem.GraphMemBase;
-import org.apache.jena.mem2.iterator.IteratorWrapperWithRemove;
+import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.mem2.store.adaptive.AdaptiveTripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
@@ -34,7 +33,7 @@ import java.util.stream.Stream;
  */
 public class GraphMemWithAdaptiveTripleStore extends GraphMemBase implements GraphWithPerform {
 
-   final TripleStore tripleStore = new AdaptiveTripleStore(this);
+   final TripleStore tripleStore = new AdaptiveTripleStore();
 
     /**
      * Subclasses over-ride this method to release any resources they no

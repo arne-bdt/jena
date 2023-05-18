@@ -18,7 +18,6 @@
 
 package org.apache.jena.mem2.store.adaptive;
 
-import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.pattern.PatternClassifier;
 import org.apache.jena.mem2.store.TripleStore;
@@ -39,37 +38,48 @@ public class AdaptiveTripleStore implements TripleStore {
     private QueryableTripleSet pos;
     private QueryableTripleSet osp;
 
-    private final Graph graphForIteratorRemove;
 
-    public AdaptiveTripleStore(final Graph graphForIteratorRemove) {
+    public AdaptiveTripleStore() {
         this.clear();
-        this.graphForIteratorRemove = graphForIteratorRemove;
     }
 
 
+    private void checkForNecessaryTransitions() {
+        if (this.spo.isReadyForTransition()) {
+            this.spo = this.spo.createTransition();
+        }
+        if (this.pos.isReadyForTransition()) {
+            this.pos = this.pos.createTransition();
+        }
+        if (this.osp.isReadyForTransition()) {
+            this.osp = this.osp.createTransition();
+        }
+    }
+
     @Override
     public void add(final Triple triple) {
-        final var hashCode = triple.hashCode();
-        if (this.spo.addTriple(triple, hashCode)) {
-            this.pos.addTripleUnchecked(triple, hashCode);
-            this.osp.addTripleUnchecked(triple, hashCode);
+        final var tripleWithHashes = new TripleWithNodeHashes(triple);
+        if (this.spo.addTriple(tripleWithHashes)) {
+            this.pos.addTripleUnchecked(tripleWithHashes);
+            this.osp.addTripleUnchecked(tripleWithHashes);
+            this.checkForNecessaryTransitions();
         }
     }
 
     @Override
     public void remove(final Triple triple) {
-        final var hashCode = triple.hashCode();
-        if(this.spo.removeTriple(triple, hashCode)) {
-            this.pos.removeTripleUnchecked(triple, hashCode);
-            this.osp.removeTripleUnchecked(triple, hashCode);
+        final var tripleWithHashes = new TripleWithNodeHashes(triple);
+        if(this.spo.removeTriple(tripleWithHashes)) {
+            this.pos.removeTripleUnchecked(tripleWithHashes);
+            this.osp.removeTripleUnchecked(tripleWithHashes);
         }
     }
 
     @Override
     public void clear() {
-        this.spo = new TripleListSetSPO(newSet -> this.spo = newSet);
-        this.pos = new TripleListSetPOS(newSet -> this.pos = newSet);
-        this.osp = new TripleListSetOSP(newSet -> this.osp = newSet);
+        this.spo = new TripleListSetSPO();
+        this.pos = new TripleListSetPOS();
+        this.osp = new TripleListSetOSP();
     }
 
     @Override
@@ -144,18 +154,18 @@ public class AdaptiveTripleStore implements TripleStore {
             case SPO:
             case SP_:
             case S__:
-                return this.spo.findTriples(tripleMatch, graphForIteratorRemove);
+                return this.spo.findTriples(tripleMatch);
 
             case _PO:
             case _P_:
-                return this.pos.findTriples(tripleMatch, graphForIteratorRemove);
+                return this.pos.findTriples(tripleMatch);
 
             case S_O:
             case __O:
-                return this.osp.findTriples(tripleMatch, graphForIteratorRemove);
+                return this.osp.findTriples(tripleMatch);
 
             case ___:
-                return this.getMapWithFewestTopLevelIndices().findAll(graphForIteratorRemove);
+                return this.getMapWithFewestTopLevelIndices().findAll();
 
             default:
                 throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));

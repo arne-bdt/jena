@@ -18,19 +18,17 @@
 
 package org.apache.jena.mem2.store.adaptive.base;
 
-import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.iterator.NestedIterator;
-import org.apache.jena.mem2.specialized.FastHashMapBase;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
+import org.apache.jena.mem2.store.adaptive.TripleWithNodeHashes;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTripleSet> implements QueryableTripleSet {
+public abstract class MapOfIndexedSetsBase extends KeyedValueHashSetBase<Node, QueryableTripleSet, TripleWithNodeHashes> implements QueryableTripleSet {
 
     public MapOfIndexedSetsBase(int minCapacity) {
         super(minCapacity);
@@ -41,11 +39,14 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
         return new QueryableTripleSet[length];
     }
 
-    protected abstract QueryableTripleSet createEntry(Consumer<QueryableTripleSet> transitionConsumer);
+    @Override
+    protected Node extractKeyFromValue(QueryableTripleSet queryableTripleSetWithIndexingNode) {
+        return queryableTripleSetWithIndexingNode.getIndexingNode();
+    }
 
-    protected abstract Node getIndexingNode(Triple tripleMatch);
+    protected abstract QueryableTripleSet createEntry();
 
-    protected abstract int getHashCodeOfIndexingValue(Triple triple);
+    protected abstract Node extractKey(final Triple tripleMatch);
 
     @Override
     public int countTriples() {
@@ -57,27 +58,28 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
         return this.size() + super.stream().mapToInt(QueryableTripleSet::countIndexSize).sum();
     }
 
-    private boolean entryTransitioned = false;
-    private QueryableTripleSet transitionedEntry = null;
-
-    private Consumer<QueryableTripleSet> entryTransition = (QueryableTripleSet transitionedEntry) -> {
-        this.transitionedEntry = transitionedEntry;
-        this.entryTransitioned = true;
-    };
+    @Override
+    public boolean isReadyForTransition() {
+        return false;
+    }
 
     @Override
-    public boolean addTriple(final Triple triple, final int hashCode) {
-        boolean added[] = {true};
-        this.compute(getHashCodeOfIndexingValue(triple), (set) -> {
+    public QueryableTripleSet createTransition() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean addTriple(final TripleWithNodeHashes tripleWithHashes) {
+        final boolean added[] = {true};
+        this.compute(tripleWithHashes, (set) -> {
             if (set == null) {
-                set = createEntry(this.entryTransition);
-                set.addTripleUnchecked(triple, hashCode);
+                set = createEntry();
+                set.addTripleUnchecked(tripleWithHashes);
                 return set;
             }
-            added[0] = set.addTriple(triple, hashCode);
-            if(this.entryTransitioned) {
-                this.entryTransitioned = false;
-                return this.transitionedEntry;
+            added[0] = set.addTriple(tripleWithHashes);
+            if(set.isReadyForTransition()) {
+                set = set.createTransition();
             }
             return set;
         });
@@ -85,30 +87,29 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     }
 
     @Override
-    public void addTripleUnchecked(final Triple triple, final int hashCode) {
-        super.compute(getHashCodeOfIndexingValue(triple), (set) -> {
+    public void addTripleUnchecked(final TripleWithNodeHashes tripleWithHashes) {
+        super.compute(tripleWithHashes, (set) -> {
             if (set == null) {
-                set = createEntry(this.entryTransition);
-                set.addTripleUnchecked(triple, hashCode);
+                set = createEntry();
+                set.addTripleUnchecked(tripleWithHashes);
                 return set;
             }
-            set.addTripleUnchecked(triple, hashCode);
-            if(this.entryTransitioned) {
-                this.entryTransitioned = false;
-                return this.transitionedEntry;
+            set.addTripleUnchecked(tripleWithHashes);
+            if(set.isReadyForTransition()) {
+                set = set.createTransition();
             }
             return set;
         });
     }
 
     @Override
-    public boolean removeTriple(final Triple triple, final int hashCode) {
+    public boolean removeTriple(final TripleWithNodeHashes tripleWithHashes) {
         boolean tripleRemoved[] = {false};
-        this.compute(getHashCodeOfIndexingValue(triple), (set) -> {
+        this.compute(tripleWithHashes, (set) -> {
             if (set == null) {
                 return null;
             }
-            if(tripleRemoved[0] = set.removeTriple(triple, hashCode) && set.isEmpty()) {
+            if((tripleRemoved[0] = set.removeTriple(tripleWithHashes)) && set.isEmpty()) {
                 return null;
             }
             return set;
@@ -117,9 +118,9 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
     }
 
     @Override
-    public void removeTripleUnchecked(final Triple triple, final int hashCode) {
-        this.compute(getHashCodeOfIndexingValue(triple), (set) -> {
-            set.removeTripleUnchecked(triple, hashCode);
+    public void removeTripleUnchecked(final TripleWithNodeHashes tripleWithHashes) {
+        this.compute(tripleWithHashes, (set) -> {
+            set.removeTripleUnchecked(tripleWithHashes);
             if(set.isEmpty()) {
                 return null;
             }
@@ -129,40 +130,46 @@ public abstract class MapOfIndexedSetsBase extends FastHashMapBase<QueryableTrip
 
     @Override
     public boolean containsMatch(final Triple tripleMatch) {
-        var set = super.getIfPresent(getHashCodeOfIndexingValue(tripleMatch));
-        if(set == null) {
-            if(getIndexingNode(tripleMatch).isConcrete()) {
+        final var indexingNode = extractKey(tripleMatch);
+        if(indexingNode.isConcrete()) {
+            var set = super.getIfPresent(indexingNode);
+            if(set == null) {
                 return false;
             }
-            return stream().anyMatch(s -> s.containsMatch(tripleMatch));
+            return set.containsMatch(tripleMatch);
         }
-        return set.containsMatch(tripleMatch);
+        return stream().anyMatch(s -> s.containsMatch(tripleMatch));
     }
 
     @Override
     public Stream<Triple> streamTriples(final Triple tripleMatch) {
-        var set = super.getIfPresent(getHashCodeOfIndexingValue(tripleMatch));
-        if(set == null) {
-            if(getIndexingNode(tripleMatch).isConcrete()) {
+        final var keyNode = extractKey(tripleMatch);
+        if(keyNode.isConcrete()) {
+            var set = super.getIfPresent(keyNode);
+            if(set == null) {
                 return Stream.empty();
             }
-            return stream().flatMap(s -> s.streamTriples(tripleMatch));
+            return set.streamTriples(tripleMatch);
         }
-        return set.streamTriples(tripleMatch);
+        return stream().flatMap(s -> s.streamTriples(tripleMatch));
     }
 
     @Override
-    public ExtendedIterator<Triple> findTriples(final Triple tripleMatch, final Graph graphForIteratorRemove) {
-        var set = super.getIfPresent(getHashCodeOfIndexingValue(tripleMatch));
-        if(set == null) {
-            return NiceIterator.emptyIterator();
+    public ExtendedIterator<Triple> findTriples(final Triple tripleMatch) {
+        final var keyNode = extractKey(tripleMatch);
+        if(keyNode.isConcrete()) {
+            var set = super.getIfPresent(keyNode);
+            if(set == null) {
+                return NiceIterator.emptyIterator();
+            }
+            return set.findTriples(tripleMatch);
         }
-        return set.findTriples(tripleMatch, graphForIteratorRemove);
+        return this.findAll();
     }
 
     @Override
-    public ExtendedIterator<Triple> findAll(Graph graphForIteratorRemove) {
-        return new NestedIterator<>(super.iterator(), (set) -> set.findAll(graphForIteratorRemove));
+    public ExtendedIterator<Triple> findAll() {
+        return new NestedIterator<>(super.iterator(), QueryableTripleSet::findAll);
     }
 
     @Override

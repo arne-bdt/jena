@@ -18,38 +18,26 @@
 
 package org.apache.jena.mem2.store.adaptive.set;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.FieldFilter;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
-import org.apache.jena.mem2.store.adaptive.QueryableTripleSetWithIndexingValue;
+import org.apache.jena.mem2.store.adaptive.TripleFilter;
 import org.apache.jena.mem2.store.adaptive.base.AdaptiveTripleListSetBase;
 
-import java.util.function.Consumer;
-import java.util.function.Predicate;
+public class TripleListSet__S extends AdaptiveTripleListSetBase {
 
-public class TripleListSet__S extends AdaptiveTripleListSetBase implements QueryableTripleSetWithIndexingValue {
-
-    public TripleListSet__S(Consumer<QueryableTripleSet> transitionConsumer) {
-        super(transitionConsumer);
+    @Override
+    protected TripleFilter getMatchFilter(Triple tripleMatch) {
+        return new TripleFilter(tripleMatch).filterOnSubject();
     }
 
     @Override
-    protected FieldFilter getMatchFilter(Triple tripleMatch) {
-        return FieldFilter.filterOn(tripleMatch,
-                Triple.Field.fieldSubject, Triple.Field.fieldObject, Triple.Field.fieldPredicate);
+    public Node getIndexingNode() {
+        return this.get(0).getObject();
     }
 
     @Override
-    public int getIndexValueHashCode() {
-        return this.get(0).getObject().getIndexingValue().hashCode();
-    }
-
-    @Override
-    protected QueryableTripleSet transition() {
-        final var set = new IndexedSet__S(this.getIndexValueHashCode(), this.size());
-        for (var triple : this) {
-            set.addTripleUnchecked(triple, triple.hashCode());
-        }
-        return set;
+    protected QueryableTripleSet createSetForTransition() {
+        return new IndexedSet__S(this.getIndexingNode(), this.size());
     }
 }

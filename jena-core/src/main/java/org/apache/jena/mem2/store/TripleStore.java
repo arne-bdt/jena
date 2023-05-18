@@ -22,7 +22,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.Iterator;
 import java.util.stream.Stream;
 
 /**

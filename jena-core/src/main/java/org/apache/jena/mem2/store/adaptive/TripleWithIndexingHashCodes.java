@@ -17,7 +17,6 @@
  */
 package org.apache.jena.mem2.store.adaptive;
 
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 
 /**

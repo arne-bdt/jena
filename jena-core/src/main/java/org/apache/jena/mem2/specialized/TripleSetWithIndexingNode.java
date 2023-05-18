@@ -18,13 +18,14 @@
 
 package org.apache.jena.mem2.specialized;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 
 import java.util.Set;
 
-public interface TripleSetWithIndexingValue extends Set<Triple> {
+public interface TripleSetWithIndexingNode extends Set<Triple> {
 
-    Object getIndexingValue();
+    Node getIndexingNode();
 
     void addUnchecked(Triple t);
 

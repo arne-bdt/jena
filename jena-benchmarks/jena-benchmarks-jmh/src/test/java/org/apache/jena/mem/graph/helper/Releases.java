@@ -15,29 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-<<<<<<<< HEAD:jena-core/src/main/java/org/apache/jena/mem2/store/adaptive/set/IndexedSet__O.java
-
-package org.apache.jena.mem2.store.adaptive.set;
-
-import org.apache.jena.graph.Triple;
-
-import org.apache.jena.mem2.store.adaptive.base.TripleHashSetBase;
-
-import java.util.function.Predicate;
-
-public class IndexedSet__O extends TripleHashSetBase {
-
-    public IndexedSet__O(final int indexingValueHashCode, final int minCapacity) {
-        super(indexingValueHashCode, minCapacity);
-    }
-
-    @Override
-    protected Predicate<Triple> getMatchPredicate(Triple tripleMatch) {
-        return triple -> tripleMatch.getObject().matches(triple.getObject())
-                && tripleMatch.getSubject().matches(triple.getSubject())
-                && tripleMatch.getPredicate().matches(triple.getPredicate());
-    }
-========
 package org.apache.jena.mem.graph.helper;
 
 import org.apache.jena.graph.Graph;
@@ -52,5 +29,4 @@ public class Releases {
    public static GraphTripleNodeHelper<Graph, Triple, Node> current = new GraphTripleNodeHelperCurrent();
    public static GraphTripleNodeHelper<org.apache.shadedJena480.graph.Graph, org.apache.shadedJena480.graph.Triple, org.apache.shadedJena480.graph.Node> v480 = new GraphTripleNodeHelper480();
 
->>>>>>>> jena_issue_1279:jena-benchmarks/jena-benchmarks-jmh/src/test/java/org/apache/jena/mem/graph/helper/Releases.java
 }

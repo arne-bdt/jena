@@ -71,11 +71,6 @@ public class NestedIterator<E, I> extends NiceIterator<E> {
     }
 
     @Override
-    public void remove() {
-        this.currentIterator.remove();
-    }
-
-    @Override
     public void forEachRemaining(Consumer<? super E> action) {
         if (this.currentIterator != null && this.currentIterator.hasNext()) {
             this.currentIterator.forEachRemaining(action);

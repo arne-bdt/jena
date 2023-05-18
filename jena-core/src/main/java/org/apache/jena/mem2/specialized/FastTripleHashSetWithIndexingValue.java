@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem2.specialized;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.iterator.ArrayWithNullsIterator;
 import org.apache.jena.mem2.spliterator.ArrayWithNullsSpliteratorSized;
@@ -33,7 +34,7 @@ import java.util.stream.StreamSupport;
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
  */
-public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexingValue {
+public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexingNode {
     @Override
     public final boolean areOperationsWithHashCodesSupported() {
         return true;
@@ -41,7 +42,8 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByHashCode(final int hashCode) {
-        return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        return hashCode & (entries.length-1);
     }
 
     protected Predicate<Triple> getContainsPredicate(final Triple value) {
@@ -55,15 +57,15 @@ public class FastTripleHashSetWithIndexingValue implements TripleSetWithIndexing
     protected Triple[] entries;
     protected int[] hashCodes;
 
-    private final Object indexingValue;
+    private final Node indexingValue;
 
     @Override
-    public Object getIndexingValue() {
+    public Node getIndexingNode() {
         return this.indexingValue;
     }
 
-    public FastTripleHashSetWithIndexingValue(TripleSetWithIndexingValue set) {
-        this.indexingValue = set.getIndexingValue();
+    public FastTripleHashSetWithIndexingValue(TripleSetWithIndexingNode set) {
+        this.indexingValue = set.getIndexingNode();
         this.entries = new Triple[Integer.highestOneBit(((int)(set.size()/loadFactor)+1)) << 1];
         this.hashCodes = new int[entries.length];
         int index, hashCode;

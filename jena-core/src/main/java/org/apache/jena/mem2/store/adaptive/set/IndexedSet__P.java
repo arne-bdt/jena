@@ -18,21 +18,30 @@
 
 package org.apache.jena.mem2.store.adaptive.set;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.FieldFilter;
-import org.apache.jena.mem2.store.adaptive.base.TripleHashSetBase;
+import org.apache.jena.mem2.store.adaptive.TripleWithNodeHashes;
+import org.apache.jena.mem2.store.adaptive.base.MapOfIndexedTriplesBase;
 
-import java.util.function.Predicate;
+public class IndexedSet__P extends MapOfIndexedTriplesBase {
 
-public class IndexedSet__P extends TripleHashSetBase {
-
-    public IndexedSet__P(final int indexingValueHashCode, final int minCapacity) {
-        super(indexingValueHashCode, minCapacity);
+    @Override
+    protected Node extractKeyFromValue(Triple triple) {
+        return triple.getPredicate();
     }
 
     @Override
-    protected FieldFilter getMatchFilter(Triple tripleMatch) {
-        return FieldFilter.filterOn(tripleMatch,
-                Triple.Field.fieldPredicate, Triple.Field.fieldObject, Triple.Field.fieldSubject);
+    protected Node extractKeyFromValueToAddAndRemove(TripleWithNodeHashes tripleWithNodeHashes) {
+        return tripleWithNodeHashes.getTriple().getPredicate();
+    }
+
+    @Override
+    protected int extractHashCode(TripleWithNodeHashes tripleWithNodeHashes) {
+        return tripleWithNodeHashes.getPredicateHashCode();
+    }
+
+    public IndexedSet__P(final Node indexingNode, final int minCapacity) {
+        super(indexingNode, minCapacity);
     }
 }
+

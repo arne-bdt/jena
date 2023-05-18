@@ -23,6 +23,7 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.GraphMem;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.testing_framework.NodeCreateUtils;
 import org.junit.Assert;
@@ -125,22 +126,32 @@ public class TestGraphImplementations {
     @Test
     public void testContainsValueSubject() {
         var sut = createGraph();
-        sut.add(Triple.create(
+        var containedTriple = Triple.create(
                 NodeFactory.createLiteral("0.1", XSDDouble.XSDdouble),
                 NodeFactory.createURI("x"),
-                NodeFactory.createURI("R")));
-        Assert.assertTrue(sut.contains(Triple.create(
+                NodeFactory.createURI("R"));
+        sut.add(containedTriple);
+
+        var match = Triple.create(
                 NodeFactory.createLiteral("0.1", XSDDouble.XSDdouble),
                 NodeFactory.createURI("x"),
-                NodeFactory.createURI("R"))));
-        Assert.assertTrue(sut.contains(Triple.create(
+                NodeFactory.createURI("R"));
+        Assert.assertTrue(sut.contains(match));
+        Assert.assertEquals(containedTriple, sut.find(match).next());
+
+        match = Triple.create(
                 NodeFactory.createLiteral("0.10", XSDDouble.XSDdouble),
                 NodeFactory.createURI("x"),
-                NodeFactory.createURI("R"))));
-        Assert.assertFalse(sut.contains(Triple.create(
+                NodeFactory.createURI("R"));
+        Assert.assertTrue(sut.contains(match));
+        Assert.assertEquals(containedTriple, sut.find(match).next());
+
+        match = Triple.create(
                 NodeFactory.createLiteral("0.11", XSDDouble.XSDdouble),
                 NodeFactory.createURI("x"),
-                NodeFactory.createURI("R"))));
+                NodeFactory.createURI("R"));
+        Assert.assertFalse(sut.contains(match));
+        Assert.assertFalse(sut.find(match).hasNext());
     }
 
     @Test

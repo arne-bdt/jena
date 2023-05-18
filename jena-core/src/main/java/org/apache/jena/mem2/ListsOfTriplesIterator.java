@@ -18,9 +18,8 @@
 
 package org.apache.jena.mem2;
 
-import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.specialized.TripleSetWithIndexingValue;
+import org.apache.jena.mem2.specialized.TripleSetWithIndexingNode;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.Map1Iterator;
@@ -31,16 +30,14 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 class ListsOfTriplesIterator implements ExtendedIterator<Triple> {
-    private static final Iterator<TripleSetWithIndexingValue> EMPTY_SET_ITERATOR = Collections.emptyIterator();
+    private static final Iterator<TripleSetWithIndexingNode> EMPTY_SET_ITERATOR = Collections.emptyIterator();
     private static final Iterator<Triple> EMPTY_TRIPLES_ITERATOR = Collections.emptyIterator();
-    private final Graph graph;
 
-    private Iterator<TripleSetWithIndexingValue> baseIterator;
+    private Iterator<TripleSetWithIndexingNode> baseIterator;
     private Iterator<Triple> subIterator;
     private Triple current;
 
-    public ListsOfTriplesIterator(Iterator<TripleSetWithIndexingValue> baseIterator, Graph graph) {
-        this.graph = graph;
+    public ListsOfTriplesIterator(Iterator<TripleSetWithIndexingNode> baseIterator) {
         this.baseIterator = baseIterator;
         subIterator = baseIterator.hasNext() ? baseIterator.next().iterator() : EMPTY_TRIPLES_ITERATOR;
     }
@@ -74,21 +71,6 @@ class ListsOfTriplesIterator implements ExtendedIterator<Triple> {
     @Override
     public Triple next() {
         return current = subIterator.next();
-    }
-
-    @Override
-    public void remove() {
-        if (current == null) {
-            throw new IllegalStateException();
-        }
-        if (this.baseIterator == EMPTY_SET_ITERATOR) {
-            graph.delete(current);
-        } else {
-            var currentBeforeToList = current;
-            this.subIterator = this.toList().iterator();
-            this.baseIterator = EMPTY_SET_ITERATOR;
-            graph.delete(currentBeforeToList);
-        }
     }
 
     @Override

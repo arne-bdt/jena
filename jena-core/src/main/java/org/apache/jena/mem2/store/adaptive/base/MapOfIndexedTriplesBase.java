@@ -20,19 +20,50 @@ package org.apache.jena.mem2.store.adaptive.base;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.iterator.IteratorFiltering;
 import org.apache.jena.mem2.store.adaptive.QueryableTripleSet;
-import org.apache.jena.mem2.store.adaptive.TripleFilter;
 import org.apache.jena.mem2.store.adaptive.TripleWithNodeHashes;
 import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.WrappedIterator;
 
-import java.util.function.Consumer;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.stream.Stream;
 
-public abstract class TripleHashSetBase extends FastHashSetBase<Triple, TripleWithNodeHashes> implements QueryableTripleSet  {
+public abstract class MapOfIndexedTriplesBase extends KeyedValueHashSetBase<Node, Triple, TripleWithNodeHashes> implements QueryableTripleSet {
 
     private final Node indexingNode;
+
+    @Override
+    public Node getIndexingNode() {
+        return this.indexingNode;
+    }
+
+    public MapOfIndexedTriplesBase(Node indexingNode, int minCapacity)
+    {
+        super(minCapacity);
+        this.indexingNode = indexingNode;
+    }
+
+    @Override
+    protected Triple extractContainedValue(TripleWithNodeHashes tripleWithNodeHashes) {
+        return tripleWithNodeHashes.getTriple();
+    }
+
+    @Override
+    protected Triple[] createEntryArray(int length) {
+        return new Triple[length];
+    }
+
+    @Override
+    public int countTriples() {
+        return this.size();
+    }
+
+    @Override
+    public int countIndexSize() {
+        return this.size();
+    }
 
     @Override
     public boolean isReadyForTransition() {
@@ -42,28 +73,6 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple, TripleWi
     @Override
     public QueryableTripleSet createTransition() {
         throw new UnsupportedOperationException();
-    }
-
-    public TripleHashSetBase(final Node indexingNode, final int minCapacity) {
-        super(minCapacity);
-        this.indexingNode = indexingNode;
-    }
-
-    protected abstract TripleFilter getMatchFilter(final Triple tripleMatch);
-
-    @Override
-    protected Triple[] createEntryArray(int length) {
-        return new Triple[length];
-    }
-
-    @Override
-    public int countTriples() {
-        return super.size;
-    }
-
-    @Override
-    public int countIndexSize() {
-        return 0;
     }
 
     @Override
@@ -78,7 +87,7 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple, TripleWi
 
     @Override
     public boolean removeTriple(final TripleWithNodeHashes tripleWithHashes) {
-        return super.remove(tripleWithHashes);
+        return super.removeByKey(tripleWithHashes);
     }
 
     @Override
@@ -88,42 +97,37 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple, TripleWi
 
     @Override
     public boolean containsMatch(final Triple tripleMatch) {
-        if(tripleMatch.isConcrete()) {
-            return super.contains(tripleMatch);
+        final var indexingNode = extractKeyFromValue(tripleMatch);
+        if(indexingNode.isConcrete()) {
+            return -1 < super.findIndexOfKey(indexingNode, indexingNode.hashCode());
         }
-        final var fieldFilter = this.getMatchFilter(tripleMatch);
-        if(!fieldFilter.hasFilter()) {
-            return true;
-        }
-        final var filter = fieldFilter.getFilter();
-        var spliterator = super.spliterator();
-        final boolean[] found = {false};
-        Consumer<Triple> tester = triple -> found[0] = filter.test(triple);
-        while (!found[0] && spliterator.tryAdvance(tester));
-        return found[0];
+        return !super.isEmpty();
     }
 
     @Override
     public Stream<Triple> streamTriples(final Triple tripleMatch) {
-        final var fieldFilter = this.getMatchFilter(tripleMatch);
-        if(!fieldFilter.hasFilter()) {
-            return super.stream();
+        final var keyNode = extractKeyFromValue(tripleMatch);
+        if(keyNode.isConcrete()) {
+            var triple = super.getIfPresent(keyNode);
+            if(triple == null) {
+                return Stream.empty();
+            }
+            return Stream.of(triple);
         }
-        return super.stream().filter(fieldFilter.getFilter());
-    }
-
-    @Override
-    public Stream<Triple> streamTriples() {
-        return super.stream();
+        return stream();
     }
 
     @Override
     public ExtendedIterator<Triple> findTriples(final Triple tripleMatch) {
-        final var fieldFilter = this.getMatchFilter(tripleMatch);
-        if(!fieldFilter.hasFilter()) {
-            return WrappedIterator.createNoRemove(super.iterator());
+        final var keyNode = extractKeyFromValue(tripleMatch);
+        if(keyNode.isConcrete()) {
+            var triple = super.getIfPresent(keyNode);
+            if(triple == null) {
+                return NiceIterator.emptyIterator();
+            }
+            return WrappedIterator.createNoRemove(new IteratorOne(triple));
         }
-        return new IteratorFiltering(super.iterator(), fieldFilter.getFilter());
+        return WrappedIterator.createNoRemove(super.iterator());
     }
 
     @Override
@@ -132,7 +136,31 @@ public abstract class TripleHashSetBase extends FastHashSetBase<Triple, TripleWi
     }
 
     @Override
-    public Node getIndexingNode() {
-        return this.indexingNode;
+    public Stream<Triple> streamTriples() {
+        return super.stream();
+    }
+
+
+    private class IteratorOne implements Iterator<Triple> {
+        private final Triple triple;
+        private boolean finished = false;
+
+        public IteratorOne(Triple triple) {
+            this.triple = triple;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return !finished;
+        }
+
+        @Override
+        public Triple next() {
+            if(finished) {
+                throw new NoSuchElementException();
+            }
+            finished = true;
+            return this.triple;
+        }
     }
 }
