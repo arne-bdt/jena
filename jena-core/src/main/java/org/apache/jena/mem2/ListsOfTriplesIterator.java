@@ -26,6 +26,7 @@ import org.apache.jena.util.iterator.Map1Iterator;
 import org.apache.jena.util.iterator.NiceIterator;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -71,6 +72,19 @@ class ListsOfTriplesIterator implements ExtendedIterator<Triple> {
     @Override
     public Triple next() {
         return current = subIterator.next();
+    }
+
+    @Override
+    public void forEach(Consumer<Triple> action) {
+        while (subIterator.hasNext()) {
+            action.accept(subIterator.next());
+        }
+        while (baseIterator.hasNext()) {
+            subIterator = baseIterator.next().iterator();
+            while (subIterator.hasNext()) {
+                action.accept(subIterator.next());
+            }
+        }
     }
 
     @Override
