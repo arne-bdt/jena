@@ -25,7 +25,6 @@ import org.apache.jena.mem2.store.adaptive.TripleWithNodeHashes;
 import org.apache.jena.mem2.store.adaptive.base.MapOfIndexedSetsBase;
 
 public class IndexedSetS__ extends MapOfIndexedSetsBase {
-
     @Override
     protected Node extractKeyFromValueToAddAndRemove(TripleWithNodeHashes tripleWithNodeHashes) {
         return tripleWithNodeHashes.getTriple().getSubject();
@@ -51,7 +50,7 @@ public class IndexedSetS__ extends MapOfIndexedSetsBase {
     }
 
     @Override
-    protected Node extractKey(final Triple tripleMatch) {
+    protected Node extractKey(Triple tripleMatch) {
         return tripleMatch.getSubject();
     }
 

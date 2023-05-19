@@ -25,6 +25,7 @@ import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMem2LowMemory;
 import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
+import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore2;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
 
@@ -47,6 +48,9 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
 
             case GraphMemWithAdaptiveTripleStore:
                 return new GraphMemWithAdaptiveTripleStore();
+
+            case GraphMemWithAdaptiveTripleStore2:
+                return new GraphMemWithAdaptiveTripleStore2();
 
             case DatasetGraphInMemoryDefaultGraph:
                 return DatasetGraphFactory.createTxnMem().getDefaultGraph();

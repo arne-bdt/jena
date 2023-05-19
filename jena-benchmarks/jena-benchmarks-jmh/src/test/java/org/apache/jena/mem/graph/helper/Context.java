@@ -37,6 +37,7 @@ public class Context {
         GraphMem2,
         GraphMem2LowMemory,
         GraphMemWithAdaptiveTripleStore,
+        GraphMemWithAdaptiveTripleStore2,
         DatasetGraphInMemoryDefaultGraph,
     }
 
@@ -60,6 +61,10 @@ public class Context {
                 break;
             case "GraphMemWithAdaptiveTripleStore (current)":
                 this.graphClass = GraphClass.GraphMemWithAdaptiveTripleStore;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemWithAdaptiveTripleStore2 (current)":
+                this.graphClass = GraphClass.GraphMemWithAdaptiveTripleStore2;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
             case "DatasetGraphInMemoryDefaultGraph (current)":

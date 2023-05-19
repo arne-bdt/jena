@@ -75,10 +75,10 @@ public class HashSetOfTripleSets {
         return -1;
     }
 
-    private boolean grow() {
+    private void grow() {
         final var newSize = calcNewSize();
         if(newSize < 0) {
-            return false;
+            return;
         }
         final var oldEntries = this.entries;
         final var oldHashCodes = this.hashCodes;
@@ -91,7 +91,6 @@ public class HashSetOfTripleSets {
                 this.hashCodes[newSlot] = oldHashCodes[i];
             }
         }
-        return true;
     }
 
     /**
@@ -159,20 +158,16 @@ public class HashSetOfTripleSets {
     }
 
     public TripleSetWithIndexingNode compute(final Node indexingNode, final int hashCodeOfKey, Function<TripleSetWithIndexingNode, TripleSetWithIndexingNode> remappingFunction) {
-        var index = findIndex(indexingNode, hashCodeOfKey);
+        final var index = findIndex(indexingNode, hashCodeOfKey);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
                 return null;
             }
-            if(grow()) {
-                index = findEmptySlotWithoutEqualityCheck(hashCodeOfKey);
-            } else {
-                index = ~index;
-            }
-            entries[index] = newValue;
-            hashCodes[index] = hashCodeOfKey;
+            entries[~index] = newValue;
+            hashCodes[~index] = hashCodeOfKey;
             size++;
+            grow();
             return newValue;
         } else { /*existing value found*/
             var newValue = remappingFunction.apply(entries[index]);
@@ -190,20 +185,16 @@ public class HashSetOfTripleSets {
 
     public TripleSetWithIndexingNode compute(final Node indexingNode, Function<TripleSetWithIndexingNode, TripleSetWithIndexingNode> remappingFunction) {
         var hashCodeOfKey = indexingNode.hashCode();
-        var index = findIndex(indexingNode, hashCodeOfKey);
+        final var index = findIndex(indexingNode, hashCodeOfKey);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
                 return null;
             }
-            if(grow()) {
-                index = findEmptySlotWithoutEqualityCheck(hashCodeOfKey);
-            } else {
-                index = ~index;
-            }
-            entries[index] = newValue;
-            hashCodes[index] = hashCodeOfKey;
+            entries[~index] = newValue;
+            hashCodes[~index] = hashCodeOfKey;
             size++;
+            grow();
             return newValue;
         } else { /*existing value found*/
             var newValue = remappingFunction.apply(entries[index]);

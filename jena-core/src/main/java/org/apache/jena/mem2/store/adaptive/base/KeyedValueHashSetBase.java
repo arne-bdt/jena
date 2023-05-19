@@ -103,10 +103,10 @@ public abstract class KeyedValueHashSetBase<Key, ValueContained, ValueToAddAndRe
         }
     }
 
-    private boolean grow() {
+    protected void grow() {
         final var newSize = calcNewSize();
         if(newSize < 0) {
-            return false;
+            return;
         }
         final var oldEntries = this.entries;
         final var oldHashCodes = this.hashCodes;
@@ -119,7 +119,6 @@ public abstract class KeyedValueHashSetBase<Key, ValueContained, ValueToAddAndRe
                 this.hashCodes[newSlot] = oldHashCodes[i];
             }
         }
-        return true;
     }
 
     /**
@@ -232,25 +231,25 @@ public abstract class KeyedValueHashSetBase<Key, ValueContained, ValueToAddAndRe
     }
 
     public boolean addValue(final ValueToAddAndRemove valueToAddAndRemove) {
-        grow();
         final var hashCodeOfKey = extractHashCode(valueToAddAndRemove);
         final var index = findIndexOfKey(extractKeyFromValueToAddAndRemove(valueToAddAndRemove), hashCodeOfKey);
         if(index < 0) {
             entries[~index] = extractContainedValue(valueToAddAndRemove);
             hashCodes[~index] = hashCodeOfKey;
             size++;
+            grow();
             return true;
         }
         return false;
     }
 
     public void addUnchecked(final ValueToAddAndRemove valueToAddAndRemove) {
-        grow();
         final var hashCodeOfKey = extractHashCode(valueToAddAndRemove);
         final var index = findEmptySlotWithoutEqualityCheck(hashCodeOfKey);
         entries[index] = extractContainedValue(valueToAddAndRemove);
         hashCodes[index] = hashCodeOfKey;
         size++;
+        grow();
     }
 
 //    public E addIfAbsent(E value) {
@@ -287,23 +286,16 @@ public abstract class KeyedValueHashSetBase<Key, ValueContained, ValueToAddAndRe
     public ValueContained compute(ValueToAddAndRemove valueToAddAndRemove, Function<ValueContained, ValueContained> remappingFunction) {
         final Key key = extractKeyFromValueToAddAndRemove(valueToAddAndRemove);
         final int hashCode = extractHashCode(valueToAddAndRemove);
-        var index = findIndexOfKey(key, hashCode);
+        final var index = findIndexOfKey(key, hashCode);
         if(index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
             if(newValue == null) {
                 return null;
             }
-//            if(!value.equals(newValue)) {
-//                throw new IllegalArgumentException("remapped value is not equal to value");
-//            }
-            if(grow()) {
-                index = findEmptySlotWithoutEqualityCheck(hashCode);
-            } else {
-                index = ~index;
-            }
-            entries[index] = newValue;
-            hashCodes[index] = hashCode;
+            entries[~index] = newValue;
+            hashCodes[~index] = hashCode;
             size++;
+            grow();
             return newValue;
         } else { /*existing value found*/
             var newValue = remappingFunction.apply(entries[index]);
@@ -405,7 +397,7 @@ public abstract class KeyedValueHashSetBase<Key, ValueContained, ValueToAddAndRe
         rearrangeNeighbours(index);
     }
 
-    private void rearrangeNeighbours(int index) {
+    protected void rearrangeNeighbours(int index) {
         /*rearrange neighbours*/
         var neighbours = getNeighbours(index);
         if(neighbours == null) {

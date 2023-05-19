@@ -6,6 +6,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.Releases;
+import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
 import org.junit.Assert;
 import org.junit.Test;
@@ -14,7 +15,7 @@ import java.util.List;
 
 public class TestGraphConsistentBehavior {
 
-    Context trialContext = new Context("GraphMemWithAdaptiveTripleStore (current)");
+    Context trialContext = new Context("GraphMemWithAdaptiveTripleStore2 (current)");
 
     @Test
     public void testFillGraph() {
@@ -66,7 +67,7 @@ public class TestGraphConsistentBehavior {
 
     private void fillGraphMem(List<Triple> triples) {
         for(int i=0; i<10; i++) {
-            var sut = new GraphMem();
+            var sut = new GraphMem2();
             triples.forEach(sut::add);
             Assert.assertEquals(triples.size(), sut.size());
         }

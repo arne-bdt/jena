@@ -35,17 +35,17 @@ import static org.junit.Assert.assertEquals;
 public class TestGraphFindAllWithHasNextAndNext {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
-            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
+//            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
             "../testing/BSBM/bsbm-1m.nt.gz",
-            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-5m.nt.gz",
     })
     public String param0_GraphUri;
 
@@ -53,7 +53,8 @@ public class TestGraphFindAllWithHasNextAndNext {
             "GraphMem (current)",
             "GraphMem2 (current)",
 //            "DatasetGraphInMemoryDefaultGraph (current)",
-            "GraphMemWithAdaptiveTripleStore (current)"
+            "GraphMemWithAdaptiveTripleStore (current)",
+//            "GraphMemWithAdaptiveTripleStore2 (current)"
 //            "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;

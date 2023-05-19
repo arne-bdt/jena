@@ -70,62 +70,83 @@ public abstract class MapOfIndexedSetsBase extends KeyedValueHashSetBase<Node, Q
 
     @Override
     public boolean addTriple(final TripleWithNodeHashes tripleWithHashes) {
-        final boolean added[] = {true};
-        this.compute(tripleWithHashes, (set) -> {
-            if (set == null) {
-                set = createEntry();
-                set.addTripleUnchecked(tripleWithHashes);
-                return set;
+        final Node key = extractKeyFromValueToAddAndRemove(tripleWithHashes);
+        final int hashCode = extractHashCode(tripleWithHashes);
+        final var index = findIndexOfKey(key, hashCode);
+        final boolean added;
+        if(index < 0) { /*value does not exist yet*/
+            final var newSet = createEntry();
+            newSet.addTripleUnchecked(tripleWithHashes);
+            entries[~index] = newSet;
+            hashCodes[~index] = hashCode;
+            size++;
+            grow();
+            added = true;
+        } else { /*existing value found*/
+            final var existingSet = entries[index];
+            added = existingSet.addTriple(tripleWithHashes);
+            if(existingSet.isReadyForTransition()){
+                entries[index] = existingSet.createTransition();
             }
-            added[0] = set.addTriple(tripleWithHashes);
-            if(set.isReadyForTransition()) {
-                set = set.createTransition();
-            }
-            return set;
-        });
-        return added[0];
+        }
+        return added;
     }
 
     @Override
     public void addTripleUnchecked(final TripleWithNodeHashes tripleWithHashes) {
-        super.compute(tripleWithHashes, (set) -> {
-            if (set == null) {
-                set = createEntry();
-                set.addTripleUnchecked(tripleWithHashes);
-                return set;
+        final Node key = extractKeyFromValueToAddAndRemove(tripleWithHashes);
+        final int hashCode = extractHashCode(tripleWithHashes);
+        final var index = findIndexOfKey(key, hashCode);
+        if(index < 0) { /*value does not exist yet*/
+            final var newSet = createEntry();
+            newSet.addTripleUnchecked(tripleWithHashes);
+            entries[~index] = newSet;
+            hashCodes[~index] = hashCode;
+            size++;
+            grow();
+        } else { /*existing value found*/
+            final var existingSet = entries[index];
+            existingSet.addTripleUnchecked(tripleWithHashes);
+            if(existingSet.isReadyForTransition()){
+                entries[index] = existingSet.createTransition();
             }
-            set.addTripleUnchecked(tripleWithHashes);
-            if(set.isReadyForTransition()) {
-                set = set.createTransition();
-            }
-            return set;
-        });
+        }
     }
 
     @Override
     public boolean removeTriple(final TripleWithNodeHashes tripleWithHashes) {
-        boolean tripleRemoved[] = {false};
-        this.compute(tripleWithHashes, (set) -> {
-            if (set == null) {
-                return null;
+        final Node key = extractKeyFromValueToAddAndRemove(tripleWithHashes);
+        final int hashCode = extractHashCode(tripleWithHashes);
+        var index = findIndexOfKey(key, hashCode);
+        final boolean removed;
+        if(index < 0) { /*value does not exist yet*/
+            removed = false;
+        } else { /*existing value found*/
+            final var existingSet = entries[index];
+            removed = existingSet.removeTriple(tripleWithHashes);
+            if(existingSet.isEmpty()) {
+                entries[index] = null;
+                rearrangeNeighbours(index);
+                size--;
             }
-            if((tripleRemoved[0] = set.removeTriple(tripleWithHashes)) && set.isEmpty()) {
-                return null;
-            }
-            return set;
-        });
-        return tripleRemoved[0];
+        }
+        return removed;
     }
 
     @Override
     public void removeTripleUnchecked(final TripleWithNodeHashes tripleWithHashes) {
-        this.compute(tripleWithHashes, (set) -> {
-            set.removeTripleUnchecked(tripleWithHashes);
-            if(set.isEmpty()) {
-                return null;
+        final Node key = extractKeyFromValueToAddAndRemove(tripleWithHashes);
+        final int hashCode = extractHashCode(tripleWithHashes);
+        var index = findIndexOfKey(key, hashCode);
+        if(index >= 0) { /*existing value found*/
+            final var existingSet = entries[index];
+            existingSet.removeTripleUnchecked(tripleWithHashes);
+            if(existingSet.isEmpty()) {
+                entries[index] = null;
+                rearrangeNeighbours(index);
+                size--;
             }
-            return set;
-        });
+        }
     }
 
     @Override

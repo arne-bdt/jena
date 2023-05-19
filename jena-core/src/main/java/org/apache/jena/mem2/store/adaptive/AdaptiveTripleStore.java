@@ -32,7 +32,7 @@ public class AdaptiveTripleStore implements TripleStore {
 
     public static final int INITIAL_SIZE_FOR_ARRAY_LISTS = 2;
 
-    public static int THRESHOLD_FOR_ARRAY_LISTS = 60;//60-350;
+    public static int THRESHOLD_FOR_ARRAY_LISTS = 80;//60-350;
 
     private QueryableTripleSet spo;
     private QueryableTripleSet pos;
