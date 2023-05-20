@@ -36,7 +36,6 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
     private final int fromIndex;
-    private final int fromIndexMinusOne;
     private int pos;
     private final float fillRatio;
     private final Runnable checkForConcurrentModification;
@@ -53,7 +52,6 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
     public SparseArraySubSpliterator(final E[] entries, final int fromIndex, final int toIndex, final float fillRatio, final Runnable checkForConcurrentModification) {
         this.entries = entries;
         this.fromIndex = fromIndex;
-        this.fromIndexMinusOne = fromIndex - 1;
         this.pos = toIndex;
         this.fillRatio = fillRatio;
         this.checkForConcurrentModification = checkForConcurrentModification;
@@ -84,7 +82,7 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
     @Override
     public boolean tryAdvance(Consumer<? super E> action) {
         this.checkForConcurrentModification.run();
-        while(fromIndexMinusOne < --pos) {
+        while(fromIndex <= --pos) {
             if(null != entries[pos]) {
                 action.accept(entries[pos]);
                 return true;
@@ -108,7 +106,7 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
     @Override
     public void forEachRemaining(Consumer<? super E> action) {
         pos--;
-        while (fromIndexMinusOne < pos) {
+        while (fromIndex <= pos) {
             if(null != entries[pos]) {
                 action.accept(entries[pos]);
             }
