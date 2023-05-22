@@ -16,20 +16,24 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.iterator;
+package org.apache.jena.mem2.store.adaptive.base.iterator;
+
+import org.apache.jena.util.iterator.NiceIterator;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
-public class ArrayWithNullsIterator<E> implements Iterator<E> {
+public class ArrayIterator<E> extends NiceIterator<E> implements Iterator<E> {
 
     private final E[] entries;
     private int pos;
+    private final Runnable checkForConcurrentModification;
 
-    public ArrayWithNullsIterator(final E[] entries) {
+    public ArrayIterator(final E[] entries, final int size, final Runnable checkForConcurrentModification) {
         this.entries = entries;
-        this.pos = entries.length-1;
+        this.pos = size;
+        this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
     /**
@@ -41,13 +45,7 @@ public class ArrayWithNullsIterator<E> implements Iterator<E> {
      */
     @Override
     public boolean hasNext() {
-        while(-1 < pos) {
-            if(null != entries[pos]) {
-                return true;
-            }
-            pos--;
-        }
-        return false;
+        return 0 < pos;
     }
 
     /**
@@ -58,19 +56,16 @@ public class ArrayWithNullsIterator<E> implements Iterator<E> {
      */
     @Override
     public E next() {
-        if (-1 < pos && null != entries[pos]) {
-            return entries[pos--];
+        this.checkForConcurrentModification.run();
+        if (0 < pos) {
+            return entries[--pos];
         }
         throw new NoSuchElementException();
     }
 
     @Override
     public void forEachRemaining(Consumer<? super E> action) {
-        while(-1 < pos) {
-            if(null != entries[pos]) {
-                action.accept(entries[pos]);
-            }
-            pos--;
-        }
+        while(0 < pos) action.accept(entries[--pos]);
+        this.checkForConcurrentModification.run();
     }
 }

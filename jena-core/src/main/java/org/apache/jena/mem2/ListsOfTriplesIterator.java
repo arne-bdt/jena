@@ -76,15 +76,8 @@ class ListsOfTriplesIterator implements ExtendedIterator<Triple> {
 
     @Override
     public void forEach(Consumer<Triple> action) {
-        while (subIterator.hasNext()) {
-            action.accept(subIterator.next());
-        }
-        while (baseIterator.hasNext()) {
-            subIterator = baseIterator.next().iterator();
-            while (subIterator.hasNext()) {
-                action.accept(subIterator.next());
-            }
-        }
+        subIterator.forEachRemaining(action);
+        baseIterator.forEachRemaining(set -> set.iterator().forEachRemaining(action));
     }
 
     @Override

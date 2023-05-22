@@ -18,8 +18,8 @@
 
 package org.apache.jena.mem2.specialized;
 
-import org.apache.jena.mem2.iterator.ArrayWithNullsIterator;
-import org.apache.jena.mem2.spliterator.ArrayWithNullsSpliteratorSized;
+import org.apache.jena.mem.SparseArrayIterator;
+import org.apache.jena.mem.SparseArraySpliterator;
 
 import java.util.*;
 import java.util.function.Function;
@@ -164,7 +164,12 @@ public abstract class FastHashSetBase<E> implements Set<E> {
 
     @Override
     public Iterator<E> iterator() {
-        return new ArrayWithNullsIterator(entries);
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIterator<>(entries, checkForConcurrentModification);
     }
 
 
@@ -613,7 +618,12 @@ public abstract class FastHashSetBase<E> implements Set<E> {
      */
     @Override
     public Stream<E> stream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), false);
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), false);
     }
 
     /**
@@ -633,7 +643,12 @@ public abstract class FastHashSetBase<E> implements Set<E> {
      */
     @Override
     public Stream<E> parallelStream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), true);
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), true);
     }
 
 }

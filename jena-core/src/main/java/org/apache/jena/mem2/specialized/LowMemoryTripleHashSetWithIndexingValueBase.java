@@ -19,8 +19,8 @@
 package org.apache.jena.mem2.specialized;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.iterator.ArrayWithNullsIterator;
-import org.apache.jena.mem2.spliterator.ArrayWithNullsSpliteratorSized;
+import org.apache.jena.mem.SparseArrayIterator;
+import org.apache.jena.mem.SparseArraySpliterator;
 
 import java.util.*;
 import java.util.function.Function;
@@ -160,7 +160,12 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
 
     @Override
     public Iterator<Triple> iterator() {
-        return new ArrayWithNullsIterator(entries);
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIterator<>(entries, checkForConcurrentModification);
     }
 
 
@@ -590,7 +595,12 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
      */
     @Override
     public Stream<Triple> stream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), false);
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), false);
     }
 
     /**
@@ -610,7 +620,12 @@ public abstract class LowMemoryTripleHashSetWithIndexingValueBase implements Tri
      */
     @Override
     public Stream<Triple> parallelStream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), true);
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), true);
     }
 
 }

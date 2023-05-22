@@ -18,11 +18,13 @@
 
 package org.apache.jena.mem;
 
+import org.apache.jena.util.iterator.NiceIterator;
+
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
-public class SparseArrayIterator<E> implements Iterator<E> {
+public class SparseArrayIterator<E> extends NiceIterator<E> implements Iterator<E> {
 
     private final E[] entries;
     private int pos;

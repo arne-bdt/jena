@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.spliterator;
+package org.apache.jena.mem2.store.adaptive.base.spliterator;
 
 import java.util.Spliterator;
 import java.util.function.Consumer;
@@ -27,41 +27,26 @@ import java.util.function.Consumer;
  *
  * This spliterator supports splitting into sub-spliterators.
  *
- * @param <E>
+ * The spliterator will check for concurrent modifications by invoking a {@link Runnable}
+ * before each action.
+ *
+ * @param <E> the type of the array elements
  */
-public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
+public class ArraySpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
-    private final int fromIndex;
-
-    private final int fromIndexMinusOne;
-    private final int toIndex;
     private int pos;
-    private final double fillRatio;
+    private final Runnable checkForConcurrentModification;
 
     /**
      * Create a spliterator for the given array, with the given size.
-     * @param entries   the array
-     * @param fromIndex the index of the first element, inclusive
-     * @param toIndex   the index of the last element, exclusive
-     * @param fillRatio the ratio of elements containing null
+     * @param entries the array
+     * @param size the exact size
      */
-    public ArrayWithNullsSubSpliteratorUnSized(final E[] entries, final int fromIndex, final int toIndex, final double fillRatio) {
+    public ArraySpliterator(final E[] entries, final int size, final Runnable checkForConcurrentModification) {
         this.entries = entries;
-        this.fromIndex = fromIndex;
-        this.fromIndexMinusOne = fromIndex-1;
-        this.toIndex = toIndex;
-        this.pos = toIndex;
-        this.fillRatio = fillRatio;
-    }
-
-    /**
-     * Create a spliterator for the given array, with the given size.
-     * @param entries   the array
-     * @param estimatedElementsCount the estimated size
-     */
-    public ArrayWithNullsSubSpliteratorUnSized(final E[] entries, final int estimatedElementsCount) {
-       this(entries, 0, entries.length, ((double)estimatedElementsCount / (double)entries.length));
+        this.pos = size;
+        this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
 
@@ -79,11 +64,10 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      */
     @Override
     public boolean tryAdvance(Consumer<? super E> action) {
-        while(fromIndexMinusOne < --pos) {
-            if(null != entries[pos]) {
-                action.accept(entries[pos]);
-                return true;
-            }
+        this.checkForConcurrentModification.run();
+        if(0 < pos) {
+            action.accept(entries[--pos]);
+            return true;
         }
         return false;
     }
@@ -102,13 +86,10 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      */
     @Override
     public void forEachRemaining(Consumer<? super E> action) {
-        pos--;
-        while (fromIndexMinusOne < pos) {
-            if(null != entries[pos]) {
-                action.accept(entries[pos]);
-            }
-            pos--;
+        while (0 < pos) {
+            action.accept(entries[--pos]);
         }
+        this.checkForConcurrentModification.run();
     }
 
     /**
@@ -152,17 +133,15 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      */
     @Override
     public Spliterator<E> trySplit() {
-        var entriesCount = pos - fromIndex;
-        if (entriesCount < 2) {
+        if (pos < 2) {
             return null;
         }
-        var remaining = (int) this.estimateSize();
-        if (remaining < 2) {
+        if (this.estimateSize() < 2L) {
             return null;
         }
-        final var toIndexOfSubIterator = this.pos;
-        this.pos = fromIndex + (entriesCount >>> 1);
-        return new ArrayWithNullsSubSpliteratorUnSized(entries, this.pos, toIndexOfSubIterator, fillRatio);
+        int posTo = this.pos;
+        this.pos = pos >>> 1;
+        return new ArraySubSpliterator(entries, this.pos, posTo, checkForConcurrentModification);
     }
 
     /**
@@ -187,8 +166,11 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      * corresponding to its maximum depth.
      */
     @Override
-    public long estimateSize() {
-        return (long) (this.fillRatio  * (pos-fromIndex)) + 1;
+    public long estimateSize() { return pos; }
+
+    @Override
+    public long getExactSizeIfKnown() {
+        return pos;
     }
 
     /**
@@ -213,6 +195,6 @@ public class ArrayWithNullsSubSpliteratorUnSized<E> implements Spliterator<E> {
      */
     @Override
     public int characteristics() {
-        return DISTINCT | NONNULL | IMMUTABLE;
+        return DISTINCT | NONNULL | IMMUTABLE | SIZED | SUBSIZED;
     }
 }

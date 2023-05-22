@@ -39,9 +39,8 @@ import java.util.function.Predicate;
  */
 public class IteratorFiltering implements ExtendedIterator<Triple> {
 
-    private final static Predicate<Triple> FILTER_ANY = t -> true;
-    private Predicate<Triple> filter;
-    private Iterator<Triple> iterator;
+    private final Predicate<Triple> filter;
+    private final Iterator<Triple> iterator;
     private boolean hasCurrent = false;
     /**
      * The remembered current triple.
@@ -97,13 +96,13 @@ public class IteratorFiltering implements ExtendedIterator<Triple> {
     public void forEachRemaining(Consumer<? super Triple> action) {
         if (hasCurrent) {
             action.accept(current);
+            hasCurrent = false;
         }
-        while (iterator.hasNext()) {
-            if (filter.test(current = this.iterator.next())) {
-                action.accept(current);
+        iterator.forEachRemaining(t -> {
+            if (filter.test(t)) {
+                action.accept(t);
             }
-        }
-        hasCurrent = false;
+        });
     }
 
     @Override

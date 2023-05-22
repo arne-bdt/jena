@@ -35,6 +35,7 @@ public class Context {
     public enum GraphClass {
         GraphMem,
         GraphMem2,
+        GraphMem2SG,
         GraphMem2LowMemory,
         GraphMemWithAdaptiveTripleStore,
         GraphMemWithAdaptiveTripleStore2,
@@ -53,6 +54,10 @@ public class Context {
                 break;
             case "GraphMem2 (current)":
                 this.graphClass = GraphClass.GraphMem2;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMem2SG (current)":
+                this.graphClass = GraphClass.GraphMem2SG;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
             case "GraphMem2LowMemory (current)":

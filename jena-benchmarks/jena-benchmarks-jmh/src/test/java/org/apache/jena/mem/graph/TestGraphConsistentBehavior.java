@@ -1,5 +1,6 @@
 package org.apache.jena.mem.graph;
 
+import org.apache.jena.atlas.iterator.ActionCount;
 import org.apache.jena.datatypes.xsd.impl.XSDDouble;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
@@ -9,13 +10,14 @@ import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMemWithAdaptiveTripleStore;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.List;
 
 public class TestGraphConsistentBehavior {
 
-    Context trialContext = new Context("GraphMemWithAdaptiveTripleStore2 (current)");
+    Context trialContext = new Context("GraphMem2SG (current)");
 
     @Test
     public void testFillGraph() {
@@ -50,6 +52,46 @@ public class TestGraphConsistentBehavior {
         }
     }
 
+    @Test
+    public void testFindBy_PO() {
+        var triples = Releases.current.readTriples("C:/temp/res_test/xxx_CGMES_SSH.xml");
+
+        var graphMem = new GraphMem();
+        triples.forEach(graphMem::add);
+
+        var graphMem2 = new GraphMem2();
+        triples.forEach(graphMem2::add);
+
+        var triplesToFind = Releases.current.cloneTriples(triples);
+
+        testFindBy_POGraphMem2(graphMem2, triplesToFind);
+
+        testFindBy_POGraphMem(graphMem, triplesToFind);
+    }
+
+    private void testFindBy_POGraphMem(GraphMem graphMem, List<Triple> triplesToFind) {
+        ActionCount count = new ActionCount();
+        for(int i=0; i<1; i++) {
+            for (var triple : triplesToFind) {
+                var iterator = graphMem.find(null, triple.getPredicate(), triple.getObject());
+                iterator.forEachRemaining(count);
+            }
+        }
+        System.out.println("GraphMem:" + count.getCount());
+    }
+
+    private void testFindBy_POGraphMem2(GraphMem2 graphMem2, List<Triple> triplesToFind) {
+        ActionCount count = new ActionCount();
+        for(int i=0; i<1; i++) {
+            for (var triple : triplesToFind) {
+                var iterator = graphMem2.find(null, triple.getPredicate(), triple.getObject());
+                iterator.forEachRemaining(count);
+            }
+        }
+        System.out.println("GraphMem2:"  + count.getCount());
+    }
+
+    @Ignore
     @Test
     public void graphRace() {
         var triples = Releases.current.readTriples("../testing/BSBM/bsbm-1m.nt.gz");

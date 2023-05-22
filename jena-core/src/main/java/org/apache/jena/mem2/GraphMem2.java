@@ -73,7 +73,7 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     private final HashSetOfTripleSets triplesByPredicate = new HashSetOfTripleSets(); //64
     private final HashSetOfTripleSets triplesByObject = new HashSetOfTripleSets(); //512
 
-    private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 60;//60-350;
+    private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 62;//60-350;
 
     private static abstract class AbstractTriplesListSet extends ListSetBase<Triple> implements TripleSetWithIndexingNode {
 

@@ -50,10 +50,11 @@ public class TestGraphMemoryConsumption {
     public String param0_GraphUri;
 
     @Param({
-//            "GraphMem (current)",
-            "GraphMem2 (current)",
+            "GraphMem (current)",
+//            "GraphMem2 (current)",
+            "GraphMem2SG (current)",
 //            "DatasetGraphInMemoryDefaultGraph (current)",
-            "GraphMemWithAdaptiveTripleStore (current)",
+//            "GraphMemWithAdaptiveTripleStore (current)",
 //            "GraphMemWithAdaptiveTripleStore2 (current)"
 //            "GraphMem (Jena 4.8.0)",
     })
@@ -130,8 +131,8 @@ public class TestGraphMemoryConsumption {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-                .warmupIterations(3)
-                .measurementIterations(3)
+                .warmupIterations(2)
+                .measurementIterations(2)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

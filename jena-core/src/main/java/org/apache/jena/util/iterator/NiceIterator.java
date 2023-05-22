@@ -226,7 +226,7 @@ public class NiceIterator<T> implements ExtendedIterator<T>
     public static <T> Set<T> asSet( ExtendedIterator<T> it )
         {
         Set<T> result = new HashSet<>();
-        while (it.hasNext()) result.add( it.next() );
+        it.forEachRemaining(result::add);
         return result;
         }
 
@@ -237,7 +237,7 @@ public class NiceIterator<T> implements ExtendedIterator<T>
     public static <T> List<T> asList( ExtendedIterator<T> it )
         {
         List<T> result = new ArrayList<>();
-        while (it.hasNext()) result.add( it.next() );
+        it.forEachRemaining(result::add);
         return result;
         }
     }

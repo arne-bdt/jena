@@ -18,8 +18,9 @@
 
 package org.apache.jena.mem2.store.adaptive.base;
 
-import org.apache.jena.mem2.store.adaptive.base.iterator.SparseArrayIterator;
-import org.apache.jena.mem2.store.adaptive.base.spliterator.SparseArraySpliterator;
+
+import org.apache.jena.mem.SparseArrayIterator;
+import org.apache.jena.mem.SparseArraySpliterator;
 
 import java.util.*;
 import java.util.function.Function;

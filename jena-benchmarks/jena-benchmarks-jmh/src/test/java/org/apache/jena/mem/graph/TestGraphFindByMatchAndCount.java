@@ -42,9 +42,9 @@ public class TestGraphFindByMatchAndCount {
     @Param({
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
-//            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-//            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+            "C:/temp/res_test/xxx_CGMES_TP.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
@@ -57,8 +57,9 @@ public class TestGraphFindByMatchAndCount {
     @Param({
             "GraphMem (current)",
             "GraphMem2 (current)",
+            "GraphMem2SG (current)",
 //            "DatasetGraphInMemoryDefaultGraph (current)",
-            "GraphMemWithAdaptiveTripleStore (current)",
+//            "GraphMemWithAdaptiveTripleStore (current)",
 //            "GraphMemWithAdaptiveTripleStore2 (current)"
 //            "GraphMem (Jena 4.8.0)",
     })
@@ -97,12 +98,12 @@ public class TestGraphFindByMatchAndCount {
 
     @Benchmark
     public Object graphFind_PO() {
-        return graphFindByMatchesAndCount.apply("_P_");
+        return graphFindByMatchesAndCount.apply("_PO");
     }
 
     @Benchmark
     public Object graphFind__O() {
-        return graphFindByMatchesAndCount.apply("_PO");
+        return graphFindByMatchesAndCount.apply("__O");
     }
 
     private int graphFindByMatchesAndCount(String pattern) {
@@ -129,7 +130,7 @@ public class TestGraphFindByMatchAndCount {
                 return t -> sutCurrent.find(t.getSubject(), null, null);
             case "_P_":
                 return t -> sutCurrent.find(null, t.getPredicate(), null);
-            case "_O_":
+            case "__O":
                 return t -> sutCurrent.find(null, null, t.getObject());
             case "SP_":
                 return t -> sutCurrent.find(t.getSubject(), t.getPredicate(), null);
@@ -148,7 +149,7 @@ public class TestGraphFindByMatchAndCount {
                 return t -> sut480.find(t.getSubject(), null, null);
             case "_P_":
                 return t -> sut480.find(null, t.getPredicate(), null);
-            case "_O_":
+            case "__O":
                 return t -> sut480.find(null, null, t.getObject());
             case "SP_":
                 return t -> sut480.find(t.getSubject(), t.getPredicate(), null);

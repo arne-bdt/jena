@@ -18,8 +18,8 @@
 
 package org.apache.jena.mem2.map;
 
-import org.apache.jena.mem2.iterator.ArrayWithNullsIterator;
-import org.apache.jena.mem2.spliterator.ArrayWithNullsSpliteratorSized;
+import org.apache.jena.mem.SparseArrayIterator;
+import org.apache.jena.mem.SparseArraySpliterator;
 
 import java.util.*;
 import java.util.function.Function;
@@ -37,8 +37,8 @@ public abstract class FastHashSetBase<E> implements Set<E> {
         //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
         return hashCode & (entries.length-1);
     }
-    private static int MINIMUM_SIZE = 2;
-    private static float loadFactor = 0.5f;
+    private static final int MINIMUM_SIZE = 2;
+    private static final float loadFactor = 0.5f;
     private transient int size = 0;
     private transient E[] entries;
     private transient int[] hashCodes;
@@ -158,7 +158,12 @@ public abstract class FastHashSetBase<E> implements Set<E> {
 
     @Override
     public Iterator<E> iterator() {
-        return new ArrayWithNullsIterator(entries);
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIterator<>(entries, checkForConcurrentModification);
     }
 
 
@@ -634,7 +639,12 @@ public abstract class FastHashSetBase<E> implements Set<E> {
      */
     @Override
     public Stream<E> stream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), false);
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), false);
     }
 
     /**
@@ -654,7 +664,12 @@ public abstract class FastHashSetBase<E> implements Set<E> {
      */
     @Override
     public Stream<E> parallelStream() {
-        return StreamSupport.stream(new ArrayWithNullsSpliteratorSized(entries, size), true);
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), true);
     }
 
     private static class ElemmentsWithsSameHashCodeIterator<E> implements Iterator<E> {

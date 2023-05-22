@@ -16,32 +16,51 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.spliterator;
+package org.apache.jena.mem2.store.adaptive.base.spliterator;
 
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
-public class ArrayWithNullsSubSpliterator<E> implements Spliterator<E> {
+/**
+ * A spliterator for sparse arrays. This spliterator will iterate over the array
+ * skipping null entries.
+ *
+ * This spliterator supports splitting into sub-spliterators.
+ *
+ * The spliterator will check for concurrent modifications by invoking a {@link Runnable}
+ * before each action.
+ *
+ * @param <E>
+ */
+public class ArraySubSpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
     private final int fromIndex;
-    private final int toIndex;
     private int pos;
-    private int estimatedElementsCount;
+    private final Runnable checkForConcurrentModification;
 
     /**
      * Create a spliterator for the given array, with the given size.
-     * @param entries   the array
-     * @param fromIndex the index of the first element, inclusive
-     * @param toIndex   the index of the last element, exclusive
-     * @param estimatedElementsCount the estimated size
+     *
+     * @param entries                        the array
+     * @param fromIndex                      the index of the first element, inclusive
+     * @param toIndex                        the index of the last element, exclusive
+     * @param checkForConcurrentModification
      */
-    public ArrayWithNullsSubSpliterator(final E[] entries, final int fromIndex, final int toIndex, final int estimatedElementsCount) {
+    public ArraySubSpliterator(final E[] entries, final int fromIndex, final int toIndex, final Runnable checkForConcurrentModification) {
         this.entries = entries;
         this.fromIndex = fromIndex;
-        this.toIndex = toIndex;
         this.pos = toIndex;
-        this.estimatedElementsCount = estimatedElementsCount;
+        this.checkForConcurrentModification = checkForConcurrentModification;
+    }
+
+    /**
+     * Create a spliterator for the given array, with the given size.
+     * @param entries the array
+     * @param size the exact size
+     */
+    public ArraySubSpliterator(final E[] entries, final int size, final Runnable checkForConcurrentModification) {
+       this(entries, 0, size, checkForConcurrentModification);
     }
 
 
@@ -59,11 +78,10 @@ public class ArrayWithNullsSubSpliterator<E> implements Spliterator<E> {
      */
     @Override
     public boolean tryAdvance(Consumer<? super E> action) {
-        while (fromIndex < pos) {
-            if(null != entries[--pos]) {
-                action.accept(entries[pos]);
-                return true;
-            }
+        this.checkForConcurrentModification.run();
+        while(fromIndex < pos) {
+            action.accept(entries[--pos]);
+            return true;
         }
         return false;
     }
@@ -83,10 +101,9 @@ public class ArrayWithNullsSubSpliterator<E> implements Spliterator<E> {
     @Override
     public void forEachRemaining(Consumer<? super E> action) {
         while (fromIndex < pos) {
-            if(null != entries[--pos]) {
-                action.accept(entries[pos]);
-            }
+            action.accept(entries[--pos]);
         }
+        this.checkForConcurrentModification.run();
     }
 
     /**
@@ -130,19 +147,16 @@ public class ArrayWithNullsSubSpliterator<E> implements Spliterator<E> {
      */
     @Override
     public Spliterator<E> trySplit() {
-        var entriesCount = pos - fromIndex;
+        final int entriesCount = pos - fromIndex;
         if (entriesCount < 2) {
             return null;
         }
-        var remaining = (int) this.estimateSize();
-        if (remaining < 2) {
+        if (this.estimateSize() < 2L) {
             return null;
         }
-        final var toIndexOfSubIterator = this.pos;
-        this.estimatedElementsCount = remaining >>> 1;
+        final int toIndexOfSubIterator = this.pos;
         this.pos = fromIndex + (entriesCount >>> 1);
-        this.estimatedElementsCount = estimatedElementsCount >>> 1;
-        return new ArrayWithNullsSubSpliterator(entries, this.pos, toIndexOfSubIterator, estimatedElementsCount);
+        return new ArraySubSpliterator(entries, this.pos, toIndexOfSubIterator, checkForConcurrentModification);
     }
 
     /**
@@ -167,8 +181,11 @@ public class ArrayWithNullsSubSpliterator<E> implements Spliterator<E> {
      * corresponding to its maximum depth.
      */
     @Override
-    public long estimateSize() {
-        return (long) ((double) estimatedElementsCount / (toIndex-fromIndex)  * (pos-fromIndex) ) + 1;
+    public long estimateSize() { return pos - fromIndex; }
+
+    @Override
+    public long getExactSizeIfKnown() {
+        return pos - fromIndex;
     }
 
     /**
@@ -193,6 +210,6 @@ public class ArrayWithNullsSubSpliterator<E> implements Spliterator<E> {
      */
     @Override
     public int characteristics() {
-        return DISTINCT | NONNULL | IMMUTABLE;
+        return DISTINCT | NONNULL | IMMUTABLE | SIZED | SUBSIZED;
     }
 }
