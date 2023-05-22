@@ -29,7 +29,6 @@ import org.apache.jena.mem2.store.adaptive.base.spliterator.ArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 
-import java.util.Collection;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -71,7 +70,7 @@ public class GraphMem2SG extends GraphMemBase implements GraphWithPerform {
     private final HashSetOfTripleSetsSG triplesByPredicate = new HashSetOfTripleSetsSG(); //64
     private final HashSetOfTripleSetsSG triplesByObject = new HashSetOfTripleSetsSG(); //512
 
-    private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 64;//60-350;
+    private static int THRESHOLD_FOR_LOW_MEMORY_HASH_SET = 32;//60-350;
 
     private static abstract class AbstractTriplesListSet implements TripleSetWithIndexingNodeSG {
 
@@ -474,11 +473,34 @@ public class GraphMem2SG extends GraphMemBase implements GraphWithPerform {
                 return false;
             }
             if(om.isConcrete()) { //SPO:S?0
-                if(pm.isConcrete()) { // SPO:SPO
-                    return bySubjectIndex.contains(triple);
-                } else { // SPO:S*O
-                    return bySubjectIndex.stream().anyMatch(
-                            t -> om.equals(t.getObject()));
+                if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    if(pm.isConcrete()) { // SPO:SPO
+                        return bySubjectIndex.contains(triple);
+                    } else { // SPO:S*O
+                        return bySubjectIndex.stream().anyMatch(
+                                t -> om.equals(t.getObject()));
+                    }
+                } else {
+                    var byObjectIndex = this.triplesByObject
+                            .getIfPresent(om);
+                    if (byObjectIndex == null) {
+                        return false;
+                    }
+                    if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return bySubjectIndex.contains(triple);
+                        } else { // SPO:S*O
+                            return bySubjectIndex.stream().anyMatch(
+                                    t -> om.equals(t.getObject()));
+                        }
+                    } else {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return byObjectIndex.contains(triple);
+                        } else { // SPO:S*O
+                            return byObjectIndex.stream().anyMatch(
+                                    t -> sm.equals(t.getSubject()));
+                        }
+                    }
                 }
             } else if(pm.isConcrete()) { //SPO: SP*
                 return bySubjectIndex.stream().anyMatch(
@@ -581,13 +603,40 @@ public class GraphMem2SG extends GraphMemBase implements GraphWithPerform {
                 return Stream.empty();
             }
             if(om.isConcrete()) { //SPO:S?0
-                if(pm.isConcrete()) { // SPO:SPO
-                    return bySubjectIndex.stream().filter(
-                            t -> pm.equals(t.getPredicate())
-                                    && om.equals(t.getObject()));
-                } else { // SPO:S*O
-                    return bySubjectIndex.stream().filter(
-                            t -> om.equals(t.getObject()));
+                if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    if(pm.isConcrete()) { // SPO:SPO
+                        return bySubjectIndex.stream().filter(
+                                t -> pm.equals(t.getPredicate())
+                                        && om.equals(t.getObject()));
+                    } else { // SPO:S*O
+                        return bySubjectIndex.stream().filter(
+                                t -> om.equals(t.getObject()));
+                    }
+                } else {
+                    var byObjectIndex = this.triplesByObject
+                            .getIfPresent(om);
+                    if (byObjectIndex == null) {
+                        return Stream.empty();
+                    }
+                    if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return bySubjectIndex.stream().filter(
+                                    t -> pm.equals(t.getPredicate())
+                                            && om.equals(t.getObject()));
+                        } else { // SPO:S*O
+                            return bySubjectIndex.stream().filter(
+                                    t -> om.equals(t.getObject()));
+                        }
+                    } else {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return byObjectIndex.stream().filter(
+                                    t ->  sm.equals(t.getSubject())
+                                            && pm.equals(t.getPredicate()));
+                        } else { // SPO:S*O
+                            return byObjectIndex.stream()
+                                    .filter(t -> sm.equals(t.getSubject()));
+                        }
+                    }
                 }
             } else if(pm.isConcrete()) { //SPO: SP*
                 return bySubjectIndex.stream()
@@ -635,13 +684,40 @@ public class GraphMem2SG extends GraphMemBase implements GraphWithPerform {
                 return NiceIterator.emptyIterator();
             }
             if(om.isConcrete()) { //SPO:S?0
-                if(pm.isConcrete()) { // SPO:SPO
-                    return new IteratorFiltering(bySubjectIndex.iterator(),
-                            t -> pm.equals(t.getPredicate())
-                                    && om.equals(t.getObject()));
-                } else { // SPO:S*O
-                    return new IteratorFiltering(bySubjectIndex.iterator(),
-                            t -> om.equals(t.getObject()));
+                if(bySubjectIndex.size() < THRESHOLD_UNTIL_FIND_IS_MORE_EXPENSIVE_THAN_ITERATE) {
+                    if(pm.isConcrete()) { // SPO:SPO
+                        return new IteratorFiltering(bySubjectIndex.iterator(),
+                                t -> pm.equals(t.getPredicate())
+                                        && om.equals(t.getObject()));
+                    } else { // SPO:S*O
+                        return new IteratorFiltering(bySubjectIndex.iterator(),
+                                t -> om.equals(t.getObject()));
+                    }
+                } else {
+                    var byObjectIndex = this.triplesByObject
+                            .getIfPresent(om);
+                    if (byObjectIndex == null) {
+                        return NiceIterator.emptyIterator();
+                    }
+                    if(bySubjectIndex.size() <= byObjectIndex.size()) {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return new IteratorFiltering(bySubjectIndex.iterator(),
+                                    t -> pm.equals(t.getPredicate())
+                                            && om.equals(t.getObject()));
+                        } else { // SPO:S*O
+                            return new IteratorFiltering(bySubjectIndex.iterator(),
+                                    t -> om.equals(t.getObject()));
+                        }
+                    } else {
+                        if (pm.isConcrete()) { // SPO:SPO
+                            return new IteratorFiltering(byObjectIndex.iterator(),
+                                    t ->  sm.equals(t.getSubject())
+                                            && pm.equals(t.getPredicate()));
+                        } else { // SPO:S*O
+                            return new IteratorFiltering(byObjectIndex.iterator(),
+                                    t -> sm.equals(t.getSubject()));
+                        }
+                    }
                 }
             } else if(pm.isConcrete()) { //SPO: SP*
                 return new IteratorFiltering(bySubjectIndex.iterator(),

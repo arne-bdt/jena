@@ -37,8 +37,8 @@ public class TestGraphDelete {
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
@@ -50,7 +50,7 @@ public class TestGraphDelete {
 
     @Param({
             "GraphMem (current)",
-//            "GraphMem2 (current)",
+            "GraphMem2 (current)",
             "GraphMem2SG (current)",
 //            "DatasetGraphInMemoryDefaultGraph (current)",
 //            "GraphMemWithAdaptiveTripleStore (current)",

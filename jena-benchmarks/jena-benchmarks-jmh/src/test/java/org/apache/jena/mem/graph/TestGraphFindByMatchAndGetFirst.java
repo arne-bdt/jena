@@ -42,8 +42,8 @@ public class TestGraphFindByMatchAndGetFirst {
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
@@ -94,12 +94,12 @@ public class TestGraphFindByMatchAndGetFirst {
 
     @Benchmark
     public Object graphFind_PO() {
-        return graphFind.apply("_P_");
+        return graphFind.apply("_PO");
     }
 
     @Benchmark
     public Object graphFind__O() {
-        return graphFind.apply("_PO");
+        return graphFind.apply("__O");
     }
 
     private Object graphFindByMatchesAndGetFirstCurrent(String pattern) {
@@ -132,7 +132,7 @@ public class TestGraphFindByMatchAndGetFirst {
                 return t -> sutCurrent.find(t.getSubject(), null, null);
             case "_P_":
                 return t -> sutCurrent.find(null, t.getPredicate(), null);
-            case "_O_":
+            case "__O":
                 return t -> sutCurrent.find(null, null, t.getObject());
             case "SP_":
                 return t -> sutCurrent.find(t.getSubject(), t.getPredicate(), null);

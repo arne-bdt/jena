@@ -43,8 +43,8 @@ public class TestGraphStreamByMatchAndCount {
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
@@ -98,12 +98,12 @@ public class TestGraphStreamByMatchAndCount {
 
     @Benchmark
     public Object graphStream_PO() {
-        return graphStreamByMatchAndCount.apply("_P_");
+        return graphStreamByMatchAndCount.apply("_PO");
     }
 
     @Benchmark
     public Object graphStream__O() {
-        return graphStreamByMatchAndCount.apply("_PO");
+        return graphStreamByMatchAndCount.apply("__O");
     }
 
     private int graphStreamByMatchAndCount(String pattern) {
@@ -136,7 +136,7 @@ public class TestGraphStreamByMatchAndCount {
                 return t -> sutCurrent.stream(t.getSubject(), null, null);
             case "_P_":
                 return t -> sutCurrent.stream(null, t.getPredicate(), null);
-            case "_O_":
+            case "__O":
                 return t -> sutCurrent.stream(null, null, t.getObject());
             case "SP_":
                 return t -> sutCurrent.stream(t.getSubject(), t.getPredicate(), null);

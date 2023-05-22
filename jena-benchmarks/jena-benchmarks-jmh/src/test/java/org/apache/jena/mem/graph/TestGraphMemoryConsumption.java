@@ -51,7 +51,7 @@ public class TestGraphMemoryConsumption {
 
     @Param({
             "GraphMem (current)",
-//            "GraphMem2 (current)",
+            "GraphMem2 (current)",
             "GraphMem2SG (current)",
 //            "DatasetGraphInMemoryDefaultGraph (current)",
 //            "GraphMemWithAdaptiveTripleStore (current)",

@@ -38,8 +38,8 @@ public class TestGraphContainsAnything {
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
@@ -90,12 +90,12 @@ public class TestGraphContainsAnything {
 
     @Benchmark
     public boolean graphContains_PO() {
-        return graphContains.apply("_P_");
+        return graphContains.apply("_PO");
     }
 
     @Benchmark
     public boolean graphContains__O() {
-        return graphContains.apply("_PO");
+        return graphContains.apply("__O");
     }
 
     private boolean graphContainsCurrent(String pattern) {
@@ -124,7 +124,7 @@ public class TestGraphContainsAnything {
                 return t -> sutCurrent.contains(t.getSubject(), null, null);
             case "_P_":
                 return t -> sutCurrent.contains(null, t.getPredicate(), null);
-            case "_O_":
+            case "__O":
                 return t -> sutCurrent.contains(null, null, t.getObject());
             case "SP_":
                 return t -> sutCurrent.contains(t.getSubject(), t.getPredicate(), null);

@@ -41,7 +41,7 @@ public class JMHDefaultOptions {
                 .timeUnit(TimeUnit.SECONDS)
                 .warmupTime(TimeValue.NONE)
                 .warmupIterations(5)
-                .measurementIterations(30)
+                .measurementIterations(20)
                 .measurementTime(TimeValue.NONE)
                 .threads(1)
                 .forks(1)
