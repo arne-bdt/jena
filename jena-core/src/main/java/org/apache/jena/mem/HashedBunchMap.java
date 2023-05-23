@@ -18,6 +18,8 @@
 
 package org.apache.jena.mem;
 
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function ;
 
 import org.apache.jena.shared.BrokenException ;
@@ -127,4 +129,56 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
     */
     @Override protected void moveAssociatedValues( int here, int scan )
         { values[here] = values[scan]; }
+
+    @Override public Iterator<TripleBunch> iterator()
+        {
+        return new Iterator<TripleBunch>()
+            {
+            final int initialChanges = changes;
+            int pos = capacity-1;
+
+            @Override public boolean hasNext()
+                {
+                while(-1 < pos)
+                    {
+                        if(null != values[pos]) return true;
+                        pos--;
+                    }
+                return false;
+                }
+
+            @Override public TripleBunch next()
+                {
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                if (-1 < pos && null != values[pos]) return values[pos--];
+                throw new NoSuchElementException();
+                }
+
+            @Override public void forEachRemaining(Consumer<? super TripleBunch> action)
+                {
+                while(-1 < pos)
+                    {
+                    if(null != values[pos]) action.accept(values[pos]);
+                    pos--;
+                    }
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                }
+
+            @Override
+                public void remove() {
+                    if (changes > initialChanges) throw new ConcurrentModificationException();
+                    HashedBunchMap.super.removeFrom(pos + 1);
+                }
+            };
+        }
+
+    @Override public Spliterator<TripleBunch> spliterator() {
+        final var initialChanges = changes;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (changes != initialChanges) throw new ConcurrentModificationException();
+        };
+
+        return new SparseArraySpliterator<>(values, size, checkForConcurrentModification);
+        }
     }

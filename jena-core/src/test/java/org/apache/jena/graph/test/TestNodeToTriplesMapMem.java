@@ -23,26 +23,26 @@ import java.util.*;
 import junit.framework.TestSuite;
 import org.apache.jena.graph.* ;
 import org.apache.jena.graph.Triple.* ;
-import org.apache.jena.mem.NodeToTriplesMap ;
+import org.apache.jena.mem.NodeToTriplesMapMem ;
 
 /**
  	TestNodeToTriplesMap: added, post-hoc, by kers once NTM got
  	rather complicated. So these tests may be (are, at the moment)
  	incomplete.
 */
-public class TestNodeToTriplesMap extends GraphTestBase
+public class TestNodeToTriplesMapMem extends GraphTestBase
     {
-    public TestNodeToTriplesMap( String name )
+    public TestNodeToTriplesMapMem(String name )
         { super( name ); }
     
     public static TestSuite suite()
-        { return new TestSuite( TestNodeToTriplesMap.class ); }
+        { return new TestSuite( TestNodeToTriplesMapMem.class ); }
     
-    protected NodeToTriplesMap ntS = new NodeToTriplesMap( Field.fieldSubject, Field.fieldPredicate, Field.fieldObject );
+    protected NodeToTriplesMapMem ntS = new NodeToTriplesMapMem( Field.fieldSubject, Field.fieldPredicate, Field.fieldObject );
     	
-    protected NodeToTriplesMap ntP = new NodeToTriplesMap( Field.fieldPredicate, Field.fieldObject, Field.fieldSubject );
+    protected NodeToTriplesMapMem ntP = new NodeToTriplesMapMem( Field.fieldPredicate, Field.fieldObject, Field.fieldSubject );
     	
-    protected NodeToTriplesMap ntO = new NodeToTriplesMap( Field.fieldObject, Field.fieldPredicate, Field.fieldSubject );
+    protected NodeToTriplesMapMem ntO = new NodeToTriplesMapMem( Field.fieldObject, Field.fieldPredicate, Field.fieldSubject );
 
     protected static final Node x = node( "x" );
     
@@ -53,7 +53,7 @@ public class TestNodeToTriplesMap extends GraphTestBase
         testZeroSize( "fresh NTM", ntS );
         }
     
-    protected void testZeroSize( String title, NodeToTriplesMap nt )
+    protected void testZeroSize( String title, NodeToTriplesMapMem nt )
         {
         assertEquals( title + " should have size 0", 0, nt.size() );
         assertEquals( title + " should be isEmpty()", true, nt.isEmpty() );
@@ -72,7 +72,7 @@ public class TestNodeToTriplesMap extends GraphTestBase
         testJustOne( x, ntS );
         }
     
-    protected void testJustOne( Node x, NodeToTriplesMap nt )
+    protected void testJustOne( Node x, NodeToTriplesMapMem nt )
         {
         assertEquals( 1, nt.size() );
         assertEquals( false, nt.isEmpty() );
@@ -207,7 +207,7 @@ public class TestNodeToTriplesMap extends GraphTestBase
     
     // TODO more here
     
-    protected void addTriples( NodeToTriplesMap nt, String facts )
+    protected void addTriples( NodeToTriplesMapMem nt, String facts )
         {
         Triple [] t = tripleArray( facts );
             for ( Triple aT : t )
