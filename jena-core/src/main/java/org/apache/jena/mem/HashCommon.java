@@ -179,7 +179,7 @@ public abstract class HashCommon<Key>
     public void remove( Key key )
         { primitiveRemove( key ); }
 
-    private void primitiveRemove( Key key )
+    protected void primitiveRemove( Key key )
         {
         int slot = findSlot( key );
         if (slot < 0) removeFrom( ~slot );

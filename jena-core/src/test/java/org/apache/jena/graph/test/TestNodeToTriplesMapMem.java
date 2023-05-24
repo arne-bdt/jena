@@ -136,7 +136,49 @@ public class TestNodeToTriplesMapMem extends GraphTestBase
             }
         assertEquals( tripleSet( "x nice a; x nice c; y nice d; y nice f" ), ntS.iterateAll().toSet() );
         }
-    
+
+    public void testRemoveByIteratorTriggerMove()
+        {
+            /*need hash collisions to be able to test moves caused by iterator#remove*/
+            var nodeA = new Node_URI("A") {
+                @Override
+                public int hashCode() {
+                    return 1;
+                }
+            };
+            var nodeB = new Node_URI("B") {
+                @Override
+                public int hashCode() {
+                    return 1;
+                }
+            };
+            var nodeC = new Node_URI("C") {
+                @Override
+                public int hashCode() {
+                    return 1;
+                }
+            };
+            ntS.add(Triple.create(nodeA, NodeFactory.createURI("loves"), nodeB));
+            ntS.add(Triple.create(nodeB, NodeFactory.createURI("loves"), nodeC));
+            ntS.add(Triple.create(nodeC, NodeFactory.createURI("loves"), nodeA));
+
+            var triplesToFind = ntS.iterateAll().toSet();
+
+            Iterator<Triple> it = ntS.iterateAll();
+            while (it.hasNext())
+            {
+                Triple t = it.next();
+                triplesToFind.remove(t);
+                if (t.getSubject().equals( nodeA )) it.remove();
+            }
+            assertTrue(triplesToFind.isEmpty());
+
+            var expectedRemainingTripples = new HashSet<Triple>();
+            expectedRemainingTripples.add(Triple.create(nodeB, NodeFactory.createURI("loves"), nodeC));
+            expectedRemainingTripples.add(Triple.create(nodeC, NodeFactory.createURI("loves"), nodeA));
+            assertEquals( expectedRemainingTripples, ntS.iterateAll().toSet() );
+        }
+
     public void testIteratorWIthPatternOnEmpty()
         {
         assertEquals( tripleSet( "" ), ntS.iterateAll( triple( "a P b" ) ).toSet() );
