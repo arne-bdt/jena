@@ -158,9 +158,12 @@ public class TestNodeToTriplesMapMem extends GraphTestBase
                     return 1;
                 }
             };
-            ntS.add(Triple.create(nodeA, NodeFactory.createURI("loves"), nodeB));
-            ntS.add(Triple.create(nodeB, NodeFactory.createURI("loves"), nodeC));
-            ntS.add(Triple.create(nodeC, NodeFactory.createURI("loves"), nodeA));
+            var tripleA = Triple.create(nodeA, NodeFactory.createURI("loves"), nodeB);
+            var tripleB = Triple.create(nodeB, NodeFactory.createURI("loves"), nodeC);
+            var tripleC = Triple.create(nodeC, NodeFactory.createURI("loves"), nodeA);
+            ntS.add(tripleA);
+            ntS.add(tripleB);
+            ntS.add(tripleC);
 
             var triplesToFind = ntS.iterateAll().toSet();
 

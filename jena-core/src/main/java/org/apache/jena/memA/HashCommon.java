@@ -148,21 +148,6 @@ public abstract class HashCommon<Value, Key>
     protected abstract int findSlot(Key key, int hashCodeOfKey );
 
     protected abstract void grow();
-        {
-        Value [] oldContents = values;
-        int [] oldHashes = hashes;
-        Value [] newValues = values = newValueArray(calcGrownCapacityAndSetThreshold());
-        int [] newHashes = hashes = new int[values.length];
-        for (int i = 0; i < oldContents.length; i += 1)
-            {
-            if (null != oldContents[i])
-                {
-                final int slot = findSlot( mapValueToKey(oldContents[i]), oldHashes[i] );
-                newValues[slot] = oldContents[i];
-                newHashes[slot] = oldHashes[i];
-                }
-            }
-        }
 
     /**
         Remove the object <code>key</code> from this hash's keys if it

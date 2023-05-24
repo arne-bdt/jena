@@ -20,9 +20,7 @@ package org.apache.jena.memA;
 
 import org.apache.jena.graph.Triple;
 
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.Spliterator;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -59,15 +57,15 @@ public abstract class HashedBunchMap extends HashCommon<TripleBunch, Object> imp
         {
         final TripleBunch [] oldContents = values;
         final int [] oldHashes = hashes;
-        final TripleBunch [] newValues = values = newValueArray(calcGrownCapacityAndSetThreshold());
-        final int [] newHashes = hashes = new int[values.length];
+        values = newValueArray(calcGrownCapacityAndSetThreshold());
+        hashes = new int[values.length];
         for (int i = 0; i < oldContents.length; i += 1)
             {
             if (null != oldContents[i])
                 {
                 final int slot = findSlot( oldContents[i].getIndexingValue(), oldHashes[i] );
-                newValues[slot] = oldContents[i];
-                newHashes[slot] = oldHashes[i];
+                values[slot] = oldContents[i];
+                hashes[slot] = oldHashes[i];
                 }
             }
         }

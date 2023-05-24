@@ -72,17 +72,17 @@ public class HashedTripleBunch extends HashCommon<Triple, Triple> implements Tri
 
     @Override protected void grow()
         {
-            final Triple [] oldContents = values;
-            final int [] oldHashes = hashes;
-            final Triple [] newValues = values = newValueArray(calcGrownCapacityAndSetThreshold());
-            final int [] newHashes = hashes = new int[values.length];
-            for (int i = 0; i < oldContents.length; i += 1)
+        final Triple [] oldContents = values;
+        final int [] oldHashes = hashes;
+        values = newValueArray(calcGrownCapacityAndSetThreshold());
+        hashes = new int[values.length];
+        for (int i = 0; i < oldContents.length; i += 1)
             {
-                if (null != oldContents[i])
+            if (null != oldContents[i])
                 {
-                    final int slot = findSlot( oldContents[i], oldHashes[i] );
-                    newValues[slot] = oldContents[i];
-                    newHashes[slot] = oldHashes[i];
+                final int slot = findSlot( oldContents[i], oldHashes[i] );
+                values[slot] = oldContents[i];
+                hashes[slot] = oldHashes[i];
                 }
             }
         }

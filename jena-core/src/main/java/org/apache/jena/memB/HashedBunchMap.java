@@ -19,11 +19,10 @@
 package org.apache.jena.memB;
 
 import org.apache.jena.shared.BrokenException;
+import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.NiceIterator;
 
-import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Spliterator;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -143,44 +142,115 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
 
     @Override public Iterator<TripleBunch> iterator()
         {
-        return new Iterator<TripleBunch>()
+        final List<Object> movedKeys = new ArrayList<>();
+        ExtendedIterator<TripleBunch> basic = new BasicValueIterator( changes, movedKeys );
+        ExtendedIterator<TripleBunch> leftovers = new MovedValuesIterator( changes, movedKeys );
+        return basic.andThen( leftovers );
+        }
+
+        /**
+         The MovedKeysIterator iterates over the elements of the <code>keys</code>
+         list. It's not sufficient to just use List::iterator, because the .remove
+         method must remove elements from the hash table itself.
+         <p>
+         Note that the list supplied on construction will be empty: it is filled before
+         the first call to <code>hasNext()</code>.
+         */
+        protected final class MovedValuesIterator extends NiceIterator<TripleBunch>
+        {
+            private final List<Object> movedKeys;
+
+            protected int index = 0;
+            final int initialChanges;
+
+            protected MovedValuesIterator(int initialChanges, List<Object> movedKeys)
             {
-            final int initialChanges = changes;
-            int pos = values.length-1;
+                this.movedKeys = movedKeys;
+                this.initialChanges = initialChanges;
+            }
 
             @Override public boolean hasNext()
-                {
-                while(-1 < pos)
-                    {
-                        if(null != values[pos]) return true;
-                        pos--;
-                    }
-                return false;
-                }
+            {
+                return index < movedKeys.size();
+            }
 
             @Override public TripleBunch next()
-                {
-                if (changes > initialChanges) throw new ConcurrentModificationException();
-                if (-1 < pos && null != values[pos]) return values[pos--];
-                throw new NoSuchElementException();
-                }
+            {
+                if (changes > initialChanges) throw new ConcurrentModificationException( "changes " + changes + " > initialChanges " + initialChanges );
+                if (index < movedKeys.size()) return get(movedKeys.get( index++ ));
+                return noElements( "" );
+            }
 
             @Override public void forEachRemaining(Consumer<? super TripleBunch> action)
-                {
+            {
+                while(index < movedKeys.size()) action.accept( get(movedKeys.get( index++ )) );
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+            }
+
+            @Override public void remove()
+            {
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                final Object key = movedKeys.get( index-1 );
+                removeKey( key, key.hashCode() );
+            }
+        }
+
+        /**
+         The BasicKeyIterator iterates over the <code>keys</code> array.
+         If a .remove call moves an unprocessed key underneath the iterator's
+         index, that key value is added to the <code>movedKeys</code>
+         list supplied to the constructor.
+         */
+        protected final class BasicValueIterator extends NiceIterator<TripleBunch>
+        {
+            protected final List<Object> movedKeys;
+
+            int pos = values.length-1;
+            final int initialChanges;
+
+            protected BasicValueIterator(int initialChanges, List<Object> movedKeys)
+            {
+                this.movedKeys = movedKeys;
+                this.initialChanges = initialChanges;
+            }
+
+            @Override public boolean hasNext()
+            {
                 while(-1 < pos)
-                    {
+                {
+                    if(null != values[pos])
+                        return true;
+                    pos--;
+                }
+                return false;
+            }
+
+            @Override public TripleBunch next()
+            {
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                if (-1 < pos && null != values[pos]) return values[pos--];
+                throw new NoSuchElementException("HashCommon keys");
+            }
+
+            @Override public void forEachRemaining(Consumer<? super TripleBunch> action)
+            {
+                while(-1 < pos)
+                {
                     if(null != values[pos]) action.accept(values[pos]);
                     pos--;
-                    }
+                }
                 if (changes > initialChanges) throw new ConcurrentModificationException();
-                }
+            }
 
-            @Override
-                public void remove() {
-                    if (changes > initialChanges) throw new ConcurrentModificationException();
-                    HashedBunchMap.super.removeFrom(pos + 1);
-                }
-            };
+            @Override public void remove()
+            {
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                // System.err.println( ">> keyIterator::remove, size := " + size +
+                // ", removing " + keys[index + 1] );
+                Object moved = removeFrom( pos + 1 );
+                if (moved != null) movedKeys.add( moved );
+                if (size < 0) throw new BrokenException( "BROKEN" );
+            }
         }
 
     @Override public Spliterator<TripleBunch> spliterator() {

@@ -63,18 +63,19 @@ public abstract class ObjectIterator extends NiceIterator<Node>
     @Override public void forEachRemaining(Consumer<? super Node> action)
         {
             pending.forEach(action);
-            while (domain.hasNext())
+            domain.forEachRemaining(y ->
                 {
-                Object y = domain.next();
                 if (y instanceof Node)
                     action.accept( (Node) y );
                 else
                     {
-                    iteratorFor( y ).forEachRemaining(triple -> {
+                    iteratorFor( y ).forEachRemaining(triple ->
+                        {
                         if (seen.add( triple.getObject() )) action.accept( triple.getObject() );
-                    });
+                        });
                     }
                 }
+            );
         }
 
     protected void refillPending()
