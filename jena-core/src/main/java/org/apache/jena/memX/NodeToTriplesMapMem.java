@@ -57,7 +57,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
            {
            if(s.add( t, hashCode ))
                {
-               size += 1;
+               size++;
                return true;
                }
            return false;
@@ -67,7 +67,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
                bunchMap.put( o, s = new HashedTripleBunch( s ) );
                if(s.add( t, hashCode ))
                    {
-                   size += 1;
+                   size++;
                    return true;
                    }
                return false;
@@ -76,7 +76,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
           {
                if(s.add( t ))
                {
-                   size += 1;
+                   size++;
                    return true;
                }
                return false;

@@ -167,7 +167,7 @@ public abstract class HashCommon<Key>
             {
             Key current = keys[index];
             if (current == null) return index; 
-            if (key.equals( current )) return ~index;
+            if (hashCodeOfKey == hashes[index] && key.equals( current )) return ~index;
             if (--index < 0) index += keys.length;
             }
         }   
@@ -256,8 +256,7 @@ public abstract class HashCommon<Key>
             while (true)
                 {
                 if (--scan < 0) scan += keys.length;
-                Object key = keys[scan];
-                if (key == null) return wrappedAround;
+                if (keys[scan] == null) return wrappedAround;
                 int r = initialIndexFor( hashes[scan] );
                 if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r)
                     { /* Nothing. We'd have preferred an `unless` statement. */}

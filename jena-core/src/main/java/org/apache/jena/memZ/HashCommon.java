@@ -163,7 +163,7 @@ public abstract class HashCommon<Key>
             {
             Key current = keys[index];
             if (current == null) return index; 
-            if (key.equals( current )) return ~index;
+            if (hashCodeOfKey == getHashCodeForElement(index) && key.equals( current )) return ~index;
             if (--index < 0) index += keys.length;
             }
         }   

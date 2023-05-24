@@ -86,12 +86,14 @@ public class ArrayBunch implements TripleBunch
     @Override
     public void remove( Triple t )
         {
-        changes++;
         for (int i = 0; i < size; i += 1)
             {
             if (t.equals( elements[i] ))
-                { elements[i] = elements[--size];
-                return; }
+                {
+                elements[i] = elements[--size];
+                changes++;
+                return;
+                }
             }
         }
 

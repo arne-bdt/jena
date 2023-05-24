@@ -48,7 +48,7 @@ public interface TripleBunch
         Answer if the collection requires hashes for #add and #remove.
     */
     public abstract boolean isHashed();
-    
+
     /**
         Add <code>t</code> to the triples in this bunch. If <code>t</code>
         is already a member, nothing happens. The bunch now .contains this

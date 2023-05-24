@@ -93,7 +93,7 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
         keys[slot] = key;
         hashes[slot] = hashCodeOfKey;
         values[slot] = value;
-        size += 1;
+        size++;
         if ( size == threshold )
             grow();
     }
@@ -108,15 +108,14 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
         values = new TripleBunch[keys.length];
         for (int i = 0; i < oldContents.length; i += 1)
             {
-            final Object key = oldContents[i];
-            if (key != null) 
+            if (oldContents[i] != null)
                 {
-                final int j = findSlot( key, oldHashes[i] );
+                final int j = findSlot( oldContents[i], oldHashes[i] );
                 if (j < 0) 
                     {
-                    throw new BrokenException( "oh dear, already have a slot for " + key  + ", viz " + ~j );
+                    throw new BrokenException( "oh dear, already have a slot for " + oldContents[i]  + ", viz " + ~j );
                     }
-                keys[j] = key;
+                keys[j] = oldContents[i];
                 hashes[j] = oldHashes[i];
                 values[j] = oldValues[i];
                 }

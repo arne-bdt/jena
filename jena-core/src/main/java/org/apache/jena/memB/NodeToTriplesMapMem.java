@@ -216,7 +216,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
                : s.iterator( new NotifyMe( indexValue ) );
        }
 
-        protected TripleBunch get(Object index )
+        protected TripleBunch get( Object index )
         { return bunchMap.get( index ); }
     
     /**

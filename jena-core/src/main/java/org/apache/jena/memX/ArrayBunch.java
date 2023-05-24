@@ -49,7 +49,7 @@ public class ArrayBunch implements TripleBunch
         while (i > 0) if (t.matches( elements[--i])) return true;
         return false;
         }
-    
+
     public boolean contains( Triple t )
         {
         int i = size;
@@ -69,7 +69,7 @@ public class ArrayBunch implements TripleBunch
         {
         if(this.contains(t)) return false;
         if (size == elements.length) grow();
-        elements[size++] = t; 
+        elements[size++] = t;
         changes++;
         return true;
         }
@@ -104,12 +104,12 @@ public class ArrayBunch implements TripleBunch
     @Override
     public boolean remove( Triple t )
         {
-        changes++;
         for (int i = 0; i < size; i += 1)
             {
             if (t.equals( elements[i] ))
                 {
                 elements[i] = elements[--size];
+                changes++;
                 return true;
                 }
             }
@@ -119,12 +119,12 @@ public class ArrayBunch implements TripleBunch
     @Override
     public void removeUnchecked( Triple t )
         {
-            changes++;
             for (int i = 0; i < size; i += 1)
             {
                 if (t.equals( elements[i] ))
                 {
                     elements[i] = elements[--size];
+                    changes++;
                     return;
                 }
             }

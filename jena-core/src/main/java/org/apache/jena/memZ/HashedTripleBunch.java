@@ -49,12 +49,13 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
 
     protected int findSlotBySameValueAs( Triple key )
         {
-        int index = initialIndexFor( key.hashCode() );
+        final int hash = key.hashCode();
+        int index = initialIndexFor( hash );
         while (true)
             {
             Object current = keys[index];
             if (current == null) return index;
-            if (key.matches( (Triple) current )) return ~index;
+            if (hash == hashes[index] && key.matches( (Triple) current )) return ~index;
             if (--index < 0) index += keys.length;
             }
         }
