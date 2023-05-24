@@ -26,14 +26,12 @@ import java.util.function.Function;
 /**
     An implementation of BunchMap that does open-addressed hashing.
 */
-public abstract class HashedBunchMap extends HashCommon<TripleBunch, Object> implements BunchMap
+public class HashedBunchMap extends HashCommon<TripleBunch, Object> implements BunchMap
     {
     public HashedBunchMap()
         {
         super( 10 );
         }
-
-    protected abstract Object getIndexingValue(Triple triple);
 
     @Override protected Object mapValueToKey(TripleBunch tripleBunch)
         { return tripleBunch.getIndexingValue(); }

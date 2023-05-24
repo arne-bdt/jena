@@ -38,14 +38,14 @@ import java.util.List;
 public class TestGraphDelete {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
             "C:/temp/res_test/xxx_CGMES_SSH.xml",
             "C:/temp/res_test/xxx_CGMES_TP.xml",
-            //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-            //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
             "../testing/BSBM/bsbm-1m.nt.gz",
     })
@@ -134,6 +134,8 @@ public class TestGraphDelete {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
+                .warmupIterations(3)
+                .measurementIterations(30)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

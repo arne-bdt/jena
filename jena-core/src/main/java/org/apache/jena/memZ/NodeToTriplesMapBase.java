@@ -142,18 +142,24 @@ public abstract class NodeToTriplesMapBase
                     }
                 }
 
-            @Override public void forEachRemaining(Consumer<? super Triple> action)
+                @Override public void forEachRemaining(Consumer<? super Triple> action)
                 {
-                if (current != null) current.forEachRemaining(action);
-                bunchIterator.forEachRemaining(next ->
+                    if (current != null)
                     {
-                    current = next.iterator();
-                    current.forEachRemaining(action);
+                        current.forEachRemaining(action);
+                        current = null;
+                    }
+                    bunchIterator.forEachRemaining(next ->
+                    {
+                        next.iterator().forEachRemaining(action);
                     });
                 }
 
                 @Override public void remove()
-                { current.remove(); }
+                {
+                    if (current == null) throw new IllegalStateException();
+                    current.remove();
+                }
             };
         }
 

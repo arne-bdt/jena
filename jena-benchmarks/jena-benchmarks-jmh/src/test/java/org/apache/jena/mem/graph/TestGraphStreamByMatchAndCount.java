@@ -212,6 +212,7 @@ public class TestGraphStreamByMatchAndCount {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
+                .measurementIterations(25)
                 .build();
         var results = new Runner(opt).run();
         assertNotNull(results);

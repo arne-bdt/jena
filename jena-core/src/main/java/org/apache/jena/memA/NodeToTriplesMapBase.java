@@ -38,7 +38,7 @@ public abstract class NodeToTriplesMapBase
     /**
          The map from nodes to Bunch(Triple).
     */
-     public final BunchMap bunchMap;
+     public final BunchMap bunchMap = new HashedBunchMap();
 
     /**
          The number of triples held in this NTM, maintained incrementally 
@@ -53,12 +53,6 @@ public abstract class NodeToTriplesMapBase
     public NodeToTriplesMapBase( Field indexField, Field f2, Field f3 )
         {
         this.indexField = indexField; this.f2 = f2; this.f3 = f3;
-        this.bunchMap = new HashedBunchMap()
-            {
-            @Override
-            protected Object getIndexingValue(Triple triple)
-                { return indexField.getField(triple).getIndexingValue(); }
-            };
         }
     
     /**
@@ -162,16 +156,22 @@ public abstract class NodeToTriplesMapBase
 
             @Override public void forEachRemaining(Consumer<? super Triple> action)
                 {
-                if (current != null) current.forEachRemaining(action);
+                if (current != null)
+                    {
+                    current.forEachRemaining(action);
+                    current = null;
+                    }
                 bunchIterator.forEachRemaining(next ->
                     {
-                    current = next.iterator();
-                    current.forEachRemaining(action);
+                    next.iterator().forEachRemaining(action);
                     });
                 }
 
-                @Override public void remove()
-                { current.remove(); }
+            @Override public void remove()
+                {
+                if (current == null) throw new IllegalStateException();
+                current.remove();
+                }
             };
         }
 

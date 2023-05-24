@@ -144,8 +144,7 @@ public abstract class ArrayBunch implements TripleBunch
     @Override
     public ExtendedIterator<Triple> iterator()
         {
-        return iterator( new HashCommon.NotifyEmpty() { @Override
-        public void emptied() {} } );
+        return iterator( HashCommon.NotifyEmpty.ignore );
         }
     
     @Override
