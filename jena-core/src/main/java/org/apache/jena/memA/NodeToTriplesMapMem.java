@@ -47,7 +47,12 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
        TripleBunch s = bunchMap.get( o );
        if (s == null)
            {
-           s = new ArrayBunch();
+           s = new ArrayBunch()
+               {
+               @Override
+               protected Node getIndexingNode(Triple triple)
+                   { return indexField.getField(triple); }
+               };
            s.addUnchecked( t );
            bunchMap.put( o, s );
            size++;
@@ -100,7 +105,12 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
             TripleBunch s = bunchMap.get( o );
             if (s == null)
                 {
-                s = new ArrayBunch();
+                s = new ArrayBunch()
+                    {
+                    @Override
+                    protected Node getIndexingNode(Triple triple)
+                        { return indexField.getField(triple); }
+                    };
                 s.addUnchecked( t );
                 bunchMap.put( o, s );
                 }

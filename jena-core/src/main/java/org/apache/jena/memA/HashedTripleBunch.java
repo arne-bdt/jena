@@ -25,23 +25,18 @@ import java.util.Spliterator;
 
 public class HashedTripleBunch extends HashCommon<Triple, Triple> implements TripleBunch
     {
-    private int indexOfAnyTriple = -1;
+    private final Object indexingValue;
     public HashedTripleBunch( TripleBunch b )
         {
         super( nextSize( (int) (b.size() / loadFactor) ) );
+        this.indexingValue = b.getIndexingValue();
         b.spliterator().forEachRemaining(t -> addUnchecked(t, t.hashCode()));
         changes = 0;
         }
 
     @Override
-    public Triple getAnyTriple() {
-        if (null == values[indexOfAnyTriple]) {
-            if(size == 0) return null;
-            indexOfAnyTriple = -1;
-            while (null == values[++indexOfAnyTriple]);
-        }
-        return values[indexOfAnyTriple];
-    }
+    public Object getIndexingValue()
+        { return this.indexingValue; }
 
     @Override protected Triple mapValueToKey(Triple triple)
         { return triple; }
@@ -49,16 +44,46 @@ public class HashedTripleBunch extends HashCommon<Triple, Triple> implements Tri
     @Override protected Triple[] newValueArray(int size )
         { return new Triple[size]; }
 
-    protected int findSlotBySameValueAs( Triple key )
+
+    @Override protected int findSlot(final Triple key, final int hashCodeOfKey )
+        {
+            int index = initialIndexFor( hashCodeOfKey );
+            while (true)
+            {
+                final Triple current = values[index];
+                if (current == null) return index;
+                if (hashCodeOfKey == hashes[index] && key.equals( current )) return ~index;
+                if (--index < 0) index += values.length;
+            }
+        }
+
+    protected int findSlotBySameValueAs( final Triple key )
         {
         final int hash = key.hashCode();
         int index = initialIndexFor( hash );
         while (true)
             {
-            Object current = values[index];
+            final Object current = values[index];
             if (current == null) return index;
             if (hash == hashes[index] && key.matches( (Triple) current )) return ~index;
             if (--index < 0) index += values.length;
+            }
+        }
+
+    @Override protected void grow()
+        {
+            final Triple [] oldContents = values;
+            final int [] oldHashes = hashes;
+            final Triple [] newValues = values = newValueArray(calcGrownCapacityAndSetThreshold());
+            final int [] newHashes = hashes = new int[values.length];
+            for (int i = 0; i < oldContents.length; i += 1)
+            {
+                if (null != oldContents[i])
+                {
+                    final int slot = findSlot( oldContents[i], oldHashes[i] );
+                    newValues[slot] = oldContents[i];
+                    newHashes[slot] = oldHashes[i];
+                }
             }
         }
 
@@ -92,7 +117,6 @@ public class HashedTripleBunch extends HashCommon<Triple, Triple> implements Tri
         values[slot] = t;
         hashes[slot] = hashCode;
         changes++;
-        if(indexOfAnyTriple < 0) indexOfAnyTriple = slot;
         if (++size > threshold) grow();
         return true;
         }
@@ -104,7 +128,6 @@ public class HashedTripleBunch extends HashCommon<Triple, Triple> implements Tri
         values[slot] = t;
         hashes[slot] = hashCode;
         changes++;
-        if(indexOfAnyTriple < 0) indexOfAnyTriple = slot;
         if (++size > threshold) grow();
         }
 
@@ -145,8 +168,8 @@ public class HashedTripleBunch extends HashCommon<Triple, Triple> implements Tri
 
     @Override
     public ExtendedIterator<Triple> iterator( final NotifyEmpty container )
-        { return keyIterator( container ); }
+        { return valueIterator( container ); }
 
     @Override public Spliterator<Triple> spliterator()
-        { return super.keySpliterator(); }
+        { return super.valueSpliterator(); }
     }

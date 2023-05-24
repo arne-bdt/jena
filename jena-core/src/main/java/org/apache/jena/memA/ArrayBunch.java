@@ -18,6 +18,7 @@
 
 package org.apache.jena.memA;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
@@ -32,9 +33,9 @@ import java.util.function.Consumer;
     (because, if it gets big enough for this linear growth to be bad, it should anyways
     have been replaced by a more efficient set-of-triples implementation).
 */
-public class ArrayBunch implements TripleBunch
+public abstract class ArrayBunch implements TripleBunch
     {
-    
+    protected abstract Node getIndexingNode(final Triple triple);
     protected int size = 0;
     protected Triple [] elements;
     protected volatile int changes = 0; 
@@ -43,8 +44,8 @@ public class ArrayBunch implements TripleBunch
         { elements = new Triple[5]; }
 
     @Override
-    public Triple getAnyTriple()
-        { return elements[0]; }
+    public Object getIndexingValue()
+        { return getIndexingNode(elements[0]).getIndexingValue(); }
 
     @Override
     public boolean containsBySameValueAs( Triple t )

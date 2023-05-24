@@ -35,7 +35,7 @@ public interface TripleBunch
      Gets any triple from the bunch. It shall be used to extract the indexing value for the bunch.
      @return Any triple from the bunch or null if the bunch is empty.
     */
-    public Triple getAnyTriple();
+    public Object getIndexingValue();
 
     /**
         Answer true iff this TripleBunch contains a triple with .sameValueAs

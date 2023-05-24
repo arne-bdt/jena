@@ -18,7 +18,6 @@
 
 package org.apache.jena.memA;
 
-import org.apache.jena.graph.Triple;
 import org.apache.jena.shared.BrokenException;
 import org.apache.jena.shared.JenaException;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -146,19 +145,9 @@ public abstract class HashCommon<Value, Key>
         negative values imply present, positive absent, and there's no confusion
         around 0.
     */
-    protected final int findSlot(Key key, int hashCodeOfKey )
-        {
-        int index = initialIndexFor( hashCodeOfKey );
-        while (true)
-            {
-            Value current = values[index];
-            if (current == null) return index; 
-            if (hashCodeOfKey == hashes[index] && key.equals( mapValueToKey(current) )) return ~index;
-            if (--index < 0) index += values.length;
-            }
-        }
+    protected abstract int findSlot(Key key, int hashCodeOfKey );
 
-    protected void grow()
+    protected abstract void grow();
         {
         Value [] oldContents = values;
         int [] oldHashes = hashes;
@@ -438,5 +427,139 @@ public abstract class HashCommon<Value, Key>
                 if (changes != initialChanges) throw new ConcurrentModificationException();
             };
             return new SparseArraySpliteratorMapping<>(values, size, this::mapValueToKey, checkForConcurrentModification);
+        }
+
+        public ExtendedIterator<Value> valueIterator()
+        { return valueIterator( NotifyEmpty.ignore ); }
+
+        public ExtendedIterator<Value> valueIterator(final NotifyEmpty container )
+        {
+            showkeys();
+            final List<Value> movedValues = new ArrayList<>();
+            ExtendedIterator<Value> basic = new BasicValueIterator( changes, container, movedValues );
+            ExtendedIterator<Value> leftovers = new MovedValueIterator( changes, container, movedValues );
+            return basic.andThen( leftovers );
+        }
+
+        /**
+         The MovedKeysIterator iterates over the elements of the <code>keys</code>
+         list. It's not sufficient to just use List::iterator, because the .remove
+         method must remove elements from the hash table itself.
+         <p>
+         Note that the list supplied on construction will be empty: it is filled before
+         the first call to <code>hasNext()</code>.
+         */
+        protected final class MovedValueIterator extends NiceIterator<Value>
+        {
+            private final List<Value> movedValues;
+
+            protected int index = 0;
+            final int initialChanges;
+            final NotifyEmpty container;
+
+            protected MovedValueIterator( int initialChanges, NotifyEmpty container, List<Value> values )
+            {
+                this.movedValues = values;
+                this.initialChanges = initialChanges;
+                this.container = container;
+            }
+
+            @Override public boolean hasNext()
+            {
+                return index < movedValues.size();
+            }
+
+            @Override public Value next()
+            {
+                if (changes > initialChanges) throw new ConcurrentModificationException( "changes " + changes + " > initialChanges " + initialChanges );
+                if (index < movedValues.size()) return movedValues.get( index++ );
+                return noElements( "" );
+            }
+
+            @Override public void forEachRemaining(Consumer<? super Value> action)
+            {
+                while(index < movedValues.size()) action.accept( movedValues.get( index++ ) );
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+            }
+
+            @Override public void remove()
+            {
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                var key = mapValueToKey(movedValues.get( index - 1 ));
+                primitiveRemove( key, key.hashCode() );
+                if (size == 0) container.emptied();
+            }
+        }
+
+        /**
+         The BasicKeyIterator iterates over the <code>keys</code> array.
+         If a .remove call moves an unprocessed key underneath the iterator's
+         index, that key value is added to the <code>movedKeys</code>
+         list supplied to the constructor.
+         */
+        protected final class BasicValueIterator extends NiceIterator<Value>
+        {
+            protected final List<Value> movedValues;
+
+            int pos = values.length-1;
+            final int initialChanges;
+            final NotifyEmpty container;
+
+            protected BasicValueIterator( int initialChanges, NotifyEmpty container, List<Value> movedValues )
+            {
+                this.movedValues = movedValues;
+                this.initialChanges = initialChanges;
+                this.container = container;
+            }
+
+            @Override public boolean hasNext()
+            {
+                while(-1 < pos)
+                {
+                    if(null != values[pos])
+                        return true;
+                    pos--;
+                }
+                return false;
+            }
+
+            @Override public Value next()
+            {
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                if (-1 < pos && null != values[pos]) return values[pos--];
+                throw new NoSuchElementException("HashCommon keys");
+            }
+
+            @Override public void forEachRemaining(Consumer<? super Value> action)
+            {
+                while(-1 < pos)
+                {
+                    if(null != values[pos]) action.accept(values[pos]);
+                    pos--;
+                }
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+            }
+
+            @Override public void remove()
+            {
+                if (changes > initialChanges) throw new ConcurrentModificationException();
+                // System.err.println( ">> keyIterator::remove, size := " + size +
+                // ", removing " + keys[index + 1] );
+                Value moved = removeFrom( pos + 1 );
+                if (moved != null) movedValues.add( moved );
+                if (size == 0) container.emptied();
+                if (size < 0) throw new BrokenException( "BROKEN" );
+                showkeys();
+            }
+        }
+
+        public Spliterator<Value> valueSpliterator()
+        {
+            final var initialChanges = changes;
+            final Runnable checkForConcurrentModification = () ->
+            {
+                if (changes != initialChanges) throw new ConcurrentModificationException();
+            };
+            return new SparseArraySpliterator<>(values, size, checkForConcurrentModification);
         }
     }

@@ -19,13 +19,10 @@
 package org.apache.jena.memA;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.shared.BrokenException;
 
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.Spliterator;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -41,11 +38,40 @@ public abstract class HashedBunchMap extends HashCommon<TripleBunch, Object> imp
     protected abstract Object getIndexingValue(Triple triple);
 
     @Override protected Object mapValueToKey(TripleBunch tripleBunch)
-        { return getIndexingValue(tripleBunch.getAnyTriple()); }
+        { return tripleBunch.getIndexingValue(); }
 
     @Override protected TripleBunch[] newValueArray(int size )
         { return new TripleBunch[size]; }
-    
+
+    @Override protected int findSlot(final Object key, final int hashCodeOfKey )
+        {
+        int index = initialIndexFor( hashCodeOfKey );
+        while (true)
+            {
+            final TripleBunch current = values[index];
+            if (current == null) return index;
+            if (hashCodeOfKey == hashes[index] && key.equals( current.getIndexingValue() )) return ~index;
+            if (--index < 0) index += values.length;
+            }
+        }
+
+    @Override protected void grow()
+        {
+        final TripleBunch [] oldContents = values;
+        final int [] oldHashes = hashes;
+        final TripleBunch [] newValues = values = newValueArray(calcGrownCapacityAndSetThreshold());
+        final int [] newHashes = hashes = new int[values.length];
+        for (int i = 0; i < oldContents.length; i += 1)
+            {
+            if (null != oldContents[i])
+                {
+                final int slot = findSlot( oldContents[i].getIndexingValue(), oldHashes[i] );
+                newValues[slot] = oldContents[i];
+                newHashes[slot] = oldHashes[i];
+                }
+            }
+        }
+
     /**
         Clear this map: all entries are removed. The keys <i>and value</i> array 
         elements are set to null (so the values may be garbage-collected).
@@ -107,46 +133,7 @@ public abstract class HashedBunchMap extends HashCommon<TripleBunch, Object> imp
 
 
     @Override public Iterator<TripleBunch> iterator()
-        {
-        return new Iterator<TripleBunch>()
-            {
-            final int initialChanges = changes;
-            int pos = values.length-1;
-
-            @Override public boolean hasNext()
-                {
-                while(-1 < pos)
-                    {
-                        if(null != values[pos]) return true;
-                        pos--;
-                    }
-                return false;
-                }
-
-            @Override public TripleBunch next()
-                {
-                if (changes > initialChanges) throw new ConcurrentModificationException();
-                if (-1 < pos && null != values[pos]) return values[pos--];
-                throw new NoSuchElementException();
-                }
-
-            @Override public void forEachRemaining(Consumer<? super TripleBunch> action)
-                {
-                while(-1 < pos)
-                    {
-                    if(null != values[pos]) action.accept(values[pos]);
-                    pos--;
-                    }
-                if (changes > initialChanges) throw new ConcurrentModificationException();
-                }
-
-            @Override
-                public void remove() {
-                    if (changes > initialChanges) throw new ConcurrentModificationException();
-                    HashedBunchMap.super.removeFrom(pos + 1);
-                }
-            };
-        }
+        { return super.valueIterator(); }
 
     @Override public Spliterator<TripleBunch> spliterator() {
         final var initialChanges = changes;
