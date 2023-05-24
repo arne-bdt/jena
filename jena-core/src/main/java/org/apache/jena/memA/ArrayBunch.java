@@ -41,7 +41,11 @@ public class ArrayBunch implements TripleBunch
 
     public ArrayBunch()
         { elements = new Triple[5]; }
-    
+
+    @Override
+    public Triple getAnyTriple()
+        { return elements[0]; }
+
     @Override
     public boolean containsBySameValueAs( Triple t )
         {

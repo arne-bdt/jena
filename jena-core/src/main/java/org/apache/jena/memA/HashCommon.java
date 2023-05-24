@@ -18,6 +18,7 @@
 
 package org.apache.jena.memA;
 
+import org.apache.jena.graph.Triple;
 import org.apache.jena.shared.BrokenException;
 import org.apache.jena.shared.JenaException;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -30,7 +31,7 @@ import java.util.function.Consumer;
     Shared stuff for our hashing implementations: does the base work for
     hashing and growth sizes.
 */
-public abstract class HashCommon<Key>
+public abstract class HashCommon<Value, Key>
     {
     /**
         Jeremy suggests, from his experiments, that load factors more than
@@ -39,13 +40,15 @@ public abstract class HashCommon<Key>
         plausible range, and use 0.5 by default. 
     */
     protected static final double loadFactor = 0.5;
+
+    protected abstract Key mapValueToKey(final Value value);
     
     /**
         The keys of whatever table it is we're implementing. Since we share code
         for triple sets and for node->bunch maps, it has to be an Object array; we
         take the casting hit.
      */
-    protected Key [] keys;
+    protected Value[] values;
 
     /**
         Hashes of the keys, stored separately because we need to use them for
@@ -77,15 +80,15 @@ public abstract class HashCommon<Key>
     */
     protected HashCommon( int initialCapacity )
         {
-        keys = newKeyArray( initialCapacity );
-        hashes = new int[keys.length];
-        threshold = (int) (keys.length * loadFactor);
+        values = newValueArray( initialCapacity );
+        hashes = new int[values.length];
+        threshold = (int) (values.length * loadFactor);
         }
     
     /**
         Subclasses must implement to answer a new Key[size] array.
     */
-    protected abstract Key[] newKeyArray( int size );
+    protected abstract Value[] newValueArray(int size );
 
     /**
         A hashed structure may become empty as a side-effect of a .remove on one
@@ -110,28 +113,11 @@ public abstract class HashCommon<Key>
         }   
 
     /**
-        When removeFrom [or remove] removes a key, it calls this method to 
-        remove any associated values, passing in the index of the key's slot. 
-        Subclasses override if they have any associated values.
-    */
-    protected void removeAssociatedValues( int here )
-        {}
-
-    /**
-        When removeFrom [or remove] moves a key, it calls this method to move 
-        any associated values, passing in the index of the slot <code>here</code>
-        to move to and the index of the slot <code>scan</code> to move from.
-        Subclasses override if they have any associated values.
-    */
-    protected void moveAssociatedValues( int here, int scan )
-        {}
-    
-    /**
         Answer the item at index <code>i</code> of <code>keys</code>. This
         method is for testing purposes <i>only</i>.
     */
     public Object getItemForTestingAt( int i )
-        { return keys[i]; }
+        { return values[i]; }
     
     /**
         Answer the initial index for the object <code>key</code> in the table.
@@ -143,7 +129,7 @@ public abstract class HashCommon<Key>
         it does not work. (Hence, here, the use of bitmasks.)
     */
     protected final int initialIndexFor( int hashOfKey )
-        { return (improveHashCode( hashOfKey ) & 0x7fffffff) % keys.length; }
+        { return (improveHashCode( hashOfKey ) & 0x7fffffff) % values.length; }
 
     /**
         Answer the transformed hash code, intended to be an improvement
@@ -160,17 +146,34 @@ public abstract class HashCommon<Key>
         negative values imply present, positive absent, and there's no confusion
         around 0.
     */
-    protected final int findSlot( Key key, int hashCodeOfKey )
+    protected final int findSlot(Key key, int hashCodeOfKey )
         {
         int index = initialIndexFor( hashCodeOfKey );
         while (true)
             {
-            Key current = keys[index];
+            Value current = values[index];
             if (current == null) return index; 
-            if (hashCodeOfKey == hashes[index] && key.equals( current )) return ~index;
-            if (--index < 0) index += keys.length;
+            if (hashCodeOfKey == hashes[index] && key.equals( mapValueToKey(current) )) return ~index;
+            if (--index < 0) index += values.length;
             }
-        }   
+        }
+
+    protected void grow()
+        {
+        Value [] oldContents = values;
+        int [] oldHashes = hashes;
+        Value [] newValues = values = newValueArray(calcGrownCapacityAndSetThreshold());
+        int [] newHashes = hashes = new int[values.length];
+        for (int i = 0; i < oldContents.length; i += 1)
+            {
+            if (null != oldContents[i])
+                {
+                final int slot = findSlot( mapValueToKey(oldContents[i]), oldHashes[i] );
+                newValues[slot] = oldContents[i];
+                newHashes[slot] = oldHashes[i];
+                }
+            }
+        }
 
     /**
         Remove the object <code>key</code> from this hash's keys if it
@@ -179,7 +182,7 @@ public abstract class HashCommon<Key>
         is moved, the <code>moveAssociatedValues</code> method will
         be called.
     */
-    public void removeKey( Key key, int hashCodeOfKey )
+    public void removeKey(Key key, int hashCodeOfKey )
         {
         int slot = findSlot( key, hashCodeOfKey );
         if (slot < 0) removeFrom( ~slot );
@@ -192,7 +195,7 @@ public abstract class HashCommon<Key>
      is moved, the <code>moveAssociatedValues</code> method will
      be called.
      */
-    public boolean tryRemoveKey( Key key, int hashCodeOfKey )
+    public boolean tryRemoveKey(Key key, int hashCodeOfKey )
         {
             int slot = findSlot( key, hashCodeOfKey );
             if (slot < 0)
@@ -203,7 +206,7 @@ public abstract class HashCommon<Key>
             return false;
         }
 
-    private void primitiveRemove( Key key, int hashCodeOfKey )
+    private void primitiveRemove(Key key, int hashCodeOfKey )
         {
             removeKey( key, hashCodeOfKey );
         }
@@ -214,7 +217,7 @@ public abstract class HashCommon<Key>
     */
     protected int calcGrownCapacityAndSetThreshold()
         {
-        final var capacity = nextSize( keys.length * 2 );
+        final var capacity = nextSize( values.length * 2 );
         threshold = (int) (capacity * loadFactor);
         return capacity;
         }
@@ -263,30 +266,28 @@ public abstract class HashCommon<Key>
         bottom of the table to the top because of Iterator::remove. removeFrom
         returns such a moved key as its result, and null otherwise.
     */
-    protected Key removeFrom( int here )
+    protected Value removeFrom(int here )
         {
         final int original = here;
-        Key wrappedAround = null;
+        Value wrappedAround = null;
         size -= 1;
         while (true)
             {
-            keys[here] = null;
-            removeAssociatedValues( here );
+            values[here] = null;
             int scan = here;
             while (true)
                 {
-                if (--scan < 0) scan += keys.length;
-                if (keys[scan] == null) return wrappedAround;
+                if (--scan < 0) scan += values.length;
+                if (values[scan] == null) return wrappedAround;
                 int r = initialIndexFor( hashes[scan] );
                 if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r)
                     { /* Nothing. We'd have preferred an `unless` statement. */}
                 else
                     {
                     if (here >= original && scan < original)
-                        { wrappedAround = keys[scan]; }
-                    keys[here] = keys[scan];
+                        { wrappedAround = values[scan]; }
+                    values[here] = values[scan];
                     hashes[here] = hashes[scan];
-                    moveAssociatedValues( here, scan );
                     here = scan;
                     break;
                     }
@@ -299,8 +300,8 @@ public abstract class HashCommon<Key>
         if (false)
             {
             System.err.print( ">> KEYS:" );
-            for (int i = 0; i < keys.length; i += 1)
-                if (keys[i] != null) System.err.print( " " + initialIndexFor( hashes[i] ) + "@" + i + "::" + keys[i] );
+            for (int i = 0; i < values.length; i += 1)
+                if (values[i] != null) System.err.print( " " + initialIndexFor( hashes[i] ) + "@" + i + "::" + values[i] );
             System.err.println();
             }
         }
@@ -308,7 +309,7 @@ public abstract class HashCommon<Key>
     public ExtendedIterator<Key> keyIterator()
         { return keyIterator( NotifyEmpty.ignore ); }
     
-    public ExtendedIterator<Key> keyIterator( final NotifyEmpty container )
+    public ExtendedIterator<Key> keyIterator(final NotifyEmpty container )
         {
         showkeys();
         final List<Key> movedKeys = new ArrayList<>();
@@ -377,7 +378,7 @@ public abstract class HashCommon<Key>
         {
         protected final List<Key> movedKeys;
 
-        int pos = keys.length-1;
+        int pos = values.length-1;
         final int initialChanges;
         final NotifyEmpty container;
 
@@ -392,7 +393,7 @@ public abstract class HashCommon<Key>
             {
             while(-1 < pos)
                 {
-                if(null != keys[pos])
+                if(null != values[pos])
                     return true;
                 pos--;
                 }
@@ -402,7 +403,7 @@ public abstract class HashCommon<Key>
         @Override public Key next()
             {
             if (changes > initialChanges) throw new ConcurrentModificationException();
-            if (-1 < pos && null != keys[pos]) return keys[pos--];
+            if (-1 < pos && null != values[pos]) return mapValueToKey(values[pos--]);
             throw new NoSuchElementException("HashCommon keys");
             }
 
@@ -410,7 +411,7 @@ public abstract class HashCommon<Key>
             {
             while(-1 < pos)
                 {
-                if(null != keys[pos]) action.accept(keys[pos]);
+                if(null != values[pos]) action.accept(mapValueToKey(values[pos]));
                 pos--;
                 }
             if (changes > initialChanges) throw new ConcurrentModificationException();
@@ -421,8 +422,8 @@ public abstract class HashCommon<Key>
             if (changes > initialChanges) throw new ConcurrentModificationException();
             // System.err.println( ">> keyIterator::remove, size := " + size +
             // ", removing " + keys[index + 1] );
-            Key moved = removeFrom( pos + 1 );
-            if (moved != null) movedKeys.add( moved );
+            Value moved = removeFrom( pos + 1 );
+            if (moved != null) movedKeys.add( mapValueToKey(moved) );
             if (size == 0) container.emptied();
             if (size < 0) throw new BrokenException( "BROKEN" );
             showkeys();
@@ -436,6 +437,6 @@ public abstract class HashCommon<Key>
             {
                 if (changes != initialChanges) throw new ConcurrentModificationException();
             };
-            return new SparseArraySpliterator<>(keys, size, checkForConcurrentModification);
+            return new SparseArraySpliteratorMapping<>(values, size, this::mapValueToKey, checkForConcurrentModification);
         }
     }

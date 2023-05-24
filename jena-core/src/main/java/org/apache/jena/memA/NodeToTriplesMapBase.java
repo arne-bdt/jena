@@ -38,7 +38,7 @@ public abstract class NodeToTriplesMapBase
     /**
          The map from nodes to Bunch(Triple).
     */
-     public BunchMap bunchMap = new HashedBunchMap();
+     public final BunchMap bunchMap;
 
     /**
          The number of triples held in this NTM, maintained incrementally 
@@ -51,7 +51,15 @@ public abstract class NodeToTriplesMapBase
     protected final Field f3;
     
     public NodeToTriplesMapBase( Field indexField, Field f2, Field f3 )
-        { this.indexField = indexField; this.f2 = f2; this.f3 = f3; }
+        {
+        this.indexField = indexField; this.f2 = f2; this.f3 = f3;
+        this.bunchMap = new HashedBunchMap()
+            {
+            @Override
+            protected Object getIndexingValue(Triple triple)
+                { return indexField.getField(triple).getIndexingValue(); }
+            };
+        }
     
     /**
          Add <code>t</code> to this NTM; the node <code>o</code> <i>must</i>

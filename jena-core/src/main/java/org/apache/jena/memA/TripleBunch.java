@@ -32,6 +32,12 @@ import java.util.Spliterator;
 public interface TripleBunch 
     {
     /**
+     Gets any triple from the bunch. It shall be used to extract the indexing value for the bunch.
+     @return Any triple from the bunch or null if the bunch is empty.
+    */
+    public Triple getAnyTriple();
+
+    /**
         Answer true iff this TripleBunch contains a triple with .sameValueAs
         subject, predicate, and object. (Typically this only matters for the
         object. For example, integer literals with different numbers of leading

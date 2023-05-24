@@ -23,8 +23,9 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Spliterator;
 
-public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
+public class HashedTripleBunch extends HashCommon<Triple, Triple> implements TripleBunch
     {
+    private int indexOfAnyTriple = -1;
     public HashedTripleBunch( TripleBunch b )
         {
         super( nextSize( (int) (b.size() / loadFactor) ) );
@@ -32,7 +33,20 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
         changes = 0;
         }
 
-    @Override protected Triple[] newKeyArray( int size )
+    @Override
+    public Triple getAnyTriple() {
+        if (null == values[indexOfAnyTriple]) {
+            if(size == 0) return null;
+            indexOfAnyTriple = -1;
+            while (null == values[++indexOfAnyTriple]);
+        }
+        return values[indexOfAnyTriple];
+    }
+
+    @Override protected Triple mapValueToKey(Triple triple)
+        { return triple; }
+
+    @Override protected Triple[] newValueArray(int size )
         { return new Triple[size]; }
 
     protected int findSlotBySameValueAs( Triple key )
@@ -41,10 +55,10 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
         int index = initialIndexFor( hash );
         while (true)
             {
-            Object current = keys[index];
+            Object current = values[index];
             if (current == null) return index;
             if (hash == hashes[index] && key.matches( (Triple) current )) return ~index;
-            if (--index < 0) index += keys.length;
+            if (--index < 0) index += values.length;
             }
         }
 
@@ -65,7 +79,7 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
         only. [Note that the bunch is resized when it is more than half-occupied.]
     */
     public int currentCapacity()
-        { return keys.length; }
+        { return values.length; }
 
     @Override
     public boolean isHashed() { return true; }
@@ -75,9 +89,10 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
         {
         var slot = findSlot( t, hashCode );
         if (slot < 0) return false;
-        keys[slot] = t;
+        values[slot] = t;
         hashes[slot] = hashCode;
         changes++;
+        if(indexOfAnyTriple < 0) indexOfAnyTriple = slot;
         if (++size > threshold) grow();
         return true;
         }
@@ -86,9 +101,10 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     public void addUnchecked( Triple t, int hashCode )
         {
         final int slot = findSlot( t, hashCode );
-        keys[slot] = t;
+        values[slot] = t;
         hashes[slot] = hashCode;
         changes++;
+        if(indexOfAnyTriple < 0) indexOfAnyTriple = slot;
         if (++size > threshold) grow();
         }
 
@@ -98,23 +114,6 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     @Override
     public void addUnchecked( Triple t ) { throw new UnsupportedOperationException(); }
 
-    protected void grow()
-        {
-        Object [] oldContents = keys;
-        int [] oldHashes = hashes;
-        Object [] newKeys = keys = new Triple[calcGrownCapacityAndSetThreshold()];
-        int [] newHashes = hashes = new int[keys.length];
-        for (int i = 0; i < oldContents.length; i += 1)
-            {
-            Triple t = (Triple) oldContents[i];
-            if (t != null)
-                {
-                final int slot = findSlot( t, oldHashes[i] );
-                newKeys[slot] = t;
-                newHashes[slot] = oldHashes[i];
-                }
-            }
-        }
 
     @Override
     public boolean remove( Triple t, int hashCode )

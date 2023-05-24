@@ -18,6 +18,7 @@
 
 package org.apache.jena.memA;
 
+import org.apache.jena.graph.Triple;
 import org.apache.jena.shared.BrokenException;
 
 import java.util.ConcurrentModificationException;
@@ -30,18 +31,20 @@ import java.util.function.Function;
 /**
     An implementation of BunchMap that does open-addressed hashing.
 */
-public class HashedBunchMap extends HashCommon<Object> implements BunchMap
+public abstract class HashedBunchMap extends HashCommon<TripleBunch, Object> implements BunchMap
     {
-    protected TripleBunch[] values;
-    
     public HashedBunchMap()
         {
         super( 10 );
-        values = new TripleBunch[keys.length];
         }
 
-    @Override protected Object[] newKeyArray( int size )
-        { return new Object[size]; }
+    protected abstract Object getIndexingValue(Triple triple);
+
+    @Override protected Object mapValueToKey(TripleBunch tripleBunch)
+        { return getIndexingValue(tripleBunch.getAnyTriple()); }
+
+    @Override protected TripleBunch[] newValueArray(int size )
+        { return new TripleBunch[size]; }
     
     /**
         Clear this map: all entries are removed. The keys <i>and value</i> array 
@@ -51,7 +54,7 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
     public void clear()
         {
         size = 0;
-        for (int i = 0; i < keys.length; i += 1) keys[i] = values[i] = null;
+        for (int i = 0; i < values.length; i += 1) values[i] = null;
         }  
     
     @Override
@@ -75,7 +78,7 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
             values[~slot] = value;
             }
         else
-            put$(slot, key, hashCodeOfKey, value) ;
+            put$(slot, hashCodeOfKey, value) ;
         }
 
     @Override
@@ -87,59 +90,21 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
             return values[~slot] ;
         // Or set value.
         TripleBunch value = setter.apply(key) ;
-        put$(slot, key, hashCodeOfKey, value) ;
+        put$(slot, hashCodeOfKey, value) ;
         return value ;
         }
     
-    private void put$(int slot, Object key, int hashCodeOfKey, TripleBunch value) {
-        keys[slot] = key;
+    private void put$(int slot, int hashCodeOfKey, TripleBunch value) {
         hashes[slot] = hashCodeOfKey;
         values[slot] = value;
         size++;
         if ( size == threshold )
             grow();
     }
-    
-    protected void grow()
-        {
-        Object [] oldContents = keys;
-        int[] oldHashes = hashes;
-        TripleBunch[] oldValues = values;
-        keys = newKeyArray( calcGrownCapacityAndSetThreshold() );
-        hashes = new int[keys.length];
-        values = new TripleBunch[keys.length];
-        for (int i = 0; i < oldContents.length; i += 1)
-            {
-            if (oldContents[i] != null)
-                {
-                final int j = findSlot( oldContents[i], oldHashes[i] );
-                if (j < 0) 
-                    {
-                    throw new BrokenException( "oh dear, already have a slot for " + oldContents[i]  + ", viz " + ~j );
-                    }
-                keys[j] = oldContents[i];
-                hashes[j] = oldHashes[i];
-                values[j] = oldValues[i];
-                }
-            }
-        }
 
     @Override public void remove(Object key)
         { super.removeKey( key, key.hashCode() ); }
 
-        /**
-        Called by HashCommon when a key is removed: remove
-        associated element of the <code>values</code> array.
-    */
-    @Override protected void removeAssociatedValues( int here )
-        { values[here] = null; }
-    
-    /**
-        Called by HashCommon when a key is moved: move the
-        associated element of the <code>values</code> array.
-    */
-    @Override protected void moveAssociatedValues( int here, int scan )
-        { values[here] = values[scan]; }
 
     @Override public Iterator<TripleBunch> iterator()
         {

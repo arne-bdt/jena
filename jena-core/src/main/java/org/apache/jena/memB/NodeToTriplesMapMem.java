@@ -98,9 +98,11 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
 
             TripleBunch s = bunchMap.get( o );
             if (s == null)
-                bunchMap.put(o, s = new ArrayBunch());
-
-            if (s.isHashed())
+                {
+                bunchMap.put( o, s = new ArrayBunch() );
+                s.addUnchecked( t );
+                }
+            else if (s.isHashed())
                 {
                 s.addUnchecked(t, hashCode);
                 }

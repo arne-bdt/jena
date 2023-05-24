@@ -24,6 +24,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
+import org.apache.jena.memA.GraphMemA;
 import org.apache.jena.memB.GraphMemB;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.testing_framework.NodeCreateUtils;
@@ -35,7 +36,7 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 public class TestGraphImplementations {
 
     private static Graph createGraph() {
-        return new GraphMemB();
+        return new GraphMemA();
     }
 
     @Test

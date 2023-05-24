@@ -53,9 +53,9 @@ public class TestGraphAdd {
             "GraphMem (current)",
             "GraphMemA (current)",
             "GraphMemB (current)",
-            "GraphMemX (current)",
-            "GraphMemY (current)",
-            "GraphMemZ (current)",
+//            "GraphMemX (current)",
+//            "GraphMemY (current)",
+//            "GraphMemZ (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
