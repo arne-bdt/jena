@@ -22,6 +22,11 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
+import org.apache.jena.memA.GraphMemA;
+import org.apache.jena.memB.GraphMemB;
+import org.apache.jena.memX.GraphMemX;
+import org.apache.jena.memY.GraphMemY;
+import org.apache.jena.memZ.GraphMemZ;
 import org.apache.jena.riot.RDFDataMgr;
 
 import java.util.ArrayList;
@@ -34,6 +39,16 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
         switch (graphClass) {
             case GraphMem:
                 return new GraphMem();
+            case GraphMemA:
+                return new GraphMemA();
+            case GraphMemB:
+                return new GraphMemB();
+            case GraphMemX:
+                return new GraphMemX();
+            case GraphMemY:
+                return new GraphMemY();
+            case GraphMemZ:
+                return new GraphMemZ();
             default:
                 throw new IllegalArgumentException("Unknown graph class: " + graphClass);
         }

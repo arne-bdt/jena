@@ -33,7 +33,12 @@ public class Context {
     }
 
     public enum GraphClass {
-        GraphMem
+        GraphMem,
+        GraphMemA,
+        GraphMemB,
+        GraphMemX,
+        GraphMemY,
+        GraphMemZ
     }
 
     private final GraphClass graphClass;
@@ -44,6 +49,26 @@ public class Context {
         switch (graphImplementation) {
             case "GraphMem (current)":
                 this.graphClass = GraphClass.GraphMem;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemA (current)":
+                this.graphClass = GraphClass.GraphMemA;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemB (current)":
+                this.graphClass = GraphClass.GraphMemB;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemX (current)":
+                this.graphClass = GraphClass.GraphMemX;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemY (current)":
+                this.graphClass = GraphClass.GraphMemY;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemZ (current)":
+                this.graphClass = GraphClass.GraphMemZ;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
             case "GraphMem (Jena 4.8.0)":
