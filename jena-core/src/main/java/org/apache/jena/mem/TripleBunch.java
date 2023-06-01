@@ -22,6 +22,7 @@ import org.apache.jena.graph.Triple ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
 
 import java.util.Spliterator;
+import java.util.function.Predicate;
 
 /**
     A bunch of triples - a stripped-down set with specialized methods. A
@@ -37,12 +38,11 @@ public interface TripleBunch
     public abstract boolean contains( Triple t );
     
     /**
-        Answer true iff this TripleBunch contains a triple with .sameValueAs
-        subject, predicate, and object. (Typically this only matters for the
-        object. For example, integer literals with different numbers of leading
-        zeroes can be .sameValueAs but not .equals).
+        Answer true iff this TripleBunch contains the given triple.
+        Instead of using Triple#match, the implementation should use the given matcher
+        which is intended to be a more efficient way of matching triples.
     */
-    public abstract boolean containsBySameValueAs( Triple t );
+    public abstract boolean containsBySameValueAs(Triple t, Predicate<Triple> matcher);
     
     /**
         Answer the number of triples in this bunch.

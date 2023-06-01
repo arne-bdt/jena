@@ -119,7 +119,12 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     @Override public boolean containsBySameValueAs( Triple t )
        { 
        TripleBunch s = bunchMap.get( getIndexField( t ) );
-       return s == null ? false :  s.containsBySameValueAs( t );
+
+       if (s == null) return false;
+       //since whe already found the subject, only predicate and object need to be checked
+       return s.containsBySameValueAs( t, triple
+               -> t.getPredicate().equals( triple.getPredicate() )
+               && t.getObject().sameValueAs( triple.getObject() ) );
        }
     
     /**

@@ -19,6 +19,7 @@
 package org.apache.jena.mem;
 
 import java.util.Spliterator;
+import java.util.function.Predicate;
 
 import org.apache.jena.graph.Triple ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
@@ -39,21 +40,21 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     public boolean contains( Triple t )
         { return findSlot( t ) < 0; }
 
-    protected int findSlotBySameValueAs( Triple key )
+    protected int findSlotBySameValueAs( Triple key, Predicate<Triple> matcher )
         {
         int index = initialIndexFor( key );
         while (true)
             {
             Object current = keys[index];
             if (current == null) return index;
-            if (key.matches( (Triple) current )) return ~index;
+            if (matcher.test( (Triple) current )) return ~index;
             if (--index < 0) index += capacity;
             }
         }
 
     @Override
-    public boolean containsBySameValueAs( Triple t )
-        { return findSlotBySameValueAs( t ) < 0; }
+    public boolean containsBySameValueAs(Triple t, Predicate<Triple> matcher )
+        { return findSlotBySameValueAs( t, matcher ) < 0; }
 
     /**
         Answer the number of items currently in this TripleBunch.

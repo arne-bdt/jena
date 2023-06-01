@@ -21,6 +21,7 @@ package org.apache.jena.mem;
 import java.util.ConcurrentModificationException ;
 import java.util.Spliterator;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import org.apache.jena.graph.Triple ;
 import org.apache.jena.util.iterator.ExtendedIterator ;
@@ -43,10 +44,10 @@ public class ArrayBunch implements TripleBunch
         { elements = new Triple[5]; }
     
     @Override
-    public boolean containsBySameValueAs( Triple t )
+    public boolean containsBySameValueAs(Triple t, Predicate<Triple> matcher)
         {
         int i = size;
-        while (i > 0) if (t.matches( elements[--i])) return true;
+        while (i > 0) if (matcher.test( elements[--i])) return true;
         return false;
         }
     
