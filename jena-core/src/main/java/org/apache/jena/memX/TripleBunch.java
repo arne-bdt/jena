@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.memB;
+package org.apache.jena.memX;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.util.iterator.ExtendedIterator;
