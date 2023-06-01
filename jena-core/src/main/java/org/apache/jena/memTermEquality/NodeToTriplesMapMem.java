@@ -169,24 +169,11 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
         Answer an iterator over all the triples in this NTM which have index node
         <code>o</code>.
     */
-    @Override public ExtendedIterator<Triple> iterator( Node node, HashCommon.NotifyEmpty container )
+    @Override public ExtendedIterator<Triple> iterator( Node node )
        {
        TripleBunch s = bunchMap.get( node );
-       return s == null ? NullIterator.<Triple>instance() : s.iterator( container );
+       return s == null ? NullIterator.<Triple>instance() : s.iterator();
        }
-
-    public class NotifyMe implements HashCommon.NotifyEmpty
-        {
-        protected final Node key;
-        
-        public NotifyMe( Node key )
-            { this.key = key; }
-        
-        // TODO fix the way this interacts (badly) with iteration and CMEs.
-        @Override
-        public void emptied()
-            { if (false) throw new JenaException( "BOOM" ); /* System.err.println( ">> OOPS" ); */ bunchMap.remove( key ); }
-        }
 
     @Override public boolean containsBySameValueAs( Triple t )
        { 
@@ -208,23 +195,15 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     @Override public ExtendedIterator<Triple> iterator( Node index, Node n2, Node n3 )
        {
        final TripleBunch s = bunchMap.get( index );
-//       System.err.println( ">> ntmf::iterator: " + (s == null ? (Object) "None" : s.getClass()) );
 
        if (s == null) return NullIterator.<Triple>instance();
 
        final var filter = FieldFilter.filterOn(f2, n2, f3, n3);
        return filter.hasFilter()
-           ? s.iterator( new NotifyMe( index ) ).filterKeep( filter.getFilter() )
-           : s.iterator( new NotifyMe( index ) );
+           ? s.iterator().filterKeep( filter.getFilter() )
+           : s.iterator();
        }
 
         protected TripleBunch get( Node index )
         { return bunchMap.get( index ); }
-    
-    /**
-     Answer an iterator over all the triples that are indexed by the item <code>y</code>.
-        Note that <code>y</code> need not be a Node (because of indexing values).
-    */
-    @Override public ExtendedIterator<Triple> iteratorForIndexed( Node y )
-        { return get( y ).iterator();  }
     }

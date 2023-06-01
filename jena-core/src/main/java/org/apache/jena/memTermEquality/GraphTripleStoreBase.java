@@ -164,13 +164,13 @@ public abstract class GraphTripleStoreBase implements TripleStore
          Node sm = t.getSubject();
              
          if (sm.isConcrete())
-             return new StoreTripleIterator( parent, subjects.iterator( sm, pm, om ), subjects, predicates, objects );
+             return subjects.iterator( sm, pm, om );
          else if (om.isConcrete())
-             return new StoreTripleIterator( parent, objects.iterator( om, sm, pm ), objects, subjects, predicates );
+             return objects.iterator( om, sm, pm );
          else if (pm.isConcrete())
-             return new StoreTripleIterator( parent, predicates.iterator( pm, om, sm ), predicates, subjects, objects );
+             return predicates.iterator( pm, om, sm );
          else
-             return new StoreTripleIterator( parent, subjects.iterateAll(), subjects, predicates, objects );
+             return subjects.iterateAll();
          }
 
      /**

@@ -110,13 +110,6 @@ public interface TripleBunch
         .remove from this iterator. (It may become illegal.)
     */
     public abstract ExtendedIterator<Triple> iterator();
-    
-    /**
-        Answer an iterator over all the triples in this bunch. If use of .remove on
-        this iterator empties the bunch, the <code>emptied</code> method of
-        <code>container</code> is invoked.
-    */
-    public abstract ExtendedIterator<Triple> iterator( HashCommon.NotifyEmpty container );
 
     /**
         Answer a spliterator over all the triples in this bunch.

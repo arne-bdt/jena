@@ -65,12 +65,6 @@ public abstract class HashCommon<Key>
     protected int size = 0;
     
     /**
-        A count of the number of changes applied to this Hash object, used for
-        detecting concurrent modifications.
-    */
-    protected int changes;
-    
-    /**
         Initialise this hashed thingy to have <code>initialCapacity</code> as its
         capacity and the corresponding threshold. All the key elements start out
         null.
@@ -86,28 +80,6 @@ public abstract class HashCommon<Key>
         Subclasses must implement to answer a new Key[size] array.
     */
     protected abstract Key[] newKeyArray( int size );
-
-    /**
-        A hashed structure may become empty as a side-effect of a .remove on one
-        of its iterators: a container can request notification of this by passing
-        a <code>NotifyEmpty</code> object in when the iterator is constructed,
-        and its <code>emptied</code> method is called when the bunch
-        becomes empty.
-       */
-    public static interface NotifyEmpty
-        {
-        /**
-             A NotifyEmpty instance that ignores the notification.
-        */
-        public static NotifyEmpty ignore = new NotifyEmpty() 
-            { @Override
-            public void emptied() { }};
-        
-        /**
-             Method to call to notify that the collection has become empty.
-        */
-        public void emptied(); 
-        }   
 
     /**
         When removeFrom [or remove] removes a key, it calls this method to 
@@ -306,136 +278,20 @@ public abstract class HashCommon<Key>
         }
 
     public ExtendedIterator<Key> keyIterator()
-        { return keyIterator( NotifyEmpty.ignore ); }
-    
-    public ExtendedIterator<Key> keyIterator( final NotifyEmpty container )
         {
-        showkeys();
-        final List<Key> movedKeys = new ArrayList<>();
-        ExtendedIterator<Key> basic = new BasicKeyIterator( changes, container, movedKeys );
-        ExtendedIterator<Key> leftovers = new MovedKeysIterator( changes, container, movedKeys );
-        return basic.andThen( leftovers );
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+            { if (size != initialSize) throw new ConcurrentModificationException(); };
+        return new SparseArrayIterator<>(keys, checkForConcurrentModification);
         }
     
-    /**
-        The MovedKeysIterator iterates over the elements of the <code>keys</code>
-        list. It's not sufficient to just use List::iterator, because the .remove
-        method must remove elements from the hash table itself.
-    <p>
-        Note that the list supplied on construction will be empty: it is filled before
-        the first call to <code>hasNext()</code>.
-    */
-    protected final class MovedKeysIterator extends NiceIterator<Key>
+
+
+    public Spliterator<Key> keySpliterator()
         {
-        private final List<Key> movedKeys;
-
-        protected int index = 0;
-        final int initialChanges;
-        final NotifyEmpty container;
-
-        protected MovedKeysIterator( int initialChanges, NotifyEmpty container, List<Key> keys )
-            { 
-            this.movedKeys = keys; 
-            this.initialChanges = initialChanges; 
-            this.container = container;
-            }
-
-        @Override public boolean hasNext()
-            { 
-            return index < movedKeys.size();
-            }
-
-        @Override public Key next()
-            {
-            if (changes > initialChanges) throw new ConcurrentModificationException( "changes " + changes + " > initialChanges " + initialChanges );
-            if (index < movedKeys.size()) return movedKeys.get( index++ );
-            return noElements( "" );
-            }
-
-        @Override public void forEachRemaining(Consumer<? super Key> action)
-            {
-            while(index < movedKeys.size()) action.accept( movedKeys.get( index++ ) );
-            if (changes > initialChanges) throw new ConcurrentModificationException();
-            }
-
-        @Override public void remove()
-            { 
-            if (changes > initialChanges) throw new ConcurrentModificationException();
-            var key = movedKeys.get( index - 1 );
-            primitiveRemove( key, key.hashCode() );
-            if (size == 0) container.emptied();
-            }
-        }
-
-    /**
-        The BasicKeyIterator iterates over the <code>keys</code> array.
-        If a .remove call moves an unprocessed key underneath the iterator's
-        index, that key value is added to the <code>movedKeys</code>
-        list supplied to the constructor.
-    */
-    protected final class BasicKeyIterator extends NiceIterator<Key>
-        {
-        protected final List<Key> movedKeys;
-
-        int pos = keys.length-1;
-        final int initialChanges;
-        final NotifyEmpty container;
-
-        protected BasicKeyIterator( int initialChanges, NotifyEmpty container, List<Key> movedKeys )
-            { 
-            this.movedKeys = movedKeys; 
-            this.initialChanges = initialChanges;  
-            this.container = container;
-            }
-
-        @Override public boolean hasNext()
-            {
-            while(-1 < pos)
-                {
-                if(null != keys[pos])
-                    return true;
-                pos--;
-                }
-            return false;
-            }
-
-        @Override public Key next()
-            {
-            if (changes > initialChanges) throw new ConcurrentModificationException();
-            if (-1 < pos && null != keys[pos]) return keys[pos--];
-            throw new NoSuchElementException("HashCommon keys");
-            }
-
-        @Override public void forEachRemaining(Consumer<? super Key> action)
-            {
-            while(-1 < pos)
-                {
-                if(null != keys[pos]) action.accept(keys[pos]);
-                pos--;
-                }
-            if (changes > initialChanges) throw new ConcurrentModificationException();
-            }
-
-        @Override public void remove()
-            {
-            if (changes > initialChanges) throw new ConcurrentModificationException();
-            // System.err.println( ">> keyIterator::remove, size := " + size +
-            // ", removing " + keys[index + 1] );
-            Key moved = removeFrom( pos + 1 );
-            if (moved != null) movedKeys.add( moved );
-            if (size == 0) container.emptied();
-            if (size < 0) throw new BrokenException( "BROKEN" );
-            showkeys();
-            }
-        }
-
-        public Spliterator<Key> keySpliterator()
-        {
-            final var initialChanges = changes;
-            final Runnable checkForConcurrentModification = () ->
-            {
-                if (changes != initialChanges) throw new ConcurrentModificationException();
-            };
-            return new SparseArraySpliterator<>(keys, size, checkForConcurrentModification);
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+            { if (size != initialSize) throw new ConcurrentModificationException(); };
+        return new SparseArraySpliterator<>(keys, size, checkForConcurrentModification);
         }
     }

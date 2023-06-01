@@ -30,7 +30,6 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
         {
         super( nextSize( (int) (b.size() / loadFactor) ) );
         b.spliterator().forEachRemaining(t -> addUnchecked(t, t.hashCode()));
-        changes = 0;
         }
 
     @Override protected Triple[] newKeyArray( int size )
@@ -78,7 +77,6 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
         if (slot < 0) return false;
         keys[slot] = t;
         hashes[slot] = hashCode;
-        changes++;
         if (++size > threshold) grow();
         return true;
         }
@@ -89,7 +87,6 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
         final int slot = findSlot( t, hashCode );
         keys[slot] = t;
         hashes[slot] = hashCode;
-        changes++;
         if (++size > threshold) grow();
         }
 
@@ -120,19 +117,13 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     @Override
     public boolean remove( Triple t, int hashCode )
         {
-            if(super.tryRemoveKey( t, hashCode ))
-                {
-                changes++;
-                return true;
-                }
-            return false;
+            return super.tryRemoveKey( t, hashCode );
         }
 
     @Override
     public void removeUnchecked( Triple t, int hashCode )
         {
             super.removeKey( t, hashCode );
-            changes++;
         }
 
     @Override
@@ -143,11 +134,7 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
 
     @Override
     public ExtendedIterator<Triple> iterator()
-        { return iterator( NotifyEmpty.ignore ); }
-
-    @Override
-    public ExtendedIterator<Triple> iterator( final NotifyEmpty container )
-        { return keyIterator( container ); }
+        { return super.keyIterator(); }
 
     @Override public Spliterator<Triple> spliterator()
         { return super.keySpliterator(); }

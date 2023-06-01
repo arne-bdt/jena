@@ -32,14 +32,4 @@ public class GraphTripleStoreMem extends GraphTripleStoreBase implements TripleS
             new NodeToTriplesMapMem( Field.fieldObject, Field.fieldSubject, Field.fieldPredicate )
                 ); 
         }
-    
-    public NodeToTriplesMapMem getSubjects()
-        { return (NodeToTriplesMapMem) subjects; }
-
-    public NodeToTriplesMapMem getPredicates()
-        { return (NodeToTriplesMapMem) predicates; }
-    
-    public NodeToTriplesMapMem getObjects()
-        { return (NodeToTriplesMapMem) objects; }
-    
     }

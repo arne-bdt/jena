@@ -38,7 +38,6 @@ public class ArrayBunch implements TripleBunch
     
     protected int size = 0;
     protected Triple [] elements;
-    protected volatile int changes = 0; 
 
     public ArrayBunch()
         { elements = new Triple[5]; }
@@ -71,7 +70,6 @@ public class ArrayBunch implements TripleBunch
         if(this.contains(t)) return false;
         if (size == elements.length) grow();
         elements[size++] = t;
-        changes++;
         return true;
         }
 
@@ -80,7 +78,6 @@ public class ArrayBunch implements TripleBunch
         {
         if (size == elements.length) grow();
         elements[size++] = t;
-        changes++;
         }
 
     @Override
@@ -110,7 +107,6 @@ public class ArrayBunch implements TripleBunch
             if (t.equals( elements[i] ))
                 {
                 elements[i] = elements[--size];
-                changes++;
                 return true;
                 }
             }
@@ -125,7 +121,6 @@ public class ArrayBunch implements TripleBunch
                 if (t.equals( elements[i] ))
                 {
                     elements[i] = elements[--size];
-                    changes++;
                     return;
                 }
             }
@@ -139,55 +134,41 @@ public class ArrayBunch implements TripleBunch
 
     @Override
     public ExtendedIterator<Triple> iterator()
-        {
-        return iterator( HashCommon.NotifyEmpty.ignore );
-        }
-    
-    @Override
-    public ExtendedIterator<Triple> iterator( final HashCommon.NotifyEmpty container )
-        {
-        return new NiceIterator<Triple>()
+        {        return new NiceIterator<Triple>()
             {
-            protected final int initialChanges = changes;
-            
-            protected int i = size;
+                protected final int initialSize = size;
 
-            @Override public boolean hasNext()
-                { 
-                return 0 < i;
-                }
-        
-            @Override public Triple next()
+                protected int i = size;
+
+                @Override public boolean hasNext()
                 {
-                if (changes != initialChanges) throw new ConcurrentModificationException();
-                if (i == 0) noElements( "no elements left in ArrayBunch iteration" );
-                return elements[--i];
+                    return 0 < i;
                 }
 
-            @Override
+                @Override public Triple next()
+                {
+                    if (size != initialSize) throw new ConcurrentModificationException();
+                    if (i == 0) noElements( "no elements left in ArrayBunch iteration" );
+                    return elements[--i];
+                }
+
+                @Override
                 public void forEachRemaining(Consumer<? super Triple> action)
                 {
-                while(0 < i--) action.accept(elements[i]);
-                if (changes != initialChanges) throw new ConcurrentModificationException();
-                }
-
-            @Override public void remove()
-                {
-                if (changes != initialChanges) throw new ConcurrentModificationException();
-                int last = --size;
-                elements[i] = elements[last];
-                elements[last] = null;
-                if (size == 0) container.emptied();
+                    while(0 < i--) action.accept(elements[i]);
+                    if (size != initialSize) throw new ConcurrentModificationException();
                 }
             };
+
         }
+
 
         @Override
         public Spliterator<Triple> spliterator() {
 
             return new Spliterator<Triple>() {
 
-                protected final int initialChanges = changes;
+                protected final int initialSize = size;
 
                 int i = size;
 
@@ -197,7 +178,7 @@ public class ArrayBunch implements TripleBunch
                     if(0 < i)
                         {
                         action.accept(elements[--i]);
-                        if (changes != initialChanges) throw new ConcurrentModificationException();
+                        if (size != initialSize) throw new ConcurrentModificationException();
                         return true;
                         }
                     return false;
@@ -206,7 +187,7 @@ public class ArrayBunch implements TripleBunch
                 @Override
                 public void forEachRemaining(Consumer<? super Triple> action) {
                     while(0 < i--) action.accept(elements[i]);
-                    if (changes != initialChanges) throw new ConcurrentModificationException();
+                    if (size != initialSize) throw new ConcurrentModificationException();
                 }
 
                 @Override

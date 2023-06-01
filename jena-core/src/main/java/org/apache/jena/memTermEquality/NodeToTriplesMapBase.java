@@ -81,7 +81,7 @@ public abstract class NodeToTriplesMapBase
     */
     public abstract void removeUnchecked( Triple t, int hashCode );
 
-    public abstract ExtendedIterator<Triple> iterator( Node node, HashCommon.NotifyEmpty container );
+    public abstract ExtendedIterator<Triple> iterator( Node node );
 
     public abstract boolean containsBySameValueAs( Triple t );
 
@@ -104,19 +104,11 @@ public abstract class NodeToTriplesMapBase
     public int size()
         { return size; }
 
-    public void removedOneViaIterator()
-        { size -= 1; }
-
     public boolean isEmpty()
         { return size == 0; }
 
     public abstract ExtendedIterator<Triple> iterator( Node index, Node n2, Node n3 );
-    
-    /**
-        Answer an iterator over all the triples that are indexed by the item <code>y</code>.
-    */
-    public abstract ExtendedIterator<Triple> iteratorForIndexed( Node y );
-    
+
     /**
         Answer an iterator over all the triples in this NTM.
     */
@@ -126,7 +118,6 @@ public abstract class NodeToTriplesMapBase
             {
             private final Iterator<TripleBunch> bunchIterator = bunchMap.iterator();
             private Iterator<Triple> current = NullIterator.instance();
-            private NotifyMe emptier = new NotifyMe();
             
             @Override public Triple next()
                 {
@@ -134,12 +125,6 @@ public abstract class NodeToTriplesMapBase
                 return current.next();
                 }
 
-            class NotifyMe implements HashCommon.NotifyEmpty
-                {
-                @Override
-                public void emptied()
-                    { bunchIterator.remove(); }
-                }
             
             @Override public boolean hasNext()
                 {
@@ -147,27 +132,19 @@ public abstract class NodeToTriplesMapBase
                     {
                     if (current.hasNext()) return true;
                     if (!bunchIterator.hasNext()) return false;
-                    current = bunchIterator.next().iterator( emptier );
+                    current = bunchIterator.next().iterator();
                     }
                 }
 
-                @Override public void forEachRemaining(Consumer<? super Triple> action)
+            @Override public void forEachRemaining(Consumer<? super Triple> action)
                 {
-                    if (current != null)
+                if (current != null)
                     {
                         current.forEachRemaining(action);
                         current = null;
                     }
-                    bunchIterator.forEachRemaining(next ->
-                    {
-                        next.iterator().forEachRemaining(action);
-                    });
-                }
-
-                @Override public void remove()
-                {
-                    if (current == null) throw new IllegalStateException();
-                    current.remove();
+                bunchIterator.forEachRemaining(next ->
+                      next.iterator().forEachRemaining(action) );
                 }
             };
         }

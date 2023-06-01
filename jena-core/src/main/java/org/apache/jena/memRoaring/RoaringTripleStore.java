@@ -80,11 +80,19 @@ public class RoaringTripleStore implements TripleStore {
 
     @Override
     public void remove(final Triple triple) {
-        var subjectBitmap = this.subjectBitmaps.getOrDefault(triple.getSubject(), new RoaringBitmap());
-        var predicateBitmap = this.predicateBitmaps.getOrDefault(triple.getPredicate(), new RoaringBitmap());
-        var objectBitmap = this.objectBitmaps.getOrDefault(triple.getObject(), new RoaringBitmap());
+        final var subjectBitmap = this.subjectBitmaps.get(triple.getSubject());
+        if(null == subjectBitmap)
+            return;
 
-        var bitmap = subjectBitmap.clone();
+        final var predicateBitmap = this.predicateBitmaps.get(triple.getPredicate());
+        if(null == predicateBitmap)
+            return;
+
+        final var objectBitmap = this.objectBitmaps.get(triple.getObject());
+        if(null == objectBitmap)
+            return;
+
+        final var bitmap = subjectBitmap.clone();
         bitmap.and(predicateBitmap);
         bitmap.and(objectBitmap);
 
