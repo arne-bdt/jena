@@ -31,11 +31,17 @@ import java.util.stream.Stream;
 @Deprecated
 public class GraphMem extends GraphMemBase
 {
-    public GraphMem()
-    { super(  ); }
+    /**
+     This Graph's TripleStore. Visible for <i>read-only</i> purposes only.
+     */
+    public final TripleStore store;
 
-    @Override protected TripleStore createTripleStore()
-    { return new GraphTripleStoreMem( this ); }
+
+    public GraphMem()
+    {
+    super(  );
+    store = new GraphTripleStoreMem( this );
+    }
 
     @Override protected void destroy()
     { store.close(); }

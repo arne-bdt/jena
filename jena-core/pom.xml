@@ -63,6 +63,11 @@
        <groupId>commons-cli</groupId>
      </dependency>
 
+    <dependency>
+      <groupId>org.roaringbitmap</groupId>
+      <artifactId>RoaringBitmap</artifactId>
+    </dependency>
+
      <dependency>
        <groupId>junit</groupId>
        <artifactId>junit</artifactId>

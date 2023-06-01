@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.memX;
+package org.apache.jena.memTermEquality;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;

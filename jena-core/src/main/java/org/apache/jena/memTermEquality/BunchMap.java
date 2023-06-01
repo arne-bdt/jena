@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.memX;
+package org.apache.jena.memTermEquality;
 
 import org.apache.jena.util.iterator.ExtendedIterator;
 

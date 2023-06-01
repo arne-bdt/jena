@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.memX;
+package org.apache.jena.memTermEquality;
 
 import org.apache.jena.graph.Factory;
 import org.apache.jena.graph.GraphEvents;
@@ -32,9 +32,9 @@ import java.util.stream.Stream;
  *   to specific this style of implementation.
 */
 @Deprecated
-public class GraphMemX extends GraphMemBase
+public class GraphMemTermEquality extends GraphMemBase
 {
-    public GraphMemX()
+    public GraphMemTermEquality()
     { super(  ); }
 
     @Override protected TripleStore createTripleStore()

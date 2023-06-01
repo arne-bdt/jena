@@ -104,6 +104,7 @@
     <ver.commons-collections>4.4</ver.commons-collections>
     <ver.dexxcollection>0.7</ver.dexxcollection>
     <ver.micrometer>1.10.6</ver.micrometer>
+    <ver.roaringbitmap>0.9.44</ver.roaringbitmap>
 
     <!-- For testing, not shipped -->
     <ver.graalvm>22.3.2</ver.graalvm>
@@ -684,6 +685,12 @@
          <groupId>org.apache.commons</groupId>
          <artifactId>commons-rdf-api</artifactId>
          <version>${ver.commonsrdf}</version>
+       </dependency>
+
+       <dependency>
+         <groupId>org.roaringbitmap</groupId>
+         <artifactId>RoaringBitmap</artifactId>
+         <version>${ver.roaringbitmap}</version>
        </dependency>
 
        <dependency>

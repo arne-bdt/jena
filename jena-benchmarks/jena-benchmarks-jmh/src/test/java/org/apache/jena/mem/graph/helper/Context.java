@@ -36,7 +36,8 @@ public class Context {
         GraphMem,
 //        GraphMemA,
         GraphMemB,
-        GraphMemX,
+        GraphMemRoaring,
+        GraphMemTermEquality,
 //        GraphMemY,
 //        GraphMemZ
     }
@@ -55,8 +56,12 @@ public class Context {
                 this.graphClass = GraphClass.GraphMemB;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
-            case "GraphMemX (current)":
-                this.graphClass = GraphClass.GraphMemX;
+            case "GraphMemRoaring (current)":
+                this.graphClass = GraphClass.GraphMemRoaring;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemTermEquality (current)":
+                this.graphClass = GraphClass.GraphMemTermEquality;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
             case "GraphMem (Jena 4.8.0)":
