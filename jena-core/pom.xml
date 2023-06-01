@@ -63,12 +63,17 @@
        <groupId>commons-cli</groupId>
      </dependency>
 
+    <dependency>
+      <groupId>org.roaringbitmap</groupId>
+      <artifactId>RoaringBitmap</artifactId>
+    </dependency>
+
      <dependency>
        <groupId>junit</groupId>
        <artifactId>junit</artifactId>
        <scope>test</scope>
     </dependency>
-    
+
     <dependency>
       <groupId>org.xenei</groupId>
       <artifactId>junit-contracts</artifactId>

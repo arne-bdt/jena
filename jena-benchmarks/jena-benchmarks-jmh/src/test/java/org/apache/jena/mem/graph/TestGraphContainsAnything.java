@@ -51,8 +51,9 @@ public class TestGraphContainsAnything {
 
     @Param({
             "GraphMem (current)",
-            "GraphMem2 (current)",
-            "GraphMem2SG (current)",
+//            "GraphMem2 (current)",
+//            "GraphMem2SG (current)",
+            "GraphMemWithRoaringTripleStore (current)",
 //            "DatasetGraphInMemoryDefaultGraph (current)",
 //            "GraphMemWithAdaptiveTripleStore (current)",
 //            "GraphMemWithAdaptiveTripleStore2 (current)"

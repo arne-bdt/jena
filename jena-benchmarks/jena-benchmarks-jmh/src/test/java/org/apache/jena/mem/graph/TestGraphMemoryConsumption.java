@@ -51,10 +51,11 @@ public class TestGraphMemoryConsumption {
 
     @Param({
             "GraphMem (current)",
-            "GraphMem2 (current)",
-            "GraphMem2SG (current)",
+//            "GraphMem2 (current)",
+//            "GraphMem2SG (current)",
 //            "DatasetGraphInMemoryDefaultGraph (current)",
 //            "GraphMemWithAdaptiveTripleStore (current)",
+              "GraphMemWithRoaringTripleStore (current)",
 //            "GraphMemWithAdaptiveTripleStore2 (current)"
 //            "GraphMem (Jena 4.8.0)",
     })

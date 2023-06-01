@@ -52,6 +52,9 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
             case GraphMemWithAdaptiveTripleStore2:
                 return new GraphMemWithAdaptiveTripleStore2();
 
+            case GraphMemWithRoaringTripleStore:
+                return new GraphMemWithRoaringTripleStore();
+
             case DatasetGraphInMemoryDefaultGraph:
                 return DatasetGraphFactory.createTxnMem().getDefaultGraph();
 
