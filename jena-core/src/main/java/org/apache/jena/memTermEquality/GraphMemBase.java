@@ -84,11 +84,4 @@ public abstract class GraphMemBase extends GraphBase
             super.close();
             }
         }
-    
-    /**
-        Answer true iff this triple can be compared for sameValueAs by .equals(),
-        ie, it is a concrete triple with a non-literal object.
-    */
-    protected final boolean isSafeForEquality( Triple t )
-        { return t.isConcrete() && !t.getObject().isLiteral(); }
     }

@@ -18,6 +18,7 @@
 
 package org.apache.jena.memTermEquality;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.shared.BrokenException;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
@@ -29,7 +30,7 @@ import java.util.function.Function;
 /**
     An implementation of BunchMap that does open-addressed hashing.
 */
-public class HashedBunchMap extends HashCommon<Object> implements BunchMap
+public class HashedBunchMap extends HashCommon<Node> implements BunchMap
     {
     protected TripleBunch[] values;
     
@@ -39,8 +40,8 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
         values = new TripleBunch[keys.length];
         }
 
-    @Override protected Object[] newKeyArray( int size )
-        { return new Object[size]; }
+    @Override protected Node[] newKeyArray( int size )
+        { return new Node[size]; }
     
     /**
         Clear this map: all entries are removed. The keys <i>and value</i> array 
@@ -50,7 +51,11 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
     public void clear()
         {
         size = 0;
-        for (int i = 0; i < keys.length; i += 1) keys[i] = values[i] = null;
+        for (int i = 0; i < keys.length; i += 1)
+            {
+            keys[i] = null;
+            values[i] = null;
+            }
         }  
     
     @Override
@@ -58,17 +63,17 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
         { return size; }
         
     @Override
-    public TripleBunch get(Object key )
+    public TripleBunch get(Node key )
         {
-        int slot = findSlot( key, key.hashCode() );
+        final int slot = findSlot( key, key.hashCode() );
         return slot < 0 ? values[~slot] : null;
         }
 
     @Override
-    public void put( Object key, TripleBunch value )
+    public void put( Node key, TripleBunch value )
         {
         final int hashCodeOfKey = key.hashCode();
-        int slot = findSlot( key, hashCodeOfKey );
+        final int slot = findSlot( key, hashCodeOfKey );
         if (slot < 0)
             {
             values[~slot] = value;
@@ -78,9 +83,9 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
         }
 
     @Override
-    public TripleBunch getOrSet(Object key, Function<Object, TripleBunch> setter) {
+    public TripleBunch getOrSet(Node key, Function<Node, TripleBunch> setter) {
         final int hashCodeOfKey = key.hashCode();
-        int slot = findSlot( key, hashCodeOfKey );
+        final int slot = findSlot( key, hashCodeOfKey );
         if (slot < 0)
             // Get.
             return values[~slot] ;
@@ -90,7 +95,7 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
         return value ;
         }
     
-    private void put$(int slot, Object key, int hashCodeOfKey, TripleBunch value) {
+    private void put$(int slot, Node key, int hashCodeOfKey, TripleBunch value) {
         keys[slot] = key;
         hashes[slot] = hashCodeOfKey;
         values[slot] = value;
@@ -101,9 +106,9 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
     
     protected void grow()
         {
-        Object [] oldContents = keys;
-        int[] oldHashes = hashes;
-        TripleBunch[] oldValues = values;
+        final Node [] oldContents = keys;
+        final int[] oldHashes = hashes;
+        final TripleBunch[] oldValues = values;
         keys = newKeyArray( calcGrownCapacityAndSetThreshold() );
         hashes = new int[keys.length];
         values = new TripleBunch[keys.length];
@@ -123,7 +128,7 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
             }
         }
 
-    @Override public void remove(Object key)
+    @Override public void remove(Node key)
         { super.removeKey( key, key.hashCode() ); }
 
         /**
@@ -142,9 +147,9 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
 
     @Override public Iterator<TripleBunch> iterator()
         {
-        final List<Object> movedKeys = new ArrayList<>();
-        ExtendedIterator<TripleBunch> basic = new BasicValueIterator( changes, movedKeys );
-        ExtendedIterator<TripleBunch> leftovers = new MovedValuesIterator( changes, movedKeys );
+        final List<Node> movedKeys = new ArrayList<>();
+        final ExtendedIterator<TripleBunch> basic = new BasicValueIterator( changes, movedKeys );
+        final ExtendedIterator<TripleBunch> leftovers = new MovedValuesIterator( changes, movedKeys );
         return basic.andThen( leftovers );
         }
 
@@ -158,12 +163,12 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
          */
         protected final class MovedValuesIterator extends NiceIterator<TripleBunch>
         {
-            private final List<Object> movedKeys;
+            private final List<Node> movedKeys;
 
             protected int index = 0;
             final int initialChanges;
 
-            protected MovedValuesIterator(int initialChanges, List<Object> movedKeys)
+            protected MovedValuesIterator(int initialChanges, List<Node> movedKeys)
             {
                 this.movedKeys = movedKeys;
                 this.initialChanges = initialChanges;
@@ -190,7 +195,7 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
             @Override public void remove()
             {
                 if (changes > initialChanges) throw new ConcurrentModificationException();
-                final Object key = movedKeys.get( index-1 );
+                final Node key = movedKeys.get( index-1 );
                 removeKey( key, key.hashCode() );
             }
         }
@@ -203,12 +208,12 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
          */
         protected final class BasicValueIterator extends NiceIterator<TripleBunch>
         {
-            protected final List<Object> movedKeys;
+            protected final List<Node> movedKeys;
 
             int pos = values.length-1;
             final int initialChanges;
 
-            protected BasicValueIterator(int initialChanges, List<Object> movedKeys)
+            protected BasicValueIterator(int initialChanges, List<Node> movedKeys)
             {
                 this.movedKeys = movedKeys;
                 this.initialChanges = initialChanges;
@@ -247,7 +252,7 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
                 if (changes > initialChanges) throw new ConcurrentModificationException();
                 // System.err.println( ">> keyIterator::remove, size := " + size +
                 // ", removing " + keys[index + 1] );
-                Object moved = removeFrom( pos + 1 );
+                final Node moved = removeFrom( pos + 1 );
                 if (moved != null) movedKeys.add( moved );
                 if (size < 0) throw new BrokenException( "BROKEN" );
             }

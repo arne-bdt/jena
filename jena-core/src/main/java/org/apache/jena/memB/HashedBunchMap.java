@@ -80,7 +80,7 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
     @Override
     public TripleBunch getOrSet(Object key, Function<Object, TripleBunch> setter) {
         final int hashCodeOfKey = key.hashCode();
-        int slot = findSlot( key, hashCodeOfKey );
+        final int slot = findSlot( key, hashCodeOfKey );
         if (slot < 0)
             // Get.
             return values[~slot] ;
@@ -101,9 +101,9 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
     
     protected void grow()
         {
-        Object [] oldContents = keys;
-        int[] oldHashes = hashes;
-        TripleBunch[] oldValues = values;
+        final Object [] oldContents = keys;
+        final int[] oldHashes = hashes;
+        final TripleBunch[] oldValues = values;
         keys = newKeyArray( calcGrownCapacityAndSetThreshold() );
         hashes = new int[keys.length];
         values = new TripleBunch[keys.length];

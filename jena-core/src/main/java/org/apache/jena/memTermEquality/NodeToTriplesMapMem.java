@@ -39,15 +39,15 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     */
     @Override public boolean add( Triple t, int hashCode )
        {
-       Object o = getIndexField( t );
+       final Node node = getIndexNode( t );
 
        // Feb 2016 : no measurable difference.
        //TripleBunch s = bunchMap.getOrSet(o, (k)->new ArrayBunch()) ;
 
-       TripleBunch s = bunchMap.get( o );
+       TripleBunch s = bunchMap.get( node );
        if (s == null)
            {
-           bunchMap.put(o, s = new ArrayBunch());
+           bunchMap.put(node, s = new ArrayBunch());
            s.addUnchecked( t );
            size++;
            return true;
@@ -64,7 +64,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
            }
         else if (s.size() == 9)
            {
-               bunchMap.put( o, s = new HashedTripleBunch( s ) );
+               bunchMap.put( node, s = new HashedTripleBunch( s ) );
                if(s.add( t, hashCode ))
                    {
                    size++;
@@ -91,15 +91,15 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     */
     @Override public void addUnchecked( Triple t, int hashCode )
         {
-            Object o = getIndexField( t );
+            final Node node = getIndexNode( t );
 
             // Feb 2016 : no measurable difference.
             //TripleBunch s = bunchMap.getOrSet(o, (k)->new ArrayBunch()) ;
 
-            TripleBunch s = bunchMap.get( o );
+            TripleBunch s = bunchMap.get( node );
             if (s == null)
                 {
-                bunchMap.put( o, s = new ArrayBunch() );
+                bunchMap.put( node, s = new ArrayBunch() );
                 s.addUnchecked( t );
                 }
             else if (s.isHashed())
@@ -108,7 +108,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
                 }
             else if (s.size() == 9)
                 {
-                bunchMap.put( o, s = new HashedTripleBunch( s ) );
+                bunchMap.put( node, s = new HashedTripleBunch( s ) );
                 s.addUnchecked( t, hashCode );
                 }
             else
@@ -124,8 +124,8 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     */
     @Override public boolean remove( Triple t, int hashCode )
        {
-       Object o = getIndexField( t );
-       TripleBunch s = bunchMap.get( o );
+       final Node node = getIndexNode( t );
+       final TripleBunch s = bunchMap.get( node );
 
        final boolean removed;
        if (s == null)
@@ -138,7 +138,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
        if (removed)
            {
            size--;
-           if (s.size() == 0) bunchMap.remove( o );
+           if (s.size() == 0) bunchMap.remove( node );
            }
        return removed;
        }
@@ -150,8 +150,8 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
      */
     @Override public void removeUnchecked( Triple t, int hashCode )
         {
-            Object o = getIndexField( t );
-            TripleBunch s = bunchMap.get( o );
+            final Node node = getIndexNode( t );
+            final TripleBunch s = bunchMap.get( node );
 
             if (s == null)
                 return;
@@ -162,31 +162,24 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
                 s.removeUnchecked( t );
 
             size--;
-            if (s.size() == 0) bunchMap.remove( o );
+            if (s.size() == 0) bunchMap.remove( node );
         }
 
     /**
         Answer an iterator over all the triples in this NTM which have index node
         <code>o</code>.
     */
-    @Override public ExtendedIterator<Triple> iterator( Object o, HashCommon.NotifyEmpty container )
+    @Override public ExtendedIterator<Triple> iterator( Node node, HashCommon.NotifyEmpty container )
        {
-       TripleBunch s = bunchMap.get( o );
+       TripleBunch s = bunchMap.get( node );
        return s == null ? NullIterator.<Triple>instance() : s.iterator( container );
        }
 
-    public ExtendedIterator<Triple> iterateAll(Triple pattern)
-        {
-        Predicate<Triple> filter = indexField.filterOn(pattern)
-                .and(f2.filterOn(pattern)).and(f3.filterOn(pattern));
-        return iterateAll().filterKeep(filter);
-        }
-    
     public class NotifyMe implements HashCommon.NotifyEmpty
         {
-        protected final Object key;
+        protected final Node key;
         
-        public NotifyMe( Object key )
+        public NotifyMe( Node key )
             { this.key = key; }
         
         // TODO fix the way this interacts (badly) with iteration and CMEs.
@@ -197,14 +190,14 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
 
     @Override public boolean containsBySameValueAs( Triple t )
        { 
-       TripleBunch s = bunchMap.get( getIndexField( t ) );
+       final TripleBunch s = bunchMap.get( getIndexNode( t ) );
 
        if(s == null) return false;
 
        return s.containsBySameValueAs( t,
                triple ->
                        t.getPredicate().equals(triple.getPredicate())
-                    && t.getObject().sameValueAs(triple.getObject()));
+                    && t.getObject().equals(triple.getObject()));
        }
     
     /**
@@ -214,23 +207,24 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     */
     @Override public ExtendedIterator<Triple> iterator( Node index, Node n2, Node n3 )
        {
-       Object indexValue = index.getIndexingValue();
-       TripleBunch s = bunchMap.get( indexValue );
+       final TripleBunch s = bunchMap.get( index );
 //       System.err.println( ">> ntmf::iterator: " + (s == null ? (Object) "None" : s.getClass()) );
+
        if (s == null) return NullIterator.<Triple>instance();
-           var filter = FieldFilter.filterOn(f2, n2, f3, n3);
-           return filter.hasFilter()
-               ? s.iterator( new NotifyMe( indexValue ) ).filterKeep( filter.getFilter() )
-               : s.iterator( new NotifyMe( indexValue ) );
+
+       final var filter = FieldFilter.filterOn(f2, n2, f3, n3);
+       return filter.hasFilter()
+           ? s.iterator( new NotifyMe( index ) ).filterKeep( filter.getFilter() )
+           : s.iterator( new NotifyMe( index ) );
        }
 
-        protected TripleBunch get( Object index )
+        protected TripleBunch get( Node index )
         { return bunchMap.get( index ); }
     
     /**
      Answer an iterator over all the triples that are indexed by the item <code>y</code>.
         Note that <code>y</code> need not be a Node (because of indexing values).
     */
-    @Override public ExtendedIterator<Triple> iteratorForIndexed( Object y )
+    @Override public ExtendedIterator<Triple> iteratorForIndexed( Node y )
         { return get( y ).iterator();  }
     }

@@ -43,11 +43,11 @@ public class RoaringTripleStore implements TripleStore {
 
     @Override
     public void add(final Triple triple) {
-        var subjectBitmap = this.subjectBitmaps.getOrDefault(triple.getSubject(), new RoaringBitmap());
-        var predicateBitmap = this.predicateBitmaps.getOrDefault(triple.getPredicate(), new RoaringBitmap());
-        var objectBitmap = this.objectBitmaps.getOrDefault(triple.getObject(), new RoaringBitmap());
+        final var subjectBitmap = this.subjectBitmaps.computeIfAbsent(triple.getSubject(), n -> new RoaringBitmap());
+        final var predicateBitmap = this.predicateBitmaps.computeIfAbsent(triple.getPredicate(), n -> new RoaringBitmap());
+        final var objectBitmap = this.objectBitmaps.computeIfAbsent(triple.getObject(), n -> new RoaringBitmap());
 
-        var bitmap = subjectBitmap.clone();
+        final var bitmap = subjectBitmap.clone();
         bitmap.and(predicateBitmap);
         bitmap.and(objectBitmap);
 
@@ -66,10 +66,16 @@ public class RoaringTripleStore implements TripleStore {
         subjectBitmap.add(index);
         predicateBitmap.add(index);
         objectBitmap.add(index);
-
-        subjectBitmap.runOptimize();
-        predicateBitmap.runOptimize();
-        objectBitmap.runOptimize();
+//
+//        if(subjectBitmap.getCardinality() % 500 == 0) {
+//            subjectBitmap.runOptimize();
+//        }
+//        if(predicateBitmap.getCardinality() % 500 == 0) {
+//            predicateBitmap.runOptimize();
+//        }
+//        if(objectBitmap.getCardinality() % 500 == 0) {
+//            objectBitmap.runOptimize();
+//        }
     }
 
     @Override
@@ -93,20 +99,25 @@ public class RoaringTripleStore implements TripleStore {
 
         if(subjectBitmap.isEmpty()) {
             subjectBitmaps.remove(triple.getSubject());
-        } else {
-            subjectBitmap.runOptimize();
         }
+//        else if (subjectBitmap.getCardinality() % 500 == 0) {
+//            subjectBitmap.trim();
+//            subjectBitmap.runOptimize();
+//        }
         if(predicateBitmap.isEmpty()) {
             predicateBitmaps.remove(triple.getPredicate());
-        }else {
-            predicateBitmap.runOptimize();
         }
+//        else if (predicateBitmap.getCardinality() % 500 == 0) {
+//            predicateBitmap.trim();
+//            predicateBitmap.runOptimize();
+//        }
         if(objectBitmap.isEmpty()) {
             objectBitmaps.remove(triple.getObject());
-        }else {
-            objectBitmap.runOptimize();
         }
-
+//        else if (objectBitmap.getCardinality() % 500 == 0) {
+//            objectBitmap.trim();
+//            objectBitmap.runOptimize();
+//        }
         freeIndicesFromRemovedTriples.push(index);
     }
 
@@ -198,7 +209,7 @@ public class RoaringTripleStore implements TripleStore {
                     if(null == objectBitmap)
                         return false;
 
-                    bitmap.runOptimize();
+                    //bitmap.runOptimize();
                     bitmap.and(objectBitmap);
 
                     return !bitmap.isEmpty();
@@ -234,7 +245,7 @@ public class RoaringTripleStore implements TripleStore {
                     return EMPTY_BITMAP;
                 final var bitmap = subjectBitmap.clone();
                 bitmap.and(predicateBitmap);
-                bitmap.runOptimize();
+                //bitmap.runOptimize();
                 return bitmap;
             }
 
@@ -248,7 +259,7 @@ public class RoaringTripleStore implements TripleStore {
                     return EMPTY_BITMAP;
                 final var bitmap = predicateBitmap.clone();
                 bitmap.and(objectBitmap);
-                bitmap.runOptimize();
+                //bitmap.runOptimize();
                 return bitmap;
             }
 
@@ -262,7 +273,7 @@ public class RoaringTripleStore implements TripleStore {
                     return EMPTY_BITMAP;
                 final var bitmap = subjectBitmap.clone();
                 bitmap.and(objectBitmap);
-                bitmap.runOptimize();
+                //bitmap.runOptimize();
                 return bitmap;
             }
 
@@ -287,7 +298,7 @@ public class RoaringTripleStore implements TripleStore {
 
                 bitmap.and(objectBitmap);
 
-                bitmap.runOptimize();
+                //bitmap.runOptimize();
                 return bitmap;
             }
 

@@ -42,9 +42,9 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
         int index = initialIndexFor( hash );
         while (true)
             {
-            Object current = keys[index];
+            final Triple current = keys[index];
             if (current == null) return index;
-            if (hash == hashes[index] && predicate.test( (Triple) current )) return ~index;
+            if (hash == hashes[index] && predicate.test( current )) return ~index;
             if (--index < 0) index += keys.length;
             }
         }
@@ -74,7 +74,7 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     @Override
     public boolean add( Triple t, int hashCode )
         {
-        var slot = findSlot( t, hashCode );
+        final var slot = findSlot( t, hashCode );
         if (slot < 0) return false;
         keys[slot] = t;
         hashes[slot] = hashCode;
@@ -101,18 +101,18 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
 
     protected void grow()
         {
-        Object [] oldContents = keys;
-        int [] oldHashes = hashes;
-        Object [] newKeys = keys = new Triple[calcGrownCapacityAndSetThreshold()];
-        int [] newHashes = hashes = new int[keys.length];
+        final Triple [] oldContents = keys;
+        final int [] oldHashes = hashes;
+        keys = new Triple[calcGrownCapacityAndSetThreshold()];
+        hashes = new int[keys.length];
         for (int i = 0; i < oldContents.length; i += 1)
             {
-            Triple t = (Triple) oldContents[i];
+            Triple t = oldContents[i];
             if (t != null)
                 {
                 final int slot = findSlot( t, oldHashes[i] );
-                newKeys[slot] = t;
-                newHashes[slot] = oldHashes[i];
+                keys[slot] = t;
+                hashes[slot] = oldHashes[i];
                 }
             }
         }

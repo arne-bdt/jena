@@ -39,7 +39,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     */
     @Override public boolean add( Triple t, int hashCode )
        {
-       Object o = getIndexField( t );
+       final Object o = getIndexField( t );
 
        // Feb 2016 : no measurable difference.
        //TripleBunch s = bunchMap.getOrSet(o, (k)->new ArrayBunch()) ;
@@ -91,7 +91,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     */
     @Override public void addUnchecked( Triple t, int hashCode )
         {
-            Object o = getIndexField( t );
+            final Object o = getIndexField( t );
 
             // Feb 2016 : no measurable difference.
             //TripleBunch s = bunchMap.getOrSet(o, (k)->new ArrayBunch()) ;
@@ -124,7 +124,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     */
     @Override public boolean remove( Triple t, int hashCode )
        {
-       Object o = getIndexField( t );
+       final Object o = getIndexField( t );
        TripleBunch s = bunchMap.get( o );
 
        final boolean removed;
@@ -150,7 +150,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
      */
     @Override public void removeUnchecked( Triple t, int hashCode )
         {
-            Object o = getIndexField( t );
+            final Object o = getIndexField( t );
             TripleBunch s = bunchMap.get( o );
 
             if (s == null)
@@ -171,13 +171,13 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     */
     @Override public ExtendedIterator<Triple> iterator( Object o, HashCommon.NotifyEmpty container )
        {
-       TripleBunch s = bunchMap.get( o );
+       final TripleBunch s = bunchMap.get( o );
        return s == null ? NullIterator.<Triple>instance() : s.iterator( container );
        }
 
     public ExtendedIterator<Triple> iterateAll(Triple pattern)
         {
-        Predicate<Triple> filter = indexField.filterOn(pattern)
+        final Predicate<Triple> filter = indexField.filterOn(pattern)
                 .and(f2.filterOn(pattern)).and(f3.filterOn(pattern));
         return iterateAll().filterKeep(filter);
         }
@@ -196,8 +196,8 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
         }
 
     @Override public boolean containsBySameValueAs( Triple t )
-       { 
-       TripleBunch s = bunchMap.get( getIndexField( t ) );
+       {
+       final TripleBunch s = bunchMap.get( getIndexField( t ) );
 
        if(s == null) return false;
 
@@ -214,11 +214,11 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     */
     @Override public ExtendedIterator<Triple> iterator( Node index, Node n2, Node n3 )
        {
-       Object indexValue = index.getIndexingValue();
-       TripleBunch s = bunchMap.get( indexValue );
+       final Object indexValue = index.getIndexingValue();
+       final TripleBunch s = bunchMap.get( indexValue );
 //       System.err.println( ">> ntmf::iterator: " + (s == null ? (Object) "None" : s.getClass()) );
        if (s == null) return NullIterator.<Triple>instance();
-           var filter = FieldFilter.filterOn(f2, n2, f3, n3);
+           final var filter = FieldFilter.filterOn(f2, n2, f3, n3);
            return filter.hasFilter()
                ? s.iterator( new NotifyMe( indexValue ) ).filterKeep( filter.getFilter() )
                : s.iterator( new NotifyMe( indexValue ) );

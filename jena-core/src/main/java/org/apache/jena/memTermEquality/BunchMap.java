@@ -18,6 +18,7 @@
 
 package org.apache.jena.memTermEquality;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Iterator;
@@ -45,31 +46,31 @@ public interface BunchMap
         Answer the TripleBunch associated with <code>key</code>, or 
         <code>null</code> if there isn't one.
     */
-    public TripleBunch get(Object key );
+    public TripleBunch get(Node key );
 
     /**
         Associate <code>key</code> and <code>value</code>. Any existing
         association of <code>key</code> is lost. <code>get</code> on this key
         will now deliver this value.
     */
-    public void put( Object key, TripleBunch value );
+    public void put( Node key, TripleBunch value );
     
     /**
       Get the <code>key</code> and return the value found there; if nothing,
       calculate the <code>value</code> and insert. Return the value now the slot.  
      */
-    public TripleBunch getOrSet(Object key, Function<Object, TripleBunch> setter );
+    public TripleBunch getOrSet(Node key, Function<Node, TripleBunch> setter );
 
     /**
         Remove any association for <code>key</code>; <code>get</code> on this
         key will now deliver <code>null</code>.
     */
-    public void remove( Object key );
+    public void remove( Node key );
 
     /**
         Answer an iterator over all the keys in this map.
     */
-    public ExtendedIterator<Object> keyIterator();
+    public ExtendedIterator<Node> keyIterator();
 
     public Iterator<TripleBunch> iterator();
 

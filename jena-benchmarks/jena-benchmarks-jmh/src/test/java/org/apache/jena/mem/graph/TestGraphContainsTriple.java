@@ -51,7 +51,8 @@ public class TestGraphContainsTriple {
     @Param({
 //            "GraphMem (current)",
             "GraphMemB (current)",
-            "GraphMemX (current)",
+            "GraphMemRoaring (current)",
+            "GraphMemTermEquality (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;

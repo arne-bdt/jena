@@ -108,24 +108,15 @@ public abstract class GraphTripleStoreBase implements TripleStore
      
      @Override
     public ExtendedIterator<Node> listSubjects()
-         { return expectOnlyNodes( subjects.domain() ); }
+         { return WrappedIterator.createNoRemove( subjects.domain() ); }
      
      @Override
     public ExtendedIterator<Node> listPredicates()
-         { return expectOnlyNodes( predicates.domain() ); }
-    
-     private ExtendedIterator<Node> expectOnlyNodes( Iterator<Object> elements )
-        { return WrappedIterator.createNoRemove( elements ).mapWith( o -> (Node) o ); }
-     
+         { return WrappedIterator.createNoRemove( predicates.domain() ); }
+
      @Override
     public ExtendedIterator<Node> listObjects()
-         {
-         return new ObjectIterator( objects.domain() )
-             {
-             @Override protected Iterator <Triple>iteratorFor( Object y )
-                 { return objects.iteratorForIndexed( y ); }
-             };
-         }
+     { return WrappedIterator.createNoRemove( objects.domain() ); }
      
      /**
           Answer true iff this triple store contains the (concrete) triple <code>t</code>.
@@ -156,9 +147,7 @@ public abstract class GraphTripleStoreBase implements TripleStore
          
          <p>Because the node-to-triples maps index on each of subject, predicate,
          and (non-literal) object, concrete S/P/O patterns can immediately select
-         an appropriate map. Because the match for literals must be by sameValueAs,
-         not equality, the optimisation is not applied for literals. [This is probably a
-         Bad Thing for strings.]
+         an appropriate map.
          
          <p>Practice suggests doing the predicate test <i>last</i>, because there are
          "usually" many more statements than predicates, so the predicate doesn't
@@ -190,9 +179,7 @@ public abstract class GraphTripleStoreBase implements TripleStore
 
          <p>Because the node-to-triples maps index on each of subject, predicate,
          and (non-literal) object, concrete S/P/O patterns can immediately select
-         an appropriate map. Because the match for literals must be by sameValueAs,
-         not equality, the optimisation is not applied for literals. [This is probably a
-         Bad Thing for strings.]
+         an appropriate map.
 
          <p>Practice suggests doing the predicate test <i>last</i>, because there are
          "usually" many more statements than predicates, so the predicate doesn't

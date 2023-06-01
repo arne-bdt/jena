@@ -56,11 +56,9 @@ public class TestGraphBulkUpdates {
 
     @Param({
 //            "GraphMem (current)",
-//            "GraphMemA (current)",
             "GraphMemB (current)",
-//            "GraphMemX (current)",
-//            "GraphMemY (current)",
-//            "GraphMemZ (current)",
+            "GraphMemRoaring (current)",
+            "GraphMemTermEquality (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
@@ -72,33 +70,33 @@ public class TestGraphBulkUpdates {
     private List<Triple> triples;
 
 
-//    @Test
-//    public void testBulkLoad() {
-//        var trialContext = new Context("GraphMem (current)");
-//        this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
-//
-//        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
-//                .read("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
-//
-//        triples.forEach(this.sutCurrent::add);
-//
-//        var doubleTriples = new ArrayList<Triple>();
-//        for(var t: triples) {
-//            if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
-//                doubleTriples.add(t);
-//            }
-//        }
-//        System.out.println("Found " + doubleTriples.size() + " triples with double literals");
-//
-//        for(int i=0; i<2; i++) {
-//            for (var t : doubleTriples) {
-//                var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
-//                var oldValue = (float) oldTriple.getObject().getIndexingValue();
-//                this.sutCurrent.delete(oldTriple);
-//                this.sutCurrent.add(Triple.create(t.getSubject(), t.getPredicate(), NodeFactory.createLiteralByValue((oldValue + 1.0f), oldTriple.getObject().getLiteralDatatype())));
-//            }
-//        }
-//    }
+    @Test
+    public void testBulkLoad() {
+        var trialContext = new Context("GraphMemRoaring (current)");
+        this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
+
+        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
+                .read("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
+
+        triples.forEach(this.sutCurrent::add);
+
+        var doubleTriples = new ArrayList<Triple>();
+        for(var t: triples) {
+            if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
+                doubleTriples.add(t);
+            }
+        }
+        System.out.println("Found " + doubleTriples.size() + " triples with double literals");
+
+        for(int i=0; i<2; i++) {
+            for (var t : doubleTriples) {
+                var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
+                var oldValue = (float) oldTriple.getObject().getIndexingValue();
+                this.sutCurrent.delete(oldTriple);
+                this.sutCurrent.add(Triple.create(t.getSubject(), t.getPredicate(), NodeFactory.createLiteralByValue((oldValue + 1.0f), oldTriple.getObject().getLiteralDatatype())));
+            }
+        }
+    }
 
 
     @Benchmark

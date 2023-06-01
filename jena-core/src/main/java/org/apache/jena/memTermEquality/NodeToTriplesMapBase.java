@@ -81,7 +81,7 @@ public abstract class NodeToTriplesMapBase
     */
     public abstract void removeUnchecked( Triple t, int hashCode );
 
-    public abstract ExtendedIterator<Triple> iterator( Object o, HashCommon.NotifyEmpty container );
+    public abstract ExtendedIterator<Triple> iterator( Node node, HashCommon.NotifyEmpty container );
 
     public abstract boolean containsBySameValueAs( Triple t );
 
@@ -89,11 +89,11 @@ public abstract class NodeToTriplesMapBase
         The values (usually nodes) which appear in the index position of the stored triples; useful
         for eg listSubjects().
     */
-    public final Iterator<Object> domain()
+    public final Iterator<Node> domain()
         { return bunchMap.keyIterator(); }
 
-    protected final Object getIndexField( Triple t )
-        { return indexField.getField( t ).getIndexingValue(); }
+    protected final Node getIndexNode(Triple t )
+        { return indexField.getField( t ); }
 
     /**
         Clear this NTM; it will contain no triples.
@@ -114,9 +114,8 @@ public abstract class NodeToTriplesMapBase
     
     /**
         Answer an iterator over all the triples that are indexed by the item <code>y</code>.
-        Note that <code>y</code> need not be a Node (because of indexing values).
     */
-    public abstract ExtendedIterator<Triple> iteratorForIndexed( Object y );
+    public abstract ExtendedIterator<Triple> iteratorForIndexed( Node y );
     
     /**
         Answer an iterator over all the triples in this NTM.
@@ -182,10 +181,9 @@ public abstract class NodeToTriplesMapBase
 
         public Stream<Triple> stream( Node index, Node n2, Node n3 )
             {
-            Object indexValue = index.getIndexingValue();
-            TripleBunch s = bunchMap.get( indexValue );
+            final TripleBunch s = bunchMap.get( index );
             if (s == null) return Stream.empty();
-            var filter = FieldFilter.filterOn(f2, n2, f3, n3);
+            final var filter = FieldFilter.filterOn(f2, n2, f3, n3);
             return filter.hasFilter()
                     ? StreamSupport.stream(s.spliterator(), false).filter(filter.getFilter())
                     : StreamSupport.stream(s.spliterator(), false);
@@ -193,15 +191,15 @@ public abstract class NodeToTriplesMapBase
 
         public boolean containsMatch( Node index, Node n2, Node n3 )
             {
-            TripleBunch s = bunchMap.get( index.getIndexingValue() );
+            final TripleBunch s = bunchMap.get( index );
             if (s == null)
                 return false;
             var filter = FieldFilter.filterOn(f2, n2, f3, n3);
             if (!filter.hasFilter())
                 return true;
-            var spliterator = s.spliterator();
+            final var spliterator = s.spliterator();
             final boolean[] found = {false};
-            Consumer<Triple> tester = triple -> found[0] = filter.getFilter().test(triple);
+            final Consumer<Triple> tester = triple -> found[0] = filter.getFilter().test(triple);
             while (!found[0] && spliterator.tryAdvance(tester));
             return found[0];
             }

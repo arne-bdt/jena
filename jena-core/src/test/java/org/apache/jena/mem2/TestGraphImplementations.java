@@ -23,7 +23,9 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.memB.GraphMemB;
+import org.apache.jena.mem.GraphMem;
+import org.apache.jena.memRoaring.GraphMemRoaring;
+import org.apache.jena.memTermEquality.GraphMemTermEquality;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.testing_framework.NodeCreateUtils;
 import org.junit.Assert;
@@ -34,7 +36,7 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 public class TestGraphImplementations {
 
     private static Graph createGraph() {
-        return new GraphMemB();
+        return new GraphMemTermEquality();
     }
 
     @Test
@@ -113,7 +115,7 @@ public class TestGraphImplementations {
                 NodeFactory.createURI("x"),
                 NodeFactory.createURI("R"),
                 NodeFactory.createLiteral("0.1", XSDDouble.XSDdouble))));
-        Assert.assertTrue(sut.contains(Triple.create(
+        Assert.assertFalse(sut.contains(Triple.create(
                 NodeFactory.createURI("x"),
                 NodeFactory.createURI("R"),
                 NodeFactory.createLiteral("0.10", XSDDouble.XSDdouble))));
@@ -143,8 +145,8 @@ public class TestGraphImplementations {
                 NodeFactory.createLiteral("0.10", XSDDouble.XSDdouble),
                 NodeFactory.createURI("x"),
                 NodeFactory.createURI("R"));
-        Assert.assertTrue(sut.contains(match));
-        Assert.assertEquals(containedTriple, sut.find(match).next());
+        Assert.assertFalse(sut.contains(match));
+        Assert.assertFalse(sut.find(match).hasNext());
 
         match = Triple.create(
                 NodeFactory.createLiteral("0.11", XSDDouble.XSDdouble),
@@ -165,7 +167,7 @@ public class TestGraphImplementations {
                 NodeFactory.createURI("x"),
                 NodeFactory.createLiteral("0.1", XSDDouble.XSDdouble),
                 NodeFactory.createURI("R"))));
-        Assert.assertTrue(sut.contains(Triple.create(
+        Assert.assertFalse(sut.contains(Triple.create(
                 NodeFactory.createURI("x"),
                 NodeFactory.createLiteral("0.10", XSDDouble.XSDdouble),
                 NodeFactory.createURI("R"))));

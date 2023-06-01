@@ -130,7 +130,7 @@ public abstract class HashCommon<Key>
         Answer the item at index <code>i</code> of <code>keys</code>. This
         method is for testing purposes <i>only</i>.
     */
-    public Object getItemForTestingAt( int i )
+    public Key getItemForTestingAt( int i )
         { return keys[i]; }
     
     /**

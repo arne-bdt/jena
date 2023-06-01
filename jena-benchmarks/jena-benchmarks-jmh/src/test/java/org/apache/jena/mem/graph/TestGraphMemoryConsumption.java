@@ -49,13 +49,10 @@ public class TestGraphMemoryConsumption {
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
-//            "GraphMemA (current)",
-            "GraphMemB (current)",
+//            "GraphMem (current)",
+//            "GraphMemB (current)",
             "GraphMemRoaring (current)",
-//            "GraphMemX (current)",
-//            "GraphMemY (current)",
-//            "GraphMemZ (current)",
+            "GraphMemTermEquality (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
