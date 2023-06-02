@@ -16,12 +16,20 @@
  * limitations under the License.
  */
 
-package org.apache.jena.memRoaring;
+package org.apache.jena.mem2.store.roaring;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.util.iterator.*;
-import org.roaringbitmap.*;
+import org.apache.jena.mem2.pattern.MatchPattern;
+import org.apache.jena.mem2.pattern.PatternClassifier;
+import org.apache.jena.mem2.store.TripleStore;
+import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.FilterIterator;
+import org.apache.jena.util.iterator.NiceIterator;
+import org.roaringbitmap.BatchIterator;
+import org.roaringbitmap.FastAggregation;
+import org.roaringbitmap.ImmutableBitmapDataProvider;
+import org.roaringbitmap.RoaringBitmap;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -34,7 +42,7 @@ public class RoaringTripleStore implements TripleStore {
     Map<Node, RoaringBitmap> objectBitmaps = new HashMap<>();
     List<Triple> tripleList = new ArrayList<>(); // We use a list here to maintain the order of triples
 
-    java.util.ArrayDeque<Integer> freeIndicesFromRemovedTriples = new java.util.ArrayDeque<>();
+    ArrayDeque<Integer> freeIndicesFromRemovedTriples = new ArrayDeque<>();
 
     public RoaringTripleStore() {
         this.clear();
@@ -250,7 +258,7 @@ public class RoaringTripleStore implements TripleStore {
     @Override
     public Stream<Triple> stream(Triple tripleMatch) {
         var pattern = PatternClassifier.classify(tripleMatch);
-        if(pattern ==MatchPattern.___)
+        if(pattern == MatchPattern.___)
             return this.stream();
 
         var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
@@ -260,7 +268,7 @@ public class RoaringTripleStore implements TripleStore {
     @Override
     public ExtendedIterator<Triple> find(Triple tripleMatch) {
         var pattern = PatternClassifier.classify(tripleMatch);
-        if(pattern ==MatchPattern.___)
+        if(pattern == MatchPattern.___)
             return new FilterIterator<>(Objects::nonNull, this.tripleList.iterator());
 
         var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
