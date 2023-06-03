@@ -251,6 +251,6 @@ public class HashedBunchMap extends HashCommon<Object> implements BunchMap
             if (changes != initialChanges) throw new ConcurrentModificationException();
         };
 
-        return new SparseArraySpliterator<>(values, size, checkForConcurrentModification);
+        return new SparseArraySpliterator<>(values, checkForConcurrentModification);
         }
     }

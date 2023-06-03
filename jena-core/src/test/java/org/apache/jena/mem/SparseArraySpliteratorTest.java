@@ -30,7 +30,7 @@ public class SparseArraySpliteratorTest {
     public void tryAdvanceEmpty() {
         {
             Integer[] array = new Integer[0];
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 0, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             assertFalse(spliterator.tryAdvance((i) -> {
                 fail("Should not have advanced");
@@ -38,7 +38,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[1];
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 0, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             assertFalse(spliterator.tryAdvance((i) -> {
                 fail("Should not have advanced");
@@ -50,7 +50,7 @@ public class SparseArraySpliteratorTest {
     public void tryAdvanceOne() {
         {
             Integer[] array = new Integer[] { 1 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -61,7 +61,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ 1 , null };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -72,7 +72,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ null , 1 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -87,7 +87,7 @@ public class SparseArraySpliteratorTest {
     public void tryAdvanceTwo() {
         {
             Integer[] array = new Integer[]{ 1 , 2 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -99,7 +99,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ 1 , null , 2 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -111,7 +111,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ 1 , null , null , 2 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -123,7 +123,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ null , 1 , null , 2 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -135,7 +135,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ null , 1 , null , null , 2 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -151,7 +151,7 @@ public class SparseArraySpliteratorTest {
     public void tryAdvanceThree() {
         {
             Integer[] array = new Integer[]{ 1 , 2 , 3 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -164,7 +164,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ 1 , null , 2 , 3 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -177,7 +177,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ 1 , null , null , 2 , 3 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -190,7 +190,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ null , 1 , null , 2 , null , 3 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -203,7 +203,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1, null, null, 2, null, 3};
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance((i) -> {
@@ -220,7 +220,7 @@ public class SparseArraySpliteratorTest {
     public void forEachRemainingEmpty() {
         {
             Integer[] array = new Integer[]{};
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -230,7 +230,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ null };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -244,7 +244,7 @@ public class SparseArraySpliteratorTest {
     public void forEachRemainingOne() {
         {
             Integer[] array = new Integer[]{ 1 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -255,7 +255,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ null , 1 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -266,7 +266,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ 1 , null };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -281,7 +281,7 @@ public class SparseArraySpliteratorTest {
     public void forEachRemainingTwo() {
         {
             Integer[] array = new Integer[]{ 1 , 2 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -293,7 +293,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ 1 , null , 2 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -305,7 +305,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ 1 , null , null , 2 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -317,7 +317,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ null , 1 , null , 2 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -329,7 +329,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ null , 1 , null , null , 2 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -345,7 +345,7 @@ public class SparseArraySpliteratorTest {
     public void forEachRemainingThree(){
         {
             Integer[] array = new Integer[]{ 1 , 2 , 3 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -358,7 +358,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ 1 , null , 2 , 3 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -371,7 +371,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ 1 , null , null , 2 , 3 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -384,7 +384,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{ null , 1 , null , 2 , 3 };
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -397,7 +397,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1, null, null, 2, 3};
-            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining((i) -> {
@@ -410,7 +410,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void trySplitEmpty() {
         Integer[] array = new Integer[]{};
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertNull(spliterator.trySplit());
     }
@@ -418,7 +418,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void trySplitOne() {
         Integer[] array = new Integer[]{ 1 };
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertNull(spliterator.trySplit());
     }
@@ -426,7 +426,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void trySplitTwo() {
         Integer[] array = new Integer[]{ 1 , 2 };
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
         assertBetween(2, 3, spliterator.estimateSize());
@@ -438,7 +438,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void trySplitThree() {
         Integer[] array = new Integer[]{ 1 , 2 , 3 };
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 3, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
         assertBetween(3, 4, spliterator.estimateSize());
@@ -450,7 +450,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void trySplitFour() {
         Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 };
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 4, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
         assertBetween(4, 5, spliterator.estimateSize());
@@ -462,7 +462,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void trySplitFive() {
         Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 , 5 };
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 5, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
         assertBetween(5, 6, spliterator.estimateSize());
@@ -479,7 +479,7 @@ public class SparseArraySpliteratorTest {
                 array[i] = i;
             }
         }
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 100, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
         assertBetween(100, 101, spliterator.estimateSize());
@@ -496,7 +496,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void estimateSizeZero() {
         Integer[] array = new Integer[]{};
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 0, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertBetween(0, 1, spliterator.estimateSize());
     }
@@ -504,7 +504,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void estimateSizeOne() {
         Integer[] array = new Integer[]{ 1 };
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 1, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertBetween(1, 2, spliterator.estimateSize());
     }
@@ -512,7 +512,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void estimateSizeTwo() {
         Integer[] array = new Integer[]{ 1 , 2 };
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 2, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertBetween(2, 3, spliterator.estimateSize());
     }
@@ -520,7 +520,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void estimateSizeFive() {
         Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 , 5 };
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, 5, () -> {
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertBetween(5, 6, spliterator.estimateSize());
     }

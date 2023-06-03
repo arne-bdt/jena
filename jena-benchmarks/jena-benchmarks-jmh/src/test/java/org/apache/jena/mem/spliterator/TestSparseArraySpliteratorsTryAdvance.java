@@ -21,6 +21,8 @@ package org.apache.jena.mem.spliterator;
 import org.apache.jena.atlas.iterator.ActionCount;
 import org.apache.jena.mem.SparseArraySpliterator;
 import org.apache.jena.mem.SparseArraySubSpliterator;
+import org.apache.jena.memTermEquality.SparseArraySpliterator2;
+import org.apache.jena.memTermEquality.SparseArraySubSpliterator2;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -54,6 +56,8 @@ public class TestSparseArraySpliteratorsTryAdvance {
     @Param({
             "SparseArraySpliterator",
             "SparseArraySubSpliterator",
+            "SparseArraySpliterator2",
+            "SparseArraySubSpliterator2",
     })
     public String param1_iteratorImplementation;
 
@@ -75,12 +79,6 @@ public class TestSparseArraySpliteratorsTryAdvance {
         return total;
     }
 
-    private long count(Spliterator<Object> spliterator) {
-        var actionCount = new ActionCount<>();
-        spliterator.forEachRemaining(actionCount::accept);
-        return actionCount.getCount();
-    }
-
 
     public Spliterator<Object> createSut(Object[] arrayWithNulls, int elementsCount) {
         var count = elementsCount;
@@ -91,10 +89,10 @@ public class TestSparseArraySpliteratorsTryAdvance {
         };
         switch (param1_iteratorImplementation) {
             case "SparseArraySpliterator":
-                return new SparseArraySpliterator<>(arrayWithNulls, 0, checkForConcurrentModification);
+                return new SparseArraySpliterator<>(arrayWithNulls, checkForConcurrentModification);
 
             case "SparseArraySubSpliterator":
-                return new SparseArraySubSpliterator<>(arrayWithNulls, 0, checkForConcurrentModification);
+                return new SparseArraySubSpliterator<>(arrayWithNulls, checkForConcurrentModification);
 
             default:
                 throw new IllegalArgumentException("Unknown spliterator implementation: " + param1_iteratorImplementation);

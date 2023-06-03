@@ -158,6 +158,6 @@ public class HashedBunchMap extends HashCommon<Node> implements BunchMap
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () ->
             { if (size != initialSize) throw new ConcurrentModificationException(); };
-        return new SparseArraySpliterator<>(values, size, checkForConcurrentModification);
+        return new SparseArraySpliterator<>(values, checkForConcurrentModification);
         }
     }

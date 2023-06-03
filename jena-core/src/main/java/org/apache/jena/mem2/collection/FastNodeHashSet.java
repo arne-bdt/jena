@@ -595,7 +595,7 @@ public class FastNodeHashSet implements Set<Node> {
         {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
-        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), false);
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, checkForConcurrentModification), false);
     }
 
     /**
@@ -620,7 +620,7 @@ public class FastNodeHashSet implements Set<Node> {
         {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
-        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), true);
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, checkForConcurrentModification), true);
     }
 
 }

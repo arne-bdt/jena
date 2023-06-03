@@ -36,18 +36,15 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
     private int pos;
-    private final float fillRatio;
     private final Runnable checkForConcurrentModification;
 
     /**
      * Create a spliterator for the given array, with the given size.
      * @param entries the array
-     * @param estimatedElementsCount the estimated size
      */
-    public SparseArraySpliterator(final E[] entries, final int estimatedElementsCount, final Runnable checkForConcurrentModification) {
+    public SparseArraySpliterator(final E[] entries, final Runnable checkForConcurrentModification) {
         this.entries = entries;
         this.pos = entries.length;
-        this.fillRatio = (float) estimatedElementsCount / (float)entries.length;
         this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
@@ -149,7 +146,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
         }
         final int toIndexOfSubIterator = this.pos;
         this.pos = pos >>> 1;
-        return new SparseArraySubSpliterator<E>(entries, this.pos, toIndexOfSubIterator, fillRatio, checkForConcurrentModification);
+        return new SparseArraySubSpliterator<E>(entries, this.pos, toIndexOfSubIterator, checkForConcurrentModification);
     }
 
     /**
@@ -174,7 +171,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
      * corresponding to its maximum depth.
      */
     @Override
-    public long estimateSize() { return ((long) (this.fillRatio  * pos)) + 1L; }
+    public long estimateSize() { return entries.length - pos; }
 
     /**
      * Returns a set of characteristics of this Spliterator and its

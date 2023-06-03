@@ -69,7 +69,7 @@ public abstract class HashedSetBase<Key> {
         final Runnable checkForConcurrentModification = () -> {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
-        return new SparseArraySpliterator<>(keys, size, checkForConcurrentModification);
+        return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
     }
 
     protected static int nextSize(int atLeast) {

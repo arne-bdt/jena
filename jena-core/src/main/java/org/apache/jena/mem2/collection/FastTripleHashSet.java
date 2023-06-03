@@ -19,8 +19,8 @@
 package org.apache.jena.mem2.collection;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.SparseArraySpliterator;
-import org.apache.jena.mem2.iterator.SparseArrayIterator;
+import org.apache.jena.memTermEquality.SparseArrayIterator;
+import org.apache.jena.memTermEquality.SparseArraySpliterator;
 
 import java.util.*;
 import java.util.function.Function;
@@ -121,9 +121,8 @@ public class FastTripleHashSet implements Set<Triple> {
 
     @Override
     public boolean contains(Object o) {
-        final var e = (Triple)o;
         final int hashCode;
-        var index = calcStartIndexByHashCode(hashCode = e.hashCode());
+        var index = calcStartIndexByHashCode(hashCode = o.hashCode());
         if(null == entries[index]) {
             return false;
         }
@@ -596,7 +595,7 @@ public class FastTripleHashSet implements Set<Triple> {
         {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
-        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), false);
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, checkForConcurrentModification), false);
     }
 
     /**
@@ -621,7 +620,7 @@ public class FastTripleHashSet implements Set<Triple> {
         {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
-        return StreamSupport.stream(new SparseArraySpliterator<>(entries, size, checkForConcurrentModification), true);
+        return StreamSupport.stream(new SparseArraySpliterator<>(entries, checkForConcurrentModification), true);
     }
 
 }

@@ -411,6 +411,6 @@ public abstract class HashCommon<Key>
             {
                 if (changes != initialChanges) throw new ConcurrentModificationException();
             };
-            return new SparseArraySpliterator<>(keys, size, checkForConcurrentModification);
+            return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
         }
     }

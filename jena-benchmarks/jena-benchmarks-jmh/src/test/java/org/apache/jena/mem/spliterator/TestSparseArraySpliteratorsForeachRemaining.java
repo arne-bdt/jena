@@ -54,6 +54,8 @@ public class TestSparseArraySpliteratorsForeachRemaining {
     @Param({
             "SparseArraySpliterator",
             "SparseArraySubSpliterator",
+            "SparseArraySpliterator2",
+            "SparseArraySubSpliterator2",
     })
     public String param1_iteratorImplementation;
 
@@ -84,10 +86,10 @@ public class TestSparseArraySpliteratorsForeachRemaining {
         };
         switch (param1_iteratorImplementation) {
             case "SparseArraySpliterator":
-                return new SparseArraySpliterator<>(arrayWithNulls, 0, checkForConcurrentModification);
+                return new SparseArraySpliterator<>(arrayWithNulls, checkForConcurrentModification);
 
             case "SparseArraySubSpliterator":
-                return new SparseArraySubSpliterator<>(arrayWithNulls, 0, checkForConcurrentModification);
+                return new SparseArraySubSpliterator<>(arrayWithNulls, checkForConcurrentModification);
 
             default:
                 throw new IllegalArgumentException("Unknown spliterator implementation: " + param1_iteratorImplementation);

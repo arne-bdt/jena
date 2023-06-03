@@ -51,7 +51,7 @@ public abstract class AbstractFastHashedSet<Key> extends HashedSetBase<Key> {
     protected final int findSlot(Key key, int hashCodeOfKey) {
         int index = initialIndexFor(hashCodeOfKey);
         while (true) {
-            Key current = keys[index];
+            final Key current = keys[index];
             if (current == null) return index;
             if (hashCodeOfKey == hashes[index] && key.equals(current)) return ~index;
             if (--index < 0) index += keys.length;

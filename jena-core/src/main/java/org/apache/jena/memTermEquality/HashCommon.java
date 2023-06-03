@@ -292,6 +292,6 @@ public abstract class HashCommon<Key>
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () ->
             { if (size != initialSize) throw new ConcurrentModificationException(); };
-        return new SparseArraySpliterator<>(keys, size, checkForConcurrentModification);
+        return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
         }
     }
