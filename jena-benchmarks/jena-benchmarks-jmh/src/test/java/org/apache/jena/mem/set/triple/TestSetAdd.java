@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
+import java.util.HashSet;
 import java.util.List;
 
 
@@ -52,6 +53,7 @@ public class TestSetAdd {
     public String param0_GraphUri;
 
     @Param({
+            "HashSet",
             "TripleSet",
             "FastTripleSet",
             "FastTripleHashSet"
@@ -68,6 +70,12 @@ public class TestSetAdd {
         return addToSet.get();
     }
 
+    private Object addToHashSet() {
+        var sut = new HashSet<Triple>();
+        triples.forEach(sut::add);
+        Assert.assertEquals(triples.size(), sut.size());
+        return sut;
+    }
     private Object addToTripleSet() {
         var sut = new TripleSet();
         triples.forEach(sut::addKey);
@@ -95,6 +103,9 @@ public class TestSetAdd {
     public void setupTrial() throws Exception {
         triples = Releases.current.readTriples(param0_GraphUri);
         switch (param1_SetImplementation) {
+            case "HashSet":
+                this.addToSet = this::addToHashSet;
+                break;
             case "TripleSet":
                 this.addToSet = this::addToTripleSet;
                 break;

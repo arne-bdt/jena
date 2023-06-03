@@ -30,6 +30,7 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.stream.Collectors;
@@ -59,6 +60,7 @@ public class TestSetStreamAll {
     public String param0_GraphUri;
 
     @Param({
+            "HashSet",
             "TripleSet",
             "FastTripleSet",
             "FastTripleHashSet"
@@ -66,6 +68,7 @@ public class TestSetStreamAll {
     public String param1_SetImplementation;
 
     private List<Triple> triples;
+    private HashSet<Triple> hashSet;
     private TripleSet tripleSet;
     private FastTripleSet fastTripleSet;
     private FastTripleHashSet fastTripleHashSet;
@@ -88,6 +91,11 @@ public class TestSetStreamAll {
         return list;
     }
 
+    private Spliterator<Triple> getSpliteratorFromHashSet() {
+        return hashSet.spliterator();
+    }
+
+
     private Spliterator<Triple> getSpliteratorFromTripleSet() {
         return tripleSet.keySpliterator();
     }
@@ -106,6 +114,11 @@ public class TestSetStreamAll {
     public void setupTrial() throws Exception {
         this.triples = Releases.current.readTriples(param0_GraphUri);
         switch (param1_SetImplementation) {
+            case "HashSet":
+                this.hashSet = new HashSet<>(triples.size());
+                triples.forEach(hashSet::add);
+                this.getSpliterator = this::getSpliteratorFromHashSet;
+                break;
             case "TripleSet":
                 this.tripleSet = new TripleSet(triples.size());
                 triples.forEach(tripleSet::addKey);

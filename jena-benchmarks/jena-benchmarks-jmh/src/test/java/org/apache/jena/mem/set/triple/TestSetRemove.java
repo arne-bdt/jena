@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
+import java.util.HashSet;
 import java.util.List;
 
 @State(Scope.Benchmark)
@@ -51,6 +52,7 @@ public class TestSetRemove {
     public String param0_GraphUri;
 
     @Param({
+            "HashSet",
             "TripleSet",
             "FastTripleSet",
             "FastTripleHashSet"
@@ -59,6 +61,7 @@ public class TestSetRemove {
 
     private List<Triple> triples;
     private List<Triple> triplesToRemove;
+    private HashSet<Triple> hashSet;
     private TripleSet tripleSet;
     private FastTripleSet fastTripleSet;
     private FastTripleHashSet fastTripleHashSet;
@@ -71,6 +74,11 @@ public class TestSetRemove {
         return removeFromSet.get();
     }
 
+    private int removeFromHashSet() {
+        triplesToRemove.forEach(t -> this.hashSet.remove(t));
+        Assert.assertTrue(this.hashSet.isEmpty());
+        return this.hashSet.size();
+    }
     private int removeFromTripleSet() {
         triplesToRemove.forEach(t -> this.tripleSet.removeKey(t));
         Assert.assertTrue(this.tripleSet.isEmpty());
@@ -92,6 +100,10 @@ public class TestSetRemove {
     @Setup(Level.Invocation)
     public void setupInvocation() {
         switch (param1_SetImplementation) {
+            case "HashSet":
+                this.hashSet = new HashSet<>(triples.size());
+                this.triples.forEach(hashSet::add);
+                break;
             case "TripleSet":
                 this.tripleSet = new TripleSet(triples.size());
                 this.triples.forEach(tripleSet::addKey);
@@ -114,19 +126,16 @@ public class TestSetRemove {
         this.triples = Releases.current.readTriples(param0_GraphUri);
         this.triplesToRemove = Releases.current.cloneTriples(triples);
         switch (param1_SetImplementation) {
+            case "HashSet":
+                this.removeFromSet = this::removeFromHashSet;
+                break;
             case "TripleSet":
-                this.tripleSet = new TripleSet(triples.size());
-                triples.forEach(tripleSet::addKey);
                 this.removeFromSet = this::removeFromTripleSet;
                 break;
             case "FastTripleSet":
-                this.fastTripleSet = new FastTripleSet(triples.size());
-                triples.forEach(fastTripleSet::addKey);
                 this.removeFromSet = this::removeFromFastTripleSet;
                 break;
             case "FastTripleHashSet":
-                this.fastTripleHashSet = new FastTripleHashSet(triples.size());
-                triples.forEach(fastTripleHashSet::add);
                 this.removeFromSet = this::removeFromFastTripleHashSet;
                 break;
             default:

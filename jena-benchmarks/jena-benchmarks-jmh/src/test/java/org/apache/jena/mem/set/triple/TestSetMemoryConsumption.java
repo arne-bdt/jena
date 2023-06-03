@@ -32,6 +32,7 @@ import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
 
 @State(Scope.Benchmark)
@@ -54,6 +55,7 @@ public class TestSetMemoryConsumption {
     public String param0_GraphUri;
 
     @Param({
+            "HashSet",
             "TripleSet",
             "FastTripleSet",
             "FastTripleHashSet"
@@ -78,6 +80,12 @@ public class TestSetMemoryConsumption {
         return sut;
     }
 
+    private Object fillHashSet() {
+        var sut = new HashSet<Triple>();
+        triples.forEach(sut::add);
+        Assert.assertEquals(triples.size(), sut.size());
+        return sut;
+    }
     private Object fillTripleSet() {
         var sut = new TripleSet();
         triples.forEach(sut::addKey);
@@ -115,6 +123,9 @@ public class TestSetMemoryConsumption {
     public void setupTrial() throws Exception {
         triples = Releases.current.readTriples(param0_GraphUri);
         switch (param1_SetImplementation) {
+            case "HashSet":
+                this.fillSet = this::fillHashSet;
+                break;
             case "TripleSet":
                 this.fillSet = this::fillTripleSet;
                 break;

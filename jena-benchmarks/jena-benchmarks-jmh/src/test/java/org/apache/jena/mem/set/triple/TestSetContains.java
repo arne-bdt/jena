@@ -29,6 +29,7 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
+import java.util.HashSet;
 import java.util.List;
 
 
@@ -52,6 +53,7 @@ public class TestSetContains {
     public String param0_GraphUri;
 
     @Param({
+            "HashSet",
             "TripleSet",
             "FastTripleSet",
             "FastTripleHashSet"
@@ -59,6 +61,7 @@ public class TestSetContains {
     public String param1_SetImplementation;
 
     private List<Triple> triplesToFind;
+    private HashSet<Triple> tripleHashSet;
     private TripleSet tripleSet;
     private FastTripleSet fastTripleSet;
     private FastTripleHashSet fastTripleHashSet;
@@ -70,6 +73,14 @@ public class TestSetContains {
         return setContains.get();
     }
 
+    private boolean hashSetContains() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = tripleHashSet.contains(t);
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
     private boolean tripleSetContains() {
         var found = false;
         for(var t: triplesToFind) {
@@ -103,6 +114,11 @@ public class TestSetContains {
         var triples = Releases.current.readTriples(param0_GraphUri);
         this.triplesToFind = Releases.current.cloneTriples(triples);
         switch (param1_SetImplementation) {
+            case "HashSet":
+                this.tripleHashSet = new HashSet<>(triples.size());
+                triples.forEach(tripleHashSet::add);
+                this.setContains = this::hashSetContains;
+                break;
             case "TripleSet":
                 this.tripleSet = new TripleSet(triples.size());
                 triples.forEach(tripleSet::addKey);
