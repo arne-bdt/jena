@@ -21,8 +21,6 @@ package org.apache.jena.mem.spliterator;
 import org.apache.jena.atlas.iterator.ActionCount;
 import org.apache.jena.mem.SparseArraySpliterator;
 import org.apache.jena.mem.SparseArraySubSpliterator;
-import org.apache.jena.memTermEquality.SparseArraySpliterator2;
-import org.apache.jena.memTermEquality.SparseArraySubSpliterator2;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;

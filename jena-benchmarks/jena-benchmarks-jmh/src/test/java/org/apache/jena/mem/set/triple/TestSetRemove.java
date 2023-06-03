@@ -22,6 +22,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.FastTripleHashSet;
+import org.apache.jena.mem2.collection.FastTripleHashSet2;
 import org.apache.jena.mem2.collection.FastTripleSet;
 import org.apache.jena.mem2.collection.TripleSet;
 import org.junit.Assert;
@@ -52,10 +53,11 @@ public class TestSetRemove {
     public String param0_GraphUri;
 
     @Param({
-            "HashSet",
-            "TripleSet",
-            "FastTripleSet",
-            "FastTripleHashSet"
+//            "HashSet",
+//            "TripleSet",
+//            "FastTripleSet",
+            "FastTripleHashSet",
+            "FastTripleHashSet2"
     })
     public String param1_SetImplementation;
 
@@ -65,6 +67,7 @@ public class TestSetRemove {
     private TripleSet tripleSet;
     private FastTripleSet fastTripleSet;
     private FastTripleHashSet fastTripleHashSet;
+    private FastTripleHashSet2 fastTripleHashSet2;
 
 
     java.util.function.Supplier<Integer> removeFromSet;
@@ -97,6 +100,12 @@ public class TestSetRemove {
         return this.fastTripleHashSet.size();
     }
 
+    private int removeFromFastTripleHashSet2() {
+        triplesToRemove.forEach(t -> this.fastTripleHashSet2.remove(t));
+        Assert.assertTrue(this.fastTripleHashSet2.isEmpty());
+        return this.fastTripleHashSet2.size();
+    }
+
     @Setup(Level.Invocation)
     public void setupInvocation() {
         switch (param1_SetImplementation) {
@@ -115,6 +124,10 @@ public class TestSetRemove {
             case "FastTripleHashSet":
                 this.fastTripleHashSet = new FastTripleHashSet(triples.size());
                 this.triples.forEach(fastTripleHashSet::add);
+                break;
+            case "FastTripleHashSet2":
+                this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
+                this.triples.forEach(fastTripleHashSet2::add);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);
@@ -137,6 +150,9 @@ public class TestSetRemove {
                 break;
             case "FastTripleHashSet":
                 this.removeFromSet = this::removeFromFastTripleHashSet;
+                break;
+            case "FastTripleHashSet2":
+                this.removeFromSet = this::removeFromFastTripleHashSet2;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);
