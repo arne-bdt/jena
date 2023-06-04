@@ -257,9 +257,7 @@ public class FastTripleHashSet implements Set<Triple> {
         } else { /*existing value found*/
             var newValue = remappingFunction.apply(entries[index]);
             if(newValue == null) {
-                entries[index] = null;
-                size--;
-                rearrangeNeighbours(index);
+                removeFrom(index);
                 return null;
             } else {
                 entries[index] = newValue;
@@ -314,18 +312,16 @@ public class FastTripleHashSet implements Set<Triple> {
      */
     @Override
     public boolean remove(Object o) {
-        var e = (Triple)o;
+        final var e = (Triple)o;
         return remove(e, e.hashCode());
     }
 
     public boolean remove(Triple e, int hashCode) {
-        var index = findIndex(e, hashCode);
+        final var index = findIndex(e, hashCode);
         if (index < 0) {
             return false;
         }
-        entries[index] = null;
-        size--;
-        rearrangeNeighbours(index);
+        removeFrom(index);
         return true;
     }
 
@@ -334,109 +330,33 @@ public class FastTripleHashSet implements Set<Triple> {
     }
 
     public void removeUnchecked(Triple e, int hashCode) {
-        var index = findIndex(e, hashCode);
-        entries[index] = null;
+        removeFrom(findIndex(e, hashCode));
+    }
+
+    protected Triple removeFrom(int here) {
+        final int original = here;
+        Triple wrappedAround = null;
         size--;
-        rearrangeNeighbours(index);
-    }
-
-    private void rearrangeNeighbours(int index) {
-        /*rearrange neighbours*/
-        var neighbours = getNeighbours(index);
-        if(neighbours == null) {
-            return;
-        }
-        Arrays.sort(neighbours, ObjectsWithStartIndexIndexAndDistance.distanceComparator);
-        boolean elementsHaveBeenSwitched;
-        do {
-            elementsHaveBeenSwitched = false;
-            for (ObjectsWithStartIndexIndexAndDistance neighbour : neighbours) {
-                if(neighbour.distance == 0) {
-                    break;
-                }
-                if (neighbour.isTargetIndexNearerToStartIndex(index)){
-                    var oldIndexOfNeighbour = neighbour.currentIndex;
-                    entries[index] = entries[oldIndexOfNeighbour];
-                    hashCodes[index] = hashCodes[oldIndexOfNeighbour];
-                    entries[oldIndexOfNeighbour] = null;
-                    neighbour.setCurrentIndex(index);
-                    index = oldIndexOfNeighbour;
-                    Arrays.sort(neighbours, ObjectsWithStartIndexIndexAndDistance.distanceComparator);
-                    elementsHaveBeenSwitched = true;
+        while (true) {
+            entries[here] = null;
+            int scan = here;
+            while (true) {
+                if (--scan < 0) scan += entries.length;
+                if (entries[scan] == null) return wrappedAround;
+                int r = calcStartIndexByHashCode(hashCodes[scan]);
+                if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r) { /* Nothing. We'd have preferred an `unless` statement. */} else {
+                    if (here >= original && scan < original) {
+                        wrappedAround = entries[scan];
+                    }
+                    entries[here] = entries[scan];
+                    hashCodes[here] = hashCodes[scan];
+                    here = scan;
                     break;
                 }
             }
-        } while(elementsHaveBeenSwitched);
-    }
-
-    private ObjectsWithStartIndexIndexAndDistance[] getNeighbours(final int index) {
-        var neighbours = new ArrayList<ObjectsWithStartIndexIndexAndDistance>();
-        ObjectsWithStartIndexIndexAndDistance neighbour;
-        /*find left*/
-        var i = index;
-        while(true) {
-            if(--i < 0){
-                i += entries.length;
-            }
-            if(null == entries[i]) {
-                break;
-            } else {
-                neighbour = new ObjectsWithStartIndexIndexAndDistance(
-                        entries.length, calcStartIndexByHashCode(hashCodes[i]), i);
-                if(neighbour.distance > 0) {
-                    neighbours.add(neighbour);
-                }
-            }
-        }
-        i = index;
-        /*find right*/
-        while(true) {
-            if(++i == entries.length){
-                i = 0;
-            }
-            if(null == entries[i]) {
-                break;
-            } else {
-                neighbour = new ObjectsWithStartIndexIndexAndDistance(
-                        entries.length, calcStartIndexByHashCode(hashCodes[i]), i);
-                if(neighbour.distance > 0) {
-                    neighbours.add(neighbour);
-                }
-            }
-        }
-        return neighbours.isEmpty()
-                ? null : neighbours.toArray(new ObjectsWithStartIndexIndexAndDistance[neighbours.size()]);
-    }
-
-    private static class ObjectsWithStartIndexIndexAndDistance {
-        public final static Comparator<ObjectsWithStartIndexIndexAndDistance>  distanceComparator
-                = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
-        final int startIndex;
-        final int length;
-        int currentIndex;
-        int distance;
-
-        public ObjectsWithStartIndexIndexAndDistance(final int length, final int startIndex, final int currentIndex) {
-            this.length = length;
-            this.startIndex = startIndex;
-            this.setCurrentIndex(currentIndex);
-        }
-
-        void setCurrentIndex(final int currentIndex) {
-            this.currentIndex = currentIndex;
-            this.distance = calcDistance(currentIndex);
-        }
-
-        private int calcDistance(final int index) {
-            return index <= startIndex
-                    ? startIndex - index
-                    : startIndex + length - index;
-        }
-
-        boolean isTargetIndexNearerToStartIndex(final int targetIndex) {
-            return calcDistance(targetIndex) < distance;
         }
     }
+
 
     /**
      * Returns {@code true} if this collection contains all of the elements

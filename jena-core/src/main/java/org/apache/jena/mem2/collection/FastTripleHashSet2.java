@@ -23,7 +23,6 @@ import org.apache.jena.memTermEquality.SparseArrayIterator;
 import org.apache.jena.memTermEquality.SparseArraySpliterator;
 
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -32,7 +31,7 @@ import java.util.stream.StreamSupport;
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
  */
-public class FastTripleHashSet2 implements Set<Triple> {
+public class FastTripleHashSet2 {
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByHashCode(final int hashCode) {
@@ -40,26 +39,34 @@ public class FastTripleHashSet2 implements Set<Triple> {
         return hashCode & (entries.length-1);
     }
 
-    private static int MINIMUM_SIZE = 16;
+    private static int MINIMUM_HASHES_SIZE = 16;
+    private static int MINIMUM_ELEMENTS_SIZE = 10;
     private static float loadFactor = 0.5f;
     protected int size = 0;
     protected Triple[] entries;
     protected int[] hashCodes;
+    /*negative positions*/
+    protected int[] positions;
+
+    private final ArrayDeque<Integer> deletedIndices = new ArrayDeque<>();
 
     public FastTripleHashSet2(int initialSize) {
-        this.entries = new Triple[Integer.highestOneBit(((int)(initialSize/loadFactor)+1)) << 1];
+        this.positions = new int[Integer.highestOneBit(((int)(initialSize/loadFactor)+1)) << 1];
+        this.entries = new Triple[initialSize];
         this.hashCodes = new int[entries.length];
     }
 
     public FastTripleHashSet2() {
-        this.entries = new Triple[MINIMUM_SIZE];
-        this.hashCodes = new int[MINIMUM_SIZE];
+        this.positions = new int[MINIMUM_HASHES_SIZE];
+        this.entries = new Triple[MINIMUM_ELEMENTS_SIZE];
+        this.hashCodes = new int[MINIMUM_ELEMENTS_SIZE];
 
     }
 
-    private int calcNewSize() {
+    private int calcNewPositionsSize() {
         if(size >= entries.length*loadFactor && entries.length <= 1 << 30) { /*grow*/
-            return entries.length << 1;
+            final var newLength = entries.length << 1;
+            return newLength < 0 ? Integer.MAX_VALUE : newLength;
         }
         return -1;
     }
@@ -79,7 +86,7 @@ public class FastTripleHashSet2 implements Set<Triple> {
     }
 
     private boolean grow() {
-        final var newSize = calcNewSize();
+        final var newSize = calcNewPositionsSize();
         if(newSize < 0) {
             return false;
         }
@@ -104,9 +111,23 @@ public class FastTripleHashSet2 implements Set<Triple> {
      *
      * @return the number of elements in this collection
      */
-    @Override
     public int size() {
-        return size;
+        return size- deletedIndices.size();
+    }
+
+    private int getFreeElementIndex(){
+        if(deletedIndices.isEmpty()) {
+            var index = size++;
+            if(index >= entries.length) {
+                growEntriesAndHashCodes();
+            }
+            return size;
+        } else {
+            return deletedIndices.pop();
+        }
+    }
+
+    private void growEntriesAndHashCodes() {
     }
 
     /**
@@ -114,18 +135,17 @@ public class FastTripleHashSet2 implements Set<Triple> {
      *
      * @return {@code true} if this collection contains no elements
      */
-    @Override
     public boolean isEmpty() {
         return size == 0;
     }
 
-    @Override
-    public boolean contains(Object o) {
+    public boolean contains(Triple o) {
         final int hashCode;
         var index = calcStartIndexByHashCode(hashCode = o.hashCode());
-        if(null == entries[index]) {
+        if(0 == positions[index]) {
             return false;
         }
+        //var
         if(hashCode == hashCodes[index] && o.equals(entries[index])) {
             return true;
         } else if(--index < 0){
@@ -143,7 +163,6 @@ public class FastTripleHashSet2 implements Set<Triple> {
     }
 
 
-    @Override
     public Iterator<Triple> iterator() {
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () ->
@@ -153,42 +172,17 @@ public class FastTripleHashSet2 implements Set<Triple> {
         return new SparseArrayIterator<>(entries, checkForConcurrentModification);
     }
 
-
-    @Override
-    public Object[] toArray() {
-        return this.stream().toArray();
-    }
-
-
-    @Override
-    public <T1> T1[] toArray(T1[] a) {
-        var asArray = this.stream().toArray();
-        if (a.length < size) {
-            return (T1[]) asArray;
-        }
-        System.arraycopy(asArray, 0, a, 0, asArray.length);
-        if (a.length > size)
-            a[size] = null;
-        return a;
-    }
-
-    public Triple findAny() {
-        var index = -1;
-        while(entries[++index] == null);
-        return entries[index];
-    }
-
-    @Override
     public boolean add(Triple value) {
         return add(value, value.hashCode());
     }
 
     public boolean add(Triple value, int hashCode) {
         grow();
-        var index = findIndex(value, hashCode);
-        if(index < 0) {
-            entries[~index] = value;
-            hashCodes[~index] = hashCode;
+        var pIndex = findPosition(value, hashCode);
+        if(pIndex < 0) {
+            var pos = ~pIndex;
+            entries[~pIndex] = value;
+            hashCodes[~pIndex] = hashCode;
             size++;
             return true;
         }
@@ -207,85 +201,30 @@ public class FastTripleHashSet2 implements Set<Triple> {
         size++;
     }
 
-    public Triple addIfAbsent(Triple value) {
-        grow();
-        final int hashCode;
-        final var index = findIndex(value, hashCode = value.hashCode());
-        if(index < 0) {
-            entries[~index] = value;
-            hashCodes[~index] = hashCode;
-            size++;
-            return value;
-        }
-        return entries[index];
-    }
 
-    public Triple getIfPresent(Triple value) {
-        final int hashCode;
-        var index = calcStartIndexByHashCode(hashCode = value.hashCode());
+    private int findPosition(final Triple e, final int hashCode) {
+        var pIndex = calcStartIndexByHashCode(hashCode);
         while(true) {
-            if(null == entries[index]) {
-                return null;
-            } else if(hashCode == hashCodes[index] && value.equals(entries[index])) {
-                return entries[index];
-            } else if(--index < 0){
-                index += entries.length;
-            }
-        }
-    }
-
-    public Triple compute(Triple value, Function<Triple, Triple> remappingFunction) {
-        final int hashCode;
-        var index = findIndex(value, hashCode = value.hashCode());
-        if(index < 0) { /*value does not exist yet*/
-            var newValue = remappingFunction.apply(null);
-            if(newValue == null) {
-                return null;
-            }
-            if(!value.equals(newValue)) {
-                throw new IllegalArgumentException("remapped value is not equal to value");
-            }
-            if(grow()) {
-                index = findEmptySlotWithoutEqualityCheck(hashCode);
+            final var pos = ~positions[pIndex];
+            if(0 == positions[pIndex]) {
+                return ~pIndex;
             } else {
-                index = ~index;
-            }
-            entries[index] = newValue;
-            hashCodes[index] = hashCode;
-            size++;
-            return newValue;
-        } else { /*existing value found*/
-            var newValue = remappingFunction.apply(entries[index]);
-            if(newValue == null) {
-                removeFrom(index);
-                return null;
-            } else {
-                entries[index] = newValue;
-                return newValue;
-            }
-        }
-    }
-
-    private int findIndex(final Triple e, final int hashCode) {
-        var index = calcStartIndexByHashCode(hashCode);
-        while(true) {
-            if(null == entries[index]) {
-                return ~index;
-            } else if(hashCode == hashCodes[index] && e.equals(entries[index])) {
-                return index;
-            } else if(--index < 0){
-                index += entries.length;
+                if(hashCode == hashCodes[pos] && e.equals(entries[pos])) {
+                    return pIndex;
+                } else if(--pIndex < 0){
+                    pIndex += positions.length;
+                }
             }
         }
     }
 
     private int findEmptySlotWithoutEqualityCheck(final int hashCode) {
-        var index = calcStartIndexByHashCode(hashCode);
+        var pIndex = calcStartIndexByHashCode(hashCode);
         while(true) {
-            if(null == entries[index]) {
-                return index;
-            } else if(--index < 0){
-                index += entries.length;
+            if(0 == positions[pIndex]) {
+                return pIndex;
+            } else if(--pIndex < 0){
+                pIndex += positions.length;
             }
         }
     }
@@ -310,14 +249,12 @@ public class FastTripleHashSet2 implements Set<Triple> {
      * @throws UnsupportedOperationException if the {@code remove} operation
      *                                       is not supported by this collection
      */
-    @Override
-    public boolean remove(Object o) {
-        var e = (Triple)o;
-        return remove(e, e.hashCode());
+    public boolean remove(Triple o) {
+        return remove(o, o.hashCode());
     }
 
     public boolean remove(Triple e, int hashCode) {
-        var index = findIndex(e, hashCode);
+        final var index = findPosition(e, hashCode);
         if (index < 0) {
             return false;
         }
@@ -330,8 +267,7 @@ public class FastTripleHashSet2 implements Set<Triple> {
     }
 
     public void removeUnchecked(Triple e, int hashCode) {
-        var index = findIndex(e, hashCode);
-        removeFrom(index);
+        removeFrom(findPosition(e, hashCode));
     }
 
     protected Triple removeFrom(int here) {
@@ -358,130 +294,6 @@ public class FastTripleHashSet2 implements Set<Triple> {
         }
     }
 
-
-    /**
-     * Returns {@code true} if this collection contains all of the elements
-     * in the specified collection.
-     *
-     * @param c collection to be checked for containment in this collection
-     * @return {@code true} if this collection contains all of the elements
-     * in the specified collection
-     * @throws ClassCastException   if the types of one or more elements
-     *                              in the specified collection are incompatible with this
-     *                              collection
-     *                              (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException if the specified collection contains one
-     *                              or more null elements and this collection does not permit null
-     *                              elements
-     *                              (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>),
-     *                              or if the specified collection is null.
-     * @see #contains(Object)
-     */
-    @Override
-    public boolean containsAll(Collection<?> c) {
-        for (Object o : c) {
-            if(!this.contains(o)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Adds all of the elements in the specified collection to this collection
-     * (optional operation).  The behavior of this operation is undefined if
-     * the specified collection is modified while the operation is in progress.
-     * (This implies that the behavior of this call is undefined if the
-     * specified collection is this collection, and this collection is
-     * nonempty.)
-     *
-     * @param c collection containing elements to be added to this collection
-     * @return {@code true} if this collection changed as a result of the call
-     * @throws UnsupportedOperationException if the {@code addAll} operation
-     *                                       is not supported by this collection
-     * @throws ClassCastException            if the class of an element of the specified
-     *                                       collection prevents it from being added to this collection
-     * @throws NullPointerException          if the specified collection contains a
-     *                                       null element and this collection does not permit null elements,
-     *                                       or if the specified collection is null
-     * @throws IllegalArgumentException      if some property of an element of the
-     *                                       specified collection prevents it from being added to this
-     *                                       collection
-     * @throws IllegalStateException         if not all the elements can be added at
-     *                                       this time due to insertion restrictions
-     */
-    @Override
-    public boolean addAll(Collection<? extends Triple> c) {
-        grow(size + c.size());
-        boolean modified = false;
-        int index;
-        int hashCode;
-        for (Triple t : c) {
-            if((index=findIndex(t, hashCode = t.hashCode())) < 0) {
-                entries[~index] = t;
-                hashCodes[~index] = hashCode;
-                size++;
-                modified = true;
-            }
-        }
-        return modified;
-    }
-
-    /**
-     * Removes all of this collection's elements that are also contained in the
-     * specified collection (optional operation).  After this call returns,
-     * this collection will contain no elements in common with the specified
-     * collection.
-     *
-     * @param c collection containing elements to be removed from this collection
-     * @return {@code true} if this collection changed as a result of the
-     * call
-     * @throws UnsupportedOperationException if the {@code removeAll} method
-     *                                       is not supported by this collection
-     * @throws ClassCastException            if the types of one or more elements
-     *                                       in this collection are incompatible with the specified
-     *                                       collection
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException          if this collection contains one or more
-     *                                       null elements and the specified collection does not support
-     *                                       null elements
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>),
-     *                                       or if the specified collection is null
-     * @see #remove(Object)
-     * @see #contains(Object)
-     */
-    @Override
-    public boolean removeAll(Collection<?> c) {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Retains only the elements in this collection that are contained in the
-     * specified collection (optional operation).  In other words, removes from
-     * this collection all of its elements that are not contained in the
-     * specified collection.
-     *
-     * @param c collection containing elements to be retained in this collection
-     * @return {@code true} if this collection changed as a result of the call
-     * @throws UnsupportedOperationException if the {@code retainAll} operation
-     *                                       is not supported by this collection
-     * @throws ClassCastException            if the types of one or more elements
-     *                                       in this collection are incompatible with the specified
-     *                                       collection
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException          if this collection contains one or more
-     *                                       null elements and the specified collection does not permit null
-     *                                       elements
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>),
-     *                                       or if the specified collection is null
-     * @see #remove(Object)
-     * @see #contains(Object)
-     */
-    @Override
-    public boolean retainAll(Collection<?> c) {
-        throw new UnsupportedOperationException();
-    }
-
     /**
      * Removes all of the elements from this collection (optional operation).
      * The collection will be empty after this method returns.
@@ -489,27 +301,22 @@ public class FastTripleHashSet2 implements Set<Triple> {
      * @throws UnsupportedOperationException if the {@code clear} operation
      *                                       is not supported by this collection
      */
-    @Override
     public void clear() {
-        entries = new Triple[MINIMUM_SIZE];
-        hashCodes = new int[MINIMUM_SIZE];
+        positions = new int[MINIMUM_HASHES_SIZE];
+        entries = new Triple[MINIMUM_ELEMENTS_SIZE];
+        hashCodes = new int[MINIMUM_ELEMENTS_SIZE];
         size = 0;
     }
 
-    /**
-     * Returns a sequential {@code Stream} with this collection as its source.
-     *
-     * <p>This method should be overridden when the {@link #spliterator()}
-     * method cannot return a spliterator that is {@code IMMUTABLE},
-     * {@code CONCURRENT}, or <em>late-binding</em>. (See {@link #spliterator()}
-     * for details.)
-     *
-     * @return a sequential {@code Stream} over the elements in this collection
-     * @implSpec The default implementation creates a sequential {@code Stream} from the
-     * collection's {@code Spliterator}.
-     * @since 1.8
-     */
-    @Override
+    public Spliterator spliterator() {
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArraySpliterator<>(entries, checkForConcurrentModification);
+    }
+
     public Stream<Triple> stream() {
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () ->
@@ -519,22 +326,6 @@ public class FastTripleHashSet2 implements Set<Triple> {
         return StreamSupport.stream(new SparseArraySpliterator<>(entries, checkForConcurrentModification), false);
     }
 
-    /**
-     * Returns a possibly parallel {@code Stream} with this collection as its
-     * source.  It is allowable for this method to return a sequential stream.
-     *
-     * <p>This method should be overridden when the {@link #spliterator()}
-     * method cannot return a spliterator that is {@code IMMUTABLE},
-     * {@code CONCURRENT}, or <em>late-binding</em>. (See {@link #spliterator()}
-     * for details.)
-     *
-     * @return a possibly parallel {@code Stream} over the elements in this
-     * collection
-     * @implSpec The default implementation creates a parallel {@code Stream} from the
-     * collection's {@code Spliterator}.
-     * @since 1.8
-     */
-    @Override
     public Stream<Triple> parallelStream() {
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () ->
