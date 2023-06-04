@@ -22,6 +22,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.FastTripleHashSet;
+import org.apache.jena.mem2.collection.FastTripleHashSet2;
 import org.apache.jena.mem2.collection.FastTripleSet;
 import org.apache.jena.mem2.collection.TripleSet;
 import org.junit.Assert;
@@ -53,6 +54,7 @@ public class TestSetContains {
     public String param0_GraphUri;
 
     @Param({
+            "FastTripleHashSet2",
             "HashSet",
             "TripleSet",
             "FastTripleSet",
@@ -65,6 +67,7 @@ public class TestSetContains {
     private TripleSet tripleSet;
     private FastTripleSet fastTripleSet;
     private FastTripleHashSet fastTripleHashSet;
+    private FastTripleHashSet2 fastTripleHashSet2;
 
     java.util.function.Supplier<Boolean> setContains;
 
@@ -108,6 +111,15 @@ public class TestSetContains {
         return found;
     }
 
+    private boolean fastTripleHashSet2Contains() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = fastTripleHashSet2.contains(t);
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
@@ -133,6 +145,11 @@ public class TestSetContains {
                 this.fastTripleHashSet = new FastTripleHashSet(triples.size());
                 triples.forEach(fastTripleHashSet::add);
                 this.setContains = this::fastTripleHashSetContains;
+                break;
+            case "FastTripleHashSet2":
+                this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
+                triples.forEach(fastTripleHashSet2::add);
+                this.setContains = this::fastTripleHashSet2Contains;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

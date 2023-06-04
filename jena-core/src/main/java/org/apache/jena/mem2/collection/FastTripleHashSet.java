@@ -123,14 +123,6 @@ public class FastTripleHashSet implements Set<Triple> {
     public boolean contains(Object o) {
         final int hashCode;
         var index = calcStartIndexByHashCode(hashCode = o.hashCode());
-        if(null == entries[index]) {
-            return false;
-        }
-        if(hashCode == hashCodes[index] && o.equals(entries[index])) {
-            return true;
-        } else if(--index < 0){
-            index += entries.length;
-        }
         while(true) {
             if(null == entries[index]) {
                 return false;
@@ -333,21 +325,16 @@ public class FastTripleHashSet implements Set<Triple> {
         removeFrom(findIndex(e, hashCode));
     }
 
-    protected Triple removeFrom(int here) {
-        final int original = here;
-        Triple wrappedAround = null;
+    protected void removeFrom(int here) {
         size--;
         while (true) {
             entries[here] = null;
             int scan = here;
             while (true) {
                 if (--scan < 0) scan += entries.length;
-                if (entries[scan] == null) return wrappedAround;
+                if (entries[scan] == null) return;
                 int r = calcStartIndexByHashCode(hashCodes[scan]);
                 if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r) { /* Nothing. We'd have preferred an `unless` statement. */} else {
-                    if (here >= original && scan < original) {
-                        wrappedAround = entries[scan];
-                    }
                     entries[here] = entries[scan];
                     hashCodes[here] = hashCodes[scan];
                     here = scan;

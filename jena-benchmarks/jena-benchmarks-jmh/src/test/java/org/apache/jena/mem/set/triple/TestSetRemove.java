@@ -53,11 +53,11 @@ public class TestSetRemove {
     public String param0_GraphUri;
 
     @Param({
-//            "HashSet",
-//            "TripleSet",
-//            "FastTripleSet",
-            "FastTripleHashSet",
-            "FastTripleHashSet2"
+            "FastTripleHashSet2",
+            "HashSet",
+            "TripleSet",
+            "FastTripleSet",
+            "FastTripleHashSet"
     })
     public String param1_SetImplementation;
 
@@ -105,6 +105,31 @@ public class TestSetRemove {
         Assert.assertTrue(this.fastTripleHashSet2.isEmpty());
         return this.fastTripleHashSet2.size();
     }
+
+    @Test
+    public void testDeleteFromFastTripleHashSet2() {
+        this.triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl");
+        this.triplesToRemove = Releases.current.cloneTriples(triples);
+        this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
+        this.triples.forEach(fastTripleHashSet2::add);
+        triplesToRemove.forEach(t -> {
+            if(!this.fastTripleHashSet2.remove(t)) {
+                this.fastTripleHashSet2.remove(t);
+            }
+        });
+        Assert.assertTrue(this.fastTripleHashSet2.isEmpty());
+    }
+
+    @Test
+    public void testDeleteFromFastTripleHashSet() {
+        this.triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl");
+        this.triplesToRemove = Releases.current.cloneTriples(triples);
+        this.fastTripleHashSet = new FastTripleHashSet(triples.size());
+        this.triples.forEach(fastTripleHashSet::add);
+        triplesToRemove.forEach(t -> this.fastTripleHashSet.remove(t));
+        Assert.assertTrue(this.fastTripleHashSet.isEmpty());
+    }
+
 
     @Setup(Level.Invocation)
     public void setupInvocation() {

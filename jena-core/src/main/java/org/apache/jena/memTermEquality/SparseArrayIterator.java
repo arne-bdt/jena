@@ -36,6 +36,12 @@ public class SparseArrayIterator<E> extends NiceIterator<E> implements Iterator<
         this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
+    public SparseArrayIterator(final E[] entries, int toIndexExclusive, final Runnable checkForConcurrentModification) {
+        this.entries = entries;
+        this.pos = toIndexExclusive-1;
+        this.checkForConcurrentModification = checkForConcurrentModification;
+    }
+
     /**
      * Returns {@code true} if the iteration has more elements.
      * (In other words, returns {@code true} if {@link #next} would

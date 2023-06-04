@@ -24,6 +24,7 @@ import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.FastTripleHashSet;
+import org.apache.jena.mem2.collection.FastTripleHashSet2;
 import org.apache.jena.mem2.collection.FastTripleSet;
 import org.apache.jena.mem2.collection.TripleSet;
 import org.junit.Assert;
@@ -55,6 +56,7 @@ public class TestSetMemoryConsumption {
     public String param0_GraphUri;
 
     @Param({
+            "FastTripleHashSet2",
             "HashSet",
             "TripleSet",
             "FastTripleSet",
@@ -106,6 +108,12 @@ public class TestSetMemoryConsumption {
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
+    private Object fillFastTripleHashSet2() {
+        var sut = new FastTripleHashSet2();
+        triples.forEach(sut::add);
+        Assert.assertEquals(triples.size(), sut.size());
+        return sut;
+    }
 
     /**
      * This method is used to get the memory consumption of the current JVM.
@@ -134,6 +142,9 @@ public class TestSetMemoryConsumption {
                 break;
             case "FastTripleHashSet":
                 this.fillSet = this::fillFastTripleHashSet;
+                break;
+            case "FastTripleHashSet2":
+                this.fillSet = this::fillFastTripleHashSet2;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

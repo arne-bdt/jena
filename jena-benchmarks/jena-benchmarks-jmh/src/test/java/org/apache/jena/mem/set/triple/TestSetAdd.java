@@ -22,6 +22,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.FastTripleHashSet;
+import org.apache.jena.mem2.collection.FastTripleHashSet2;
 import org.apache.jena.mem2.collection.FastTripleSet;
 import org.apache.jena.mem2.collection.TripleSet;
 import org.junit.Assert;
@@ -53,6 +54,7 @@ public class TestSetAdd {
     public String param0_GraphUri;
 
     @Param({
+            "FastTripleHashSet2",
             "HashSet",
             "TripleSet",
             "FastTripleSet",
@@ -97,6 +99,20 @@ public class TestSetAdd {
         return sut;
     }
 
+    private Object addToFastTripleHashSet2() {
+        var sut = new FastTripleHashSet2();
+        triples.forEach(sut::add);
+        Assert.assertEquals(triples.size(), sut.size());
+        return sut;
+    }
+
+//    @Test
+//    public void testAddToFastTripleHashSet2() {
+//        var triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl");
+//        var sut = new FastTripleHashSet2();
+//        triples.forEach(sut::add);
+//        Assert.assertEquals(triples.size(), sut.size());
+//    }
 
 
     @Setup(Level.Trial)
@@ -114,6 +130,9 @@ public class TestSetAdd {
                 break;
             case "FastTripleHashSet":
                 this.addToSet = this::addToFastTripleHashSet;
+                break;
+            case "FastTripleHashSet2":
+                this.addToSet = this::addToFastTripleHashSet2;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);
