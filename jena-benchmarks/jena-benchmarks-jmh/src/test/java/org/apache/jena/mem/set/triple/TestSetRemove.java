@@ -108,7 +108,7 @@ public class TestSetRemove {
 
 //    @Test
 //    public void testDeleteFromFastTripleHashSet2() {
-//        this.triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl");
+//        this.triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl").subList(0, 3);
 //        this.triplesToRemove = Releases.current.cloneTriples(triples);
 //        this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
 //        this.triples.forEach(t -> {
