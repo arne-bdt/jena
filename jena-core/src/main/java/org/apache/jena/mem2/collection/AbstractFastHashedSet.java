@@ -124,21 +124,16 @@ public abstract class AbstractFastHashedSet<Key> extends HashedSetBase<Key> {
      * returns such a moved key as its result, and null otherwise.
      */
     @Override
-    protected Key removeFrom(int here) {
-        final int original = here;
-        Key wrappedAround = null;
+    protected void removeFrom(int here) {
         size -= 1;
         while (true) {
             keys[here] = null;
             int scan = here;
             while (true) {
                 if (--scan < 0) scan += keys.length;
-                if (keys[scan] == null) return wrappedAround;
-                int r = initialIndexFor(hashes[scan]);
+                if (keys[scan] == null) return;
+                final int r = initialIndexFor(hashes[scan]);
                 if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r) { /* Nothing. We'd have preferred an `unless` statement. */} else {
-                    if (here >= original && scan < original) {
-                        wrappedAround = keys[scan];
-                    }
                     keys[here] = keys[scan];
                     hashes[here] = hashes[scan];
                     here = scan;

@@ -122,5 +122,5 @@ public abstract class HashedSetBase<Key> {
         return capacity;
     }
 
-    protected abstract Key removeFrom(int here);
+    protected abstract void removeFrom(int here);
 }

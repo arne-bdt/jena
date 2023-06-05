@@ -261,29 +261,10 @@ public class FastTripleHashSet2 {
         removeFrom(findPosition(e, hashCode));
     }
 
-//    protected void removeFrom(int here) {
-//        this.deletedIndices.add(~positions[here]);
-//        while (true) {
-//            entries[~positions[here]] = null;
-//            positions[here] = 0;
-//            int scan = here;
-//            while (true) {
-//                if (--scan < 0) scan += positions.length;
-//                if (positions[scan] == 0) return;
-//                int r = calcStartIndexByHashCode(hashCodes[~positions[scan]]);
-//                if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r) { /* Nothing. We'd have preferred an `unless` statement. */} else {
-//                    positions[here] = positions[scan];
-//                    here = scan;
-//                    break;
-//                }
-//            }
-//        }
-//    }
-
     protected void removeFrom(int here) {
         this.deletedIndices.add(~positions[here]);;
+        entries[~positions[here]] = null;
         while (true) {
-            entries[~positions[here]] = null;
             positions[here] = 0;
             int scan = here;
             while (true) {
@@ -298,6 +279,7 @@ public class FastTripleHashSet2 {
             }
         }
     }
+
 
     /**
      * Removes all of the elements from this collection (optional operation).

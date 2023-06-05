@@ -19,8 +19,8 @@
 package org.apache.jena.mem.set.triple;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
+import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem2.collection.FastTripleHashSet;
 import org.apache.jena.mem2.collection.FastTripleHashSet2;
 import org.apache.jena.mem2.collection.FastTripleSet;
@@ -30,11 +30,12 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
 @State(Scope.Benchmark)
-public class TestSetRemove {
+public class TestSetUpdate {
 
     @Param({
             "../testing/cheeses-0.1.ttl",
@@ -78,89 +79,58 @@ public class TestSetRemove {
     }
 
     private int removeFromHashSet() {
-        triplesToRemove.forEach(t -> this.hashSet.remove(t));
-        Assert.assertTrue(this.hashSet.isEmpty());
+        for(int i=0; i<triplesToRemove.size(); i+=10) {
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.hashSet.remove(t));
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.hashSet.add(t));
+            assert this.hashSet.size() == triples.size();
+        }
         return this.hashSet.size();
     }
     private int removeFromTripleSet() {
-        triplesToRemove.forEach(t -> this.tripleSet.removeKey(t));
-        Assert.assertTrue(this.tripleSet.isEmpty());
+        for(int i=0; i<triplesToRemove.size(); i+=10) {
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.tripleSet.removeKey(t));
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.tripleSet.addKey(t));
+            assert this.tripleSet.size() == triples.size();
+        }
         return this.tripleSet.size();
     }
 
     private int removeFromFastTripleSet() {
-        triplesToRemove.forEach(t -> this.fastTripleSet.removeKey(t));
-        Assert.assertTrue(this.fastTripleSet.isEmpty());
+        for(int i=0; i<triplesToRemove.size(); i+=10) {
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.fastTripleSet.removeKey(t));
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.fastTripleSet.addKey(t));
+            assert this.fastTripleSet.size() == triples.size();
+        }
         return this.fastTripleSet.size();
     }
 
     private int removeFromFastTripleHashSet() {
-        triplesToRemove.forEach(t -> this.fastTripleHashSet.remove(t));
-        Assert.assertTrue(this.fastTripleHashSet.isEmpty());
+        for(int i=0; i<triplesToRemove.size(); i+=10) {
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.fastTripleHashSet.remove(t));
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.fastTripleHashSet.add(t));
+            assert this.fastTripleHashSet.size() == triples.size();
+        }
         return this.fastTripleHashSet.size();
     }
 
     private int removeFromFastTripleHashSet2() {
-        triplesToRemove.forEach(t -> this.fastTripleHashSet2.remove(t));
-        Assert.assertTrue(this.fastTripleHashSet2.isEmpty());
+        for(int i=0; i<triplesToRemove.size(); i+=10) {
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.fastTripleHashSet2.remove(t));
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.fastTripleHashSet2.add(t));
+            assert this.fastTripleHashSet2.size() == triples.size();
+        }
         return this.fastTripleHashSet2.size();
     }
-
-//    @Test
-//    public void testDeleteFromFastTripleHashSet2() {
-//        this.triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl");
-//        this.triplesToRemove = Releases.current.cloneTriples(triples);
-//        this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
-//        this.triples.forEach(t -> {
-//            if(!this.fastTripleHashSet2.add(t)) {
-//                Assert.fail();
-//            }
-//        });
-//        assert this.fastTripleHashSet2.size() == this.triples.size();
-//        this.triplesToRemove.forEach(t -> {
-//            if(!this.fastTripleHashSet2.contains(t)) {
-//                Assert.fail();
-//            }
-//        });
-//        triplesToRemove.forEach(t -> {
-//            if(this.fastTripleHashSet2.remove(t)) {
-//               if(this.fastTripleHashSet2.contains(t)) {
-//                     Assert.fail();
-//               }
-//            } else {
-//                Assert.fail();
-//            }
-//        });
-//        Assert.assertTrue(this.fastTripleHashSet2.isEmpty());
-//    }
-//
-//    @Test
-//    public void testDeleteFromFastTripleHashSet() {
-//        this.triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl");
-//        this.triplesToRemove = Releases.current.cloneTriples(triples);
-//        this.fastTripleHashSet = new FastTripleHashSet(triples.size());
-//        this.triples.forEach(t -> {
-//            if(!this.fastTripleHashSet.add(t)) {
-//                Assert.fail();
-//            }
-//        });
-//        assert this.fastTripleHashSet.size() == this.triples.size();
-//        this.triplesToRemove.forEach(t -> {
-//            if(!this.fastTripleHashSet.contains(t)) {
-//                Assert.fail();
-//            }
-//        });
-//        triplesToRemove.forEach(t -> {
-//            if(this.fastTripleHashSet.remove(t)) {
-//                if(this.fastTripleHashSet.contains(t)) {
-//                    Assert.fail();
-//                }
-//            } else {
-//                Assert.fail();
-//            }
-//        });
-//        Assert.assertTrue(this.fastTripleHashSet.isEmpty());
-//    }
 
 
     @Setup(Level.Invocation)
@@ -195,6 +165,7 @@ public class TestSetRemove {
     public void setupTrial() throws Exception {
         this.triples = Releases.current.readTriples(param0_GraphUri);
         this.triplesToRemove = Releases.current.cloneTriples(triples);
+        Collections.shuffle(triplesToRemove);
         switch (param1_SetImplementation) {
             case "HashSet":
                 this.removeFromSet = this::removeFromHashSet;
