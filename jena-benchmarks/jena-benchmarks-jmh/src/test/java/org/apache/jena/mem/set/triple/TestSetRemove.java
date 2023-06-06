@@ -21,10 +21,7 @@ package org.apache.jena.mem.set.triple;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-import org.apache.jena.mem2.collection.FastTripleHashSet;
-import org.apache.jena.mem2.collection.FastTripleHashSet2;
-import org.apache.jena.mem2.collection.FastTripleSet;
-import org.apache.jena.mem2.collection.TripleSet;
+import org.apache.jena.mem2.collection.*;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -37,15 +34,15 @@ import java.util.List;
 public class TestSetRemove {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
             "C:/temp/res_test/xxx_CGMES_SSH.xml",
             "C:/temp/res_test/xxx_CGMES_TP.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
 //            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
@@ -53,11 +50,14 @@ public class TestSetRemove {
     public String param0_GraphUri;
 
     @Param({
-            "FastTripleHashSet2",
             "HashSet",
             "TripleSet",
             "FastTripleSet",
-            "FastTripleHashSet"
+            "FastTripleHashSet",
+            "FastTripleHashSet2",
+//            "FastTripleHashSet3",
+            "FastTripleHashSet4",
+//            "FastTripleHashSet5",
     })
     public String param1_SetImplementation;
 
@@ -68,6 +68,10 @@ public class TestSetRemove {
     private FastTripleSet fastTripleSet;
     private FastTripleHashSet fastTripleHashSet;
     private FastTripleHashSet2 fastTripleHashSet2;
+    private FastTripleHashSet3 fastTripleHashSet3;
+    private FastTripleHashSet4 fastTripleHashSet4;
+    private FastTripleHashSet5 fastTripleHashSet5;
+
 
 
     java.util.function.Supplier<Integer> removeFromSet;
@@ -106,61 +110,53 @@ public class TestSetRemove {
         return this.fastTripleHashSet2.size();
     }
 
+    private int removeFromFastTripleHashSet3() {
+        triplesToRemove.forEach(t -> this.fastTripleHashSet3.remove(t));
+        Assert.assertTrue(this.fastTripleHashSet3.isEmpty());
+        return this.fastTripleHashSet3.size();
+    }
+
+    private int removeFromFastTripleHashSet4() {
+        triplesToRemove.forEach(t -> this.fastTripleHashSet4.remove(t));
+        Assert.assertTrue(this.fastTripleHashSet4.isEmpty());
+        return this.fastTripleHashSet4.size();
+    }
+
+    private int removeFromFastTripleHashSet5() {
+        triplesToRemove.forEach(t -> this.fastTripleHashSet5.remove(t));
+        Assert.assertTrue(this.fastTripleHashSet5.isEmpty());
+        return this.fastTripleHashSet5.size();
+    }
+
 //    @Test
-//    public void testDeleteFromFastTripleHashSet2() {
-//        this.triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl").subList(0, 3);
-//        this.triplesToRemove = Releases.current.cloneTriples(triples);
-//        this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
-//        this.triples.forEach(t -> {
-//            if(!this.fastTripleHashSet2.add(t)) {
+//    public void testDeleteFromFastTripleHashSet4() {
+//        var triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl").subList(0, 3);
+//        var triplesToRemove = Releases.current.cloneTriples(triples);
+//        var set = new FastTripleHashSet4(triples.size());
+//        triples.forEach(t -> {
+//            if(!set.add(t)) {
 //                Assert.fail();
 //            }
 //        });
-//        assert this.fastTripleHashSet2.size() == this.triples.size();
-//        this.triplesToRemove.forEach(t -> {
-//            if(!this.fastTripleHashSet2.contains(t)) {
+//        assert set.size() == triples.size();
+//        triplesToRemove.forEach(t -> {
+//            if(!set.contains(t)) {
 //                Assert.fail();
 //            }
 //        });
 //        triplesToRemove.forEach(t -> {
-//            if(this.fastTripleHashSet2.remove(t)) {
-//               if(this.fastTripleHashSet2.contains(t)) {
+//            if(set.remove(t)) {
+//               if(set.contains(t)) {
 //                     Assert.fail();
 //               }
 //            } else {
 //                Assert.fail();
 //            }
 //        });
-//        Assert.assertTrue(this.fastTripleHashSet2.isEmpty());
+//        Assert.assertTrue(set.isEmpty());
 //    }
-//
-//    @Test
-//    public void testDeleteFromFastTripleHashSet() {
-//        this.triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl");
-//        this.triplesToRemove = Releases.current.cloneTriples(triples);
-//        this.fastTripleHashSet = new FastTripleHashSet(triples.size());
-//        this.triples.forEach(t -> {
-//            if(!this.fastTripleHashSet.add(t)) {
-//                Assert.fail();
-//            }
-//        });
-//        assert this.fastTripleHashSet.size() == this.triples.size();
-//        this.triplesToRemove.forEach(t -> {
-//            if(!this.fastTripleHashSet.contains(t)) {
-//                Assert.fail();
-//            }
-//        });
-//        triplesToRemove.forEach(t -> {
-//            if(this.fastTripleHashSet.remove(t)) {
-//                if(this.fastTripleHashSet.contains(t)) {
-//                    Assert.fail();
-//                }
-//            } else {
-//                Assert.fail();
-//            }
-//        });
-//        Assert.assertTrue(this.fastTripleHashSet.isEmpty());
-//    }
+
+
 
 
     @Setup(Level.Invocation)
@@ -186,6 +182,18 @@ public class TestSetRemove {
                 this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
                 this.triples.forEach(fastTripleHashSet2::add);
                 break;
+            case "FastTripleHashSet3":
+                this.fastTripleHashSet3 = new FastTripleHashSet3(triples.size());
+                this.triples.forEach(fastTripleHashSet3::add);
+                break;
+            case "FastTripleHashSet4":
+                this.fastTripleHashSet4 = new FastTripleHashSet4(triples.size());
+                this.triples.forEach(fastTripleHashSet4::add);
+                break;
+            case "FastTripleHashSet5":
+                this.fastTripleHashSet5 = new FastTripleHashSet5(triples.size());
+                this.triples.forEach(fastTripleHashSet5::add);
+                break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);
         }
@@ -210,6 +218,15 @@ public class TestSetRemove {
                 break;
             case "FastTripleHashSet2":
                 this.removeFromSet = this::removeFromFastTripleHashSet2;
+                break;
+            case "FastTripleHashSet3":
+                this.removeFromSet = this::removeFromFastTripleHashSet3;
+                break;
+            case "FastTripleHashSet4":
+                this.removeFromSet = this::removeFromFastTripleHashSet4;
+                break;
+            case "FastTripleHashSet5":
+                this.removeFromSet = this::removeFromFastTripleHashSet5;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

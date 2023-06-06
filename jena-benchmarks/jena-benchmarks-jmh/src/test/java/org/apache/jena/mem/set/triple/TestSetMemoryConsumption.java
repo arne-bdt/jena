@@ -23,16 +23,14 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-import org.apache.jena.mem2.collection.FastTripleHashSet;
-import org.apache.jena.mem2.collection.FastTripleHashSet2;
-import org.apache.jena.mem2.collection.FastTripleSet;
-import org.apache.jena.mem2.collection.TripleSet;
+import org.apache.jena.mem2.collection.*;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
@@ -40,15 +38,15 @@ import java.util.List;
 public class TestSetMemoryConsumption {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
             "C:/temp/res_test/xxx_CGMES_SSH.xml",
             "C:/temp/res_test/xxx_CGMES_TP.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
 //            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
@@ -56,11 +54,15 @@ public class TestSetMemoryConsumption {
     public String param0_GraphUri;
 
     @Param({
+
+//            "HashSet",
+//            "TripleSet",
+//            "FastTripleSet",
+//            "FastTripleHashSet",
             "FastTripleHashSet2",
-            "HashSet",
-            "TripleSet",
-            "FastTripleSet",
-            "FastTripleHashSet"
+//            "FastTripleHashSet3",
+            "FastTripleHashSet4",
+//            "FastTripleHashSet5",
     })
     public String param1_SetImplementation;
 
@@ -81,6 +83,24 @@ public class TestSetMemoryConsumption {
                 (memoryAfter - memoryBefore)));
         return sut;
     }
+
+//    @Benchmark
+//    public Object almostEmptyInstances() {
+//        var memoryBefore = runGcAndGetUsedMemoryInMB();
+//        var stopwatch = StopWatch.createStarted();
+//        triples = triples.subList(0, 4);
+//        var instances = new ArrayList<>(10000);
+//        for(int i=0; i<10000; i++) {
+//            instances.add(fillSet.get());
+//        }
+//        stopwatch.stop();
+//        var memoryAfter = runGcAndGetUsedMemoryInMB();
+//        System.out.println(String.format("graphs: %d time to fill graphs: %s additional memory: %5.3f MB",
+//                triples.size(),
+//                stopwatch.formatTime(),
+//                (memoryAfter - memoryBefore)));
+//        return instances;
+//    }
 
     private Object fillHashSet() {
         var sut = new HashSet<Triple>();
@@ -110,6 +130,13 @@ public class TestSetMemoryConsumption {
     }
     private Object fillFastTripleHashSet2() {
         var sut = new FastTripleHashSet2();
+        triples.forEach(sut::add);
+        Assert.assertEquals(triples.size(), sut.size());
+        return sut;
+    }
+
+    private Object fillFastTripleHashSet3() {
+        var sut = new FastTripleHashSet3();
         triples.forEach(sut::add);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
@@ -145,6 +172,9 @@ public class TestSetMemoryConsumption {
                 break;
             case "FastTripleHashSet2":
                 this.fillSet = this::fillFastTripleHashSet2;
+                break;
+            case "FastTripleHashSet3":
+                this.fillSet = this::fillFastTripleHashSet3;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

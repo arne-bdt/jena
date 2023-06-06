@@ -34,20 +34,13 @@ import java.util.stream.StreamSupport;
  */
 public class FastNodeHashSet implements Set<Node> {
 
-    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
-    private int calcStartIndexByHashCode(final int hashCode) {
-        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
-        return hashCode & (entries.length-1);
-    }
-
-    private static int MINIMUM_SIZE = 16;
-    private static float loadFactor = 0.5f;
+    private static final int MINIMUM_SIZE = 16;
+    private static final float loadFactor = 0.5f;
     protected int size = 0;
     protected Node[] entries;
     protected int[] hashCodes;
-
     public FastNodeHashSet(int initialSize) {
-        this.entries = new Node[Integer.highestOneBit(((int)(initialSize/loadFactor)+1)) << 1];
+        this.entries = new Node[Integer.highestOneBit(((int) (initialSize / loadFactor) + 1)) << 1];
         this.hashCodes = new int[entries.length];
     }
 
@@ -57,8 +50,14 @@ public class FastNodeHashSet implements Set<Node> {
 
     }
 
+    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
+    private int calcStartIndexByHashCode(final int hashCode) {
+        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        return hashCode & (entries.length - 1);
+    }
+
     private int calcNewSize() {
-        if(size >= entries.length*loadFactor && entries.length <= 1 << 30) { /*grow*/
+        if (size >= entries.length * loadFactor && entries.length <= 1 << 30) { /*grow*/
             return entries.length << 1;
         }
         return -1;
@@ -67,10 +66,10 @@ public class FastNodeHashSet implements Set<Node> {
     private void grow(final int minCapacity) {
         final var oldEntries = this.entries;
         final var oldHashCodes = this.hashCodes;
-        this.entries = new Node[Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1];
+        this.entries = new Node[Integer.highestOneBit(((int) (minCapacity / loadFactor) + 1)) << 1];
         this.hashCodes = new int[entries.length];
-        for(int i=0; i<oldEntries.length; i++) {
-            if(null != oldEntries[i]) {
+        for (int i = 0; i < oldEntries.length; i++) {
+            if (null != oldEntries[i]) {
                 var newSlot = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
                 this.entries[newSlot] = oldEntries[i];
                 this.hashCodes[newSlot] = oldHashCodes[i];
@@ -80,15 +79,15 @@ public class FastNodeHashSet implements Set<Node> {
 
     private boolean grow() {
         final var newSize = calcNewSize();
-        if(newSize < 0) {
+        if (newSize < 0) {
             return false;
         }
         final var oldEntries = this.entries;
         final var oldHashCodes = this.hashCodes;
         this.entries = new Node[newSize];
         this.hashCodes = new int[newSize];
-        for(int i=0; i<oldEntries.length; i++) {
-            if(null != oldEntries[i]) {
+        for (int i = 0; i < oldEntries.length; i++) {
+            if (null != oldEntries[i]) {
                 var newSlot = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
                 this.entries[newSlot] = oldEntries[i];
                 this.hashCodes[newSlot] = oldHashCodes[i];
@@ -121,23 +120,23 @@ public class FastNodeHashSet implements Set<Node> {
 
     @Override
     public boolean contains(Object o) {
-        final var e = (Node)o;
+        final var e = (Node) o;
         final int hashCode;
         var index = calcStartIndexByHashCode(hashCode = e.hashCode());
-        if(null == entries[index]) {
+        if (null == entries[index]) {
             return false;
         }
-        if(hashCode == hashCodes[index] && o.equals(entries[index])) {
+        if (hashCode == hashCodes[index] && o.equals(entries[index])) {
             return true;
-        } else if(--index < 0){
+        } else if (--index < 0) {
             index += entries.length;
         }
-        while(true) {
-            if(null == entries[index]) {
+        while (true) {
+            if (null == entries[index]) {
                 return false;
-            } else if(hashCode == hashCodes[index] && o.equals(entries[index])) {
+            } else if (hashCode == hashCodes[index] && o.equals(entries[index])) {
                 return true;
-            } else if(--index < 0){
+            } else if (--index < 0) {
                 index += entries.length;
             }
         }
@@ -175,7 +174,7 @@ public class FastNodeHashSet implements Set<Node> {
 
     public Node findAny() {
         var index = -1;
-        while(entries[++index] == null);
+        while (entries[++index] == null) ;
         return entries[index];
     }
 
@@ -187,7 +186,7 @@ public class FastNodeHashSet implements Set<Node> {
     public boolean add(Node value, int hashCode) {
         grow();
         var index = findIndex(value, hashCode);
-        if(index < 0) {
+        if (index < 0) {
             entries[~index] = value;
             hashCodes[~index] = hashCode;
             size++;
@@ -212,7 +211,7 @@ public class FastNodeHashSet implements Set<Node> {
         grow();
         final int hashCode;
         final var index = findIndex(value, hashCode = value.hashCode());
-        if(index < 0) {
+        if (index < 0) {
             entries[~index] = value;
             hashCodes[~index] = hashCode;
             size++;
@@ -224,12 +223,12 @@ public class FastNodeHashSet implements Set<Node> {
     public Node getIfPresent(Node value) {
         final int hashCode;
         var index = calcStartIndexByHashCode(hashCode = value.hashCode());
-        while(true) {
-            if(null == entries[index]) {
+        while (true) {
+            if (null == entries[index]) {
                 return null;
-            } else if(hashCode == hashCodes[index] && value.equals(entries[index])) {
+            } else if (hashCode == hashCodes[index] && value.equals(entries[index])) {
                 return entries[index];
-            } else if(--index < 0){
+            } else if (--index < 0) {
                 index += entries.length;
             }
         }
@@ -238,15 +237,15 @@ public class FastNodeHashSet implements Set<Node> {
     public Node compute(Node value, Function<Node, Node> remappingFunction) {
         final int hashCode;
         var index = findIndex(value, hashCode = value.hashCode());
-        if(index < 0) { /*value does not exist yet*/
+        if (index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
-            if(newValue == null) {
+            if (newValue == null) {
                 return null;
             }
-            if(!value.equals(newValue)) {
+            if (!value.equals(newValue)) {
                 throw new IllegalArgumentException("remapped value is not equal to value");
             }
-            if(grow()) {
+            if (grow()) {
                 index = findEmptySlotWithoutEqualityCheck(hashCode);
             } else {
                 index = ~index;
@@ -257,7 +256,7 @@ public class FastNodeHashSet implements Set<Node> {
             return newValue;
         } else { /*existing value found*/
             var newValue = remappingFunction.apply(entries[index]);
-            if(newValue == null) {
+            if (newValue == null) {
                 entries[index] = null;
                 size--;
                 rearrangeNeighbours(index);
@@ -271,12 +270,12 @@ public class FastNodeHashSet implements Set<Node> {
 
     private int findIndex(final Node e, final int hashCode) {
         var index = calcStartIndexByHashCode(hashCode);
-        while(true) {
-            if(null == entries[index]) {
+        while (true) {
+            if (null == entries[index]) {
                 return ~index;
-            } else if(hashCode == hashCodes[index] && e.equals(entries[index])) {
+            } else if (hashCode == hashCodes[index] && e.equals(entries[index])) {
                 return index;
-            } else if(--index < 0){
+            } else if (--index < 0) {
                 index += entries.length;
             }
         }
@@ -284,10 +283,10 @@ public class FastNodeHashSet implements Set<Node> {
 
     private int findEmptySlotWithoutEqualityCheck(final int hashCode) {
         var index = calcStartIndexByHashCode(hashCode);
-        while(true) {
-            if(null == entries[index]) {
+        while (true) {
+            if (null == entries[index]) {
                 return index;
-            } else if(--index < 0){
+            } else if (--index < 0) {
                 index += entries.length;
             }
         }
@@ -315,7 +314,7 @@ public class FastNodeHashSet implements Set<Node> {
      */
     @Override
     public boolean remove(Object o) {
-        return remove((Node)o, o.hashCode());
+        return remove((Node) o, o.hashCode());
     }
 
     public boolean remove(Node e, int hashCode) {
@@ -343,7 +342,7 @@ public class FastNodeHashSet implements Set<Node> {
     private void rearrangeNeighbours(int index) {
         /*rearrange neighbours*/
         var neighbours = getNeighbours(index);
-        if(neighbours == null) {
+        if (neighbours == null) {
             return;
         }
         Arrays.sort(neighbours, ObjectsWithStartIndexIndexAndDistance.distanceComparator);
@@ -351,10 +350,10 @@ public class FastNodeHashSet implements Set<Node> {
         do {
             elementsHaveBeenSwitched = false;
             for (ObjectsWithStartIndexIndexAndDistance neighbour : neighbours) {
-                if(neighbour.distance == 0) {
+                if (neighbour.distance == 0) {
                     break;
                 }
-                if (neighbour.isTargetIndexNearerToStartIndex(index)){
+                if (neighbour.isTargetIndexNearerToStartIndex(index)) {
                     var oldIndexOfNeighbour = neighbour.currentIndex;
                     entries[index] = entries[oldIndexOfNeighbour];
                     hashCodes[index] = hashCodes[oldIndexOfNeighbour];
@@ -366,7 +365,7 @@ public class FastNodeHashSet implements Set<Node> {
                     break;
                 }
             }
-        } while(elementsHaveBeenSwitched);
+        } while (elementsHaveBeenSwitched);
     }
 
     private ObjectsWithStartIndexIndexAndDistance[] getNeighbours(final int index) {
@@ -374,68 +373,38 @@ public class FastNodeHashSet implements Set<Node> {
         ObjectsWithStartIndexIndexAndDistance neighbour;
         /*find left*/
         var i = index;
-        while(true) {
-            if(--i < 0){
+        while (true) {
+            if (--i < 0) {
                 i += entries.length;
             }
-            if(null == entries[i]) {
+            if (null == entries[i]) {
                 break;
             } else {
                 neighbour = new ObjectsWithStartIndexIndexAndDistance(
                         entries.length, calcStartIndexByHashCode(hashCodes[i]), i);
-                if(neighbour.distance > 0) {
+                if (neighbour.distance > 0) {
                     neighbours.add(neighbour);
                 }
             }
         }
         i = index;
         /*find right*/
-        while(true) {
-            if(++i == entries.length){
+        while (true) {
+            if (++i == entries.length) {
                 i = 0;
             }
-            if(null == entries[i]) {
+            if (null == entries[i]) {
                 break;
             } else {
                 neighbour = new ObjectsWithStartIndexIndexAndDistance(
                         entries.length, calcStartIndexByHashCode(hashCodes[i]), i);
-                if(neighbour.distance > 0) {
+                if (neighbour.distance > 0) {
                     neighbours.add(neighbour);
                 }
             }
         }
         return neighbours.isEmpty()
                 ? null : neighbours.toArray(new ObjectsWithStartIndexIndexAndDistance[neighbours.size()]);
-    }
-
-    private static class ObjectsWithStartIndexIndexAndDistance {
-        public final static Comparator<ObjectsWithStartIndexIndexAndDistance>  distanceComparator
-                = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
-        final int startIndex;
-        final int length;
-        int currentIndex;
-        int distance;
-
-        public ObjectsWithStartIndexIndexAndDistance(final int length, final int startIndex, final int currentIndex) {
-            this.length = length;
-            this.startIndex = startIndex;
-            this.setCurrentIndex(currentIndex);
-        }
-
-        void setCurrentIndex(final int currentIndex) {
-            this.currentIndex = currentIndex;
-            this.distance = calcDistance(currentIndex);
-        }
-
-        private int calcDistance(final int index) {
-            return index <= startIndex
-                    ? startIndex - index
-                    : startIndex + length - index;
-        }
-
-        boolean isTargetIndexNearerToStartIndex(final int targetIndex) {
-            return calcDistance(targetIndex) < distance;
-        }
     }
 
     /**
@@ -459,7 +428,7 @@ public class FastNodeHashSet implements Set<Node> {
     @Override
     public boolean containsAll(Collection<?> c) {
         for (Object o : c) {
-            if(!this.contains(o)) {
+            if (!this.contains(o)) {
                 return false;
             }
         }
@@ -496,7 +465,7 @@ public class FastNodeHashSet implements Set<Node> {
         int index;
         int hashCode;
         for (Node t : c) {
-            if((index=findIndex(t, hashCode = t.hashCode())) < 0) {
+            if ((index = findIndex(t, hashCode = t.hashCode())) < 0) {
                 entries[~index] = t;
                 hashCodes[~index] = hashCode;
                 size++;
@@ -621,6 +590,36 @@ public class FastNodeHashSet implements Set<Node> {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
         return StreamSupport.stream(new SparseArraySpliterator<>(entries, checkForConcurrentModification), true);
+    }
+
+    private static class ObjectsWithStartIndexIndexAndDistance {
+        public final static Comparator<ObjectsWithStartIndexIndexAndDistance> distanceComparator
+                = Comparator.comparingInt((ObjectsWithStartIndexIndexAndDistance n) -> n.distance).reversed();
+        final int startIndex;
+        final int length;
+        int currentIndex;
+        int distance;
+
+        public ObjectsWithStartIndexIndexAndDistance(final int length, final int startIndex, final int currentIndex) {
+            this.length = length;
+            this.startIndex = startIndex;
+            this.setCurrentIndex(currentIndex);
+        }
+
+        void setCurrentIndex(final int currentIndex) {
+            this.currentIndex = currentIndex;
+            this.distance = calcDistance(currentIndex);
+        }
+
+        private int calcDistance(final int index) {
+            return index <= startIndex
+                    ? startIndex - index
+                    : startIndex + length - index;
+        }
+
+        boolean isTargetIndexNearerToStartIndex(final int targetIndex) {
+            return calcDistance(targetIndex) < distance;
+        }
     }
 
 }

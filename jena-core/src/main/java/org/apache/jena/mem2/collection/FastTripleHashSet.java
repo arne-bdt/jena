@@ -22,7 +22,10 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.memTermEquality.SparseArrayIterator;
 import org.apache.jena.memTermEquality.SparseArraySpliterator;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -34,20 +37,13 @@ import java.util.stream.StreamSupport;
  */
 public class FastTripleHashSet implements Set<Triple> {
 
-    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
-    private int calcStartIndexByHashCode(final int hashCode) {
-        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
-        return hashCode & (entries.length-1);
-    }
-
-    private static int MINIMUM_SIZE = 16;
-    private static float loadFactor = 0.5f;
+    private static final int MINIMUM_SIZE = 16;
+    private static final float loadFactor = 0.5f;
     protected int size = 0;
     protected Triple[] entries;
     protected int[] hashCodes;
-
     public FastTripleHashSet(int initialSize) {
-        this.entries = new Triple[Integer.highestOneBit(((int)(initialSize/loadFactor)+1)) << 1];
+        this.entries = new Triple[Integer.highestOneBit(((int) (initialSize / loadFactor) + 1)) << 1];
         this.hashCodes = new int[entries.length];
     }
 
@@ -57,8 +53,14 @@ public class FastTripleHashSet implements Set<Triple> {
 
     }
 
+    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
+    private int calcStartIndexByHashCode(final int hashCode) {
+        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        return hashCode & (entries.length - 1);
+    }
+
     private int calcNewSize() {
-        if(size >= entries.length*loadFactor && entries.length <= 1 << 30) { /*grow*/
+        if (size >= entries.length * loadFactor && entries.length <= 1 << 30) { /*grow*/
             return entries.length << 1;
         }
         return -1;
@@ -67,10 +69,10 @@ public class FastTripleHashSet implements Set<Triple> {
     private void grow(final int minCapacity) {
         final var oldEntries = this.entries;
         final var oldHashCodes = this.hashCodes;
-        this.entries = new Triple[Integer.highestOneBit(((int)(minCapacity/loadFactor)+1)) << 1];
+        this.entries = new Triple[Integer.highestOneBit(((int) (minCapacity / loadFactor) + 1)) << 1];
         this.hashCodes = new int[entries.length];
-        for(int i=0; i<oldEntries.length; i++) {
-            if(null != oldEntries[i]) {
+        for (int i = 0; i < oldEntries.length; i++) {
+            if (null != oldEntries[i]) {
                 var newSlot = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
                 this.entries[newSlot] = oldEntries[i];
                 this.hashCodes[newSlot] = oldHashCodes[i];
@@ -80,15 +82,15 @@ public class FastTripleHashSet implements Set<Triple> {
 
     private boolean grow() {
         final var newSize = calcNewSize();
-        if(newSize < 0) {
+        if (newSize < 0) {
             return false;
         }
         final var oldEntries = this.entries;
         final var oldHashCodes = this.hashCodes;
         this.entries = new Triple[newSize];
         this.hashCodes = new int[newSize];
-        for(int i=0; i<oldEntries.length; i++) {
-            if(null != oldEntries[i]) {
+        for (int i = 0; i < oldEntries.length; i++) {
+            if (null != oldEntries[i]) {
                 var newSlot = findEmptySlotWithoutEqualityCheck(oldHashCodes[i]);
                 this.entries[newSlot] = oldEntries[i];
                 this.hashCodes[newSlot] = oldHashCodes[i];
@@ -123,12 +125,12 @@ public class FastTripleHashSet implements Set<Triple> {
     public boolean contains(Object o) {
         final int hashCode;
         var index = calcStartIndexByHashCode(hashCode = o.hashCode());
-        while(true) {
-            if(null == entries[index]) {
+        while (true) {
+            if (null == entries[index]) {
                 return false;
-            } else if(hashCode == hashCodes[index] && o.equals(entries[index])) {
+            } else if (hashCode == hashCodes[index] && o.equals(entries[index])) {
                 return true;
-            } else if(--index < 0){
+            } else if (--index < 0) {
                 index += entries.length;
             }
         }
@@ -166,7 +168,7 @@ public class FastTripleHashSet implements Set<Triple> {
 
     public Triple findAny() {
         var index = -1;
-        while(entries[++index] == null);
+        while (entries[++index] == null) ;
         return entries[index];
     }
 
@@ -178,7 +180,7 @@ public class FastTripleHashSet implements Set<Triple> {
     public boolean add(Triple value, int hashCode) {
         grow();
         var index = findIndex(value, hashCode);
-        if(index < 0) {
+        if (index < 0) {
             entries[~index] = value;
             hashCodes[~index] = hashCode;
             size++;
@@ -203,7 +205,7 @@ public class FastTripleHashSet implements Set<Triple> {
         grow();
         final int hashCode;
         final var index = findIndex(value, hashCode = value.hashCode());
-        if(index < 0) {
+        if (index < 0) {
             entries[~index] = value;
             hashCodes[~index] = hashCode;
             size++;
@@ -215,12 +217,12 @@ public class FastTripleHashSet implements Set<Triple> {
     public Triple getIfPresent(Triple value) {
         final int hashCode;
         var index = calcStartIndexByHashCode(hashCode = value.hashCode());
-        while(true) {
-            if(null == entries[index]) {
+        while (true) {
+            if (null == entries[index]) {
                 return null;
-            } else if(hashCode == hashCodes[index] && value.equals(entries[index])) {
+            } else if (hashCode == hashCodes[index] && value.equals(entries[index])) {
                 return entries[index];
-            } else if(--index < 0){
+            } else if (--index < 0) {
                 index += entries.length;
             }
         }
@@ -229,15 +231,15 @@ public class FastTripleHashSet implements Set<Triple> {
     public Triple compute(Triple value, Function<Triple, Triple> remappingFunction) {
         final int hashCode;
         var index = findIndex(value, hashCode = value.hashCode());
-        if(index < 0) { /*value does not exist yet*/
+        if (index < 0) { /*value does not exist yet*/
             var newValue = remappingFunction.apply(null);
-            if(newValue == null) {
+            if (newValue == null) {
                 return null;
             }
-            if(!value.equals(newValue)) {
+            if (!value.equals(newValue)) {
                 throw new IllegalArgumentException("remapped value is not equal to value");
             }
-            if(grow()) {
+            if (grow()) {
                 index = findEmptySlotWithoutEqualityCheck(hashCode);
             } else {
                 index = ~index;
@@ -248,7 +250,7 @@ public class FastTripleHashSet implements Set<Triple> {
             return newValue;
         } else { /*existing value found*/
             var newValue = remappingFunction.apply(entries[index]);
-            if(newValue == null) {
+            if (newValue == null) {
                 removeFrom(index);
                 return null;
             } else {
@@ -260,12 +262,12 @@ public class FastTripleHashSet implements Set<Triple> {
 
     private int findIndex(final Triple e, final int hashCode) {
         var index = calcStartIndexByHashCode(hashCode);
-        while(true) {
-            if(null == entries[index]) {
+        while (true) {
+            if (null == entries[index]) {
                 return ~index;
-            } else if(hashCode == hashCodes[index] && e.equals(entries[index])) {
+            } else if (hashCode == hashCodes[index] && e.equals(entries[index])) {
                 return index;
-            } else if(--index < 0){
+            } else if (--index < 0) {
                 index += entries.length;
             }
         }
@@ -273,10 +275,10 @@ public class FastTripleHashSet implements Set<Triple> {
 
     private int findEmptySlotWithoutEqualityCheck(final int hashCode) {
         var index = calcStartIndexByHashCode(hashCode);
-        while(true) {
-            if(null == entries[index]) {
+        while (true) {
+            if (null == entries[index]) {
                 return index;
-            } else if(--index < 0){
+            } else if (--index < 0) {
                 index += entries.length;
             }
         }
@@ -304,7 +306,7 @@ public class FastTripleHashSet implements Set<Triple> {
      */
     @Override
     public boolean remove(Object o) {
-        final var e = (Triple)o;
+        final var e = (Triple) o;
         return remove(e, e.hashCode());
     }
 
@@ -366,7 +368,7 @@ public class FastTripleHashSet implements Set<Triple> {
     @Override
     public boolean containsAll(Collection<?> c) {
         for (Object o : c) {
-            if(!this.contains(o)) {
+            if (!this.contains(o)) {
                 return false;
             }
         }
@@ -403,7 +405,7 @@ public class FastTripleHashSet implements Set<Triple> {
         int index;
         int hashCode;
         for (Triple t : c) {
-            if((index=findIndex(t, hashCode = t.hashCode())) < 0) {
+            if ((index = findIndex(t, hashCode = t.hashCode())) < 0) {
                 entries[~index] = t;
                 hashCodes[~index] = hashCode;
                 size++;

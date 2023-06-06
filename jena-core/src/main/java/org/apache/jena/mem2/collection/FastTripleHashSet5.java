@@ -33,7 +33,7 @@ import java.util.stream.StreamSupport;
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
  */
-public class FastTripleHashSet2 {
+public class FastTripleHashSet5 {
 
     private static final int MINIMUM_HASHES_SIZE = 16;
     private static final int MINIMUM_ELEMENTS_SIZE = 10;
@@ -50,13 +50,13 @@ public class FastTripleHashSet2 {
      */
     protected int[] positions;
 
-    public FastTripleHashSet2(int initialSize) {
+    public FastTripleHashSet5(int initialSize) {
         this.positions = new int[Integer.highestOneBit(((int) (initialSize / loadFactor) + 1)) << 1];
         this.entries = new Triple[initialSize];
         this.hashCodesOrDeletedIndices = new int[initialSize];
     }
 
-    public FastTripleHashSet2() {
+    public FastTripleHashSet5() {
         this.positions = new int[MINIMUM_HASHES_SIZE];
         this.entries = new Triple[MINIMUM_ELEMENTS_SIZE];
         this.hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
@@ -65,8 +65,9 @@ public class FastTripleHashSet2 {
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByHashCode(final int hashCode) {
-        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
-        return hashCode & (positions.length - 1);
+        //return (hashCode ^ (hashCode >>> 16)) & (positions.length-1);
+        return (hashCode & 0x7fffffff) % positions.length;
+        //return hashCode & (positions.length-1);
     }
 
     private int calcNewPositionsSize() {

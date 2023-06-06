@@ -1,7 +1,6 @@
 package org.apache.jena.mem2.collection;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.Triple;
 
 public class NodeSet extends AbstractHashedSet<Node> {
 

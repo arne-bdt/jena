@@ -46,6 +46,15 @@ public abstract class HashedSetBase<Key> {
         threshold = (int) (keys.length * loadFactor);
     }
 
+    protected static int nextSize(int atLeast) {
+        for (int prime : primes) {
+            if (prime > atLeast) return prime;
+        }
+        //return atLeast ;        // Input is 2*current capacity.
+        // There are some very large numbers in the primes table.
+        throw new JenaException("Failed to find a 'next size': atleast = " + atLeast);
+    }
+
     public int size() {
         return size;
     }
@@ -70,15 +79,6 @@ public abstract class HashedSetBase<Key> {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
         return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
-    }
-
-    protected static int nextSize(int atLeast) {
-        for (int prime : primes) {
-            if (prime > atLeast) return prime;
-        }
-        //return atLeast ;        // Input is 2*current capacity.
-        // There are some very large numbers in the primes table.
-        throw new JenaException("Failed to find a 'next size': atleast = " + atLeast);
     }
 
     /**
@@ -109,7 +109,6 @@ public abstract class HashedSetBase<Key> {
     }
 
     protected abstract void grow();
-
 
 
     /**
