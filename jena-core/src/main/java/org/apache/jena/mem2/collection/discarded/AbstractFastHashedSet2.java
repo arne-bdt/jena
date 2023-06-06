@@ -16,21 +16,28 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.collection.discarded;
 
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
+public abstract class AbstractFastHashedSet2<Key> extends HashedSetBase2<Key> {
+
+    /**
+     * Hashes of the keys, stored separately because we need to use them for
+     * resizing and more.
+     */
+    protected int[] hashes;
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
      * capacity and the corresponding threshold. All the key elements start out
      * null.
      */
-    protected AbstractHashedSet(int initialCapacity) {
+    protected AbstractFastHashedSet2(int initialCapacity) {
         super(initialCapacity);
+        hashes = new int[keys.length];
     }
 
     /**
@@ -39,36 +46,46 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
      * return the bitwise complement of the index of the slot it appears in. Hence
      * negative values imply present, positive absent, and there's no confusion
      * around 0.
+     * This override exists to optimize the search by using the hashes array.
      */
-    protected int findSlot(Key key) {
-        int index = initialIndexFor(key.hashCode());
+    protected final int findSlot(Key key, int hashCodeOfKey) {
+        int index = initialIndexFor(hashCodeOfKey);
         while (true) {
-            Key current = keys[index];
+            final Key current = keys[index];
             if (current == null) return index;
-            if (key.equals(current)) return ~index;
+            if (hashCodeOfKey == hashes[index] && key.equals(current)) return ~index;
             if (--index < 0) index += keys.length;
         }
     }
 
     @Override
     public boolean contains(Key key) {
-        return findSlot(key) < 0;
+        return contains(key, key.hashCode());
     }
 
-    public boolean add(Key key) {
-        final var slot = findSlot(key);
+    public boolean contains(Key key, int hashCodeOfKey) {
+        return findSlot(key, hashCodeOfKey) < 0;
+    }
+
+    public boolean addKey(Key key) {
+        return addKey(key, key.hashCode());
+    }
+
+    public boolean addKey(Key key, int hashCodeOfKey) {
+        final var slot = findSlot(key, hashCodeOfKey);
         if (slot < 0) return false;
         keys[slot] = key;
+        hashes[slot] = hashCodeOfKey;
         if (++size > threshold) grow();
         return true;
     }
 
-    /**
-     * Remove the object <code>key</code> from this hash's keys if it
-     * is present (if it's absent, do nothing).
-     */
-    public boolean remove(Key key) {
-        int slot = findSlot(key);
+    public boolean removeKey(Key key) {
+        return removeKey(key, key.hashCode());
+    }
+
+    public boolean removeKey(Key key, int hashCodeOfKey) {
+        int slot = findSlot(key, hashCodeOfKey);
         if (slot < 0) {
             removeFrom(~slot);
             return true;
@@ -79,12 +96,15 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
     @Override
     protected void grow() {
         final Key[] oldContents = keys;
+        final int[] oldHashes = hashes;
         keys = newKeyArray(calcGrownCapacityAndSetThreshold());
+        hashes = new int[keys.length];
         for (int i = 0; i < oldContents.length; i += 1) {
             final Key key = oldContents[i];
             if (key != null) {
-                final int slot = findSlot(key);
+                final int slot = findSlot(key, oldHashes[i]);
                 keys[slot] = key;
+                hashes[slot] = oldHashes[i];
             }
         }
     }
@@ -112,17 +132,14 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
             while (true) {
                 if (--scan < 0) scan += keys.length;
                 if (keys[scan] == null) return;
-                final int r = initialIndexFor(keys[scan].hashCode());
-                if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r) {
-                    /* Nothing. We'd have preferred an `unless` statement. */
-                } else {
+                final int r = initialIndexFor(hashes[scan]);
+                if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r) { /* Nothing. We'd have preferred an `unless` statement. */} else {
                     keys[here] = keys[scan];
+                    hashes[here] = hashes[scan];
                     here = scan;
                     break;
                 }
             }
         }
     }
-
-
 }

@@ -22,8 +22,8 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
+import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.memB.GraphMemB;
-import org.apache.jena.memRoaring.GraphMemRoaring;
 import org.apache.jena.memTermEquality.GraphMemTermEquality;
 import org.apache.jena.riot.RDFDataMgr;
 
@@ -39,8 +39,8 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
                 return new GraphMem();
             case GraphMemB:
                 return new GraphMemB();
-            case GraphMemRoaring:
-                return new GraphMemRoaring();
+            case GraphMem2Roaring:
+                return new GraphMem2Roaring();
             case GraphMemTermEquality:
                 return new GraphMemTermEquality();
             default:

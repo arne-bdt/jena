@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.collection.discarded;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.spliterator.SparseArraySubSpliterator;
@@ -33,16 +33,14 @@ import java.util.stream.StreamSupport;
  * This queue does not guarantee any order.
  * It´s purpose is to support fast remove operations.
  */
-public class FastTripleHashSet5 {
+public class FastTripleHashSet3 {
 
     private static final int MINIMUM_HASHES_SIZE = 16;
     private static final int MINIMUM_ELEMENTS_SIZE = 10;
     private static final float loadFactor = 0.5f;
     protected int entriesPos = 0;
     protected Triple[] entries;
-    protected int[] hashCodesOrDeletedIndices;
-    protected int lastDeletedIndex = -1;
-    protected int removedElementsCount = 0;
+    protected int[] hashCodes;
     /**
      * The negative indices to the entries and hashCode arrays.
      * The indices of the postions array are derived from the hashCodes.
@@ -50,24 +48,23 @@ public class FastTripleHashSet5 {
      */
     protected int[] positions;
 
-    public FastTripleHashSet5(int initialSize) {
+    public FastTripleHashSet3(int initialSize) {
         this.positions = new int[Integer.highestOneBit(((int) (initialSize / loadFactor) + 1)) << 1];
         this.entries = new Triple[initialSize];
-        this.hashCodesOrDeletedIndices = new int[initialSize];
+        this.hashCodes = new int[initialSize];
     }
 
-    public FastTripleHashSet5() {
+    public FastTripleHashSet3() {
         this.positions = new int[MINIMUM_HASHES_SIZE];
         this.entries = new Triple[MINIMUM_ELEMENTS_SIZE];
-        this.hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
+        this.hashCodes = new int[MINIMUM_ELEMENTS_SIZE];
 
     }
 
     /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByHashCode(final int hashCode) {
-        //return (hashCode ^ (hashCode >>> 16)) & (positions.length-1);
-        return (hashCode & 0x7fffffff) % positions.length;
-        //return hashCode & (positions.length-1);
+        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
+        return hashCode & (positions.length - 1);
     }
 
     private int calcNewPositionsSize() {
@@ -88,7 +85,7 @@ public class FastTripleHashSet5 {
         this.positions = new int[newSize];
         for (int i = 0; i < oldPositions.length; i++) {
             if (0 != oldPositions[i]) {
-                this.positions[findEmptySlotWithoutEqualityCheck(hashCodesOrDeletedIndices[~oldPositions[i]])] = oldPositions[i];
+                this.positions[findEmptySlotWithoutEqualityCheck(hashCodes[~oldPositions[i]])] = oldPositions[i];
             }
         }
     }
@@ -101,22 +98,15 @@ public class FastTripleHashSet5 {
      * @return the number of elements in this collection
      */
     public int size() {
-        return entriesPos - removedElementsCount;
+        return entriesPos;
     }
 
     private int getFreeElementIndex() {
-        if (lastDeletedIndex == -1) {
-            final var index = entriesPos++;
-            if (index == entries.length) {
-                growEntriesAndHashCodeArrays();
-            }
-            return index;
-        } else {
-            final var index = lastDeletedIndex;
-            lastDeletedIndex = hashCodesOrDeletedIndices[lastDeletedIndex];
-            removedElementsCount--;
-            return index;
+        final var index = entriesPos++;
+        if (index == entries.length) {
+            growEntriesAndHashCodeArrays();
         }
+        return index;
     }
 
     private void growEntriesAndHashCodeArrays() {
@@ -127,9 +117,9 @@ public class FastTripleHashSet5 {
         final var oldEntries = this.entries;
         this.entries = new Triple[newSize];
         System.arraycopy(oldEntries, 0, entries, 0, oldEntries.length);
-        final var oldHashCodes = this.hashCodesOrDeletedIndices;
-        this.hashCodesOrDeletedIndices = new int[newSize];
-        System.arraycopy(oldHashCodes, 0, hashCodesOrDeletedIndices, 0, oldHashCodes.length);
+        final var oldHashCodes = this.hashCodes;
+        this.hashCodes = new int[newSize];
+        System.arraycopy(oldHashCodes, 0, hashCodes, 0, oldHashCodes.length);
     }
 
     /**
@@ -149,7 +139,7 @@ public class FastTripleHashSet5 {
                 return false;
             } else {
                 final var eIndex = ~positions[pIndex];
-                if (hashCode == hashCodesOrDeletedIndices[eIndex] && o.equals(entries[eIndex])) {
+                if (hashCode == hashCodes[eIndex] && o.equals(entries[eIndex])) {
                     return true;
                 } else if (--pIndex < 0) {
                     pIndex += positions.length;
@@ -178,7 +168,7 @@ public class FastTripleHashSet5 {
         if (pIndex < 0) {
             final var eIndex = getFreeElementIndex();
             entries[eIndex] = value;
-            hashCodesOrDeletedIndices[eIndex] = hashCode;
+            hashCodes[eIndex] = hashCode;
             positions[~pIndex] = ~eIndex;
             return true;
         }
@@ -193,7 +183,7 @@ public class FastTripleHashSet5 {
         growPositionsArrayIfNeeded();
         final var eIndex = getFreeElementIndex();
         entries[eIndex] = value;
-        hashCodesOrDeletedIndices[eIndex] = hashCode;
+        hashCodes[eIndex] = hashCode;
         positions[findEmptySlotWithoutEqualityCheck(hashCode)] = ~eIndex;
     }
 
@@ -205,7 +195,7 @@ public class FastTripleHashSet5 {
                 return ~pIndex;
             } else {
                 final var pos = ~positions[pIndex];
-                if (hashCode == hashCodesOrDeletedIndices[pos] && e.equals(entries[pos])) {
+                if (hashCode == hashCodes[pos] && e.equals(entries[pos])) {
                     return pIndex;
                 } else if (--pIndex < 0) {
                     pIndex += positions.length;
@@ -268,17 +258,21 @@ public class FastTripleHashSet5 {
 
     protected void removeFrom(int here) {
         final var pIndex = ~positions[here];
-        hashCodesOrDeletedIndices[pIndex] = lastDeletedIndex;
-        lastDeletedIndex = pIndex;
-        removedElementsCount++;
-        entries[pIndex] = null;
+        entriesPos--;
+        if (entriesPos != pIndex) { /*swap entries*/
+            final var there = findPosition(entries[entriesPos], hashCodes[entriesPos]);
+            entries[pIndex] = entries[entriesPos];
+            hashCodes[pIndex] = hashCodes[entriesPos];
+            positions[there] = ~pIndex;
+        }
+        entries[entriesPos] = null;
         while (true) {
             positions[here] = 0;
             int scan = here;
             while (true) {
                 if (--scan < 0) scan += positions.length;
                 if (positions[scan] == 0) return;
-                int r = calcStartIndexByHashCode(hashCodesOrDeletedIndices[~positions[scan]]);
+                int r = calcStartIndexByHashCode(hashCodes[~positions[scan]]);
                 if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r) { /* Nothing. We'd have preferred an `unless` statement. */} else {
                     positions[here] = positions[scan];
                     here = scan;
@@ -299,10 +293,8 @@ public class FastTripleHashSet5 {
     public void clear() {
         positions = new int[MINIMUM_HASHES_SIZE];
         entries = new Triple[MINIMUM_ELEMENTS_SIZE];
-        hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
+        hashCodes = new int[MINIMUM_ELEMENTS_SIZE];
         entriesPos = 0;
-        lastDeletedIndex = -1;
-        removedElementsCount = 0;
     }
 
     public Spliterator spliterator() {

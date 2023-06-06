@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.collection.discarded;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.memTermEquality.SparseArrayIterator;

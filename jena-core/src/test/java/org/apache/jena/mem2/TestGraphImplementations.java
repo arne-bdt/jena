@@ -23,8 +23,6 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.GraphMem;
-import org.apache.jena.memRoaring.GraphMemRoaring;
 import org.apache.jena.memTermEquality.GraphMemTermEquality;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.testing_framework.NodeCreateUtils;
@@ -36,7 +34,7 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 public class TestGraphImplementations {
 
     private static Graph createGraph() {
-        return new GraphMemTermEquality();
+        return new GraphMem2Roaring();
     }
 
     @Test

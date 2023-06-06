@@ -21,9 +21,10 @@ package org.apache.jena.mem.set.node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
-import org.apache.jena.mem2.collection.FastNodeHashSet;
-import org.apache.jena.mem2.collection.FastNodeSet;
-import org.apache.jena.mem2.collection.NodeSet;
+import org.apache.jena.mem2.collection.*;
+import org.apache.jena.mem2.collection.discarded.FastNodeHashSet2;
+import org.apache.jena.mem2.collection.discarded.FastNodeSet2;
+import org.apache.jena.mem2.collection.discarded.NodeSet2;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -53,8 +54,10 @@ public class TestSetContains {
 
     @Param({
             "NodeSet",
+//            "NodeSet2",
             "FastNodeSet",
-            "FastNodeHashSet"
+//            "FastNodeSet2",
+            "FastNodeHashSet2"
     })
     public String param1_SetImplementation;
 
@@ -62,13 +65,26 @@ public class TestSetContains {
     private NodeSet subjectSet;
     private NodeSet predicateSet;
     private NodeSet objectSet;
+
+    private NodeSet2 subjectSet2;
+    private NodeSet2 predicateSet2;
+    private NodeSet2 objectSet2;
+
     private FastNodeSet fastSubjectSet;
     private FastNodeSet fastPredicateSet;
     private FastNodeSet fastObjectSet;
 
+    private FastNodeSet2 fastSubjectSet2;
+    private FastNodeSet2 fastPredicateSet2;
+    private FastNodeSet2 fastObjectSet2;
+
     private FastNodeHashSet fastSubjectHashSet;
     private FastNodeHashSet fastPredicateHashSet;
     private FastNodeHashSet fastObjectHashSet;
+
+    private FastNodeHashSet2 fastSubjectHashSet2;
+    private FastNodeHashSet2 fastPredicateHashSet2;
+    private FastNodeHashSet2 fastObjectHashSet2;
 
     java.util.function.Supplier<Boolean> setContainsSubjects;
     java.util.function.Supplier<Boolean> setContainsPredicates;
@@ -115,6 +131,33 @@ public class TestSetContains {
         return found;
     }
 
+    private boolean tripleSet2ContainsSubjects() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = subjectSet2.contains(t.getSubject());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean tripleSet2ContainsPredicates() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = predicateSet2.contains(t.getPredicate());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean tripleSet2ContainsObjects() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = objectSet2.contains(t.getObject());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
     private boolean fastTripleSetContainsSubjects() {
         var found = false;
         for(var t: triplesToFind) {
@@ -137,6 +180,33 @@ public class TestSetContains {
         var found = false;
         for(var t: triplesToFind) {
             found = fastObjectSet.contains(t.getObject());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean fastTripleSet2ContainsSubjects() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = fastSubjectSet2.contains(t.getSubject());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean fastTripleSet2ContainsPredicates() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = fastPredicateSet2.contains(t.getPredicate());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean fastTripleSet2ContainsObjects() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = fastObjectSet2.contains(t.getObject());
             Assert.assertTrue(found);
         }
         return found;
@@ -169,6 +239,33 @@ public class TestSetContains {
         return found;
     }
 
+    private boolean fastTripleHashSet2ContainsSubjects() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = fastSubjectHashSet2.contains(t.getSubject());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean fastTripleHashSet2ContainsPredicates() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = fastPredicateHashSet2.contains(t.getPredicate());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean fastTripleHashSet2ContainsObjects() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = fastObjectHashSet2.contains(t.getObject());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
@@ -180,13 +277,26 @@ public class TestSetContains {
                 this.predicateSet = new NodeSet();
                 this.objectSet = new NodeSet();
                 triples.forEach(t -> {
-                    subjectSet.addKey(t.getSubject());
-                    predicateSet.addKey(t.getPredicate());
-                    objectSet.addKey(t.getObject());
+                    subjectSet.add(t.getSubject());
+                    predicateSet.add(t.getPredicate());
+                    objectSet.add(t.getObject());
                 });
                 this.setContainsSubjects = this::tripleSetContainsSubjects;
                 this.setContainsPredicates = this::tripleSetContainsPredicates;
                 this.setContainsObjects = this::tripleSetContainsObjects;
+                break;
+            case "NodeSet2":
+                this.subjectSet2 = new NodeSet2();
+                this.predicateSet2 = new NodeSet2();
+                this.objectSet2 = new NodeSet2();
+                triples.forEach(t -> {
+                    subjectSet2.addKey(t.getSubject());
+                    predicateSet2.addKey(t.getPredicate());
+                    objectSet2.addKey(t.getObject());
+                });
+                this.setContainsSubjects = this::tripleSet2ContainsSubjects;
+                this.setContainsPredicates = this::tripleSet2ContainsPredicates;
+                this.setContainsObjects = this::tripleSet2ContainsObjects;
                 break;
             case "FastNodeSet":
                 this.fastSubjectSet = new FastNodeSet();
@@ -201,6 +311,19 @@ public class TestSetContains {
                 this.setContainsPredicates = this::fastTripleSetContainsPredicates;
                 this.setContainsObjects = this::fastTripleSetContainsObjects;
                 break;
+            case "FastNodeSet2":
+                this.fastSubjectSet2 = new FastNodeSet2();
+                this.fastPredicateSet2 = new FastNodeSet2();
+                this.fastObjectSet2 = new FastNodeSet2();
+                triples.forEach(t -> {
+                    fastSubjectSet2.addKey(t.getSubject());
+                    fastPredicateSet2.addKey(t.getPredicate());
+                    fastObjectSet2.addKey(t.getObject());
+                });
+                this.setContainsSubjects = this::fastTripleSet2ContainsSubjects;
+                this.setContainsPredicates = this::fastTripleSet2ContainsPredicates;
+                this.setContainsObjects = this::fastTripleSet2ContainsObjects;
+                break;
             case "FastNodeHashSet":
                 this.fastSubjectHashSet = new FastNodeHashSet();
                 this.fastPredicateHashSet = new FastNodeHashSet();
@@ -213,6 +336,19 @@ public class TestSetContains {
                 this.setContainsSubjects = this::fastTripleHashSetContainsSubjects;
                 this.setContainsPredicates = this::fastTripleHashSetContainsPredicates;
                 this.setContainsObjects = this::fastTripleHashSetContainsObjects;
+                break;
+            case "FastNodeHashSet2":
+                this.fastSubjectHashSet2 = new FastNodeHashSet2();
+                this.fastPredicateHashSet2 = new FastNodeHashSet2();
+                this.fastObjectHashSet2 = new FastNodeHashSet2();
+                triples.forEach(t -> {
+                    fastSubjectHashSet2.add(t.getSubject());
+                    fastPredicateHashSet2.add(t.getPredicate());
+                    fastObjectHashSet2.add(t.getObject());
+                });
+                this.setContainsSubjects = this::fastTripleHashSet2ContainsSubjects;
+                this.setContainsPredicates = this::fastTripleHashSet2ContainsPredicates;
+                this.setContainsObjects = this::fastTripleHashSet2ContainsObjects;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

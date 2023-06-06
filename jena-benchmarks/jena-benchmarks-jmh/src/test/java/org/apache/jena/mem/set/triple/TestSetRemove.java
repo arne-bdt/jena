@@ -22,6 +22,10 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.*;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet3;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet4;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet5;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -50,13 +54,15 @@ public class TestSetRemove {
     public String param0_GraphUri;
 
     @Param({
-            "HashSet",
+//            "HashSet",
             "TripleSet",
+//            "TripleSet2",
             "FastTripleSet",
-            "FastTripleHashSet",
+//            "FastTripleSet2",
+//            "FastTripleHashSet",
             "FastTripleHashSet2",
 //            "FastTripleHashSet3",
-            "FastTripleHashSet4",
+//            "FastTripleHashSet4",
 //            "FastTripleHashSet5",
     })
     public String param1_SetImplementation;
@@ -87,7 +93,7 @@ public class TestSetRemove {
         return this.hashSet.size();
     }
     private int removeFromTripleSet() {
-        triplesToRemove.forEach(t -> this.tripleSet.removeKey(t));
+        triplesToRemove.forEach(t -> this.tripleSet.remove(t));
         Assert.assertTrue(this.tripleSet.isEmpty());
         return this.tripleSet.size();
     }
@@ -168,7 +174,7 @@ public class TestSetRemove {
                 break;
             case "TripleSet":
                 this.tripleSet = new TripleSet(triples.size());
-                this.triples.forEach(tripleSet::addKey);
+                this.triples.forEach(tripleSet::add);
                 break;
             case "FastTripleSet":
                 this.fastTripleSet = new FastTripleSet(triples.size());

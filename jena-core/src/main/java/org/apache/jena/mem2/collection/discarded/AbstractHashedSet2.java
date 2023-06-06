@@ -16,20 +16,20 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.collection.discarded;
 
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
+public abstract class AbstractHashedSet2<Key> extends HashedSetBase2<Key> {
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
      * capacity and the corresponding threshold. All the key elements start out
      * null.
      */
-    protected AbstractHashedSet(int initialCapacity) {
+    protected AbstractHashedSet2(int initialCapacity) {
         super(initialCapacity);
     }
 
@@ -55,7 +55,7 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
         return findSlot(key) < 0;
     }
 
-    public boolean add(Key key) {
+    public boolean addKey(Key key) {
         final var slot = findSlot(key);
         if (slot < 0) return false;
         keys[slot] = key;
@@ -67,7 +67,7 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
      * Remove the object <code>key</code> from this hash's keys if it
      * is present (if it's absent, do nothing).
      */
-    public boolean remove(Key key) {
+    public boolean removeKey(Key key) {
         int slot = findSlot(key);
         if (slot < 0) {
             removeFrom(~slot);

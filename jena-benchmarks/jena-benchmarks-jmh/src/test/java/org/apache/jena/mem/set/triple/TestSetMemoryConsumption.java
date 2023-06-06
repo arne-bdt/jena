@@ -20,17 +20,17 @@ package org.apache.jena.mem.set.triple;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.*;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet3;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
@@ -54,14 +54,15 @@ public class TestSetMemoryConsumption {
     public String param0_GraphUri;
 
     @Param({
-
 //            "HashSet",
-//            "TripleSet",
-//            "FastTripleSet",
+            "TripleSet",
+//            "TripleSet2",
+            "FastTripleSet",
+//            "FastTripleSet2",
 //            "FastTripleHashSet",
             "FastTripleHashSet2",
 //            "FastTripleHashSet3",
-            "FastTripleHashSet4",
+//            "FastTripleHashSet4",
 //            "FastTripleHashSet5",
     })
     public String param1_SetImplementation;
@@ -110,7 +111,7 @@ public class TestSetMemoryConsumption {
     }
     private Object fillTripleSet() {
         var sut = new TripleSet();
-        triples.forEach(sut::addKey);
+        triples.forEach(sut::add);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }

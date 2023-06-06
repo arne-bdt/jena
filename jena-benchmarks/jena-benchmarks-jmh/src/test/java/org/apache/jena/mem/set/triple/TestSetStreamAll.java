@@ -19,10 +19,13 @@
 package org.apache.jena.mem.set.triple;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.*;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet3;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet4;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet5;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -32,7 +35,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Spliterator;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.junit.Assert.assertEquals;
@@ -58,13 +60,15 @@ public class TestSetStreamAll {
     public String param0_GraphUri;
 
     @Param({
-            "HashSet",
+//            "HashSet",
             "TripleSet",
+//            "TripleSet2",
             "FastTripleSet",
-            "FastTripleHashSet",
+//            "FastTripleSet2",
+//            "FastTripleHashSet",
             "FastTripleHashSet2",
 //            "FastTripleHashSet3",
-            "FastTripleHashSet4",
+//            "FastTripleHashSet4",
 //            "FastTripleHashSet5",
     })
     public String param1_SetImplementation;
@@ -139,7 +143,7 @@ public class TestSetStreamAll {
                 break;
             case "TripleSet":
                 this.tripleSet = new TripleSet(triples.size());
-                triples.forEach(tripleSet::addKey);
+                triples.forEach(tripleSet::add);
                 this.getSpliterator = this::getSpliteratorFromTripleSet;
                 break;
             case "FastTripleSet":

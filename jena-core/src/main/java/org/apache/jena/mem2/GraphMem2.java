@@ -31,7 +31,7 @@ import java.util.stream.Stream;
 /**
  * A graph that stores triples in memory. This class is not thread-safe.
  */
-public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
+public abstract class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
    final TripleStore tripleStore;
 

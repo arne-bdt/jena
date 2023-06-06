@@ -46,18 +46,20 @@ public class TestGraphBulkUpdates {
 //            "C:/temp/res_test/xxx_CGMES_EQ.xml",
 //            "C:/temp/res_test/xxx_CGMES_SSH.xml",
 //            "C:/temp/res_test/xxx_CGMES_TP.xml",
-            //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-            //"C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-//            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+            "../testing/BSBM/bsbm-1m.nt.gz",
+            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-25m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
 //            "GraphMem (current)",
-            "GraphMemB (current)",
-            "GraphMemRoaring (current)",
+//            "GraphMemB (current)",
+            "GraphMem2Roaring (current)",
             "GraphMemTermEquality (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
@@ -72,7 +74,7 @@ public class TestGraphBulkUpdates {
 
     @Test
     public void testBulkLoad() {
-        var trialContext = new Context("GraphMemRoaring (current)");
+        var trialContext = new Context("GraphMem2Roaring (current)");
         this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
 
         var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals

@@ -21,10 +21,10 @@ package org.apache.jena.mem.set.node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
-import org.apache.jena.mem2.collection.FastNodeHashSet;
-import org.apache.jena.mem2.collection.FastNodeSet;
-import org.apache.jena.mem2.collection.FastTripleSet;
-import org.apache.jena.mem2.collection.NodeSet;
+import org.apache.jena.mem2.collection.*;
+import org.apache.jena.mem2.collection.discarded.FastNodeHashSet2;
+import org.apache.jena.mem2.collection.discarded.FastNodeSet2;
+import org.apache.jena.mem2.collection.discarded.NodeSet2;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -37,15 +37,15 @@ import java.util.List;
 public class TestSetAdd {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
             "C:/temp/res_test/xxx_CGMES_SSH.xml",
             "C:/temp/res_test/xxx_CGMES_TP.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
 //            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
@@ -54,8 +54,10 @@ public class TestSetAdd {
 
     @Param({
             "NodeSet",
+//            "NodeSet2",
             "FastNodeSet",
-            "FastNodeHashSet"
+//            "FastNodeSet2",
+            "FastNodeHashSet2"
     })
     public String param1_SetImplementation;
 
@@ -81,6 +83,12 @@ public class TestSetAdd {
 
     private Object addToNodeSet(Triple.Field field) {
         var sut = new NodeSet();
+        triples.forEach(t -> sut.add(field.getField(t)));
+        return sut;
+    }
+
+    private Object addToNodeSet2(Triple.Field field) {
+        var sut = new NodeSet2();
         triples.forEach(t -> sut.addKey(field.getField(t)));
         return sut;
     }
@@ -91,8 +99,20 @@ public class TestSetAdd {
         return sut;
     }
 
+    private Object addToFastNodeSet2(Triple.Field field) {
+        var sut = new FastNodeSet2();
+        triples.forEach(t -> sut.addKey(field.getField(t)));
+        return sut;
+    }
+
     private Object addToFastNodeHashSet(Triple.Field field) {
         var sut = new FastNodeHashSet();
+        triples.forEach(t -> sut.add(field.getField(t)));
+        return sut;
+    }
+
+    private Object addToFastNodeHashSet2(Triple.Field field) {
+        var sut = new FastNodeHashSet2();
         triples.forEach(t -> sut.add(field.getField(t)));
         return sut;
     }
@@ -104,11 +124,20 @@ public class TestSetAdd {
             case "NodeSet":
                 this.addToSet = this::addToNodeSet;
                 break;
+            case "NodeSet2":
+                this.addToSet = this::addToNodeSet2;
+                break;
             case "FastNodeSet":
                 this.addToSet = this::addToFastNodeSet;
                 break;
+            case "FastNodeSet2":
+                this.addToSet = this::addToFastNodeSet2;
+                break;
             case "FastNodeHashSet":
                 this.addToSet = this::addToFastNodeHashSet;
+                break;
+            case "FastNodeHashSet2":
+                this.addToSet = this::addToFastNodeHashSet2;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

@@ -20,6 +20,8 @@ package org.apache.jena.mem2.store.roaring;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.collection.AbstractHashedMap;
+import org.apache.jena.mem2.collection.FastTripleHashSet2;
 import org.apache.jena.mem2.pattern.MatchPattern;
 import org.apache.jena.mem2.pattern.PatternClassifier;
 import org.apache.jena.mem2.store.TripleStore;
@@ -37,12 +39,27 @@ import java.util.stream.Stream;
 
 public class RoaringTripleStore implements TripleStore {
 
-    Map<Node, RoaringBitmap> subjectBitmaps = new HashMap<>();
-    Map<Node, RoaringBitmap> predicateBitmaps = new HashMap<>();
-    Map<Node, RoaringBitmap> objectBitmaps = new HashMap<>();
-    List<Triple> tripleList = new ArrayList<>(); // We use a list here to maintain the order of triples
+    private class NodesToBitmapsMap extends AbstractHashedMap<Node, RoaringBitmap> {
 
-    ArrayDeque<Integer> freeIndicesFromRemovedTriples = new ArrayDeque<>();
+        public NodesToBitmapsMap() {
+            super(10);
+        }
+
+        @Override
+        protected RoaringBitmap[] newValueArray(int size) {
+            return new RoaringBitmap[size];
+        }
+
+        @Override
+        protected Node[] newKeyArray(int size) {
+            return new Node[size];
+        }
+    }
+
+    NodesToBitmapsMap subjectBitmaps = new NodesToBitmapsMap();
+    NodesToBitmapsMap predicateBitmaps = new NodesToBitmapsMap();
+    NodesToBitmapsMap objectBitmaps = new NodesToBitmapsMap();
+    FastTripleHashSet2 triples = new FastTripleHashSet2(); // We use a list here to maintain the order of triples
 
     public RoaringTripleStore() {
         this.clear();
@@ -51,100 +68,54 @@ public class RoaringTripleStore implements TripleStore {
 
     @Override
     public void add(final Triple triple) {
-        final var subjectBitmap = this.subjectBitmaps.computeIfAbsent(triple.getSubject(), n -> new RoaringBitmap());
-        final var predicateBitmap = this.predicateBitmaps.computeIfAbsent(triple.getPredicate(), n -> new RoaringBitmap());
-        final var objectBitmap = this.objectBitmaps.computeIfAbsent(triple.getObject(), n -> new RoaringBitmap());
-
-        if(!FastAggregation.and(subjectBitmap, objectBitmap, predicateBitmap).isEmpty())
+        final var index = triples.addAndGetIndex(triple);
+        if(index < 0) { /*triple already exists*/
             return;
-
-        final int index;
-        if(freeIndicesFromRemovedTriples.isEmpty()) {
-            tripleList.add(triple);
-            index = tripleList.size() - 1;
-        } else {
-            index = freeIndicesFromRemovedTriples.pop();
-            tripleList.set(index, triple);
         }
 
-        subjectBitmap.add(index);
-//        subjectBitmap.runOptimize();
+        this.subjectBitmaps.computeIfAbsent(triple.getSubject(), () -> new RoaringBitmap())
+                .add(index);
+        this.predicateBitmaps.computeIfAbsent(triple.getPredicate(), () -> new RoaringBitmap())
+                .add(index);
+        this.objectBitmaps.computeIfAbsent(triple.getObject(), () -> new RoaringBitmap())
+                .add(index);
+    }
 
-        predicateBitmap.add(index);
-//        predicateBitmap.runOptimize();
-
-        objectBitmap.add(index);
-//        objectBitmap.runOptimize();
+    private void removeIndex(final NodesToBitmapsMap map, final Node node, final int index) {
+        final var bitmap = map.get(node);
+        bitmap.remove(index);
+        if(bitmap.isEmpty()) {
+            map.remove(node);
+        }
     }
 
     @Override
     public void remove(final Triple triple) {
-        final var subjectBitmap = this.subjectBitmaps.get(triple.getSubject());
-        if(null == subjectBitmap)
+        final var index = triples.removeAndGetIndex(triple);
+        if(index < 0) { /*triple does not exist*/
             return;
-
-        final var predicateBitmap = this.predicateBitmaps.get(triple.getPredicate());
-        if(null == predicateBitmap)
-            return;
-
-        final var objectBitmap = this.objectBitmaps.get(triple.getObject());
-        if(null == objectBitmap)
-            return;
-
-        final var bitmap = FastAggregation.and(subjectBitmap, objectBitmap, predicateBitmap);
-
-        if(bitmap.isEmpty())
-            return;
-
-        final var index = bitmap.first();
-        subjectBitmap.remove(index);
-        predicateBitmap.remove(index);
-        objectBitmap.remove(index);
-        tripleList.set(index, null);
-
-        if(subjectBitmap.isEmpty()) {
-            subjectBitmaps.remove(triple.getSubject());
         }
-        else {
-            subjectBitmap.trim();
-//            subjectBitmap.runOptimize();
-        }
-
-        if(predicateBitmap.isEmpty()) {
-            predicateBitmaps.remove(triple.getPredicate());
-        }
-        else {
-            predicateBitmap.trim();
-//            predicateBitmap.runOptimize();
-        }
-
-        if(objectBitmap.isEmpty()) {
-            objectBitmaps.remove(triple.getObject());
-        }
-        else {
-            objectBitmap.trim();
-//            objectBitmap.runOptimize();
-        }
-        freeIndicesFromRemovedTriples.push(index);
+        removeIndex(this.subjectBitmaps, triple.getSubject(), index);
+        removeIndex(this.predicateBitmaps, triple.getPredicate(), index);
+        removeIndex(this.objectBitmaps, triple.getObject(), index);
     }
 
     @Override
     public void clear() {
-        this.subjectBitmaps.clear();
-        this.predicateBitmaps.clear();
-        this.objectBitmaps.clear();
-        this.tripleList.clear();
-        this.freeIndicesFromRemovedTriples.clear();
+        this.subjectBitmaps.clear(10);
+        this.predicateBitmaps.clear(10);
+        this.objectBitmaps.clear(10);
+        this.triples.clear();
     }
 
     @Override
     public int countTriples() {
-        return this.tripleList.size() - this.freeIndicesFromRemovedTriples.size();
+        return this.triples.size();
     }
 
     @Override
     public boolean isEmpty() {
-        return this.countTriples() == 0;
+        return this.triples.isEmpty();
     }
 
     @Override
@@ -153,11 +124,11 @@ public class RoaringTripleStore implements TripleStore {
         switch (matchPattern) {
 
             case S__:
-                return this.subjectBitmaps.containsKey(tripleMatch.getSubject());
+                return this.subjectBitmaps.contains(tripleMatch.getSubject());
             case _P_:
-                return this.predicateBitmaps.containsKey(tripleMatch.getPredicate());
+                return this.predicateBitmaps.contains(tripleMatch.getPredicate());
             case __O:
-                return this.objectBitmaps.containsKey(tripleMatch.getObject());
+                return this.objectBitmaps.contains(tripleMatch.getObject());
 
             case SP_:
             case _PO:
@@ -252,7 +223,7 @@ public class RoaringTripleStore implements TripleStore {
 
     @Override
     public Stream<Triple> stream() {
-        return this.tripleList.stream().filter(Objects::nonNull);
+        return this.triples.stream();
     }
 
     @Override
@@ -262,14 +233,14 @@ public class RoaringTripleStore implements TripleStore {
             return this.stream();
 
         var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
-        return bitmap.stream().mapToObj(this.tripleList::get);
+        return bitmap.stream().mapToObj(this.triples::get);
     }
 
     @Override
     public ExtendedIterator<Triple> find(Triple tripleMatch) {
         var pattern = PatternClassifier.classify(tripleMatch);
         if(pattern == MatchPattern.___)
-            return new FilterIterator<>(Objects::nonNull, this.tripleList.iterator());
+            return triples.iterator();
 
         var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
         return new NiceIterator<>() {
@@ -287,26 +258,26 @@ public class RoaringTripleStore implements TripleStore {
             @Override
             public Triple next() {
                 if(bufferIndex > 0)
-                    return tripleList.get(buffer[--bufferIndex]);
+                    return triples.get(buffer[--bufferIndex]);
 
                 if(!iterator.hasNext()) {
                     throw new NoSuchElementException();
                 }
                 bufferIndex = iterator.nextBatch(buffer);
-                return tripleList.get(buffer[--bufferIndex]);
+                return triples.get(buffer[--bufferIndex]);
             }
 
             @Override
             public void forEachRemaining(Consumer<? super Triple> action) {
                 if(bufferIndex > 0) {
                     for(int i = bufferIndex - 1; i >= 0; i--) {
-                        action.accept(tripleList.get(buffer[i]));
+                        action.accept(triples.get(buffer[i]));
                     }
                 }
                 while (iterator.hasNext()) {
                     bufferIndex = iterator.nextBatch(buffer);
                     for(int i = bufferIndex - 1; i >= 0; i--) {
-                        action.accept(tripleList.get(buffer[i]));
+                        action.accept(triples.get(buffer[i]));
                     }
                 }
             }

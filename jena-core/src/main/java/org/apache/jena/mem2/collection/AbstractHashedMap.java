@@ -18,20 +18,36 @@
 
 package org.apache.jena.mem2.collection;
 
+import org.apache.jena.graph.Node;
+import org.roaringbitmap.ImmutableBitmapDataProvider;
+import org.roaringbitmap.RoaringBitmap;
+
+import java.util.function.Supplier;
+
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
+public abstract class AbstractHashedMap<Key, Value> extends HashedSetBase<Key> {
+
+    protected Value[] values;
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
      * capacity and the corresponding threshold. All the key elements start out
      * null.
      */
-    protected AbstractHashedSet(int initialCapacity) {
+    protected AbstractHashedMap(int initialCapacity) {
         super(initialCapacity);
+        this.values = newValueArray(keys.length);
     }
+
+    public void clear(int initialCapacity) {
+        super.clear(initialCapacity);
+        this.values = newValueArray(keys.length);
+    }
+
+    protected abstract Value[] newValueArray(int size);
 
     /**
      * Search for the slot in which <code>key</code> is found. If it is absent,
@@ -55,12 +71,35 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
         return findSlot(key) < 0;
     }
 
-    public boolean add(Key key) {
+    public boolean add(Key key, Value value) {
         final var slot = findSlot(key);
         if (slot < 0) return false;
         keys[slot] = key;
+        values[slot] = value;
         if (++size > threshold) grow();
         return true;
+    }
+
+    public Value get(Key key) {
+        final var slot = findSlot(key);
+        if (slot < 0) return values[~slot];
+        return null;
+    }
+
+    public Value getOrDefault(Key key, Value defaultValue) {
+        final var slot = findSlot(key);
+        if (slot < 0) return values[~slot];
+        return defaultValue;
+    }
+
+    public Value computeIfAbsent(Key key, Supplier<Value> absentValueSupplier) {
+        final var slot = findSlot(key);
+        if (slot < 0) return values[~slot];
+        final var value = absentValueSupplier.get();
+        keys[slot] = key;
+        values[slot] = value;
+        if (++size > threshold) grow();
+        return value;
     }
 
     /**
@@ -79,12 +118,15 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
     @Override
     protected void grow() {
         final Key[] oldContents = keys;
+        final Value[] oldValues = values;
         keys = newKeyArray(calcGrownCapacityAndSetThreshold());
+        values = newValueArray(keys.length);
         for (int i = 0; i < oldContents.length; i += 1) {
             final Key key = oldContents[i];
             if (key != null) {
                 final int slot = findSlot(key);
                 keys[slot] = key;
+                values[slot] = oldValues[i];
             }
         }
     }
@@ -108,6 +150,7 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
         size -= 1;
         while (true) {
             keys[here] = null;
+            values[here] = null;
             int scan = here;
             while (true) {
                 if (--scan < 0) scan += keys.length;
@@ -117,12 +160,11 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
                     /* Nothing. We'd have preferred an `unless` statement. */
                 } else {
                     keys[here] = keys[scan];
+                    values[here] = values[scan];
                     here = scan;
                     break;
                 }
             }
         }
     }
-
-
 }
