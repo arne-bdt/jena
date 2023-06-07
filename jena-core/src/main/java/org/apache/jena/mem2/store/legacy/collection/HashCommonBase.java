@@ -1,4 +1,4 @@
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.store.legacy.collection;
 
 import org.apache.jena.memTermEquality.SparseArrayIterator;
 import org.apache.jena.memTermEquality.SparseArraySpliterator;
@@ -7,8 +7,10 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
-public abstract class HashedSetBase<Key> {
+public abstract class HashCommonBase<Key> {
     /**
      * Jeremy suggests, from his experiments, that load factors more than
      * 0.6 leave the table too dense, and little advantage is gained below 0.4.
@@ -41,7 +43,7 @@ public abstract class HashedSetBase<Key> {
      */
     protected int size = 0;
 
-    public HashedSetBase(int initialCapacity) {
+    public HashCommonBase(int initialCapacity) {
         keys = newKeyArray(initialCapacity);
         threshold = (int) (keys.length * loadFactor);
     }
@@ -87,6 +89,10 @@ public abstract class HashedSetBase<Key> {
         return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
     }
 
+    public Stream<Key> keyStream() {
+        return StreamSupport.stream(keySpliterator(), false);
+    }
+
     /**
      * Subclasses must implement to answer a new Key[size] array.
      */
@@ -122,7 +128,7 @@ public abstract class HashedSetBase<Key> {
      * table (bigger by a factor of two, at present).
      */
     protected int calcGrownCapacityAndSetThreshold() {
-        final var capacity = HashedSetBase.nextSize(keys.length * 2);
+        final var capacity = HashCommonBase.nextSize(keys.length * 2);
         threshold = (int) (capacity * loadFactor);
         return capacity;
     }

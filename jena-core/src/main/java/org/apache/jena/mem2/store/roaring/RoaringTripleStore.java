@@ -20,13 +20,12 @@ package org.apache.jena.mem2.store.roaring;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.AbstractHashedMap;
+import org.apache.jena.mem2.store.legacy.collection.HashCommonMap;
 import org.apache.jena.mem2.collection.FastTripleHashSet2;
 import org.apache.jena.mem2.pattern.MatchPattern;
 import org.apache.jena.mem2.pattern.PatternClassifier;
 import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
-import org.apache.jena.util.iterator.FilterIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.roaringbitmap.BatchIterator;
 import org.roaringbitmap.FastAggregation;
@@ -39,7 +38,7 @@ import java.util.stream.Stream;
 
 public class RoaringTripleStore implements TripleStore {
 
-    private class NodesToBitmapsMap extends AbstractHashedMap<Node, RoaringBitmap> {
+    private class NodesToBitmapsMap extends HashCommonMap<Node, RoaringBitmap> {
 
         public NodesToBitmapsMap() {
             super(10);
@@ -85,7 +84,7 @@ public class RoaringTripleStore implements TripleStore {
         final var bitmap = map.get(node);
         bitmap.remove(index);
         if(bitmap.isEmpty()) {
-            map.remove(node);
+            map.tryRemove(node);
         }
     }
 

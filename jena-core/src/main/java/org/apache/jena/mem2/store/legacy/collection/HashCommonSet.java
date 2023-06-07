@@ -16,20 +16,20 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.store.legacy.collection;
 
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
+public abstract class HashCommonSet<Key> extends HashCommonBase<Key> {
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
      * capacity and the corresponding threshold. All the key elements start out
      * null.
      */
-    protected AbstractHashedSet(int initialCapacity) {
+    protected HashCommonSet(int initialCapacity) {
         super(initialCapacity);
     }
 
@@ -55,7 +55,7 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
         return findSlot(key) < 0;
     }
 
-    public boolean add(Key key) {
+    public boolean tryPut(Key key) {
         final var slot = findSlot(key);
         if (slot < 0) return false;
         keys[slot] = key;
@@ -63,17 +63,31 @@ public abstract class AbstractHashedSet<Key> extends HashedSetBase<Key> {
         return true;
     }
 
+    public void put(Key key) {
+        final var slot = findSlot(key);
+        if (slot < 0) return;
+        keys[slot] = key;
+        if (++size > threshold) grow();
+    }
+
     /**
      * Remove the object <code>key</code> from this hash's keys if it
      * is present (if it's absent, do nothing).
      */
-    public boolean remove(Key key) {
+    public boolean tryRemove(Key key) {
         int slot = findSlot(key);
         if (slot < 0) {
             removeFrom(~slot);
             return true;
         }
         return false;
+    }
+
+    public void remove(Key key) {
+        int slot = findSlot(key);
+        if (slot < 0) {
+            removeFrom(~slot);
+        }
     }
 
     @Override

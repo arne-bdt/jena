@@ -18,11 +18,13 @@
 
 package org.apache.jena.mem2.collection;
 
+import org.apache.jena.mem2.store.legacy.collection.HashCommonBase;
+
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class AbstractFastHashedSet<Key> extends HashedSetBase<Key> {
+public abstract class AbstractFastHashedSet<Key> extends HashCommonBase<Key> {
 
     /**
      * Hashes of the keys, stored separately because we need to use them for

@@ -93,7 +93,7 @@ public class TestSetRemove {
         return this.hashSet.size();
     }
     private int removeFromTripleSet() {
-        triplesToRemove.forEach(t -> this.tripleSet.remove(t));
+        triplesToRemove.forEach(t -> this.tripleSet.tryRemove(t));
         Assert.assertTrue(this.tripleSet.isEmpty());
         return this.tripleSet.size();
     }
@@ -174,7 +174,7 @@ public class TestSetRemove {
                 break;
             case "TripleSet":
                 this.tripleSet = new TripleSet(triples.size());
-                this.triples.forEach(tripleSet::add);
+                this.triples.forEach(tripleSet::tryPut);
                 break;
             case "FastTripleSet":
                 this.fastTripleSet = new FastTripleSet(triples.size());

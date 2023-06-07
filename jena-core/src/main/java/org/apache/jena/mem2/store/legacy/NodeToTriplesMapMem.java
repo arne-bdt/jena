@@ -1,0 +1,235 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.jena.mem2.store.legacy;
+
+import org.apache.jena.graph.Node;
+import org.apache.jena.graph.Triple;
+import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.NiceIterator;
+import org.apache.jena.util.iterator.NullIterator;
+
+import java.util.Iterator;
+import java.util.Spliterator;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+public class NodeToTriplesMapMem implements NodeToTriplesMap {
+
+    private final BunchMap bunchMap = new HashedBunchMap();
+    private final Triple.Field indexField;
+    private final Triple.Field f2;
+    private final Triple.Field f3;
+
+    /**
+     The number of triples held in this NTM, maintained incrementally
+     (because it's a pain to compute from scratch).
+     */
+    private int size = 0;
+
+    public NodeToTriplesMapMem(Triple.Field indexField, Triple.Field f2, Triple.Field f3) {
+        this.indexField = indexField;
+        this.f2 = f2;
+        this.f3 = f3;
+    }
+
+    private Node getIndexNode(Triple t ) {
+        return indexField.getField( t );
+    }
+
+    @Override
+    public void clear() {
+        this.bunchMap.clear();
+        this.size = 0;
+    }
+
+    @Override
+    public boolean containsBySameValueAs(Triple t, Predicate<Triple> predicate) {
+        return false;
+    }
+
+    @Override
+    public int size() {
+        return size;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return this.size == 0;
+    }
+
+    @Override
+    public boolean isHashed() {
+        return true;
+    }
+
+    @Override
+    public boolean tryPut(Triple t) {
+        final Node node = getIndexNode( t );
+
+        TripleBunch s = bunchMap.get( node );
+        if (s == null)
+        {
+            bunchMap.put(node, s = new ArrayBunch());
+            s.put( t );
+            size++;
+            return true;
+        }
+
+        if ((!s.isHashed()) && s.size() == 9) {
+            bunchMap.put(node, s = new HashedTripleBunch(s));
+        }
+        if(s.tryPut( t ))
+        {
+            size++;
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void put(Triple t) {
+        final Node node = getIndexNode( t );
+        TripleBunch s = bunchMap.get( node );
+        if (s == null)
+        {
+            bunchMap.put(node, s = new ArrayBunch());
+        } else if ((!s.isHashed()) && s.size() == 9) {
+            bunchMap.put(node, s = new HashedTripleBunch(s));
+        }
+        s.put( t );
+        size++;
+    }
+
+    @Override
+    public boolean tryRemove(Triple t) {
+        final Node node = getIndexNode( t );
+        final TripleBunch s = bunchMap.get( node );
+
+        if (s == null)
+            return false;
+
+        if (s.tryRemove(t))
+        {
+            size--;
+            if (s.isEmpty()) bunchMap.remove( node );
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void remove(Triple t) {
+        final Node node = getIndexNode( t );
+        final TripleBunch s = bunchMap.get( node );
+
+        if (s == null)
+            return;
+
+        s.remove( t );
+        size--;
+        if (s.isEmpty()) bunchMap.remove( node );
+    }
+
+    @Override
+    public ExtendedIterator<Triple> keyIterator() {
+        return new NiceIterator<Triple>()
+        {
+            private final Iterator<TripleBunch> bunchIterator = bunchMap.valueIterator();
+            private Iterator<Triple> current = NullIterator.instance();
+
+            @Override public Triple next()
+            {
+                if (!hasNext()) noElements( "NodeToTriples iterator" );
+                return current.next();
+            }
+
+
+            @Override public boolean hasNext()
+            {
+                while (true)
+                {
+                    if (current.hasNext()) return true;
+                    if (!bunchIterator.hasNext()) return false;
+                    current = bunchIterator.next().keyIterator();
+                }
+            }
+
+            @Override public void forEachRemaining(Consumer<? super Triple> action)
+            {
+                if (current != null)
+                {
+                    current.forEachRemaining(action);
+                    current = null;
+                }
+                bunchIterator.forEachRemaining(next ->
+                        next.keyIterator().forEachRemaining(action) );
+            }
+        };
+    }
+
+    @Override
+    public Spliterator<Triple> keySpliterator() {
+        return keyStream().spliterator();
+    }
+
+    @Override
+    public Stream<Triple> keyStream() {
+        return StreamSupport.stream(bunchMap.valueSpliterator(), false)
+                .flatMap(bunch -> bunch.keyStream());
+    }
+
+    @Override
+    public ExtendedIterator<Triple> iteratorForMatches(Node index, Node n2, Node n3) {
+        final TripleBunch s = bunchMap.get( index );
+
+        if (s == null) return NullIterator.<Triple>instance();
+
+        final var filter = FieldFilter.filterOn(f2, n2, f3, n3);
+        return filter.hasFilter()
+                ? s.keyIterator().filterKeep( filter.getFilter() )
+                : s.keyIterator();
+    }
+
+    @Override
+    public Stream<Triple> streamForMatches(Node index, Node n2, Node n3) {
+        final TripleBunch s = bunchMap.get( index );
+        if (s == null) return Stream.empty();
+        final var filter = FieldFilter.filterOn(f2, n2, f3, n3);
+        return filter.hasFilter()
+                ? StreamSupport.stream(s.keySpliterator(), false).filter(filter.getFilter())
+                : StreamSupport.stream(s.keySpliterator(), false);
+    }
+
+    @Override
+    public boolean containsMatch(Node index, Node n2, Node n3) {
+        final TripleBunch s = bunchMap.get( index );
+        if (s == null)
+            return false;
+        var filter = FieldFilter.filterOn(f2, n2, f3, n3);
+        if (!filter.hasFilter())
+            return true;
+        final var iterator = s.keyIterator();
+        while (iterator.hasNext()) {
+            if (filter.getFilter().test(iterator.next()))
+                return true;
+        }
+        return false;
+    }
+}

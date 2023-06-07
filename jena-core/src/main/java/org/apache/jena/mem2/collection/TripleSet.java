@@ -1,8 +1,9 @@
 package org.apache.jena.mem2.collection;
 
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.store.legacy.collection.HashCommonSet;
 
-public class TripleSet extends AbstractHashedSet<Triple> {
+public class TripleSet extends HashCommonSet<Triple> {
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its

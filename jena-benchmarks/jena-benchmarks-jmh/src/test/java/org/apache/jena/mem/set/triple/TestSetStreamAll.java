@@ -143,7 +143,7 @@ public class TestSetStreamAll {
                 break;
             case "TripleSet":
                 this.tripleSet = new TripleSet(triples.size());
-                triples.forEach(tripleSet::add);
+                triples.forEach(tripleSet::tryPut);
                 this.getSpliterator = this::getSpliteratorFromTripleSet;
                 break;
             case "FastTripleSet":

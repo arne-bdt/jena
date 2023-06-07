@@ -1,0 +1,93 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.jena.mem2.store.legacy;
+
+import org.apache.jena.graph.Triple;
+import org.apache.jena.util.iterator.ExtendedIterator;
+
+import java.util.Spliterator;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+
+/**
+    A bunch of triples - a stripped-down set with specialized methods. A
+    bunch is expected to store triples that share some useful property 
+    (such as having the same subject or predicate).
+
+*/
+public interface TripleBunch 
+    {
+    /**
+        Answer true iff this TripleBunch contains a triple matching the given predicate.
+    */
+    boolean containsBySameValueAs(Triple t, Predicate<Triple> predicate);
+    
+    /**
+        Answer the number of triples in this bunch.
+    */
+    int size();
+
+    boolean isEmpty();
+
+    boolean isHashed();
+
+    /**
+        Add <code>t</code> to the triples in this bunch. If <code>t</code>
+        is already a member, nothing happens. The bunch now .contains this
+        triple.
+        @return true iff the triple was added
+    */
+    boolean tryPut(Triple t );
+
+    /**
+        Add <code>t</code> to the triples in this bunch.
+        <code>t</code> must not already be in the set.
+        <code>t</code> is added without checking if it is already a member.
+     */
+    void put(Triple t );
+
+    /**
+        Remove <code>t</code> from the triples in this bunch. If it wasn't
+        a member, nothing happens. The bunch no longer .contains this triple.
+        @return true iff the triple was removed
+    */
+    boolean tryRemove(Triple t );
+
+
+    /**
+        Remove <code>t</code> from the triples in this bunch.
+        <code>t</code> must already be in the set.
+        <code>t</code> is removed without checking if it is a member.
+    */
+    void remove(Triple t );
+
+
+    /**
+        Answer an iterator over all the triples in this bunch. It is unwise to
+        .remove from this iterator. (It may become illegal.)
+    */
+    ExtendedIterator<Triple> keyIterator();
+
+    /**
+        Answer a spliterator over all the triples in this bunch.
+    */
+    Spliterator<Triple> keySpliterator();
+
+    Stream<Triple> keyStream();
+}

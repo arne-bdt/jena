@@ -83,7 +83,7 @@ public class TestSetAdd {
     }
     private Object addToTripleSet() {
         var sut = new TripleSet();
-        triples.forEach(sut::add);
+        triples.forEach(sut::tryPut);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }

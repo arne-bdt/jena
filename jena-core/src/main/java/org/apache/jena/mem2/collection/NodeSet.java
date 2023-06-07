@@ -1,8 +1,9 @@
 package org.apache.jena.mem2.collection;
 
 import org.apache.jena.graph.Node;
+import org.apache.jena.mem2.store.legacy.collection.HashCommonSet;
 
-public class NodeSet extends AbstractHashedSet<Node> {
+public class NodeSet extends HashCommonSet<Node> {
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its

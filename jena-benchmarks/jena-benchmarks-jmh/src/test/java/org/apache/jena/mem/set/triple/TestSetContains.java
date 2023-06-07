@@ -169,7 +169,7 @@ public class TestSetContains {
                 break;
             case "TripleSet":
                 this.tripleSet = new TripleSet(triples.size());
-                triples.forEach(tripleSet::add);
+                triples.forEach(tripleSet::tryPut);
                 this.setContains = this::tripleSetContains;
                 break;
             case "FastTripleSet":

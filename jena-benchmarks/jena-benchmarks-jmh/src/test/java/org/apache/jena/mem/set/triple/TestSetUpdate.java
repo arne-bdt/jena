@@ -100,9 +100,9 @@ public class TestSetUpdate {
     private int updateTripleSet() {
         for(int i=0; i<triplesToRemove.size(); i+=10) {
             triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
-                    .forEach(t -> this.tripleSet.remove(t));
+                    .forEach(t -> this.tripleSet.tryRemove(t));
             triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
-                    .forEach(t -> this.tripleSet.add(t));
+                    .forEach(t -> this.tripleSet.tryPut(t));
             assert this.tripleSet.size() == triples.size();
         }
         return this.tripleSet.size();
@@ -183,7 +183,7 @@ public class TestSetUpdate {
                 break;
             case "TripleSet":
                 this.tripleSet = new TripleSet(triples.size());
-                this.triples.forEach(tripleSet::add);
+                this.triples.forEach(tripleSet::tryPut);
                 break;
             case "FastTripleSet":
                 this.fastTripleSet = new FastTripleSet(triples.size());

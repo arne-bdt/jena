@@ -41,9 +41,6 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
        {
        final Node node = getIndexNode( t );
 
-       // Feb 2016 : no measurable difference.
-       //TripleBunch s = bunchMap.getOrSet(o, (k)->new ArrayBunch()) ;
-
        TripleBunch s = bunchMap.get( node );
        if (s == null)
            {

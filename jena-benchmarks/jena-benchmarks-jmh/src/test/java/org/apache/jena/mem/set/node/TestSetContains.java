@@ -277,9 +277,9 @@ public class TestSetContains {
                 this.predicateSet = new NodeSet();
                 this.objectSet = new NodeSet();
                 triples.forEach(t -> {
-                    subjectSet.add(t.getSubject());
-                    predicateSet.add(t.getPredicate());
-                    objectSet.add(t.getObject());
+                    subjectSet.tryPut(t.getSubject());
+                    predicateSet.tryPut(t.getPredicate());
+                    objectSet.tryPut(t.getObject());
                 });
                 this.setContainsSubjects = this::tripleSetContainsSubjects;
                 this.setContainsPredicates = this::tripleSetContainsPredicates;

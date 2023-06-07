@@ -83,7 +83,7 @@ public class TestSetAdd {
 
     private Object addToNodeSet(Triple.Field field) {
         var sut = new NodeSet();
-        triples.forEach(t -> sut.add(field.getField(t)));
+        triples.forEach(t -> sut.tryPut(field.getField(t)));
         return sut;
     }
 

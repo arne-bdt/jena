@@ -111,7 +111,7 @@ public class TestSetMemoryConsumption {
     }
     private Object fillTripleSet() {
         var sut = new TripleSet();
-        triples.forEach(sut::add);
+        triples.forEach(sut::tryPut);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }

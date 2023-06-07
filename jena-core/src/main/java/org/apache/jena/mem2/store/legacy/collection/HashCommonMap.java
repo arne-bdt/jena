@@ -16,19 +16,21 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.store.legacy.collection;
 
-import org.apache.jena.graph.Node;
-import org.roaringbitmap.ImmutableBitmapDataProvider;
-import org.roaringbitmap.RoaringBitmap;
+import org.apache.jena.memTermEquality.SparseArrayIterator;
+import org.apache.jena.memTermEquality.SparseArraySpliterator;
+import org.apache.jena.util.iterator.ExtendedIterator;
 
+import java.util.ConcurrentModificationException;
+import java.util.Spliterator;
 import java.util.function.Supplier;
 
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class AbstractHashedMap<Key, Value> extends HashedSetBase<Key> {
+public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
 
     protected Value[] values;
 
@@ -37,7 +39,7 @@ public abstract class AbstractHashedMap<Key, Value> extends HashedSetBase<Key> {
      * capacity and the corresponding threshold. All the key elements start out
      * null.
      */
-    protected AbstractHashedMap(int initialCapacity) {
+    protected HashCommonMap(int initialCapacity) {
         super(initialCapacity);
         this.values = newValueArray(keys.length);
     }
@@ -71,13 +73,27 @@ public abstract class AbstractHashedMap<Key, Value> extends HashedSetBase<Key> {
         return findSlot(key) < 0;
     }
 
-    public boolean add(Key key, Value value) {
+    public boolean tryPut(Key key, Value value) {
         final var slot = findSlot(key);
-        if (slot < 0) return false;
+        if (slot < 0) {
+            values[~slot] = value;
+            return false;
+        }
         keys[slot] = key;
         values[slot] = value;
         if (++size > threshold) grow();
         return true;
+    }
+
+    public void put(Key key, Value value) {
+        final var slot = findSlot(key);
+        if (slot < 0) {
+            values[~slot] = value;
+            return;
+        }
+        keys[slot] = key;
+        values[slot] = value;
+        if (++size > threshold) grow();
     }
 
     public Value get(Key key) {
@@ -106,13 +122,24 @@ public abstract class AbstractHashedMap<Key, Value> extends HashedSetBase<Key> {
      * Remove the object <code>key</code> from this hash's keys if it
      * is present (if it's absent, do nothing).
      */
-    public boolean remove(Key key) {
+    public boolean tryRemove(Key key) {
         int slot = findSlot(key);
         if (slot < 0) {
             removeFrom(~slot);
             return true;
         }
         return false;
+    }
+
+    /**
+     * Remove the object <code>key</code> from this hash's keys if it
+     * is present (if it's absent, do nothing).
+     */
+    public void remove(Key key) {
+        int slot = findSlot(key);
+        if (slot < 0) {
+            removeFrom(~slot);
+        }
     }
 
     @Override
@@ -166,5 +193,21 @@ public abstract class AbstractHashedMap<Key, Value> extends HashedSetBase<Key> {
                 }
             }
         }
+    }
+
+    public ExtendedIterator<Value> valueIterator() {
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () -> {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIterator<>(values, checkForConcurrentModification);
+    }
+
+    public Spliterator<Value> valueSpliterator() {
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () -> {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArraySpliterator<>(values, checkForConcurrentModification);
     }
 }
