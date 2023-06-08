@@ -21,11 +21,8 @@ package org.apache.jena.memTermEquality;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.Triple.Field;
-import org.apache.jena.shared.JenaException;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NullIterator;
-
-import java.util.function.Predicate;
 
 public class NodeToTriplesMapMem extends NodeToTriplesMapBase
     {    
@@ -178,7 +175,7 @@ public class NodeToTriplesMapMem extends NodeToTriplesMapBase
 
        if(s == null) return false;
 
-       return s.containsBySameValueAs( t,
+       return s.containsWithOptimizedEqualsReplacement( t,
                triple ->
                        t.getPredicate().equals(triple.getPredicate())
                     && t.getObject().equals(triple.getObject()));

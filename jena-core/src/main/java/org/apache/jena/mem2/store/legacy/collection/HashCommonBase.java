@@ -44,13 +44,13 @@ public abstract class HashCommonBase<Key> {
     protected int size = 0;
 
     public HashCommonBase(int initialCapacity) {
-        keys = newKeyArray(initialCapacity);
+        keys = newKeysArray(initialCapacity);
         threshold = (int) (keys.length * loadFactor);
     }
 
     protected void clear(int initialCapacity) {
         size = 0;
-        keys = newKeyArray(initialCapacity);
+        keys = newKeysArray(initialCapacity);
         threshold = (int) (keys.length * loadFactor);
     }
 
@@ -71,7 +71,7 @@ public abstract class HashCommonBase<Key> {
         return size == 0;
     }
 
-    public abstract boolean contains(Key key);
+    public abstract boolean containsKey(Key key);
 
     public ExtendedIterator<Key> keyIterator() {
         final var initialSize = size;
@@ -96,7 +96,7 @@ public abstract class HashCommonBase<Key> {
     /**
      * Subclasses must implement to answer a new Key[size] array.
      */
-    protected abstract Key[] newKeyArray(int size);
+    protected abstract Key[] newKeysArray(int size);
 
     /**
      * Answer the initial index for the object <code>key</code> in the table.

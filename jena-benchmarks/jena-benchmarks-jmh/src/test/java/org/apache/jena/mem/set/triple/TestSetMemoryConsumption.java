@@ -23,8 +23,8 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet3;
+import org.apache.jena.mem2.collection.discarded.FastTripleHashSet2;
+import org.apache.jena.mem2.store.legacy.collection.HashCommonTripleSet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -54,16 +54,10 @@ public class TestSetMemoryConsumption {
     public String param0_GraphUri;
 
     @Param({
-//            "HashSet",
-            "TripleSet",
-//            "TripleSet2",
-            "FastTripleSet",
-//            "FastTripleSet2",
-//            "FastTripleHashSet",
+            "HashSet",
+            "HashCommonTripleSet",
             "FastTripleHashSet2",
-//            "FastTripleHashSet3",
-//            "FastTripleHashSet4",
-//            "FastTripleHashSet5",
+            "FastHashSetOfTriples"
     })
     public String param1_SetImplementation;
 
@@ -109,26 +103,14 @@ public class TestSetMemoryConsumption {
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
-    private Object fillTripleSet() {
-        var sut = new TripleSet();
-        triples.forEach(sut::tryPut);
+
+    private Object fillHashCommonTripleSet() {
+        var sut = new HashCommonTripleSet();
+        triples.forEach(sut::addUnchecked);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
 
-    private Object fillFastTripleSet() {
-        var sut = new FastTripleSet();
-        triples.forEach(sut::addKey);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
-
-    private Object fillFastTripleHashSet() {
-        var sut = new FastTripleHashSet();
-        triples.forEach(sut::add);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
     private Object fillFastTripleHashSet2() {
         var sut = new FastTripleHashSet2();
         triples.forEach(sut::add);
@@ -136,12 +118,13 @@ public class TestSetMemoryConsumption {
         return sut;
     }
 
-    private Object fillFastTripleHashSet3() {
-        var sut = new FastTripleHashSet3();
-        triples.forEach(sut::add);
+    private Object fillFastHashSetOfTriples() {
+        var sut = new FastHashSetOfTriples();
+        triples.forEach(sut::addUnchecked);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
+
 
     /**
      * This method is used to get the memory consumption of the current JVM.
@@ -162,20 +145,14 @@ public class TestSetMemoryConsumption {
             case "HashSet":
                 this.fillSet = this::fillHashSet;
                 break;
-            case "TripleSet":
-                this.fillSet = this::fillTripleSet;
-                break;
-            case "FastTripleSet":
-                this.fillSet = this::fillFastTripleSet;
-                break;
-            case "FastTripleHashSet":
-                this.fillSet = this::fillFastTripleHashSet;
+            case "HashCommonTripleSet":
+                this.fillSet = this::fillHashCommonTripleSet;
                 break;
             case "FastTripleHashSet2":
                 this.fillSet = this::fillFastTripleHashSet2;
                 break;
-            case "FastTripleHashSet3":
-                this.fillSet = this::fillFastTripleHashSet3;
+            case "FastHashSetOfTriples":
+                this.fillSet = this::fillFastHashSetOfTriples;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

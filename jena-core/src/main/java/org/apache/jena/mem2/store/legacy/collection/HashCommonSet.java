@@ -18,11 +18,15 @@
 
 package org.apache.jena.mem2.store.legacy.collection;
 
+import org.apache.jena.mem2.collection.JenaSet;
+
+import java.util.function.Predicate;
+
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class HashCommonSet<Key> extends HashCommonBase<Key> {
+public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements JenaSet<Key> {
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
@@ -51,11 +55,21 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> {
     }
 
     @Override
-    public boolean contains(Key key) {
+    public boolean containsKey(Key key) {
         return findSlot(key) < 0;
     }
 
-    public boolean tryPut(Key key) {
+    @Override
+    public boolean anyMatch(Predicate<Key> predicate) {
+        for (int i = 0; i < keys.length; i++) {
+            if (keys[i] != null && predicate.test(keys[i]))
+                return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean tryAdd(Key key) {
         final var slot = findSlot(key);
         if (slot < 0) return false;
         keys[slot] = key;
@@ -63,7 +77,8 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> {
         return true;
     }
 
-    public void put(Key key) {
+    @Override
+    public void addUnchecked(Key key) {
         final var slot = findSlot(key);
         if (slot < 0) return;
         keys[slot] = key;
@@ -74,6 +89,7 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> {
      * Remove the object <code>key</code> from this hash's keys if it
      * is present (if it's absent, do nothing).
      */
+    @Override
     public boolean tryRemove(Key key) {
         int slot = findSlot(key);
         if (slot < 0) {
@@ -83,7 +99,8 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> {
         return false;
     }
 
-    public void remove(Key key) {
+    @Override
+    public void removeUnchecked(Key key) {
         int slot = findSlot(key);
         if (slot < 0) {
             removeFrom(~slot);
@@ -93,7 +110,7 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> {
     @Override
     protected void grow() {
         final Key[] oldContents = keys;
-        keys = newKeyArray(calcGrownCapacityAndSetThreshold());
+        keys = newKeysArray(calcGrownCapacityAndSetThreshold());
         for (int i = 0; i < oldContents.length; i += 1) {
             final Key key = oldContents[i];
             if (key != null) {

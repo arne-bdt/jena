@@ -43,10 +43,10 @@ public class ArrayBunch implements TripleBunch
         { elements = new Triple[5]; }
     
     @Override
-    public boolean containsBySameValueAs(Triple t, Predicate<Triple> predicate)
+    public boolean containsWithOptimizedEqualsReplacement(Triple t, Predicate<Triple> predicateReplacingEquals)
         {
         int i = size;
-        while (i > 0) if (predicate.test( elements[--i])) return true;
+        while (i > 0) if (predicateReplacingEquals.test( elements[--i])) return true;
         return false;
         }
 

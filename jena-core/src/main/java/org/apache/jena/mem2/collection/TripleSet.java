@@ -26,7 +26,12 @@ public class TripleSet extends HashCommonSet<Triple> {
     }
 
     @Override
-    protected Triple[] newKeyArray(int size) {
+    protected Triple[] newKeysArray(int size) {
         return new Triple[size];
+    }
+
+    @Override
+    public void clear() {
+        super.clear(10);
     }
 }

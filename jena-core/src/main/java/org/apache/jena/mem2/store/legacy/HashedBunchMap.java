@@ -20,19 +20,19 @@ package org.apache.jena.mem2.store.legacy;
 import org.apache.jena.graph.Node;
 import org.apache.jena.mem2.store.legacy.collection.HashCommonMap;
 
-public class HashedBunchMap extends HashCommonMap<Node, TripleBunch> implements BunchMap {
+public class HashedBunchMap extends HashCommonMap<Node, TripleBunch> {
 
     protected HashedBunchMap() {
         super(10);
     }
 
     @Override
-    protected Node[] newKeyArray(int size) {
+    protected Node[] newKeysArray(int size) {
         return new Node[size];
     }
 
     @Override
-    protected TripleBunch[] newValueArray(int size) {
+    protected TripleBunch[] newValuesArray(int size) {
         return new TripleBunch[size];
     }
 

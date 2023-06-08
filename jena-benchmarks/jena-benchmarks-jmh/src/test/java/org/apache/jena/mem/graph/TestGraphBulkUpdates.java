@@ -41,15 +41,15 @@ import java.util.function.Predicate;
 public class TestGraphBulkUpdates {
 
     @Param({
-//            "../testing/cheeses-0.1.ttl",
-//            "../testing/pizza.owl.rdf",
-            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "../testing/cheeses-0.1.ttl",
+            "../testing/pizza.owl.rdf",
+//            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
 //            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
@@ -60,7 +60,7 @@ public class TestGraphBulkUpdates {
             "GraphMem (current)",
 //            "GraphMemB (current)",
             "GraphMem2Legacy (current)",
-//            "GraphMem2Roaring (current)",
+            "GraphMem2Roaring (current)",
 //            "GraphMemTermEquality (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
@@ -73,33 +73,33 @@ public class TestGraphBulkUpdates {
     private List<Triple> triples;
 
 
-    @Test
-    public void testBulkLoad() {
-        var trialContext = new Context("GraphMem2Roaring (current)");
-        this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
-
-        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
-                .read("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
-
-        triples.forEach(this.sutCurrent::add);
-
-        var doubleTriples = new ArrayList<Triple>();
-        for(var t: triples) {
-            if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
-                doubleTriples.add(t);
-            }
-        }
-        System.out.println("Found " + doubleTriples.size() + " triples with double literals");
-
-        for(int i=0; i<2; i++) {
-            for (var t : doubleTriples) {
-                var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
-                var oldValue = (float) oldTriple.getObject().getIndexingValue();
-                this.sutCurrent.delete(oldTriple);
-                this.sutCurrent.add(Triple.create(t.getSubject(), t.getPredicate(), NodeFactory.createLiteralByValue((oldValue + 1.0f), oldTriple.getObject().getLiteralDatatype())));
-            }
-        }
-    }
+//    @Test
+//    public void testBulkLoad() {
+//        var trialContext = new Context("GraphMem2Roaring (current)");
+//        this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
+//
+//        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
+//                .read("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
+//
+//        triples.forEach(this.sutCurrent::add);
+//
+//        var doubleTriples = new ArrayList<Triple>();
+//        for(var t: triples) {
+//            if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
+//                doubleTriples.add(t);
+//            }
+//        }
+//        System.out.println("Found " + doubleTriples.size() + " triples with double literals");
+//
+//        for(int i=0; i<2; i++) {
+//            for (var t : doubleTriples) {
+//                var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
+//                var oldValue = (float) oldTriple.getObject().getIndexingValue();
+//                this.sutCurrent.delete(oldTriple);
+//                this.sutCurrent.add(Triple.create(t.getSubject(), t.getPredicate(), NodeFactory.createLiteralByValue((oldValue + 1.0f), oldTriple.getObject().getLiteralDatatype())));
+//            }
+//        }
+//    }
 
 
     @Benchmark
@@ -157,8 +157,8 @@ public class TestGraphBulkUpdates {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-                .warmupIterations(5)
-                .measurementIterations(20)
+                .warmupIterations(3)
+                .measurementIterations(3)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

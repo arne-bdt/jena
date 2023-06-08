@@ -15,42 +15,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.jena.mem2.collection;
 
-package org.apache.jena.mem2.store.legacy;
-
-import org.apache.jena.graph.Node;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Spliterator;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
-/**
-    A pruned (and slightly stewed) version of Map, containing just those operations
-    required by NodeToTriplesMaps. BunchMaps contain only TripleBunch's.
+public interface JenaMap<Key, Value> extends JenaMapSetCommon<Key> {
 
-*/
-public interface BunchMap {
+    boolean tryPut(Key key, Value value);
 
-    void clear();
+    void put(Key key, Value value);
 
-    int size();
+    Value get(Key key);
 
-    boolean isEmpty();
+    Value getOrDefault(Key key, Value defaultValue);
 
-    TripleBunch get(Node key );
+    Value computeIfAbsent(Key key, Supplier<Value> absentValueSupplier);
 
-    void put(Node key, TripleBunch value );
+    ExtendedIterator<Value> valueIterator();
 
-    boolean tryPut(Node key, TripleBunch value );
+    Spliterator<Value> valueSpliterator();
 
-    void remove( Node key );
+    default Stream<Value> valueStream() {
+        return StreamSupport.stream(valueSpliterator(), false);
+    }
 
-    boolean tryRemove( Node key );
-
-    ExtendedIterator<Node> keyIterator();
-
-    Spliterator<Node> keySpliterator();
-
-    ExtendedIterator<TripleBunch> valueIterator();
-
-    Spliterator<TripleBunch> valueSpliterator();
+    default Stream<Value> valueStreamParallel() {
+        return StreamSupport.stream(valueSpliterator(), false);
+    }
 }

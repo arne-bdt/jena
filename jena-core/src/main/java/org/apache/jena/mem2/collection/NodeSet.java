@@ -26,7 +26,12 @@ public class NodeSet extends HashCommonSet<Node> {
     }
 
     @Override
-    protected Node[] newKeyArray(int size) {
+    protected Node[] newKeysArray(int size) {
         return new Node[size];
+    }
+
+    @Override
+    public void clear() {
+        super.clear(10);
     }
 }

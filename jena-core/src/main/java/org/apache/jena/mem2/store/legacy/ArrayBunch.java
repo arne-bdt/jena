@@ -37,29 +37,36 @@ import java.util.stream.StreamSupport;
 */
 public class ArrayBunch implements TripleBunch
     {
-    
+
+    private static int INITIAL_SIZE = 5;
+
     protected int size = 0;
     protected Triple [] elements;
 
     public ArrayBunch()
-        { elements = new Triple[5]; }
-    
-    @Override
-    public boolean containsBySameValueAs(Triple t, Predicate<Triple> predicate)
-        {
-        int i = size;
-        while (i > 0) if (predicate.test( elements[--i])) return true;
-        return false;
-        }
+        { elements = new Triple[INITIAL_SIZE]; }
 
-    public boolean contains( Triple t )
+    public boolean containsKey(Triple t )
         {
         int i = size;
         while (i > 0) if (t.equals( elements[--i] )) return true;
         return false;
         }
-    
-    @Override
+
+    public boolean anyMatch(Predicate<Triple> predicate )
+        {
+            int i = size;
+            while (i > 0) if (predicate.test( elements[--i] )) return true;
+            return false;
+        }
+
+        @Override
+        public void clear() {
+            this.elements = new Triple[INITIAL_SIZE];
+            this.size = 0;
+        }
+
+        @Override
     public int size()
         { return size; }
 
@@ -68,22 +75,22 @@ public class ArrayBunch implements TripleBunch
             return this.size == 0;
         }
 
-        @Override
-        public boolean isHashed() {
-            return false;
-        }
+//        @Override
+//        public boolean isHashed() {
+//            return false;
+//        }
 
         @Override
-    public boolean tryPut(Triple t )
+    public boolean tryAdd(Triple t )
         {
-        if(this.contains(t)) return false;
+        if(this.containsKey(t)) return false;
         if (size == elements.length) grow();
         elements[size++] = t;
         return true;
         }
 
     @Override
-    public void put(Triple t )
+    public void addUnchecked(Triple t )
         {
         if (size == elements.length) grow();
         elements[size++] = t;
@@ -117,7 +124,7 @@ public class ArrayBunch implements TripleBunch
         }
 
     @Override
-    public void remove(Triple t )
+    public void removeUnchecked(Triple t )
         {
             for (int i = 0; i < size; i += 1)
             {
@@ -129,7 +136,7 @@ public class ArrayBunch implements TripleBunch
             }
         }
 
-    @Override
+        @Override
     public ExtendedIterator<Triple> keyIterator()
         {        return new NiceIterator<Triple>()
             {
@@ -212,5 +219,10 @@ public class ArrayBunch implements TripleBunch
         @Override
         public Stream<Triple> keyStream() {
             return StreamSupport.stream(keySpliterator(), false);
+        }
+
+        @Override
+        public boolean isHashed() {
+            return false;
         }
     }

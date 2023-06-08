@@ -35,7 +35,7 @@ public interface TripleBunch
     /**
         Answer true iff this TripleBunch contains a triple matching the given predicate.
     */
-    public abstract boolean containsBySameValueAs(Triple t, Predicate<Triple> predicate);
+    public abstract boolean containsWithOptimizedEqualsReplacement(Triple t, Predicate<Triple> predicateReplacingEquals);
     
     /**
         Answer the number of triples in this bunch.

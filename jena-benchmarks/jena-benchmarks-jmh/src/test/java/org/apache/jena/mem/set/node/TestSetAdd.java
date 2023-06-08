@@ -22,9 +22,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.FastNodeHashSet2;
-import org.apache.jena.mem2.collection.discarded.FastNodeSet2;
-import org.apache.jena.mem2.collection.discarded.NodeSet2;
+import org.apache.jena.mem2.collection.discarded.*;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -83,7 +81,7 @@ public class TestSetAdd {
 
     private Object addToNodeSet(Triple.Field field) {
         var sut = new NodeSet();
-        triples.forEach(t -> sut.tryPut(field.getField(t)));
+        triples.forEach(t -> sut.tryAdd(field.getField(t)));
         return sut;
     }
 

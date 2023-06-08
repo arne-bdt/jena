@@ -1,8 +1,8 @@
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.collection.discarded;
 
-import org.apache.jena.graph.Triple;
+import org.apache.jena.graph.Node;
 
-public class FastTripleSet extends AbstractFastHashedSet<Triple> {
+public class FastNodeSet extends AbstractFastHashedSet<Node> {
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
@@ -11,7 +11,7 @@ public class FastTripleSet extends AbstractFastHashedSet<Triple> {
      *
      * @param initialCapacity
      */
-    public FastTripleSet(int initialCapacity) {
+    public FastNodeSet(int initialCapacity) {
         super(initialCapacity);
     }
 
@@ -20,12 +20,12 @@ public class FastTripleSet extends AbstractFastHashedSet<Triple> {
      * capacity and the corresponding threshold. All the key elements start out
      * null.
      */
-    public FastTripleSet() {
+    public FastNodeSet() {
         this(10);
     }
 
     @Override
-    protected Triple[] newKeyArray(int size) {
-        return new Triple[size];
+    protected Node[] newKeysArray(int size) {
+        return new Node[size];
     }
 }

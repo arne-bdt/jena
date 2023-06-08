@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.collection.discarded;
 
 import org.apache.jena.mem2.store.legacy.collection.HashCommonBase;
 
@@ -61,7 +61,7 @@ public abstract class AbstractFastHashedSet<Key> extends HashCommonBase<Key> {
     }
 
     @Override
-    public boolean contains(Key key) {
+    public boolean containsKey(Key key) {
         return contains(key, key.hashCode());
     }
 
@@ -99,7 +99,7 @@ public abstract class AbstractFastHashedSet<Key> extends HashCommonBase<Key> {
     protected void grow() {
         final Key[] oldContents = keys;
         final int[] oldHashes = hashes;
-        keys = newKeyArray(calcGrownCapacityAndSetThreshold());
+        keys = newKeysArray(calcGrownCapacityAndSetThreshold());
         hashes = new int[keys.length];
         for (int i = 0; i < oldContents.length; i += 1) {
             final Key key = oldContents[i];

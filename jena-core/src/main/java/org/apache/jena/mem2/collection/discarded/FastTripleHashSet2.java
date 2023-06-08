@@ -16,10 +16,12 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.collection.discarded;
 
+import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.spliterator.SparseArraySubSpliterator;
 import org.apache.jena.memTermEquality.SparseArrayIterator;
+import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
@@ -28,21 +30,17 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * Set which grows, if needed but never shrinks.
- * This set does not guarantee any order.
- * This set does not allow null values.
- * This set is not thread safe.
- * It´s purpose is to support fast add, remove, contains and stream / iterate operations.
- * Only remove operations are not as fast as in {@link:java.util.HashSet}
- * Iterating over this set not get much faster again after removing elements.
+ * Queue which grows, if needed but never shrinks.
+ * This queue does not guarantee any order.
+ * It´s purpose is to support fast remove operations.
  */
-public abstract class AbstractFastHashSet<E> {
+public class FastTripleHashSet2 {
 
     private static final int MINIMUM_HASHES_SIZE = 16;
     private static final int MINIMUM_ELEMENTS_SIZE = 10;
     private static final float loadFactor = 0.5f;
     protected int entriesPos = 0;
-    protected E[] entries;
+    protected Triple[] entries;
     protected int[] hashCodesOrDeletedIndices;
     protected int lastDeletedIndex = -1;
     protected int removedElementsCount = 0;
@@ -53,30 +51,30 @@ public abstract class AbstractFastHashSet<E> {
      */
     protected int[] positions;
 
-    protected abstract E[] createEntriesArray(int size);
-
-    public AbstractFastHashSet(int initialSize) {
+    public FastTripleHashSet2(int initialSize) {
         this.positions = new int[Integer.highestOneBit(((int) (initialSize / loadFactor) + 1)) << 1];
-        this.entries = createEntriesArray(initialSize);
+        this.entries = new Triple[initialSize];
         this.hashCodesOrDeletedIndices = new int[initialSize];
     }
 
-    public AbstractFastHashSet() {
+    public FastTripleHashSet2() {
         this.positions = new int[MINIMUM_HASHES_SIZE];
-        this.entries = createEntriesArray(MINIMUM_ELEMENTS_SIZE);
+        this.entries = new Triple[MINIMUM_ELEMENTS_SIZE];
         this.hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
 
     }
 
+    /*Idea from hashmap: improve hash code by (h = key.hashCode()) ^ (h >>> 16)*/
     private int calcStartIndexByHashCode(final int hashCode) {
+        //return (hashCode ^ (hashCode >>> 16)) & (entries.length-1);
         return hashCode & (positions.length - 1);
     }
 
     private int calcNewPositionsSize() {
         if (entriesPos >= positions.length * loadFactor && positions.length <= 1 << 30) { /*grow*/
-            //return positions.length << 1;
-            final var newLength = positions.length << 1;
-            return newLength < 0 ? Integer.MAX_VALUE : newLength;
+            return positions.length << 1;
+            //final var newLength = positions.length << 1;
+            //return newLength < 0 ? Integer.MAX_VALUE : newLength;
         }
         return -1;
     }
@@ -127,7 +125,7 @@ public abstract class AbstractFastHashSet<E> {
             newSize = Integer.MAX_VALUE;
         }
         final var oldEntries = this.entries;
-        this.entries = createEntriesArray(newSize);
+        this.entries = new Triple[newSize];
         System.arraycopy(oldEntries, 0, entries, 0, oldEntries.length);
         final var oldHashCodes = this.hashCodesOrDeletedIndices;
         this.hashCodesOrDeletedIndices = new int[newSize];
@@ -143,7 +141,7 @@ public abstract class AbstractFastHashSet<E> {
         return this.size() == 0;
     }
 
-    public boolean contains(E o) {
+    public boolean contains(Triple o) {
         final int hashCode;
         var pIndex = calcStartIndexByHashCode(hashCode = o.hashCode());
         while (true) {
@@ -161,7 +159,7 @@ public abstract class AbstractFastHashSet<E> {
     }
 
 
-    public Iterator<E> iterator() {
+    public ExtendedIterator<Triple> iterator() {
         final var initialSize = size();
         final Runnable checkForConcurrentModification = () ->
         {
@@ -170,11 +168,11 @@ public abstract class AbstractFastHashSet<E> {
         return new SparseArrayIterator<>(entries, entriesPos, checkForConcurrentModification);
     }
 
-    public boolean add(E value) {
+    public boolean add(Triple value) {
         return add(value, value.hashCode());
     }
 
-    public boolean add(E value, int hashCode) {
+    public boolean add(Triple value, int hashCode) {
         growPositionsArrayIfNeeded();
         var pIndex = findPosition(value, hashCode);
         if (pIndex < 0) {
@@ -187,11 +185,28 @@ public abstract class AbstractFastHashSet<E> {
         return false;
     }
 
-    public void addUnchecked(E value) {
+    /* Add and get the index of the added element.
+     * If the element already exists, return the inverse (~) index of the existing element.
+     */
+    public int addAndGetIndex(Triple value) {
+        growPositionsArrayIfNeeded();
+        var pIndex = findPosition(value, value.hashCode());
+        if (pIndex < 0) {
+            final var eIndex = getFreeElementIndex();
+            entries[eIndex] = value;
+            hashCodesOrDeletedIndices[eIndex] = value.hashCode();
+            positions[~pIndex] = ~eIndex;
+            return eIndex;
+        } else {
+            return positions[pIndex];
+        }
+    }
+
+    public void addUnchecked(Triple value) {
         addUnchecked(value, value.hashCode());
     }
 
-    public void addUnchecked(E value, int hashCode) {
+    public void addUnchecked(Triple value, int hashCode) {
         growPositionsArrayIfNeeded();
         final var eIndex = getFreeElementIndex();
         entries[eIndex] = value;
@@ -200,7 +215,7 @@ public abstract class AbstractFastHashSet<E> {
     }
 
 
-    private int findPosition(final E e, final int hashCode) {
+    private int findPosition(final Triple e, final int hashCode) {
         var pIndex = calcStartIndexByHashCode(hashCode);
         while (true) {
             if (0 == positions[pIndex]) {
@@ -227,6 +242,10 @@ public abstract class AbstractFastHashSet<E> {
         }
     }
 
+    public Triple get(int i) {
+        return entries[i];
+    }
+
     /**
      * Removes a single instance of the specified element from this
      * collection, if it is present (optional operation).  More formally,
@@ -247,24 +266,40 @@ public abstract class AbstractFastHashSet<E> {
      * @throws UnsupportedOperationException if the {@code remove} operation
      *                                       is not supported by this collection
      */
-    public boolean remove(E o) {
+    public boolean remove(Triple o) {
         return remove(o, o.hashCode());
     }
 
-    public boolean remove(E e, int hashCode) {
-        final var index = findPosition(e, hashCode);
-        if (index < 0) {
+    public boolean remove(Triple e, int hashCode) {
+        final var pIndex = findPosition(e, hashCode);
+        if (pIndex < 0) {
             return false;
         }
-        removeFrom(index);
+        removeFrom(pIndex);
         return true;
     }
 
-    public void removeUnchecked(E e) {
+    /**
+     * Removes the given element and returns its index.
+     * If the element is not found, returns -1.
+     * @param e
+     * @return
+     */
+    public int removeAndGetIndex(Triple e) {
+        final var pIndex = findPosition(e, e.hashCode());
+        if (pIndex < 0) {
+            return -1;
+        }
+        final var eIndex = ~positions[pIndex];
+        removeFrom(pIndex);
+        return eIndex;
+    }
+
+    public void removeUnchecked(Triple e) {
         removeUnchecked(e, e.hashCode());
     }
 
-    public void removeUnchecked(E e, int hashCode) {
+    public void removeUnchecked(Triple e, int hashCode) {
         removeFrom(findPosition(e, hashCode));
     }
 
@@ -300,14 +335,14 @@ public abstract class AbstractFastHashSet<E> {
      */
     public void clear() {
         positions = new int[MINIMUM_HASHES_SIZE];
-        entries = createEntriesArray(MINIMUM_ELEMENTS_SIZE);
+        entries = new Triple[MINIMUM_ELEMENTS_SIZE];
         hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
         entriesPos = 0;
         lastDeletedIndex = -1;
         removedElementsCount = 0;
     }
 
-    public Spliterator<E> spliterator() {
+    public Spliterator spliterator() {
         final var initialSize = this.size();
         final Runnable checkForConcurrentModification = () ->
         {
@@ -316,12 +351,11 @@ public abstract class AbstractFastHashSet<E> {
         return new SparseArraySubSpliterator<>(entries, 0, entriesPos, checkForConcurrentModification);
     }
 
-    public Stream<E> stream() {
+    public Stream<Triple> stream() {
         return StreamSupport.stream(this.spliterator(), false);
     }
 
-    public Stream<E> parallelStream() {
+    public Stream<Triple> parallelStream() {
         return StreamSupport.stream(this.spliterator(), true);
     }
-
 }

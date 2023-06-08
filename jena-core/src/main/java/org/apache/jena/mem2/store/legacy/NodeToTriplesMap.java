@@ -19,14 +19,16 @@ package org.apache.jena.mem2.store.legacy;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.collection.JenaSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-public interface NodeToTriplesMap extends TripleBunch {
-
+public interface NodeToTriplesMap extends JenaSet<Triple> {
     void clear();
     ExtendedIterator<Triple> iteratorForMatches(Node index, Node n2, Node n3 );
     Stream<Triple> streamForMatches(Node index, Node n2, Node n3 );
     boolean containsMatch( Node index, Node n2, Node n3 );
+    boolean containsKey(Triple triple, Node index, Predicate<Triple> predicateReplacingEquals);
 }

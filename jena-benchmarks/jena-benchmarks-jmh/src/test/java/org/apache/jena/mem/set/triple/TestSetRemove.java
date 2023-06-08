@@ -22,10 +22,8 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet3;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet4;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet5;
+import org.apache.jena.mem2.collection.discarded.*;
+import org.apache.jena.mem2.store.legacy.collection.HashCommonTripleSet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -54,29 +52,19 @@ public class TestSetRemove {
     public String param0_GraphUri;
 
     @Param({
-//            "HashSet",
-            "TripleSet",
-//            "TripleSet2",
-            "FastTripleSet",
-//            "FastTripleSet2",
-//            "FastTripleHashSet",
+            "HashSet",
+            "HashCommonTripleSet",
             "FastTripleHashSet2",
-//            "FastTripleHashSet3",
-//            "FastTripleHashSet4",
-//            "FastTripleHashSet5",
+            "FastHashSetOfTriples"
     })
     public String param1_SetImplementation;
 
     private List<Triple> triples;
     private List<Triple> triplesToRemove;
     private HashSet<Triple> hashSet;
-    private TripleSet tripleSet;
-    private FastTripleSet fastTripleSet;
-    private FastTripleHashSet fastTripleHashSet;
+    private HashCommonTripleSet hashCommonTripleSet;
     private FastTripleHashSet2 fastTripleHashSet2;
-    private FastTripleHashSet3 fastTripleHashSet3;
-    private FastTripleHashSet4 fastTripleHashSet4;
-    private FastTripleHashSet5 fastTripleHashSet5;
+    private FastHashSetOfTriples fastHashSetOfTriples;
 
 
 
@@ -92,22 +80,11 @@ public class TestSetRemove {
         Assert.assertTrue(this.hashSet.isEmpty());
         return this.hashSet.size();
     }
-    private int removeFromTripleSet() {
-        triplesToRemove.forEach(t -> this.tripleSet.tryRemove(t));
-        Assert.assertTrue(this.tripleSet.isEmpty());
-        return this.tripleSet.size();
-    }
 
-    private int removeFromFastTripleSet() {
-        triplesToRemove.forEach(t -> this.fastTripleSet.removeKey(t));
-        Assert.assertTrue(this.fastTripleSet.isEmpty());
-        return this.fastTripleSet.size();
-    }
-
-    private int removeFromFastTripleHashSet() {
-        triplesToRemove.forEach(t -> this.fastTripleHashSet.remove(t));
-        Assert.assertTrue(this.fastTripleHashSet.isEmpty());
-        return this.fastTripleHashSet.size();
+    private int removeFromHashCommonTripleSet() {
+        triplesToRemove.forEach(t -> this.hashCommonTripleSet.removeUnchecked(t));
+        Assert.assertTrue(this.hashCommonTripleSet.isEmpty());
+        return this.hashCommonTripleSet.size();
     }
 
     private int removeFromFastTripleHashSet2() {
@@ -116,23 +93,12 @@ public class TestSetRemove {
         return this.fastTripleHashSet2.size();
     }
 
-    private int removeFromFastTripleHashSet3() {
-        triplesToRemove.forEach(t -> this.fastTripleHashSet3.remove(t));
-        Assert.assertTrue(this.fastTripleHashSet3.isEmpty());
-        return this.fastTripleHashSet3.size();
+    private int removeFromFastHashSetOfTriples() {
+        triplesToRemove.forEach(t -> this.fastHashSetOfTriples.removeUnchecked(t));
+        Assert.assertTrue(this.fastHashSetOfTriples.isEmpty());
+        return this.fastHashSetOfTriples.size();
     }
 
-    private int removeFromFastTripleHashSet4() {
-        triplesToRemove.forEach(t -> this.fastTripleHashSet4.remove(t));
-        Assert.assertTrue(this.fastTripleHashSet4.isEmpty());
-        return this.fastTripleHashSet4.size();
-    }
-
-    private int removeFromFastTripleHashSet5() {
-        triplesToRemove.forEach(t -> this.fastTripleHashSet5.remove(t));
-        Assert.assertTrue(this.fastTripleHashSet5.isEmpty());
-        return this.fastTripleHashSet5.size();
-    }
 
 //    @Test
 //    public void testDeleteFromFastTripleHashSet4() {
@@ -172,33 +138,17 @@ public class TestSetRemove {
                 this.hashSet = new HashSet<>(triples.size());
                 this.triples.forEach(hashSet::add);
                 break;
-            case "TripleSet":
-                this.tripleSet = new TripleSet(triples.size());
-                this.triples.forEach(tripleSet::tryPut);
-                break;
-            case "FastTripleSet":
-                this.fastTripleSet = new FastTripleSet(triples.size());
-                this.triples.forEach(fastTripleSet::addKey);
-                break;
-            case "FastTripleHashSet":
-                this.fastTripleHashSet = new FastTripleHashSet(triples.size());
-                this.triples.forEach(fastTripleHashSet::add);
+            case "HashCommonTripleSet":
+                this.hashCommonTripleSet = new HashCommonTripleSet(triples.size());
+                this.triples.forEach(hashCommonTripleSet::addUnchecked);
                 break;
             case "FastTripleHashSet2":
                 this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
                 this.triples.forEach(fastTripleHashSet2::add);
                 break;
-            case "FastTripleHashSet3":
-                this.fastTripleHashSet3 = new FastTripleHashSet3(triples.size());
-                this.triples.forEach(fastTripleHashSet3::add);
-                break;
-            case "FastTripleHashSet4":
-                this.fastTripleHashSet4 = new FastTripleHashSet4(triples.size());
-                this.triples.forEach(fastTripleHashSet4::add);
-                break;
-            case "FastTripleHashSet5":
-                this.fastTripleHashSet5 = new FastTripleHashSet5(triples.size());
-                this.triples.forEach(fastTripleHashSet5::add);
+            case "FastHashSetOfTriples":
+                this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
+                this.triples.forEach(fastHashSetOfTriples::addUnchecked);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);
@@ -213,26 +163,14 @@ public class TestSetRemove {
             case "HashSet":
                 this.removeFromSet = this::removeFromHashSet;
                 break;
-            case "TripleSet":
-                this.removeFromSet = this::removeFromTripleSet;
-                break;
-            case "FastTripleSet":
-                this.removeFromSet = this::removeFromFastTripleSet;
-                break;
-            case "FastTripleHashSet":
-                this.removeFromSet = this::removeFromFastTripleHashSet;
+            case "HashCommonTripleSet":
+                this.removeFromSet = this::removeFromHashCommonTripleSet;
                 break;
             case "FastTripleHashSet2":
                 this.removeFromSet = this::removeFromFastTripleHashSet2;
                 break;
-            case "FastTripleHashSet3":
-                this.removeFromSet = this::removeFromFastTripleHashSet3;
-                break;
-            case "FastTripleHashSet4":
-                this.removeFromSet = this::removeFromFastTripleHashSet4;
-                break;
-            case "FastTripleHashSet5":
-                this.removeFromSet = this::removeFromFastTripleHashSet5;
+            case "FastHashSetOfTriples":
+                this.removeFromSet = this::removeFromFastHashSetOfTriples;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

@@ -19,11 +19,9 @@
 package org.apache.jena.mem2.store.legacy;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.mem2.collection.JenaSet;
 
-import java.util.Spliterator;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
 /**
     A bunch of triples - a stripped-down set with specialized methods. A
@@ -31,63 +29,9 @@ import java.util.stream.Stream;
     (such as having the same subject or predicate).
 
 */
-public interface TripleBunch 
-    {
-    /**
-        Answer true iff this TripleBunch contains a triple matching the given predicate.
-    */
-    boolean containsBySameValueAs(Triple t, Predicate<Triple> predicate);
-    
-    /**
-        Answer the number of triples in this bunch.
-    */
-    int size();
-
-    boolean isEmpty();
-
+public interface TripleBunch extends JenaSet<Triple> {
     boolean isHashed();
-
-    /**
-        Add <code>t</code> to the triples in this bunch. If <code>t</code>
-        is already a member, nothing happens. The bunch now .contains this
-        triple.
-        @return true iff the triple was added
-    */
-    boolean tryPut(Triple t );
-
-    /**
-        Add <code>t</code> to the triples in this bunch.
-        <code>t</code> must not already be in the set.
-        <code>t</code> is added without checking if it is already a member.
-     */
-    void put(Triple t );
-
-    /**
-        Remove <code>t</code> from the triples in this bunch. If it wasn't
-        a member, nothing happens. The bunch no longer .contains this triple.
-        @return true iff the triple was removed
-    */
-    boolean tryRemove(Triple t );
-
-
-    /**
-        Remove <code>t</code> from the triples in this bunch.
-        <code>t</code> must already be in the set.
-        <code>t</code> is removed without checking if it is a member.
-    */
-    void remove(Triple t );
-
-
-    /**
-        Answer an iterator over all the triples in this bunch. It is unwise to
-        .remove from this iterator. (It may become illegal.)
-    */
-    ExtendedIterator<Triple> keyIterator();
-
-    /**
-        Answer a spliterator over all the triples in this bunch.
-    */
-    Spliterator<Triple> keySpliterator();
-
-    Stream<Triple> keyStream();
+    default boolean containsWithOptimizedEqualsReplacement(Triple t, Predicate<Triple> predicateReplacingEquals) {
+        return anyMatch(predicateReplacingEquals);
+    }
 }

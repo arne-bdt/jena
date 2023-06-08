@@ -22,9 +22,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.FastNodeHashSet2;
-import org.apache.jena.mem2.collection.discarded.FastNodeSet2;
-import org.apache.jena.mem2.collection.discarded.NodeSet2;
+import org.apache.jena.mem2.collection.discarded.*;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -107,7 +105,7 @@ public class TestSetContains {
     private boolean tripleSetContainsSubjects() {
         var found = false;
         for(var t: triplesToFind) {
-            found = subjectSet.contains(t.getSubject());
+            found = subjectSet.containsKey(t.getSubject());
             Assert.assertTrue(found);
         }
         return found;
@@ -116,7 +114,7 @@ public class TestSetContains {
     private boolean tripleSetContainsPredicates() {
         var found = false;
         for(var t: triplesToFind) {
-            found = predicateSet.contains(t.getPredicate());
+            found = predicateSet.containsKey(t.getPredicate());
             Assert.assertTrue(found);
         }
         return found;
@@ -125,7 +123,7 @@ public class TestSetContains {
     private boolean tripleSetContainsObjects() {
         var found = false;
         for(var t: triplesToFind) {
-            found = objectSet.contains(t.getObject());
+            found = objectSet.containsKey(t.getObject());
             Assert.assertTrue(found);
         }
         return found;
@@ -161,7 +159,7 @@ public class TestSetContains {
     private boolean fastTripleSetContainsSubjects() {
         var found = false;
         for(var t: triplesToFind) {
-            found = fastSubjectSet.contains(t.getSubject());
+            found = fastSubjectSet.containsKey(t.getSubject());
             Assert.assertTrue(found);
         }
         return found;
@@ -170,7 +168,7 @@ public class TestSetContains {
     private boolean fastTripleSetContainsPredicates() {
         var found = false;
         for(var t: triplesToFind) {
-            found = fastPredicateSet.contains(t.getPredicate());
+            found = fastPredicateSet.containsKey(t.getPredicate());
             Assert.assertTrue(found);
         }
         return found;
@@ -179,7 +177,7 @@ public class TestSetContains {
     private boolean fastTripleSetContainsObjects() {
         var found = false;
         for(var t: triplesToFind) {
-            found = fastObjectSet.contains(t.getObject());
+            found = fastObjectSet.containsKey(t.getObject());
             Assert.assertTrue(found);
         }
         return found;
@@ -277,9 +275,9 @@ public class TestSetContains {
                 this.predicateSet = new NodeSet();
                 this.objectSet = new NodeSet();
                 triples.forEach(t -> {
-                    subjectSet.tryPut(t.getSubject());
-                    predicateSet.tryPut(t.getPredicate());
-                    objectSet.tryPut(t.getObject());
+                    subjectSet.tryAdd(t.getSubject());
+                    predicateSet.tryAdd(t.getPredicate());
+                    objectSet.tryAdd(t.getObject());
                 });
                 this.setContainsSubjects = this::tripleSetContainsSubjects;
                 this.setContainsPredicates = this::tripleSetContainsPredicates;

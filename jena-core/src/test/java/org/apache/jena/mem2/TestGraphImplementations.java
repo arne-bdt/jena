@@ -34,7 +34,7 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 public class TestGraphImplementations {
 
     private static Graph createGraph() {
-        return new GraphMem2Roaring();
+        return new GraphMem2Legacy();
     }
 
     @Test
@@ -88,6 +88,38 @@ public class TestGraphImplementations {
         Assert.assertEquals(0, sut.find(node("y"), null, node("y")).toList().size());
         Assert.assertEquals(0, sut.find(node("y"), node("R"), null).toList().size());
         Assert.assertEquals(0, sut.find(node("y"), node("R"), node("y")).toList().size());
+    }
+
+    @Test
+    public void testContains1() {
+        var sut = createGraph();
+        sut.add(triple("x R y"));
+        sut.add(triple("y S z"));
+        sut.add(triple("z T a"));
+        Assert.assertTrue(sut.contains(null, null, null));
+        Assert.assertTrue(sut.contains(null, null, node("y")));
+        Assert.assertTrue(sut.contains(null, node("R"), null));
+        Assert.assertTrue(sut.contains(null, node("R"), node("y")));
+        Assert.assertTrue(sut.contains(node("x"), null, null));
+        Assert.assertTrue(sut.contains(node("x"), null, node("y")));
+        Assert.assertTrue(sut.contains(node("x"), node("R"), null));
+        Assert.assertTrue(sut.contains(node("x"), node("R"), node("y")));
+    }
+
+    @Test
+    public void testContains2() {
+        var sut = createGraph();
+        sut.add(triple("x R y"));
+        sut.add(triple("y S z"));
+        sut.add(triple("z T a"));
+        Assert.assertTrue(sut.contains(null, null, null));
+        Assert.assertFalse(sut.contains(null, null, node("x")));
+        Assert.assertFalse(sut.contains(null, node("U"), null));
+        Assert.assertFalse(sut.contains(null, node("R"), node("z")));
+        Assert.assertFalse(sut.contains(node("a"), null, null));
+        Assert.assertFalse(sut.contains(node("x"), null, node("x")));
+        Assert.assertFalse(sut.contains(node("y"), node("R"), null));
+        Assert.assertFalse(sut.contains(node("y"), node("T"), node("a")));
     }
 
     public static Node node(String n) {

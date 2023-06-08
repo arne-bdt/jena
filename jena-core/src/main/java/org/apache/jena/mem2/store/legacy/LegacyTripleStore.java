@@ -21,6 +21,8 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.NullIterator;
+import org.apache.jena.util.iterator.SingletonIterator;
 
 import java.util.stream.Stream;
 
@@ -35,17 +37,17 @@ public class LegacyTripleStore implements TripleStore {
 
     @Override
     public void add(Triple triple) {
-        if(subjects.tryPut(triple)) {
-            predicates.put(triple);
-            objects.put(triple);
+        if(subjects.tryAdd(triple)) {
+            predicates.addUnchecked(triple);
+            objects.addUnchecked(triple);
         }
     }
 
     @Override
     public void remove(Triple triple) {
         if(subjects.tryRemove(triple)) {
-            predicates.remove(triple);
-            objects.remove(triple);
+            predicates.removeUnchecked(triple);
+            objects.removeUnchecked(triple);
         }
     }
 
@@ -68,6 +70,15 @@ public class LegacyTripleStore implements TripleStore {
 
     @Override
     public boolean contains(Triple tripleMatch) {
+
+        if(tripleMatch.isConcrete()) {
+            return subjects.containsKey(tripleMatch,
+                    tripleMatch.getSubject(),
+                    t -> tripleMatch.getPredicate().equals(t.getPredicate())
+                        && tripleMatch.getObject().equals(t.getObject()));
+        }
+
+
         final Node pm = tripleMatch.getPredicate();
         final Node om = tripleMatch.getObject();
         final Node sm = tripleMatch.getSubject();
@@ -88,6 +99,10 @@ public class LegacyTripleStore implements TripleStore {
 
     @Override
     public Stream<Triple> stream(Triple tripleMatch) {
+        if(tripleMatch.isConcrete()) {
+            return subjects.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
+        }
+
         final Node pm = tripleMatch.getPredicate();
         final Node om = tripleMatch.getObject();
         final Node sm = tripleMatch.getSubject();
@@ -104,6 +119,9 @@ public class LegacyTripleStore implements TripleStore {
 
     @Override
     public ExtendedIterator<Triple> find(Triple tripleMatch) {
+        if(tripleMatch.isConcrete()) {
+            return subjects.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NullIterator.emptyIterator();
+        }
         final Node pm = tripleMatch.getPredicate();
         final Node om = tripleMatch.getObject();
         final Node sm = tripleMatch.getSubject();

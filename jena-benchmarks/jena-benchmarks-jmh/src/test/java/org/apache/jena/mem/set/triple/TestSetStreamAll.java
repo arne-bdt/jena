@@ -22,10 +22,8 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet3;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet4;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet5;
+import org.apache.jena.mem2.collection.discarded.*;
+import org.apache.jena.mem2.store.legacy.collection.HashCommonTripleSet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -60,28 +58,18 @@ public class TestSetStreamAll {
     public String param0_GraphUri;
 
     @Param({
-//            "HashSet",
-            "TripleSet",
-//            "TripleSet2",
-            "FastTripleSet",
-//            "FastTripleSet2",
-//            "FastTripleHashSet",
+            "HashSet",
+            "HashCommonTripleSet",
             "FastTripleHashSet2",
-//            "FastTripleHashSet3",
-//            "FastTripleHashSet4",
-//            "FastTripleHashSet5",
+            "FastHashSetOfTriples"
     })
     public String param1_SetImplementation;
 
     private List<Triple> triples;
     private HashSet<Triple> hashSet;
-    private TripleSet tripleSet;
-    private FastTripleSet fastTripleSet;
-    private FastTripleHashSet fastTripleHashSet;
+    private HashCommonTripleSet hashCommonTripleSet;
     private FastTripleHashSet2 fastTripleHashSet2;
-    private FastTripleHashSet3 fastTripleHashSet3;
-    private FastTripleHashSet4 fastTripleHashSet4;
-    private FastTripleHashSet5 fastTripleHashSet5;
+    private FastHashSetOfTriples fastHashSetOfTriples;
 
     java.util.function.Supplier<Spliterator<Triple>> getSpliterator;
 
@@ -105,31 +93,17 @@ public class TestSetStreamAll {
         return hashSet.spliterator();
     }
 
-
-    private Spliterator<Triple> getSpliteratorFromTripleSet() {
-        return tripleSet.keySpliterator();
+    private Spliterator<Triple> getSpliteratorFromHashCommonTripleSet() {
+        return hashCommonTripleSet.keySpliterator();
     }
 
-    private Spliterator<Triple> getSpliteratorFromFastTripleSet() {
-        return fastTripleSet.keySpliterator();
-    }
-
-    private Spliterator<Triple> getSpliteratorFromFastTripleHashSet() {
-        return fastTripleHashSet.spliterator();
-    }
     private Spliterator<Triple> getSpliteratorFromFastTripleHashSet2() {
         return fastTripleHashSet2.spliterator();
     }
-    private Spliterator<Triple> getSpliteratorFromFastTripleHashSet3() {
-        return fastTripleHashSet3.spliterator();
-    }
-    private Spliterator<Triple> getSpliteratorFromFastTripleHashSet4() {
-        return fastTripleHashSet4.spliterator();
-    }
-    private Spliterator<Triple> getSpliteratorFromFastTripleHashSet5() {
-        return fastTripleHashSet5.spliterator();
-    }
 
+    private Spliterator<Triple> getSpliteratorFromFastHashSetOfTriples() {
+        return fastHashSetOfTriples.keySpliterator();
+    }
 
 
     @Setup(Level.Trial)
@@ -141,40 +115,20 @@ public class TestSetStreamAll {
                 triples.forEach(hashSet::add);
                 this.getSpliterator = this::getSpliteratorFromHashSet;
                 break;
-            case "TripleSet":
-                this.tripleSet = new TripleSet(triples.size());
-                triples.forEach(tripleSet::tryPut);
-                this.getSpliterator = this::getSpliteratorFromTripleSet;
-                break;
-            case "FastTripleSet":
-                this.fastTripleSet = new FastTripleSet(triples.size());
-                triples.forEach(fastTripleSet::addKey);
-                this.getSpliterator = this::getSpliteratorFromFastTripleSet;
-                break;
-            case "FastTripleHashSet":
-                this.fastTripleHashSet = new FastTripleHashSet(triples.size());
-                triples.forEach(fastTripleHashSet::add);
-                this.getSpliterator = this::getSpliteratorFromFastTripleHashSet;
+            case "HashCommonTripleSet":
+                this.hashCommonTripleSet = new HashCommonTripleSet(triples.size());
+                triples.forEach(hashCommonTripleSet::addUnchecked);
+                this.getSpliterator = this::getSpliteratorFromHashCommonTripleSet;
                 break;
             case "FastTripleHashSet2":
                 this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
                 triples.forEach(fastTripleHashSet2::add);
                 this.getSpliterator = this::getSpliteratorFromFastTripleHashSet2;
                 break;
-            case "FastTripleHashSet3":
-                this.fastTripleHashSet3 = new FastTripleHashSet3(triples.size());
-                triples.forEach(fastTripleHashSet3::add);
-                this.getSpliterator = this::getSpliteratorFromFastTripleHashSet3;
-                break;
-            case "FastTripleHashSet4":
-                this.fastTripleHashSet4 = new FastTripleHashSet4(triples.size());
-                triples.forEach(fastTripleHashSet4::add);
-                this.getSpliterator = this::getSpliteratorFromFastTripleHashSet4;
-                break;
-            case "FastTripleHashSet5":
-                this.fastTripleHashSet5 = new FastTripleHashSet5(triples.size());
-                triples.forEach(fastTripleHashSet5::add);
-                this.getSpliterator = this::getSpliteratorFromFastTripleHashSet5;
+            case "FastHashSetOfTriples":
+                this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
+                triples.forEach(fastHashSetOfTriples::addUnchecked);
+                this.getSpliterator = this::getSpliteratorFromFastHashSetOfTriples;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

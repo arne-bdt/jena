@@ -58,11 +58,11 @@ public class FieldFilter {
     public static FieldFilter filterOn(Triple.Field f1, Node n1, Triple.Field f2, Node n2) {
         if(n1.isConcrete()) {
             if(n2.isConcrete()) {
-                return new FieldFilter(t -> f1.getField(t).equals(n1) && f2.getField(t).equals(n2));
+                return new FieldFilter(t -> n1.equals(f1.getField(t)) && n2.equals(f2.getField(t)));
             }
-            return new FieldFilter(t -> f1.getField(t).equals(n1));
+            return new FieldFilter(t -> n1.equals(f1.getField(t)));
         } else if (n2.isConcrete()) {
-            return new FieldFilter(t -> f2.getField(t).equals(n2));
+            return new FieldFilter(t -> n2.equals(f2.getField(t)));
         }
         return FieldFilter.EMPTY;
     }

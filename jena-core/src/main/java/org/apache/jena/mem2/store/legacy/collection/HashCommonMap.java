@@ -18,19 +18,21 @@
 
 package org.apache.jena.mem2.store.legacy.collection;
 
+import org.apache.jena.mem2.collection.JenaMap;
 import org.apache.jena.memTermEquality.SparseArrayIterator;
 import org.apache.jena.memTermEquality.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
+public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> implements JenaMap<Key, Value> {
 
     protected Value[] values;
 
@@ -41,15 +43,18 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
      */
     protected HashCommonMap(int initialCapacity) {
         super(initialCapacity);
-        this.values = newValueArray(keys.length);
+        this.values = newValuesArray(keys.length);
     }
 
     public void clear(int initialCapacity) {
         super.clear(initialCapacity);
-        this.values = newValueArray(keys.length);
+        this.values = newValuesArray(keys.length);
     }
 
-    protected abstract Value[] newValueArray(int size);
+    @Override
+    public abstract void clear();
+
+    protected abstract Value[] newValuesArray(int size);
 
     /**
      * Search for the slot in which <code>key</code> is found. If it is absent,
@@ -69,10 +74,20 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
     }
 
     @Override
-    public boolean contains(Key key) {
+    public boolean containsKey(Key key) {
         return findSlot(key) < 0;
     }
 
+    @Override
+    public boolean anyMatch(Predicate<Key> predicate) {
+        for (int i = 0; i < keys.length; i++) {
+            if (keys[i] != null && predicate.test(keys[i]))
+                return true;
+        }
+        return false;
+    }
+
+    @Override
     public boolean tryPut(Key key, Value value) {
         final var slot = findSlot(key);
         if (slot < 0) {
@@ -85,6 +100,7 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
         return true;
     }
 
+    @Override
     public void put(Key key, Value value) {
         final var slot = findSlot(key);
         if (slot < 0) {
@@ -96,18 +112,21 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
         if (++size > threshold) grow();
     }
 
+    @Override
     public Value get(Key key) {
         final var slot = findSlot(key);
         if (slot < 0) return values[~slot];
         return null;
     }
 
+    @Override
     public Value getOrDefault(Key key, Value defaultValue) {
         final var slot = findSlot(key);
         if (slot < 0) return values[~slot];
         return defaultValue;
     }
 
+    @Override
     public Value computeIfAbsent(Key key, Supplier<Value> absentValueSupplier) {
         final var slot = findSlot(key);
         if (slot < 0) return values[~slot];
@@ -122,6 +141,7 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
      * Remove the object <code>key</code> from this hash's keys if it
      * is present (if it's absent, do nothing).
      */
+    @Override
     public boolean tryRemove(Key key) {
         int slot = findSlot(key);
         if (slot < 0) {
@@ -135,7 +155,8 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
      * Remove the object <code>key</code> from this hash's keys if it
      * is present (if it's absent, do nothing).
      */
-    public void remove(Key key) {
+    @Override
+    public void removeUnchecked(Key key) {
         int slot = findSlot(key);
         if (slot < 0) {
             removeFrom(~slot);
@@ -146,8 +167,8 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
     protected void grow() {
         final Key[] oldContents = keys;
         final Value[] oldValues = values;
-        keys = newKeyArray(calcGrownCapacityAndSetThreshold());
-        values = newValueArray(keys.length);
+        keys = newKeysArray(calcGrownCapacityAndSetThreshold());
+        values = newValuesArray(keys.length);
         for (int i = 0; i < oldContents.length; i += 1) {
             final Key key = oldContents[i];
             if (key != null) {
@@ -195,6 +216,7 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
         }
     }
 
+    @Override
     public ExtendedIterator<Value> valueIterator() {
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () -> {
@@ -203,6 +225,7 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> {
         return new SparseArrayIterator<>(values, checkForConcurrentModification);
     }
 
+    @Override
     public Spliterator<Value> valueSpliterator() {
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () -> {

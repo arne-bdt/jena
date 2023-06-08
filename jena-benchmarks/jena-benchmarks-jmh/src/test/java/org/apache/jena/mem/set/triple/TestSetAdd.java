@@ -23,6 +23,7 @@ import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem2.collection.*;
 import org.apache.jena.mem2.collection.discarded.*;
+import org.apache.jena.mem2.store.legacy.collection.HashCommonTripleSet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -52,16 +53,10 @@ public class TestSetAdd {
     public String param0_GraphUri;
 
     @Param({
-//            "HashSet",
-            "TripleSet",
-//            "TripleSet2",
-            "FastTripleSet",
-//            "FastTripleSet2",
-//            "FastTripleHashSet",
+            "HashSet",
+            "HashCommonTripleSet",
             "FastTripleHashSet2",
-//            "FastTripleHashSet3",
-//            "FastTripleHashSet4",
-//            "FastTripleHashSet5",
+            "FastHashSetOfTriples"
     })
     public String param1_SetImplementation;
 
@@ -81,37 +76,9 @@ public class TestSetAdd {
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
-    private Object addToTripleSet() {
-        var sut = new TripleSet();
-        triples.forEach(sut::tryPut);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
-
-    private Object addToTripleSet2() {
-        var sut = new TripleSet2();
-        triples.forEach(sut::addKey);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
-
-    private Object addToFastTripleSet() {
-        var sut = new FastTripleSet();
-        triples.forEach(sut::addKey);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
-
-    private Object addToFastTripleSet2() {
-        var sut = new FastTripleSet2();
-        triples.forEach(sut::addKey);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
-
-    private Object addToFastTripleHashSet() {
-        var sut = new FastTripleHashSet();
-        triples.forEach(sut::add);
+    private Object addToHashCommonTripleSet() {
+        var sut = new HashCommonTripleSet();
+        triples.forEach(sut::tryAdd);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
@@ -123,23 +90,9 @@ public class TestSetAdd {
         return sut;
     }
 
-    private Object addToFastTripleHashSet3() {
-        var sut = new FastTripleHashSet3();
-        triples.forEach(sut::add);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
-
-    private Object addToFastTripleHashSet4() {
-        var sut = new FastTripleHashSet4();
-        triples.forEach(sut::add);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
-
-    private Object addToFastTripleHashSet5() {
-        var sut = new FastTripleHashSet5();
-        triples.forEach(sut::add);
+    private Object addToFastHashSetOfTriples() {
+        var sut = new FastHashSetOfTriples();
+        triples.forEach(sut::tryAdd);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
@@ -160,32 +113,14 @@ public class TestSetAdd {
             case "HashSet":
                 this.addToSet = this::addToHashSet;
                 break;
-            case "TripleSet":
-                this.addToSet = this::addToTripleSet;
-                break;
-            case "TripleSet2":
-                this.addToSet = this::addToTripleSet2;
-                break;
-            case "FastTripleSet":
-                this.addToSet = this::addToFastTripleSet;
-                break;
-            case "FastTripleSet2":
-                this.addToSet = this::addToFastTripleSet2;
-                break;
-            case "FastTripleHashSet":
-                this.addToSet = this::addToFastTripleHashSet;
+            case "HashCommonTripleSet":
+                this.addToSet = this::addToHashCommonTripleSet;
                 break;
             case "FastTripleHashSet2":
                 this.addToSet = this::addToFastTripleHashSet2;
                 break;
-            case "FastTripleHashSet3":
-                this.addToSet = this::addToFastTripleHashSet3;
-                break;
-            case "FastTripleHashSet4":
-                this.addToSet = this::addToFastTripleHashSet4;
-                break;
-            case "FastTripleHashSet5":
-                this.addToSet = this::addToFastTripleHashSet5;
+            case "FastHashSetOfTriples":
+                this.addToSet = this::addToFastHashSetOfTriples;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

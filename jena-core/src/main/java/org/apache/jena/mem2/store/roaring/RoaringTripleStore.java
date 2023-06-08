@@ -20,15 +20,15 @@ package org.apache.jena.mem2.store.roaring;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.store.legacy.collection.HashCommonMap;
-import org.apache.jena.mem2.collection.FastTripleHashSet2;
+import org.apache.jena.mem2.collection.FastHashMap;
+import org.apache.jena.mem2.collection.FastHashSet;
 import org.apache.jena.mem2.pattern.MatchPattern;
 import org.apache.jena.mem2.pattern.PatternClassifier;
 import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
+import org.apache.jena.util.iterator.SingletonIterator;
 import org.roaringbitmap.BatchIterator;
-import org.roaringbitmap.FastAggregation;
 import org.roaringbitmap.ImmutableBitmapDataProvider;
 import org.roaringbitmap.RoaringBitmap;
 
@@ -38,27 +38,31 @@ import java.util.stream.Stream;
 
 public class RoaringTripleStore implements TripleStore {
 
-    private class NodesToBitmapsMap extends HashCommonMap<Node, RoaringBitmap> {
-
-        public NodesToBitmapsMap() {
-            super(10);
-        }
+    private class TripleSet extends FastHashSet<Triple> {
 
         @Override
-        protected RoaringBitmap[] newValueArray(int size) {
-            return new RoaringBitmap[size];
+        protected Triple[] newKeysArray(int size) {
+            return new Triple[size];
         }
+    }
+
+    private class NodesToBitmapsMap extends FastHashMap<Node, RoaringBitmap> {
 
         @Override
-        protected Node[] newKeyArray(int size) {
+        protected Node[] newKeysArray(int size) {
             return new Node[size];
+        }
+
+        @Override
+        protected RoaringBitmap[] newValuesArray(int size) {
+            return new RoaringBitmap[size];
         }
     }
 
     NodesToBitmapsMap subjectBitmaps = new NodesToBitmapsMap();
     NodesToBitmapsMap predicateBitmaps = new NodesToBitmapsMap();
     NodesToBitmapsMap objectBitmaps = new NodesToBitmapsMap();
-    FastTripleHashSet2 triples = new FastTripleHashSet2(); // We use a list here to maintain the order of triples
+    TripleSet triples = new TripleSet(); // We use a list here to maintain the order of triples
 
     public RoaringTripleStore() {
         this.clear();
@@ -84,7 +88,7 @@ public class RoaringTripleStore implements TripleStore {
         final var bitmap = map.get(node);
         bitmap.remove(index);
         if(bitmap.isEmpty()) {
-            map.tryRemove(node);
+            map.removeUnchecked(node);
         }
     }
 
@@ -101,9 +105,9 @@ public class RoaringTripleStore implements TripleStore {
 
     @Override
     public void clear() {
-        this.subjectBitmaps.clear(10);
-        this.predicateBitmaps.clear(10);
-        this.objectBitmaps.clear(10);
+        this.subjectBitmaps.clear();
+        this.predicateBitmaps.clear();
+        this.objectBitmaps.clear();
         this.triples.clear();
     }
 
@@ -123,17 +127,19 @@ public class RoaringTripleStore implements TripleStore {
         switch (matchPattern) {
 
             case S__:
-                return this.subjectBitmaps.contains(tripleMatch.getSubject());
+                return this.subjectBitmaps.containsKey(tripleMatch.getSubject());
             case _P_:
-                return this.predicateBitmaps.contains(tripleMatch.getPredicate());
+                return this.predicateBitmaps.containsKey(tripleMatch.getPredicate());
             case __O:
-                return this.objectBitmaps.contains(tripleMatch.getObject());
+                return this.objectBitmaps.containsKey(tripleMatch.getObject());
 
             case SP_:
             case _PO:
             case S_O:
-            case SPO:
                 return !getBitmapForMatch(tripleMatch, matchPattern).isEmpty();
+
+            case SPO:
+                return this.triples.containsKey(tripleMatch);
 
             case ___:
                 return !this.isEmpty();
@@ -196,21 +202,7 @@ public class RoaringTripleStore implements TripleStore {
             }
 
             case SPO:
-            {
-                final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
-                if (null == subjectBitmap)
-                    return EMPTY_BITMAP;
-
-                final var predicateBitmap = this.predicateBitmaps.get(tripleMatch.getPredicate());
-                if (null == predicateBitmap)
-                    return EMPTY_BITMAP;
-
-                final var objectBitmap = this.objectBitmaps.get(tripleMatch.getObject());
-                if(null == objectBitmap)
-                    return EMPTY_BITMAP;
-
-                return FastAggregation.and(subjectBitmap, objectBitmap, predicateBitmap);
-            }
+                throw new IllegalArgumentException("Getting bitmap for match pattern SPO ist not supported because it is not efficient");
 
             case ___:
                 throw new IllegalArgumentException("Cannot get bitmap for match pattern ___");
@@ -222,64 +214,95 @@ public class RoaringTripleStore implements TripleStore {
 
     @Override
     public Stream<Triple> stream() {
-        return this.triples.stream();
+        return this.triples.keyStream();
     }
 
     @Override
     public Stream<Triple> stream(Triple tripleMatch) {
         var pattern = PatternClassifier.classify(tripleMatch);
-        if(pattern == MatchPattern.___)
-            return this.stream();
+        switch (pattern) {
 
-        var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
-        return bitmap.stream().mapToObj(this.triples::get);
+            case SPO:
+                return this.triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
+
+            case SP_:
+            case S_O:
+            case S__:
+            case _PO:
+            case _P_:
+            case __O:
+                final var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
+                return bitmap.stream().mapToObj(this.triples::getKeyAt);
+
+            case ___:
+                return this.stream();
+
+            default:
+                throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
+        }
     }
 
     @Override
     public ExtendedIterator<Triple> find(Triple tripleMatch) {
         var pattern = PatternClassifier.classify(tripleMatch);
-        if(pattern == MatchPattern.___)
-            return triples.iterator();
+        switch (pattern) {
 
-        var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
-        return new NiceIterator<>() {
-            private final BatchIterator iterator = bitmap.getBatchIterator();
-            private int[] buffer = new int[64];
-            private int bufferIndex = -1;
+            case SPO:
+                return this.triples.containsKey(tripleMatch) ? new SingletonIterator(tripleMatch) : NiceIterator.emptyIterator();
 
-            @Override
-            public boolean hasNext() {
-                if(bufferIndex > 0)
-                    return true;
-                return this.iterator.hasNext();
-            }
+            case SP_:
+            case S_O:
+            case S__:
+            case _PO:
+            case _P_:
+            case __O:
+                final var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
+                return new NiceIterator<>() {
+                    private final BatchIterator iterator = bitmap.getBatchIterator();
+                    private int[] buffer = new int[64];
+                    private int bufferIndex = -1;
 
-            @Override
-            public Triple next() {
-                if(bufferIndex > 0)
-                    return triples.get(buffer[--bufferIndex]);
-
-                if(!iterator.hasNext()) {
-                    throw new NoSuchElementException();
-                }
-                bufferIndex = iterator.nextBatch(buffer);
-                return triples.get(buffer[--bufferIndex]);
-            }
-
-            @Override
-            public void forEachRemaining(Consumer<? super Triple> action) {
-                if(bufferIndex > 0) {
-                    for(int i = bufferIndex - 1; i >= 0; i--) {
-                        action.accept(triples.get(buffer[i]));
+                    @Override
+                    public boolean hasNext() {
+                        if(bufferIndex > 0)
+                            return true;
+                        return this.iterator.hasNext();
                     }
-                }
-                while (iterator.hasNext()) {
-                    bufferIndex = iterator.nextBatch(buffer);
-                    for(int i = bufferIndex - 1; i >= 0; i--) {
-                        action.accept(triples.get(buffer[i]));
+
+                    @Override
+                    public Triple next() {
+                        if(bufferIndex > 0)
+                            return triples.getKeyAt(buffer[--bufferIndex]);
+
+                        if(!iterator.hasNext()) {
+                            throw new NoSuchElementException();
+                        }
+                        bufferIndex = iterator.nextBatch(buffer);
+                        return triples.getKeyAt(buffer[--bufferIndex]);
                     }
-                }
-            }
-        };
+
+                    @Override
+                    public void forEachRemaining(Consumer<? super Triple> action) {
+                        if(bufferIndex > 0) {
+                            for(int i = bufferIndex - 1; i >= 0; i--) {
+                                action.accept(triples.getKeyAt(buffer[i]));
+                            }
+                        }
+                        while (iterator.hasNext()) {
+                            bufferIndex = iterator.nextBatch(buffer);
+                            for(int i = bufferIndex - 1; i >= 0; i--) {
+                                action.accept(triples.getKeyAt(buffer[i]));
+                            }
+                        }
+                    }
+                };
+
+            case ___:
+                return this.triples.keyIterator();
+
+            default:
+                throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
+        }
+
     }
 }

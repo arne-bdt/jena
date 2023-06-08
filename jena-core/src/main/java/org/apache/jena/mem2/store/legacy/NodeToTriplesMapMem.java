@@ -19,6 +19,7 @@ package org.apache.jena.mem2.store.legacy;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.collection.JenaMap;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.NullIterator;
@@ -32,7 +33,7 @@ import java.util.stream.StreamSupport;
 
 public class NodeToTriplesMapMem implements NodeToTriplesMap {
 
-    private final BunchMap bunchMap = new HashedBunchMap();
+    private final JenaMap<Node, TripleBunch> bunchMap = new HashedBunchMap();
     private final Triple.Field indexField;
     private final Triple.Field f2;
     private final Triple.Field f3;
@@ -60,11 +61,6 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
     }
 
     @Override
-    public boolean containsBySameValueAs(Triple t, Predicate<Triple> predicate) {
-        return false;
-    }
-
-    @Override
     public int size() {
         return size;
     }
@@ -75,19 +71,14 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
     }
 
     @Override
-    public boolean isHashed() {
-        return true;
-    }
-
-    @Override
-    public boolean tryPut(Triple t) {
+    public boolean tryAdd(Triple t) {
         final Node node = getIndexNode( t );
 
         TripleBunch s = bunchMap.get( node );
         if (s == null)
         {
             bunchMap.put(node, s = new ArrayBunch());
-            s.put( t );
+            s.addUnchecked( t );
             size++;
             return true;
         }
@@ -95,7 +86,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         if ((!s.isHashed()) && s.size() == 9) {
             bunchMap.put(node, s = new HashedTripleBunch(s));
         }
-        if(s.tryPut( t ))
+        if(s.tryAdd( t ))
         {
             size++;
             return true;
@@ -104,7 +95,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
     }
 
     @Override
-    public void put(Triple t) {
+    public void addUnchecked(Triple t) {
         final Node node = getIndexNode( t );
         TripleBunch s = bunchMap.get( node );
         if (s == null)
@@ -113,7 +104,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         } else if ((!s.isHashed()) && s.size() == 9) {
             bunchMap.put(node, s = new HashedTripleBunch(s));
         }
-        s.put( t );
+        s.addUnchecked( t );
         size++;
     }
 
@@ -128,23 +119,23 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         if (s.tryRemove(t))
         {
             size--;
-            if (s.isEmpty()) bunchMap.remove( node );
+            if (s.isEmpty()) bunchMap.removeUnchecked( node );
             return true;
         }
         return false;
     }
 
     @Override
-    public void remove(Triple t) {
+    public void removeUnchecked(Triple t) {
         final Node node = getIndexNode( t );
         final TripleBunch s = bunchMap.get( node );
 
         if (s == null)
             return;
 
-        s.remove( t );
+        s.removeUnchecked( t );
         size--;
-        if (s.isEmpty()) bunchMap.remove( node );
+        if (s.isEmpty()) bunchMap.removeUnchecked( node );
     }
 
     @Override
@@ -210,7 +201,8 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
     @Override
     public Stream<Triple> streamForMatches(Node index, Node n2, Node n3) {
         final TripleBunch s = bunchMap.get( index );
-        if (s == null) return Stream.empty();
+        if (s == null)
+            return Stream.empty();
         final var filter = FieldFilter.filterOn(f2, n2, f3, n3);
         return filter.hasFilter()
                 ? StreamSupport.stream(s.keySpliterator(), false).filter(filter.getFilter())
@@ -225,11 +217,28 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         var filter = FieldFilter.filterOn(f2, n2, f3, n3);
         if (!filter.hasFilter())
             return true;
-        final var iterator = s.keyIterator();
-        while (iterator.hasNext()) {
-            if (filter.getFilter().test(iterator.next()))
-                return true;
-        }
-        return false;
+        return s.anyMatch(filter.getFilter());
+    }
+
+    @Override
+    public boolean containsKey(Triple triple) {
+        final TripleBunch s = bunchMap.get( getIndexNode(triple) );
+        if (s == null)
+            return false;
+
+        return s.containsKey(triple);
+    }
+
+    public boolean containsKey(Triple triple, Node index, Predicate<Triple> predicateReplacingEquals) {
+        final TripleBunch s = bunchMap.get( index );
+        if (s == null)
+            return false;
+
+        return s.containsWithOptimizedEqualsReplacement(triple, predicateReplacingEquals);
+    }
+
+    @Override
+    public boolean anyMatch(Predicate<Triple> predicate) {
+        throw new UnsupportedOperationException();
     }
 }

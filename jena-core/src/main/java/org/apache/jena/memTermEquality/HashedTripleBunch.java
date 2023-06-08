@@ -35,22 +35,19 @@ public class HashedTripleBunch extends HashCommon<Triple> implements TripleBunch
     @Override protected Triple[] newKeyArray( int size )
         { return new Triple[size]; }
 
-    protected int findSlotBySameValueAs( Triple key, Predicate<Triple> predicate )
+    @Override
+    public boolean containsWithOptimizedEqualsReplacement(Triple t, Predicate<Triple> predicateReplacingEquals)
         {
-        final int hash = key.hashCode();
+        final int hash = t.hashCode();
         int index = initialIndexFor( hash );
         while (true)
             {
-            final Triple current = keys[index];
-            if (current == null) return index;
-            if (hash == hashes[index] && predicate.test( current )) return ~index;
-            if (--index < 0) index += keys.length;
+                final Triple current = keys[index];
+                if (current == null) return false;
+                if (hash == hashes[index] && predicateReplacingEquals.test( current )) return true;
+                if (--index < 0) index += keys.length;
             }
         }
-
-    @Override
-    public boolean containsBySameValueAs( Triple t, Predicate<Triple> predicate )
-        { return findSlotBySameValueAs( t, predicate ) < 0; }
 
     /**
         Answer the number of items currently in this TripleBunch.
