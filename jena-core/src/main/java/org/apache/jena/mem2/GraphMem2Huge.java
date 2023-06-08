@@ -15,25 +15,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.fast;
 
-import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.FastHashSet;
-import org.apache.jena.mem2.collection.JenaSet;
+package org.apache.jena.mem2;
 
-public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTripleBunch {
-    public FastHashedTripleBunch(final JenaSet<Triple> b) {
-        super(b.size());
-        b.keyIterator().forEachRemaining(t -> this.addUnchecked(t));
+import org.apache.jena.mem2.store.huge.HugeTripleStore;
+
+/**
+ * A graph that stores triples in memory. This class is not thread-safe.
+ * This implementation is based on the original GraphMem implementation.
+ * The main difference is that it strictly uses term equality for all nodes.
+ * The inner workings of the used structures like ArrayBunch and HashedBunchMap are not changed.
+ */
+public class GraphMem2Huge extends GraphMem2 {
+
+    public GraphMem2Huge() {
+        super(new HugeTripleStore());
     }
 
-    @Override
-    protected Triple[] newKeysArray(int size) {
-        return new Triple[size];
-    }
-
-    @Override
-    public boolean isHashed() {
-        return true;
-    }
 }

@@ -15,25 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.fast;
+package org.apache.jena.mem2.store.huge;
 
-import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.FastHashSet;
-import org.apache.jena.mem2.collection.JenaSet;
+import org.apache.jena.graph.Node;
+import org.apache.jena.mem2.collection.FastHashMap;
+import org.roaringbitmap.RoaringBitmap;
 
-public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTripleBunch {
-    public FastHashedTripleBunch(final JenaSet<Triple> b) {
-        super(b.size());
-        b.keyIterator().forEachRemaining(t -> this.addUnchecked(t));
+public class NodeBitmapsMap extends FastHashMap<Node, RoaringBitmap> {
+    @Override
+    protected Node[] newKeysArray(int size) {
+        return new Node[size];
     }
 
     @Override
-    protected Triple[] newKeysArray(int size) {
-        return new Triple[size];
-    }
-
-    @Override
-    public boolean isHashed() {
-        return true;
+    protected RoaringBitmap[] newValuesArray(int size) {
+        return new RoaringBitmap[size];
     }
 }

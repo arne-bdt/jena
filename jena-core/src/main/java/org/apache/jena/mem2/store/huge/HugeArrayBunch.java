@@ -15,8 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.fast;
+package org.apache.jena.mem2.store.huge;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
@@ -34,14 +35,15 @@ import java.util.stream.StreamSupport;
  * (because, if it gets big enough for this linear growth to be bad, it should anyways
  * have been replaced by a more efficient set-of-triples implementation).
  */
-public class FastArrayBunch implements FastTripleBunch {
+public abstract class HugeArrayBunch implements HudeTripleBunch {
 
     private static final int INITIAL_SIZE = 2;
 
     protected int size = 0;
     protected Triple[] elements;
+    protected abstract Node getIndexingNode(Triple t);
 
-    public FastArrayBunch() {
+    public HugeArrayBunch() {
         elements = new Triple[INITIAL_SIZE];
     }
 
@@ -204,6 +206,21 @@ public class FastArrayBunch implements FastTripleBunch {
     @Override
     public boolean isHashed() {
         return false;
+    }
+
+    @Override
+    public ExtendedIterator<Triple> keyIterator(Node node) {
+        return keyIterator().filterKeep(t -> node.equals(getIndexingNode(t)));
+    }
+
+    @Override
+    public Stream<Triple> keyStream(Node node) {
+        return keyStream().filter(t -> node.equals(getIndexingNode(t)));
+    }
+
+    @Override
+    public boolean containsNode(Node node) {
+        return anyMatch(t -> node.equals(getIndexingNode(t)));
     }
 
     @Override

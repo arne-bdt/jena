@@ -59,11 +59,18 @@ public abstract class FastHashSet<E> extends FastHashBase<E> implements JenaSetH
      * If the element already exists, return the inverse (~) index of the existing element.
      */
     public int addAndGetIndex(E value) {
-        var pIndex = findPosition(value, value.hashCode());
+        return addAndGetIndex(value, value.hashCode());
+    }
+
+    /* Add and get the index of the added element.
+     * If the element already exists, return the inverse (~) index of the existing element.
+     */
+    public int addAndGetIndex(final E value, final int hashCode) {
+        final var pIndex = findPosition(value, hashCode);
         if (pIndex < 0) {
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = value;
-            hashCodesOrDeletedIndices[eIndex] = value.hashCode();
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
             positions[~pIndex] = ~eIndex;
             growPositionsArrayIfNeeded();
             return eIndex;

@@ -62,7 +62,6 @@ public class TestGraphBulkUpdates {
             "GraphMem2Fast (current)",
             "GraphMem2Legacy (current)",
             "GraphMem2Roaring (current)",
-//            "GraphMemTermEquality (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
@@ -158,8 +157,6 @@ public class TestGraphBulkUpdates {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-                .warmupIterations(3)
-                .measurementIterations(5)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

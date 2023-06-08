@@ -290,45 +290,7 @@ public class RoaringTripleStore implements TripleStore {
             case _P_:
             case __O:
                 final var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
-                return new NiceIterator<>() {
-                    private final BatchIterator iterator = bitmap.getBatchIterator();
-                    private final int[] buffer = new int[64];
-                    private int bufferIndex = -1;
-
-                    @Override
-                    public boolean hasNext() {
-                        if (bufferIndex > 0)
-                            return true;
-                        return this.iterator.hasNext();
-                    }
-
-                    @Override
-                    public Triple next() {
-                        if (bufferIndex > 0)
-                            return triples.getKeyAt(buffer[--bufferIndex]);
-
-                        if (!iterator.hasNext()) {
-                            throw new NoSuchElementException();
-                        }
-                        bufferIndex = iterator.nextBatch(buffer);
-                        return triples.getKeyAt(buffer[--bufferIndex]);
-                    }
-
-                    @Override
-                    public void forEachRemaining(Consumer<? super Triple> action) {
-                        if (bufferIndex > 0) {
-                            for (int i = bufferIndex - 1; i >= 0; i--) {
-                                action.accept(triples.getKeyAt(buffer[i]));
-                            }
-                        }
-                        while (iterator.hasNext()) {
-                            bufferIndex = iterator.nextBatch(buffer);
-                            for (int i = bufferIndex - 1; i >= 0; i--) {
-                                action.accept(triples.getKeyAt(buffer[i]));
-                            }
-                        }
-                    }
-                };
+                return new RoaringBitmapTripleIterator(bitmap.getBatchIterator(), this.triples);
 
             case ___:
                 return this.triples.keyIterator();

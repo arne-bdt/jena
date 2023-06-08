@@ -15,25 +15,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.fast;
+package org.apache.jena.mem2.store.huge;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.FastHashSet;
-import org.apache.jena.mem2.collection.JenaSet;
+import org.apache.jena.mem2.collection.JenaSetHashOptimized;
+import org.apache.jena.util.iterator.ExtendedIterator;
 
-public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTripleBunch {
-    public FastHashedTripleBunch(final JenaSet<Triple> b) {
-        super(b.size());
-        b.keyIterator().forEachRemaining(t -> this.addUnchecked(t));
+import java.util.stream.Stream;
+
+/**
+ * A bunch of triples - a stripped-down set with specialized methods. A
+ * bunch is expected to store triples that share some useful property
+ * (such as having the same subject or predicate).
+ */
+public interface HudeTripleBunch extends JenaSetHashOptimized<Triple> {
+    default boolean isHashed() {
+        return false;
     }
 
-    @Override
-    protected Triple[] newKeysArray(int size) {
-        return new Triple[size];
-    }
+    ExtendedIterator<Triple> keyIterator(final Node node);
 
-    @Override
-    public boolean isHashed() {
-        return true;
-    }
+    Stream<Triple> keyStream(final Node node);
+
+    boolean containsNode(final Node node);
 }
