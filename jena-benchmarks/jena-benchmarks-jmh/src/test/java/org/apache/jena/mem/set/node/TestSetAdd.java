@@ -18,16 +18,16 @@
 
 package org.apache.jena.mem.set.node;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
-import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.*;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
+import java.util.HashSet;
 import java.util.List;
 
 
@@ -51,11 +51,9 @@ public class TestSetAdd {
     public String param0_GraphUri;
 
     @Param({
-            "NodeSet",
-//            "NodeSet2",
-            "FastNodeSet",
-//            "FastNodeSet2",
-            "FastNodeHashSet2"
+            "HashSet",
+            "FastHashSetOfNodes",
+            "HashCommonNodeSet"
     })
     public String param1_SetImplementation;
 
@@ -79,39 +77,21 @@ public class TestSetAdd {
         return addToSet.apply(Triple.Field.fieldObject);
     }
 
-    private Object addToNodeSet(Triple.Field field) {
-        var sut = new NodeSet();
+    private Object addToHashSet(Triple.Field field) {
+        var sut = new HashSet<Node>();
+        triples.forEach(t -> sut.add(field.getField(t)));
+        return sut;
+    }
+
+    private Object addToFastHashSetOfNodes(Triple.Field field) {
+        var sut = new FastHashSetOfNodes();
         triples.forEach(t -> sut.tryAdd(field.getField(t)));
         return sut;
     }
 
-    private Object addToNodeSet2(Triple.Field field) {
-        var sut = new NodeSet2();
-        triples.forEach(t -> sut.addKey(field.getField(t)));
-        return sut;
-    }
-
-    private Object addToFastNodeSet(Triple.Field field) {
-        var sut = new FastNodeSet();
-        triples.forEach(t -> sut.addKey(field.getField(t)));
-        return sut;
-    }
-
-    private Object addToFastNodeSet2(Triple.Field field) {
-        var sut = new FastNodeSet2();
-        triples.forEach(t -> sut.addKey(field.getField(t)));
-        return sut;
-    }
-
-    private Object addToFastNodeHashSet(Triple.Field field) {
-        var sut = new FastNodeHashSet();
-        triples.forEach(t -> sut.add(field.getField(t)));
-        return sut;
-    }
-
-    private Object addToFastNodeHashSet2(Triple.Field field) {
-        var sut = new FastNodeHashSet2();
-        triples.forEach(t -> sut.add(field.getField(t)));
+    private Object addToHashCommonNodeSet(Triple.Field field) {
+        var sut = new HashCommonNodeSet();
+        triples.forEach(t -> sut.tryAdd(field.getField(t)));
         return sut;
     }
 
@@ -119,23 +99,14 @@ public class TestSetAdd {
     public void setupTrial() throws Exception {
         triples = Releases.current.readTriples(param0_GraphUri);
         switch (param1_SetImplementation) {
-            case "NodeSet":
-                this.addToSet = this::addToNodeSet;
+            case "HashSet":
+                this.addToSet = this::addToHashSet;
                 break;
-            case "NodeSet2":
-                this.addToSet = this::addToNodeSet2;
+            case "FastHashSetOfNodes":
+                this.addToSet = this::addToFastHashSetOfNodes;
                 break;
-            case "FastNodeSet":
-                this.addToSet = this::addToFastNodeSet;
-                break;
-            case "FastNodeSet2":
-                this.addToSet = this::addToFastNodeSet2;
-                break;
-            case "FastNodeHashSet":
-                this.addToSet = this::addToFastNodeHashSet;
-                break;
-            case "FastNodeHashSet2":
-                this.addToSet = this::addToFastNodeHashSet2;
+            case "HashCommonNodeSet":
+                this.addToSet = this::addToHashCommonNodeSet;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

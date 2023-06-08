@@ -16,9 +16,8 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.store.legacy.collection;
+package org.apache.jena.mem2.collection;
 
-import org.apache.jena.mem2.collection.JenaMap;
 import org.apache.jena.memTermEquality.SparseArrayIterator;
 import org.apache.jena.memTermEquality.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;

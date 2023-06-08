@@ -1,4 +1,4 @@
-package org.apache.jena.mem2.store.legacy.collection;
+package org.apache.jena.mem2.collection;
 
 import org.apache.jena.memTermEquality.SparseArrayIterator;
 import org.apache.jena.memTermEquality.SparseArraySpliterator;

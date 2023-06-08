@@ -21,9 +21,6 @@ package org.apache.jena.mem.set.triple;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.*;
-import org.apache.jena.mem2.store.legacy.collection.HashCommonTripleSet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -54,7 +51,6 @@ public class TestSetRemove {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastTripleHashSet2",
             "FastHashSetOfTriples"
     })
     public String param1_SetImplementation;
@@ -63,7 +59,6 @@ public class TestSetRemove {
     private List<Triple> triplesToRemove;
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
-    private FastTripleHashSet2 fastTripleHashSet2;
     private FastHashSetOfTriples fastHashSetOfTriples;
 
 
@@ -85,12 +80,6 @@ public class TestSetRemove {
         triplesToRemove.forEach(t -> this.hashCommonTripleSet.removeUnchecked(t));
         Assert.assertTrue(this.hashCommonTripleSet.isEmpty());
         return this.hashCommonTripleSet.size();
-    }
-
-    private int removeFromFastTripleHashSet2() {
-        triplesToRemove.forEach(t -> this.fastTripleHashSet2.remove(t));
-        Assert.assertTrue(this.fastTripleHashSet2.isEmpty());
-        return this.fastTripleHashSet2.size();
     }
 
     private int removeFromFastHashSetOfTriples() {
@@ -142,10 +131,6 @@ public class TestSetRemove {
                 this.hashCommonTripleSet = new HashCommonTripleSet(triples.size());
                 this.triples.forEach(hashCommonTripleSet::addUnchecked);
                 break;
-            case "FastTripleHashSet2":
-                this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
-                this.triples.forEach(fastTripleHashSet2::add);
-                break;
             case "FastHashSetOfTriples":
                 this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
                 this.triples.forEach(fastHashSetOfTriples::addUnchecked);
@@ -165,9 +150,6 @@ public class TestSetRemove {
                 break;
             case "HashCommonTripleSet":
                 this.removeFromSet = this::removeFromHashCommonTripleSet;
-                break;
-            case "FastTripleHashSet2":
-                this.removeFromSet = this::removeFromFastTripleHashSet2;
                 break;
             case "FastHashSetOfTriples":
                 this.removeFromSet = this::removeFromFastHashSetOfTriples;

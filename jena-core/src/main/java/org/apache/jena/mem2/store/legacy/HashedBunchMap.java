@@ -18,7 +18,7 @@
 package org.apache.jena.mem2.store.legacy;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.mem2.store.legacy.collection.HashCommonMap;
+import org.apache.jena.mem2.collection.HashCommonMap;
 
 public class HashedBunchMap extends HashCommonMap<Node, TripleBunch> {
 

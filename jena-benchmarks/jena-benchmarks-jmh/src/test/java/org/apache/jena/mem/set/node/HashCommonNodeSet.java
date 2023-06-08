@@ -1,9 +1,9 @@
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem.set.node;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.mem2.store.legacy.collection.HashCommonSet;
+import org.apache.jena.mem2.collection.HashCommonSet;
 
-public class NodeSet extends HashCommonSet<Node> {
+public class HashCommonNodeSet extends HashCommonSet<Node> {
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
@@ -12,7 +12,7 @@ public class NodeSet extends HashCommonSet<Node> {
      *
      * @param initialCapacity
      */
-    public NodeSet(int initialCapacity) {
+    public HashCommonNodeSet(int initialCapacity) {
         super(initialCapacity);
     }
 
@@ -21,7 +21,7 @@ public class NodeSet extends HashCommonSet<Node> {
      * capacity and the corresponding threshold. All the key elements start out
      * null.
      */
-    public NodeSet() {
+    public HashCommonNodeSet() {
         this(10);
     }
 

@@ -21,9 +21,6 @@ package org.apache.jena.mem.set.triple;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.*;
-import org.apache.jena.mem2.store.legacy.collection.HashCommonTripleSet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -55,7 +52,6 @@ public class TestSetContains {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastTripleHashSet2",
             "FastHashSetOfTriples"
     })
     public String param1_SetImplementation;
@@ -63,7 +59,6 @@ public class TestSetContains {
     private List<Triple> triplesToFind;
     private HashSet<Triple> tripleHashSet;
     private HashCommonTripleSet hashCommonTripleSet;
-    private FastTripleHashSet2 fastTripleHashSet2;
     private FastHashSetOfTriples fastHashSetOfTriples;
 
     java.util.function.Supplier<Boolean> setContains;
@@ -86,15 +81,6 @@ public class TestSetContains {
         var found = false;
         for(var t: triplesToFind) {
             found = hashCommonTripleSet.containsKey(t);
-            Assert.assertTrue(found);
-        }
-        return found;
-    }
-
-    private boolean fastTripleHashSet2Contains() {
-        var found = false;
-        for(var t: triplesToFind) {
-            found = fastTripleHashSet2.contains(t);
             Assert.assertTrue(found);
         }
         return found;
@@ -124,11 +110,6 @@ public class TestSetContains {
                 this.hashCommonTripleSet = new HashCommonTripleSet(triples.size());
                 triples.forEach(hashCommonTripleSet::addUnchecked);
                 this.setContains = this::hashCommonTripleSetContains;
-                break;
-            case "FastTripleHashSet2":
-                this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
-                triples.forEach(fastTripleHashSet2::add);
-                this.setContains = this::fastTripleHashSet2Contains;
                 break;
             case "FastHashSetOfTriples":
                 this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());

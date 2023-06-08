@@ -1,6 +1,7 @@
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem.set.triple;
 
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.collection.FastHashSet;
 
 public class FastHashSetOfTriples extends FastHashSet<Triple> {
 

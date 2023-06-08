@@ -21,9 +21,6 @@ package org.apache.jena.mem.set.triple;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.*;
-import org.apache.jena.mem2.store.legacy.collection.HashCommonTripleSet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -60,7 +57,6 @@ public class TestSetStreamAll {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastTripleHashSet2",
             "FastHashSetOfTriples"
     })
     public String param1_SetImplementation;
@@ -68,7 +64,6 @@ public class TestSetStreamAll {
     private List<Triple> triples;
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
-    private FastTripleHashSet2 fastTripleHashSet2;
     private FastHashSetOfTriples fastHashSetOfTriples;
 
     java.util.function.Supplier<Spliterator<Triple>> getSpliterator;
@@ -97,10 +92,6 @@ public class TestSetStreamAll {
         return hashCommonTripleSet.keySpliterator();
     }
 
-    private Spliterator<Triple> getSpliteratorFromFastTripleHashSet2() {
-        return fastTripleHashSet2.spliterator();
-    }
-
     private Spliterator<Triple> getSpliteratorFromFastHashSetOfTriples() {
         return fastHashSetOfTriples.keySpliterator();
     }
@@ -119,11 +110,6 @@ public class TestSetStreamAll {
                 this.hashCommonTripleSet = new HashCommonTripleSet(triples.size());
                 triples.forEach(hashCommonTripleSet::addUnchecked);
                 this.getSpliterator = this::getSpliteratorFromHashCommonTripleSet;
-                break;
-            case "FastTripleHashSet2":
-                this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
-                triples.forEach(fastTripleHashSet2::add);
-                this.getSpliterator = this::getSpliteratorFromFastTripleHashSet2;
                 break;
             case "FastHashSetOfTriples":
                 this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());

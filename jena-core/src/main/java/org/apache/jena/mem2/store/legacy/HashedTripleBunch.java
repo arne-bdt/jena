@@ -2,7 +2,7 @@ package org.apache.jena.mem2.store.legacy;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.JenaSet;
-import org.apache.jena.mem2.store.legacy.collection.HashCommonSet;
+import org.apache.jena.mem2.collection.HashCommonSet;
 
 import java.util.function.Predicate;
 

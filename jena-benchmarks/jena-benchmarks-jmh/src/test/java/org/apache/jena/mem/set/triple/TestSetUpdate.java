@@ -21,9 +21,6 @@ package org.apache.jena.mem.set.triple;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
-import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.*;
-import org.apache.jena.mem2.store.legacy.collection.HashCommonTripleSet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -55,7 +52,6 @@ public class TestSetUpdate {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastTripleHashSet2",
             "FastHashSetOfTriples"
     })
     public String param1_SetImplementation;
@@ -64,7 +60,6 @@ public class TestSetUpdate {
     private List<Triple> triplesToRemove;
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
-    private FastTripleHashSet2 fastTripleHashSet2;
     private FastHashSetOfTriples fastHashSetOfTriples;
 
 
@@ -97,16 +92,6 @@ public class TestSetUpdate {
         return this.hashCommonTripleSet.size();
     }
 
-    private int updateFastTripleHashSet2() {
-        for(int i=0; i<triplesToRemove.size(); i+=10) {
-            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
-                    .forEach(t -> this.fastTripleHashSet2.remove(t));
-            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
-                    .forEach(t -> this.fastTripleHashSet2.add(t));
-            assert this.fastTripleHashSet2.size() == triples.size();
-        }
-        return this.fastTripleHashSet2.size();
-    }
 
     private int updateFastHashSetOfTriples() {
         for(int i=0; i<triplesToRemove.size(); i+=10) {
@@ -131,10 +116,6 @@ public class TestSetUpdate {
                 this.hashCommonTripleSet = new HashCommonTripleSet(triples.size());
                 this.triples.forEach(hashCommonTripleSet::addUnchecked);
                 break;
-            case "FastTripleHashSet2":
-                this.fastTripleHashSet2 = new FastTripleHashSet2(triples.size());
-                this.triples.forEach(fastTripleHashSet2::add);
-                break;
             case "FastHashSetOfTriples":
                 this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
                 this.triples.forEach(fastHashSetOfTriples::addUnchecked);
@@ -155,9 +136,6 @@ public class TestSetUpdate {
                 break;
             case "HashCommonTripleSet":
                 this.updateSet = this::updateHashCommonTripleSet;
-                break;
-            case "FastTripleHashSet2":
-                this.updateSet = this::updateFastTripleHashSet2;
                 break;
             case "FastHashSetOfTriples":
                 this.updateSet = this::updateFastHashSetOfTriples;

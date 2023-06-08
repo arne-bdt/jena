@@ -21,9 +21,6 @@ package org.apache.jena.mem.set.triple;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.*;
-import org.apache.jena.mem2.store.legacy.collection.HashCommonTripleSet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -55,7 +52,6 @@ public class TestSetAdd {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastTripleHashSet2",
             "FastHashSetOfTriples"
     })
     public String param1_SetImplementation;
@@ -79,13 +75,6 @@ public class TestSetAdd {
     private Object addToHashCommonTripleSet() {
         var sut = new HashCommonTripleSet();
         triples.forEach(sut::tryAdd);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
-
-    private Object addToFastTripleHashSet2() {
-        var sut = new FastTripleHashSet2();
-        triples.forEach(sut::add);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
@@ -115,9 +104,6 @@ public class TestSetAdd {
                 break;
             case "HashCommonTripleSet":
                 this.addToSet = this::addToHashCommonTripleSet;
-                break;
-            case "FastTripleHashSet2":
-                this.addToSet = this::addToFastTripleHashSet2;
                 break;
             case "FastHashSetOfTriples":
                 this.addToSet = this::addToFastHashSetOfTriples;

@@ -22,9 +22,6 @@ import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-import org.apache.jena.mem2.collection.*;
-import org.apache.jena.mem2.collection.discarded.FastTripleHashSet2;
-import org.apache.jena.mem2.store.legacy.collection.HashCommonTripleSet;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -56,7 +53,6 @@ public class TestSetMemoryConsumption {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastTripleHashSet2",
             "FastHashSetOfTriples"
     })
     public String param1_SetImplementation;
@@ -111,13 +107,6 @@ public class TestSetMemoryConsumption {
         return sut;
     }
 
-    private Object fillFastTripleHashSet2() {
-        var sut = new FastTripleHashSet2();
-        triples.forEach(sut::add);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
-
     private Object fillFastHashSetOfTriples() {
         var sut = new FastHashSetOfTriples();
         triples.forEach(sut::addUnchecked);
@@ -147,9 +136,6 @@ public class TestSetMemoryConsumption {
                 break;
             case "HashCommonTripleSet":
                 this.fillSet = this::fillHashCommonTripleSet;
-                break;
-            case "FastTripleHashSet2":
-                this.fillSet = this::fillFastTripleHashSet2;
                 break;
             case "FastHashSetOfTriples":
                 this.fillSet = this::fillFastHashSetOfTriples;

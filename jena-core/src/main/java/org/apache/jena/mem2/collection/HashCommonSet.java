@@ -16,9 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.store.legacy.collection;
-
-import org.apache.jena.mem2.collection.JenaSet;
+package org.apache.jena.mem2.collection;
 
 import java.util.function.Predicate;
 
