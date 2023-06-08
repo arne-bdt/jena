@@ -33,52 +33,19 @@ import org.roaringbitmap.FastAggregation;
 import org.roaringbitmap.ImmutableBitmapDataProvider;
 import org.roaringbitmap.RoaringBitmap;
 
-import java.util.*;
+import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public class RoaringTripleStore implements TripleStore {
 
-    private class TripleSet extends FastHashSet<Triple> {
-
-        @Override
-        protected Triple[] newKeysArray(int size) {
-            return new Triple[size];
-        }
-    }
-
-    private class NodesToBitmapsMap extends FastHashMap<Node, RoaringBitmap> {
-
-        @Override
-        protected Node[] newKeysArray(int size) {
-            return new Node[size];
-        }
-
-        @Override
-        protected RoaringBitmap[] newValuesArray(int size) {
-            return new RoaringBitmap[size];
-        }
-    }
-
+    private static final RoaringBitmap EMPTY_BITMAP = new RoaringBitmap();
     NodesToBitmapsMap subjectBitmaps = new NodesToBitmapsMap();
     NodesToBitmapsMap predicateBitmaps = new NodesToBitmapsMap();
     NodesToBitmapsMap objectBitmaps = new NodesToBitmapsMap();
     TripleSet triples = new TripleSet(); // We use a list here to maintain the order of triples
-
     public RoaringTripleStore() {
 
-    }
-
-
-    @Override
-    public void add(final Triple triple) {
-        final var index = triples.addAndGetIndex(triple);
-        if(index < 0) { /*triple already exists*/
-            return;
-        }
-        addIndex(this.subjectBitmaps, triple.getSubject(), index);
-        addIndex(this.predicateBitmaps, triple.getPredicate(), index);
-        addIndex(this.objectBitmaps, triple.getObject(), index);
     }
 
     private static void addIndex(final NodesToBitmapsMap map, final Node node, final int index) {
@@ -87,20 +54,30 @@ public class RoaringTripleStore implements TripleStore {
         //bitmap.runOptimize();
     }
 
-
     private static void removeIndex(final NodesToBitmapsMap map, final Node node, final int index) {
         final var bitmap = map.get(node);
         bitmap.remove(index);
         //bitmap.trim();
-        if(bitmap.isEmpty()) {
+        if (bitmap.isEmpty()) {
             map.removeUnchecked(node);
         }
     }
 
     @Override
+    public void add(final Triple triple) {
+        final var index = triples.addAndGetIndex(triple);
+        if (index < 0) { /*triple already exists*/
+            return;
+        }
+        addIndex(this.subjectBitmaps, triple.getSubject(), index);
+        addIndex(this.predicateBitmaps, triple.getPredicate(), index);
+        addIndex(this.objectBitmaps, triple.getObject(), index);
+    }
+
+    @Override
     public void remove(final Triple triple) {
         final var index = triples.removeAndGetIndex(triple);
-        if(index < 0) { /*triple does not exist*/
+        if (index < 0) { /*triple does not exist*/
             return;
         }
         removeIndex(this.subjectBitmaps, triple.getSubject(), index);
@@ -154,9 +131,6 @@ public class RoaringTripleStore implements TripleStore {
         }
     }
 
-
-    private static RoaringBitmap EMPTY_BITMAP = new RoaringBitmap();
-
     private ImmutableBitmapDataProvider getBitmapForMatch(final Triple tripleMatch, final MatchPattern matchPattern) {
         switch (matchPattern) {
 
@@ -167,40 +141,37 @@ public class RoaringTripleStore implements TripleStore {
             case __O:
                 return this.objectBitmaps.getOrDefault(tripleMatch.getObject(), EMPTY_BITMAP);
 
-            case SP_:
-            {
+            case SP_: {
                 final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
-                if(null == subjectBitmap)
+                if (null == subjectBitmap)
                     return EMPTY_BITMAP;
 
                 final var predicateBitmap = this.predicateBitmaps.get(tripleMatch.getPredicate());
-                if(null == predicateBitmap)
+                if (null == predicateBitmap)
                     return EMPTY_BITMAP;
 
                 return RoaringBitmap.and(subjectBitmap, predicateBitmap);
             }
 
-            case _PO:
-            {
+            case _PO: {
                 final var predicateBitmap = this.predicateBitmaps.get(tripleMatch.getPredicate());
-                if(null == predicateBitmap)
+                if (null == predicateBitmap)
                     return EMPTY_BITMAP;
 
                 final var objectBitmap = this.objectBitmaps.get(tripleMatch.getObject());
-                if(null == objectBitmap)
+                if (null == objectBitmap)
                     return EMPTY_BITMAP;
 
                 return FastAggregation.naive_and(predicateBitmap, objectBitmap);
             }
 
-            case S_O:
-            {
+            case S_O: {
                 final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
-                if(null == subjectBitmap)
+                if (null == subjectBitmap)
                     return EMPTY_BITMAP;
 
                 final var objectBitmap = this.objectBitmaps.get(tripleMatch.getObject());
-                if(null == objectBitmap)
+                if (null == objectBitmap)
                     return EMPTY_BITMAP;
 
                 return RoaringBitmap.and(subjectBitmap, objectBitmap);
@@ -227,40 +198,37 @@ public class RoaringTripleStore implements TripleStore {
             case __O:
                 return this.objectBitmaps.containsKey(tripleMatch.getObject());
 
-            case SP_:
-            {
+            case SP_: {
                 final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
-                if(null == subjectBitmap)
+                if (null == subjectBitmap)
                     return false;
 
                 final var predicateBitmap = this.predicateBitmaps.get(tripleMatch.getPredicate());
-                if(null == predicateBitmap)
+                if (null == predicateBitmap)
                     return false;
 
                 return RoaringBitmap.intersects(subjectBitmap, predicateBitmap);
             }
 
-            case _PO:
-            {
+            case _PO: {
                 final var predicateBitmap = this.predicateBitmaps.get(tripleMatch.getPredicate());
-                if(null == predicateBitmap)
+                if (null == predicateBitmap)
                     return false;
 
                 final var objectBitmap = this.objectBitmaps.get(tripleMatch.getObject());
-                if(null == objectBitmap)
+                if (null == objectBitmap)
                     return false;
 
                 return RoaringBitmap.intersects(objectBitmap, predicateBitmap);
             }
 
-            case S_O:
-            {
+            case S_O: {
                 final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
-                if(null == subjectBitmap)
+                if (null == subjectBitmap)
                     return false;
 
                 final var objectBitmap = this.objectBitmaps.get(tripleMatch.getObject());
-                if(null == objectBitmap)
+                if (null == objectBitmap)
                     return false;
 
                 return RoaringBitmap.intersects(subjectBitmap, objectBitmap);
@@ -324,22 +292,22 @@ public class RoaringTripleStore implements TripleStore {
                 final var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
                 return new NiceIterator<>() {
                     private final BatchIterator iterator = bitmap.getBatchIterator();
-                    private int[] buffer = new int[64];
+                    private final int[] buffer = new int[64];
                     private int bufferIndex = -1;
 
                     @Override
                     public boolean hasNext() {
-                        if(bufferIndex > 0)
+                        if (bufferIndex > 0)
                             return true;
                         return this.iterator.hasNext();
                     }
 
                     @Override
                     public Triple next() {
-                        if(bufferIndex > 0)
+                        if (bufferIndex > 0)
                             return triples.getKeyAt(buffer[--bufferIndex]);
 
-                        if(!iterator.hasNext()) {
+                        if (!iterator.hasNext()) {
                             throw new NoSuchElementException();
                         }
                         bufferIndex = iterator.nextBatch(buffer);
@@ -348,14 +316,14 @@ public class RoaringTripleStore implements TripleStore {
 
                     @Override
                     public void forEachRemaining(Consumer<? super Triple> action) {
-                        if(bufferIndex > 0) {
-                            for(int i = bufferIndex - 1; i >= 0; i--) {
+                        if (bufferIndex > 0) {
+                            for (int i = bufferIndex - 1; i >= 0; i--) {
                                 action.accept(triples.getKeyAt(buffer[i]));
                             }
                         }
                         while (iterator.hasNext()) {
                             bufferIndex = iterator.nextBatch(buffer);
-                            for(int i = bufferIndex - 1; i >= 0; i--) {
+                            for (int i = bufferIndex - 1; i >= 0; i--) {
                                 action.accept(triples.getKeyAt(buffer[i]));
                             }
                         }
@@ -369,5 +337,26 @@ public class RoaringTripleStore implements TripleStore {
                 throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
         }
 
+    }
+
+    private class TripleSet extends FastHashSet<Triple> {
+
+        @Override
+        protected Triple[] newKeysArray(int size) {
+            return new Triple[size];
+        }
+    }
+
+    private class NodesToBitmapsMap extends FastHashMap<Node, RoaringBitmap> {
+
+        @Override
+        protected Node[] newKeysArray(int size) {
+            return new Node[size];
+        }
+
+        @Override
+        protected RoaringBitmap[] newValuesArray(int size) {
+            return new RoaringBitmap[size];
+        }
     }
 }

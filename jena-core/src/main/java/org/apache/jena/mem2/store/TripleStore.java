@@ -77,6 +77,7 @@ public interface TripleStore {
     /**
      * Returns a {@link Stream} of Triples matching the given pattern.
      * Note: {@link Stream#parallel()} is supported.
+     *
      * @param tripleMatch triple match pattern
      * @return a stream  of triples in this graph matching the pattern.
      */

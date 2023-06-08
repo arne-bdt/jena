@@ -21,8 +21,6 @@ package org.apache.jena.mem2.store.legacy;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.JenaSet;
 
-import java.util.function.Predicate;
-
 /**
  * A bunch of triples - a stripped-down set with specialized methods. A
  * bunch is expected to store triples that share some useful property
@@ -31,9 +29,5 @@ import java.util.function.Predicate;
 public interface TripleBunch extends JenaSet<Triple> {
     default boolean isHashed() {
         return false;
-    }
-
-    default boolean containsWithOptimizedEqualsReplacement(Triple t, Predicate<Triple> predicateReplacingEquals) {
-        return anyMatch(predicateReplacingEquals);
     }
 }

@@ -24,9 +24,9 @@ import java.util.function.Consumer;
 /**
  * A spliterator for sparse arrays. This spliterator will iterate over the array
  * skipping null entries.
- *
+ * <p>
  * This spliterator supports splitting into sub-spliterators.
- *
+ * <p>
  * The spliterator will check for concurrent modifications by invoking a {@link Runnable}
  * before each action.
  *
@@ -36,8 +36,8 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
     private final int fromIndex;
-    private int pos;
     private final Runnable checkForConcurrentModification;
+    private int pos;
 
     /**
      * Create a spliterator for the given array, with the given size.
@@ -56,10 +56,11 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
 
     /**
      * Create a spliterator for the given array, with the given size.
-     * @param entries   the array
+     *
+     * @param entries the array
      */
     public SparseArraySubSpliterator(final E[] entries, final Runnable checkForConcurrentModification) {
-       this(entries, 0, entries.length, checkForConcurrentModification);
+        this(entries, 0, entries.length, checkForConcurrentModification);
     }
 
 
@@ -78,8 +79,8 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
     @Override
     public boolean tryAdvance(Consumer<? super E> action) {
         this.checkForConcurrentModification.run();
-        while(fromIndex <= --pos) {
-            if(null != entries[pos]) {
+        while (fromIndex <= --pos) {
+            if (null != entries[pos]) {
                 action.accept(entries[pos]);
                 return true;
             }
@@ -103,7 +104,7 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
     public void forEachRemaining(Consumer<? super E> action) {
         pos--;
         while (fromIndex <= pos) {
-            if(null != entries[pos]) {
+            if (null != entries[pos]) {
                 action.accept(entries[pos]);
             }
             pos--;
@@ -186,7 +187,9 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
      * corresponding to its maximum depth.
      */
     @Override
-    public long estimateSize() { return pos - fromIndex; }
+    public long estimateSize() {
+        return pos - fromIndex;
+    }
 
 
     /**

@@ -1,7 +1,7 @@
 package org.apache.jena.mem2.collection;
 
-import org.apache.jena.memTermEquality.SparseArrayIterator;
-import org.apache.jena.memTermEquality.SparseArraySpliterator;
+import org.apache.jena.mem2.iterator.SparseArrayIterator;
+import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.shared.JenaException;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
@@ -48,12 +48,6 @@ public abstract class HashCommonBase<Key> {
         threshold = (int) (keys.length * loadFactor);
     }
 
-    protected void clear(int initialCapacity) {
-        size = 0;
-        keys = newKeysArray(initialCapacity);
-        threshold = (int) (keys.length * loadFactor);
-    }
-
     protected static int nextSize(int atLeast) {
         for (int prime : primes) {
             if (prime > atLeast) return prime;
@@ -61,6 +55,12 @@ public abstract class HashCommonBase<Key> {
         //return atLeast ;        // Input is 2*current capacity.
         // There are some very large numbers in the primes table.
         throw new JenaException("Failed to find a 'next size': atleast = " + atLeast);
+    }
+
+    protected void clear(int initialCapacity) {
+        size = 0;
+        keys = newKeysArray(initialCapacity);
+        threshold = (int) (keys.length * loadFactor);
     }
 
     public int size() {

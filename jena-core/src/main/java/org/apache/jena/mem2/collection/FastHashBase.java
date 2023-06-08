@@ -1,7 +1,7 @@
 package org.apache.jena.mem2.collection;
 
+import org.apache.jena.mem2.iterator.SparseArrayIterator;
 import org.apache.jena.mem2.spliterator.SparseArraySubSpliterator;
-import org.apache.jena.memTermEquality.SparseArrayIterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
@@ -229,7 +229,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
 
     @Override
     public final boolean anyMatch(Predicate<K> predicate) {
-        for(var i=0; i<keysPos; i++) {
+        for (var i = 0; i < keysPos; i++) {
             if (keys[i] != null && predicate.test(keys[i])) {
                 return true;
             }

@@ -18,8 +18,8 @@
 
 package org.apache.jena.mem2.collection;
 
-import org.apache.jena.memTermEquality.SparseArrayIterator;
-import org.apache.jena.memTermEquality.SparseArraySpliterator;
+import org.apache.jena.mem2.iterator.SparseArrayIterator;
+import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
@@ -142,14 +142,14 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
         final var slot = findSlot(key);
         if (slot < 0) {
             final var value = valueProcessor.apply(values[~slot]);
-            if(value == null) {
+            if (value == null) {
                 removeFrom(~slot);
             } else {
                 values[~slot] = value;
             }
         } else {
             final var value = valueProcessor.apply(null);
-            if(value == null)
+            if (value == null)
                 return;
             keys[slot] = key;
             values[slot] = value;

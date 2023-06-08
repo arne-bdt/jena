@@ -32,12 +32,18 @@ import java.util.function.Consumer;
 public class SparseArrayIterator<E> extends NiceIterator<E> implements Iterator<E> {
 
     private final E[] entries;
-    private int pos;
     private final Runnable checkForConcurrentModification;
+    private int pos;
 
     public SparseArrayIterator(final E[] entries, final Runnable checkForConcurrentModification) {
         this.entries = entries;
-        this.pos = entries.length-1;
+        this.pos = entries.length - 1;
+        this.checkForConcurrentModification = checkForConcurrentModification;
+    }
+
+    public SparseArrayIterator(final E[] entries, int toIndexExclusive, final Runnable checkForConcurrentModification) {
+        this.entries = entries;
+        this.pos = toIndexExclusive - 1;
         this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
@@ -50,8 +56,8 @@ public class SparseArrayIterator<E> extends NiceIterator<E> implements Iterator<
      */
     @Override
     public boolean hasNext() {
-        while(-1 < pos) {
-            if(null != entries[pos]) {
+        while (-1 < pos) {
+            if (null != entries[pos]) {
                 return true;
             }
             pos--;
@@ -76,8 +82,8 @@ public class SparseArrayIterator<E> extends NiceIterator<E> implements Iterator<
 
     @Override
     public void forEachRemaining(Consumer<? super E> action) {
-        while(-1 < pos) {
-            if(null != entries[pos]) {
+        while (-1 < pos) {
+            if (null != entries[pos]) {
                 action.accept(entries[pos]);
             }
             pos--;

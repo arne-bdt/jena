@@ -18,8 +18,8 @@
 
 package org.apache.jena.mem2.collection;
 
+import org.apache.jena.mem2.iterator.SparseArrayIterator;
 import org.apache.jena.mem2.spliterator.SparseArraySubSpliterator;
-import org.apache.jena.memTermEquality.SparseArrayIterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
@@ -66,7 +66,8 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
         super.removeFrom(here);
     }
 
-    @Override public void clear() {
+    @Override
+    public void clear() {
         super.clear();
         values = newValuesArray(keys.length);
     }
@@ -151,7 +152,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
         var pIndex = findPosition(key, key.hashCode());
         if (pIndex < 0) {
             final var value = valueProcessor.apply(null);
-            if(value == null)
+            if (value == null)
                 return;
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
@@ -162,7 +163,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
         } else {
             var eIndex = ~positions[pIndex];
             final var value = valueProcessor.apply(values[eIndex]);
-            if(value == null) {
+            if (value == null) {
                 removeFrom(pIndex);
             } else {
                 values[eIndex] = value;

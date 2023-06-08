@@ -53,5 +53,5 @@ public enum MatchPattern {
     /**
      * Match a triple with a wildcard subject, predicate and object.
      */
-    ___;
+    ___
 }

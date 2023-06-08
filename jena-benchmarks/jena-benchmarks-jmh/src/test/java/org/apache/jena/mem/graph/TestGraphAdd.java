@@ -53,9 +53,8 @@ public class TestGraphAdd {
 //            "GraphMem (current)",
 //            "GraphMemB (current)",
             "GraphMem2Fast (current)",
-//            "GraphMem2Legacy (current)",
-//            "GraphMem2Roaring (current)",
-//            "GraphMemTermEquality (current)",
+            "GraphMem2Legacy (current)",
+            "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;

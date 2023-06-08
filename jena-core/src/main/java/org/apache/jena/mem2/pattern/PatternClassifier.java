@@ -35,30 +35,30 @@ import org.apache.jena.graph.Triple;
  */
 public class PatternClassifier {
 
-    public static MatchPattern classify  (Triple tripleMatch) {
-        if(tripleMatch.getSubject().isConcrete()) {
-            if(tripleMatch.getPredicate().isConcrete()) {
-                if(tripleMatch.getObject().isConcrete()) {
+    public static MatchPattern classify(Triple tripleMatch) {
+        if (tripleMatch.getSubject().isConcrete()) {
+            if (tripleMatch.getPredicate().isConcrete()) {
+                if (tripleMatch.getObject().isConcrete()) {
                     return MatchPattern.SPO;
                 } else {
                     return MatchPattern.SP_;
                 }
             } else {
-                if(tripleMatch.getObject().isConcrete()) {
+                if (tripleMatch.getObject().isConcrete()) {
                     return MatchPattern.S_O;
                 } else {
                     return MatchPattern.S__;
                 }
             }
         } else {
-            if(tripleMatch.getPredicate().isConcrete()) {
-                if(tripleMatch.getObject().isConcrete()) {
+            if (tripleMatch.getPredicate().isConcrete()) {
+                if (tripleMatch.getObject().isConcrete()) {
                     return MatchPattern._PO;
                 } else {
                     return MatchPattern._P_;
                 }
             } else {
-                if(tripleMatch.getObject().isConcrete()) {
+                if (tripleMatch.getObject().isConcrete()) {
                     return MatchPattern.__O;
                 } else {
                     return MatchPattern.___;
@@ -68,30 +68,30 @@ public class PatternClassifier {
 
     }
 
-    public static MatchPattern classify  (Node sm, Node pm, Node om) {
-        if(null != sm && sm.isConcrete()) {
-            if(null != pm && pm.isConcrete()) {
-                if(null != om && om.isConcrete()) {
+    public static MatchPattern classify(Node sm, Node pm, Node om) {
+        if (null != sm && sm.isConcrete()) {
+            if (null != pm && pm.isConcrete()) {
+                if (null != om && om.isConcrete()) {
                     return MatchPattern.SPO;
                 } else {
                     return MatchPattern.SP_;
                 }
             } else {
-                if(null != om && om.isConcrete()) {
+                if (null != om && om.isConcrete()) {
                     return MatchPattern.S_O;
                 } else {
                     return MatchPattern.S__;
                 }
             }
         } else {
-            if(null != pm && pm.isConcrete()) {
-                if(null != om && om.isConcrete()) {
+            if (null != pm && pm.isConcrete()) {
+                if (null != om && om.isConcrete()) {
                     return MatchPattern._PO;
                 } else {
                     return MatchPattern._P_;
                 }
             } else {
-                if(null != om && om.isConcrete()) {
+                if (null != om && om.isConcrete()) {
                     return MatchPattern.__O;
                 } else {
                     return MatchPattern.___;

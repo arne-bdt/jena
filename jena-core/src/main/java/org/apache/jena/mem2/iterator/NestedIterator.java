@@ -29,10 +29,8 @@ import java.util.function.Function;
 public class NestedIterator<E, I> extends NiceIterator<E> {
 
     final Iterator<I> parentIterator;
-
-    ExtendedIterator<E> currentIterator;
-
     final Function<I, ExtendedIterator<E>> mapper;
+    ExtendedIterator<E> currentIterator;
 
     public NestedIterator(Iterator<I> parentIterator, Function<I, ExtendedIterator<E>> mapper) {
         this.parentIterator = parentIterator;
@@ -44,7 +42,7 @@ public class NestedIterator<E, I> extends NiceIterator<E> {
 
     @Override
     public boolean hasNext() {
-        if(this.currentIterator.hasNext()) {
+        if (this.currentIterator.hasNext()) {
             return true;
         }
         while (this.parentIterator.hasNext()) {
@@ -58,7 +56,7 @@ public class NestedIterator<E, I> extends NiceIterator<E> {
 
     @Override
     public E next() {
-        if(this.currentIterator.hasNext()) {
+        if (this.currentIterator.hasNext()) {
             return this.currentIterator.next();
         }
         while (this.parentIterator.hasNext()) {

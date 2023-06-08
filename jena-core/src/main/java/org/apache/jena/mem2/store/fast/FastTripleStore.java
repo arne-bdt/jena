@@ -23,34 +23,8 @@ public class FastTripleStore implements TripleStore {
     public FastTripleStore() {
     }
 
-    @Override
-    public void add(Triple triple) {
-        final int hashCodeOfTriple = triple.hashCode();
-        subjects.compute(triple.getSubject(), bunch ->  {
-            final boolean added;
-            if(bunch == null) {
-                bunch = new FastArrayBunch();
-                bunch.addUnchecked(triple);
-                added = true;
-            } else if (bunch.isHashed()) {
-                added = bunch.tryAdd(triple, hashCodeOfTriple);
-            } else if (bunch.size() == MAX_ARRAY_BUNCH_SIZE) {
-                bunch = new FastHashedTripleBunch(bunch);
-                added = bunch.tryAdd(triple, hashCodeOfTriple);
-            } else {
-                added = bunch.tryAdd(triple);
-            }
-            if(added) {
-                predicates.compute(triple.getPredicate(), pBunch -> computeAddUnchecked(pBunch, triple, hashCodeOfTriple));
-                objects.compute(triple.getObject(), oBunch -> computeAddUnchecked(oBunch, triple, hashCodeOfTriple));
-                size++;
-            }
-            return bunch;
-        });
-    }
-
     private static FastTripleBunch computeAddUnchecked(FastTripleBunch bunch, final Triple t, final int hashCodeOfTriple) {
-        if(bunch == null) {
+        if (bunch == null) {
             bunch = new FastArrayBunch();
             bunch.addUnchecked(t);
         } else if (bunch.isHashed()) {
@@ -64,20 +38,55 @@ public class FastTripleStore implements TripleStore {
         return bunch;
     }
 
+    private static FastTripleBunch computeRemoveUnchecked(FastTripleBunch bunch, final Triple t, final int hashCodeOfTriple) {
+        if (bunch.isHashed()) {
+            bunch.removeUnchecked(t, hashCodeOfTriple);
+        } else {
+            bunch.removeUnchecked(t);
+        }
+        return bunch.isEmpty() ? null : bunch;
+    }
+
+    @Override
+    public void add(Triple triple) {
+        final int hashCodeOfTriple = triple.hashCode();
+        subjects.compute(triple.getSubject(), bunch -> {
+            final boolean added;
+            if (bunch == null) {
+                bunch = new FastArrayBunch();
+                bunch.addUnchecked(triple);
+                added = true;
+            } else if (bunch.isHashed()) {
+                added = bunch.tryAdd(triple, hashCodeOfTriple);
+            } else if (bunch.size() == MAX_ARRAY_BUNCH_SIZE) {
+                bunch = new FastHashedTripleBunch(bunch);
+                added = bunch.tryAdd(triple, hashCodeOfTriple);
+            } else {
+                added = bunch.tryAdd(triple);
+            }
+            if (added) {
+                predicates.compute(triple.getPredicate(), pBunch -> computeAddUnchecked(pBunch, triple, hashCodeOfTriple));
+                objects.compute(triple.getObject(), oBunch -> computeAddUnchecked(oBunch, triple, hashCodeOfTriple));
+                size++;
+            }
+            return bunch;
+        });
+    }
+
     @Override
     public void remove(Triple triple) {
         final int hashCodeOfTriple = triple.hashCode();
-        subjects.compute(triple.getSubject(), bunch ->  {
+        subjects.compute(triple.getSubject(), bunch -> {
             final boolean removed;
-            if(bunch == null) {
+            if (bunch == null) {
                 removed = false;
             } else if (bunch.isHashed()) {
                 removed = bunch.tryRemove(triple, hashCodeOfTriple);
             } else {
                 removed = bunch.tryRemove(triple);
             }
-            if(removed) {
-                if(bunch.isEmpty()) {
+            if (removed) {
+                if (bunch.isEmpty()) {
                     bunch = null;
                 }
                 predicates.compute(triple.getPredicate(), pBunch -> computeRemoveUnchecked(pBunch, triple, hashCodeOfTriple));
@@ -86,15 +95,6 @@ public class FastTripleStore implements TripleStore {
             }
             return bunch;
         });
-    }
-
-    private static FastTripleBunch computeRemoveUnchecked(FastTripleBunch bunch, final Triple t, final int hashCodeOfTriple) {
-        if (bunch.isHashed()) {
-            bunch.removeUnchecked(t, hashCodeOfTriple);
-        } else {
-            bunch.removeUnchecked(t);
-        }
-        return bunch.isEmpty() ? null : bunch;
     }
 
     @Override
@@ -117,48 +117,41 @@ public class FastTripleStore implements TripleStore {
 
     @Override
     public boolean contains(Triple tripleMatch) {
-        switch(PatternClassifier.classify(tripleMatch)) {
+        switch (PatternClassifier.classify(tripleMatch)) {
 
-            case SPO:
-            {
+            case SPO: {
                 final var triples = subjects.get(tripleMatch.getSubject());
-                if(triples == null) {
+                if (triples == null) {
                     return false;
                 }
-                return triples.containsWithOptimizedEqualsReplacement(tripleMatch,
-                        t ->
-                            tripleMatch.getPredicate().equals(t.getPredicate())
-                                && tripleMatch.getObject().equals(t.getObject()));
+                return triples.containsKey(tripleMatch);
             }
 
-            case SP_:
-            {
+            case SP_: {
                 final var triples = subjects.get(tripleMatch.getSubject());
-                if(triples == null) {
+                if (triples == null) {
                     return false;
                 }
-                return triples.anyMatch( t -> tripleMatch.getPredicate().equals(t.getPredicate()));
+                return triples.anyMatch(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case S_O:
-            {
+            case S_O: {
                 final var triples = subjects.get(tripleMatch.getSubject());
-                if(triples == null) {
+                if (triples == null) {
                     return false;
                 }
-                return triples.anyMatch( t -> tripleMatch.getObject().equals(t.getObject()));
+                return triples.anyMatch(t -> tripleMatch.getObject().equals(t.getObject()));
             }
 
             case S__:
                 return subjects.containsKey(tripleMatch.getSubject());
 
-            case _PO:
-            {
+            case _PO: {
                 final var triples = objects.get(tripleMatch.getObject());
-                if(triples == null) {
+                if (triples == null) {
                     return false;
                 }
-                return triples.anyMatch( t -> tripleMatch.getPredicate().equals(t.getPredicate()));
+                return triples.anyMatch(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
             case _P_:
@@ -182,62 +175,51 @@ public class FastTripleStore implements TripleStore {
 
     @Override
     public Stream<Triple> stream(Triple tripleMatch) {
-        switch(PatternClassifier.classify(tripleMatch)) {
+        switch (PatternClassifier.classify(tripleMatch)) {
 
-            case SPO:
-            {
+            case SPO: {
                 final var triples = subjects.get(tripleMatch.getSubject());
-                if(triples == null) {
+                if (triples == null) {
                     return Stream.empty();
                 }
-                var exists = triples.containsWithOptimizedEqualsReplacement(tripleMatch,
-                        t ->
-                                tripleMatch.getPredicate().equals(t.getPredicate())
-                                        && tripleMatch.getObject().equals(t.getObject()));
-                return exists ? Stream.of(tripleMatch) : Stream.empty();
+                return triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
             }
 
-            case SP_:
-            {
+            case SP_: {
                 final var triples = subjects.get(tripleMatch.getSubject());
-                if(triples == null) {
+                if (triples == null) {
                     return Stream.empty();
                 }
-                return triples.keyStream().filter( t -> tripleMatch.getPredicate().equals(t.getPredicate()) );
+                return triples.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case S_O:
-            {
+            case S_O: {
                 final var triples = subjects.get(tripleMatch.getSubject());
-                if(triples == null) {
+                if (triples == null) {
                     return Stream.empty();
                 }
-                return triples.keyStream().filter( t -> tripleMatch.getObject().equals(t.getObject()));
+                return triples.keyStream().filter(t -> tripleMatch.getObject().equals(t.getObject()));
             }
 
-            case S__:
-            {
+            case S__: {
                 final var triples = subjects.get(tripleMatch.getSubject());
                 return triples == null ? Stream.empty() : triples.keyStream();
             }
 
-            case _PO:
-            {
+            case _PO: {
                 final var triples = objects.get(tripleMatch.getObject());
-                if(triples == null) {
+                if (triples == null) {
                     return Stream.empty();
                 }
-                return triples.keyStream().filter( t -> tripleMatch.getPredicate().equals(t.getPredicate()));
+                return triples.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case _P_:
-            {
+            case _P_: {
                 final var triples = predicates.get(tripleMatch.getPredicate());
                 return triples == null ? Stream.empty() : triples.keyStream();
             }
 
-            case __O:
-            {
+            case __O: {
                 final var triples = objects.get(tripleMatch.getObject());
                 return triples == null ? Stream.empty() : triples.keyStream();
             }
@@ -252,62 +234,51 @@ public class FastTripleStore implements TripleStore {
 
     @Override
     public ExtendedIterator<Triple> find(Triple tripleMatch) {
-        switch(PatternClassifier.classify(tripleMatch)) {
+        switch (PatternClassifier.classify(tripleMatch)) {
 
-            case SPO:
-            {
+            case SPO: {
                 final var triples = subjects.get(tripleMatch.getSubject());
-                if(triples == null) {
+                if (triples == null) {
                     return NullIterator.emptyIterator();
                 }
-                var exists = triples.containsWithOptimizedEqualsReplacement(tripleMatch,
-                        t ->
-                                tripleMatch.getPredicate().equals(t.getPredicate())
-                                        && tripleMatch.getObject().equals(t.getObject()));
-                return exists ? new SingletonIterator<>(tripleMatch) : NullIterator.emptyIterator();
+                return triples.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NullIterator.emptyIterator();
             }
 
-            case SP_:
-            {
+            case SP_: {
                 final var triples = subjects.get(tripleMatch.getSubject());
-                if(triples == null) {
+                if (triples == null) {
                     return NullIterator.emptyIterator();
                 }
-                return triples.keyIterator().filterKeep( t -> tripleMatch.getPredicate().equals(t.getPredicate()) );
+                return triples.keyIterator().filterKeep(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case S_O:
-            {
+            case S_O: {
                 final var triples = subjects.get(tripleMatch.getSubject());
-                if(triples == null) {
+                if (triples == null) {
                     return NullIterator.emptyIterator();
                 }
-                return triples.keyIterator().filterKeep( t -> tripleMatch.getObject().equals(t.getObject()));
+                return triples.keyIterator().filterKeep(t -> tripleMatch.getObject().equals(t.getObject()));
             }
 
-            case S__:
-            {
+            case S__: {
                 final var triples = subjects.get(tripleMatch.getSubject());
                 return triples == null ? NullIterator.emptyIterator() : triples.keyIterator();
             }
 
-            case _PO:
-            {
+            case _PO: {
                 final var triples = objects.get(tripleMatch.getObject());
-                if(triples == null) {
+                if (triples == null) {
                     return NullIterator.emptyIterator();
                 }
-                return triples.keyIterator().filterKeep( t -> tripleMatch.getPredicate().equals(t.getPredicate()));
+                return triples.keyIterator().filterKeep(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case _P_:
-            {
+            case _P_: {
                 final var triples = predicates.get(tripleMatch.getPredicate());
                 return triples == null ? NullIterator.emptyIterator() : triples.keyIterator();
             }
 
-            case __O:
-            {
+            case __O: {
                 final var triples = objects.get(tripleMatch.getObject());
                 return triples == null ? NullIterator.emptyIterator() : triples.keyIterator();
             }

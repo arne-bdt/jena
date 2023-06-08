@@ -24,9 +24,9 @@ import java.util.function.Consumer;
 /**
  * A spliterator for sparse arrays. This spliterator will iterate over the array
  * skipping null entries.
- *
+ * <p>
  * This spliterator supports splitting into sub-spliterators.
- *
+ * <p>
  * The spliterator will check for concurrent modifications by invoking a {@link Runnable}
  * before each action.
  *
@@ -35,11 +35,12 @@ import java.util.function.Consumer;
 public class SparseArraySpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
-    private int pos;
     private final Runnable checkForConcurrentModification;
+    private int pos;
 
     /**
      * Create a spliterator for the given array, with the given size.
+     *
      * @param entries the array
      */
     public SparseArraySpliterator(final E[] entries, final Runnable checkForConcurrentModification) {
@@ -64,8 +65,8 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
     @Override
     public boolean tryAdvance(Consumer<? super E> action) {
         this.checkForConcurrentModification.run();
-        while(-1 < --pos) {
-            if(null != entries[pos]) {
+        while (-1 < --pos) {
+            if (null != entries[pos]) {
                 action.accept(entries[pos]);
                 return true;
             }
@@ -89,7 +90,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
     public void forEachRemaining(Consumer<? super E> action) {
         pos--;
         while (-1 < pos) {
-            if(null != entries[pos]) {
+            if (null != entries[pos]) {
                 action.accept(entries[pos]);
             }
             pos--;
@@ -171,7 +172,9 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
      * corresponding to its maximum depth.
      */
     @Override
-    public long estimateSize() { return entries.length - pos; }
+    public long estimateSize() {
+        return entries.length - pos;
+    }
 
     /**
      * Returns a set of characteristics of this Spliterator and its

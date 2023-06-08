@@ -227,7 +227,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         if (s == null)
             return false;
 
-        return s.containsWithOptimizedEqualsReplacement(triple, predicateReplacingEquals);
+        return s.containsKey(triple);
     }
 
     @Override

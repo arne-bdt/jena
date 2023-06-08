@@ -23,7 +23,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.GraphMemBase;
 import org.apache.jena.mem2.store.TripleStore;
-import org.apache.jena.mem2.store.roaring.RoaringTripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.stream.Stream;
@@ -33,7 +32,7 @@ import java.util.stream.Stream;
  */
 public abstract class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
-   final TripleStore tripleStore;
+    final TripleStore tripleStore;
 
     public GraphMem2(TripleStore tripleStore) {
         super();
@@ -96,6 +95,7 @@ public abstract class GraphMem2 extends GraphMemBase implements GraphWithPerform
     /**
      * Returns a {@link Stream} of Triples matching a pattern.
      * Note: {@link Stream#parallel()} is supported.
+     *
      * @param sm subject node match pattern
      * @param pm predicate node match pattern
      * @param om object node match pattern
@@ -125,7 +125,6 @@ public abstract class GraphMem2 extends GraphMemBase implements GraphWithPerform
     public boolean graphBaseContains(final Triple tripleMatch) {
         return this.tripleStore.contains(tripleMatch);
     }
-
 
 
     /**

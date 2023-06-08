@@ -20,8 +20,6 @@ package org.apache.jena.mem2;
 
 import org.apache.jena.mem2.store.roaring.RoaringTripleStore;
 
-import java.util.stream.Stream;
-
 /**
  * A graph that stores triples in memory. This class is not thread-safe.
  */
