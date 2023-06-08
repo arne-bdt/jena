@@ -27,6 +27,10 @@ public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTr
         b.keyIterator().forEachRemaining(t -> this.addUnchecked(t));
     }
 
+    public FastHashedTripleBunch(final int initialSize) {
+        super(initialSize);
+    }
+
     @Override
     protected Triple[] newKeysArray(int size) {
         return new Triple[size];

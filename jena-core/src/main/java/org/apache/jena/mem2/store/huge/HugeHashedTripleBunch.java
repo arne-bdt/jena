@@ -39,7 +39,8 @@ public abstract class HugeHashedTripleBunch implements HudeTripleBunch {
     private final FastHashedTripleBunch triples;
 
     protected HugeHashedTripleBunch(final JenaSet<Triple> b) {
-        this.triples = new FastHashedTripleBunch(b);
+        this.triples = new FastHashedTripleBunch(b.size());
+        b.keyIterator().forEachRemaining(t -> this.addUnchecked(t));
     }
 
     protected abstract Node getIndexingNode(Triple t);

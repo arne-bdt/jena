@@ -149,14 +149,15 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
 
     @Override
     public void compute(Key key, Function<Value, Value> valueProcessor) {
-        var pIndex = findPosition(key, key.hashCode());
+        final int hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             final var value = valueProcessor.apply(null);
             if (value == null)
                 return;
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
-            hashCodesOrDeletedIndices[eIndex] = key.hashCode();
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
             values[eIndex] = value;
             positions[~pIndex] = ~eIndex;
             tryGrowPositionsArrayIfNeeded();
