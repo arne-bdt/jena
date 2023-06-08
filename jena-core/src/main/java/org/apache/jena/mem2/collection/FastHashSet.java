@@ -43,13 +43,13 @@ public abstract class FastHashSet<E> extends FastHashBase<E> implements JenaSetH
     }
 
     public boolean tryAdd(E value, int hashCode) {
-        growPositionsArrayIfNeeded();
         var pIndex = findPosition(value, hashCode);
         if (pIndex < 0) {
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = value;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
             positions[~pIndex] = ~eIndex;
+            growPositionsArrayIfNeeded();
             return true;
         }
         return false;
@@ -59,13 +59,13 @@ public abstract class FastHashSet<E> extends FastHashBase<E> implements JenaSetH
      * If the element already exists, return the inverse (~) index of the existing element.
      */
     public int addAndGetIndex(E value) {
-        growPositionsArrayIfNeeded();
         var pIndex = findPosition(value, value.hashCode());
         if (pIndex < 0) {
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = value;
             hashCodesOrDeletedIndices[eIndex] = value.hashCode();
             positions[~pIndex] = ~eIndex;
+            growPositionsArrayIfNeeded();
             return eIndex;
         } else {
             return positions[pIndex];
@@ -78,11 +78,11 @@ public abstract class FastHashSet<E> extends FastHashBase<E> implements JenaSetH
     }
 
     public void addUnchecked(E value, int hashCode) {
-        growPositionsArrayIfNeeded();
         final var eIndex = getFreeKeyIndex();
         keys[eIndex] = value;
         hashCodesOrDeletedIndices[eIndex] = hashCode;
         positions[findEmptySlotWithoutEqualityCheck(hashCode)] = ~eIndex;
+        growPositionsArrayIfNeeded();
     }
 
     public E getKeyAt(int i) {

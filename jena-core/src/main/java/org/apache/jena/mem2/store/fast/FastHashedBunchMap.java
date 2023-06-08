@@ -15,24 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.legacy;
+package org.apache.jena.mem2.store.fast;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.JenaSet;
-import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.mem2.collection.FastHashMap;
 
-import java.util.function.Predicate;
-import java.util.stream.Stream;
+public class FastHashedBunchMap extends FastHashMap<Node, FastTripleBunch> {
 
-public interface NodeToTriplesMap extends JenaSet<Triple> {
-    void clear();
+    public FastHashedBunchMap() {
+        super();
+    }
 
-    ExtendedIterator<Triple> iteratorForMatches(Node index, Node n2, Node n3);
+    @Override
+    protected Node[] newKeysArray(int size) {
+        return new Node[size];
+    }
 
-    Stream<Triple> streamForMatches(Node index, Node n2, Node n3);
-
-    boolean containsMatch(Node index, Node n2, Node n3);
-
-    boolean containsKey(Triple triple, Node index, Predicate<Triple> predicateReplacingEquals);
+    @Override
+    protected FastTripleBunch[] newValuesArray(int size) {
+        return new FastTripleBunch[size];
+    }
 }

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.store.legacy;
+package org.apache.jena.mem2.store.fast;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -35,14 +35,14 @@ import java.util.stream.StreamSupport;
  * (because, if it gets big enough for this linear growth to be bad, it should anyways
  * have been replaced by a more efficient set-of-triples implementation).
  */
-public class ArrayBunch implements TripleBunch {
+public class FastArrayBunch implements FastTripleBunch {
 
-    private static final int INITIAL_SIZE = 5;
+    private static final int INITIAL_SIZE = 2;
 
     protected int size = 0;
     protected Triple[] elements;
 
-    public ArrayBunch() {
+    public FastArrayBunch() {
         elements = new Triple[INITIAL_SIZE];
     }
 
@@ -74,11 +74,6 @@ public class ArrayBunch implements TripleBunch {
         return this.size == 0;
     }
 
-//        @Override
-//        public boolean isHashed() {
-//            return false;
-//        }
-
     @Override
     public boolean tryAdd(Triple t) {
         if (this.containsKey(t)) return false;
@@ -101,7 +96,7 @@ public class ArrayBunch implements TripleBunch {
      */
     protected void grow() {
         final var oldElements = elements;
-        elements = new Triple[size + 4];
+        elements = new Triple[size << 1];
         System.arraycopy(oldElements, 0, elements, 0, size);
     }
 
@@ -205,5 +200,30 @@ public class ArrayBunch implements TripleBunch {
     @Override
     public Stream<Triple> keyStream() {
         return StreamSupport.stream(keySpliterator(), false);
+    }
+
+    @Override
+    public boolean isHashed() {
+        return false;
+    }
+
+    @Override
+    public boolean tryAdd(Triple key, int hashCode) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void addUnchecked(Triple key, int hashCode) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean tryRemove(Triple key, int hashCode) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void removeUnchecked(Triple key, int hashCode) {
+        throw new UnsupportedOperationException();
     }
 }

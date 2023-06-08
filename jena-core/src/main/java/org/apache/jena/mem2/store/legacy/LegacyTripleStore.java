@@ -37,7 +37,7 @@ public class LegacyTripleStore implements TripleStore {
 
     @Override
     public void add(Triple triple) {
-        if(subjects.tryAdd(triple)) {
+        if (subjects.tryAdd(triple)) {
             predicates.addUnchecked(triple);
             objects.addUnchecked(triple);
         }
@@ -45,7 +45,7 @@ public class LegacyTripleStore implements TripleStore {
 
     @Override
     public void remove(Triple triple) {
-        if(subjects.tryRemove(triple)) {
+        if (subjects.tryRemove(triple)) {
             predicates.removeUnchecked(triple);
             objects.removeUnchecked(triple);
         }
@@ -71,11 +71,11 @@ public class LegacyTripleStore implements TripleStore {
     @Override
     public boolean contains(Triple tripleMatch) {
 
-        if(tripleMatch.isConcrete()) {
+        if (tripleMatch.isConcrete()) {
             return subjects.containsKey(tripleMatch,
                     tripleMatch.getSubject(),
                     t -> tripleMatch.getPredicate().equals(t.getPredicate())
-                        && tripleMatch.getObject().equals(t.getObject()));
+                            && tripleMatch.getObject().equals(t.getObject()));
         }
 
 
@@ -83,11 +83,11 @@ public class LegacyTripleStore implements TripleStore {
         final Node om = tripleMatch.getObject();
         final Node sm = tripleMatch.getSubject();
         if (sm.isConcrete())
-            return subjects.containsMatch( sm, pm, om );
+            return subjects.containsMatch(sm, pm, om);
         else if (om.isConcrete())
-            return objects.containsMatch( om, sm, pm );
+            return objects.containsMatch(om, sm, pm);
         else if (pm.isConcrete())
-            return predicates.containsMatch( pm, om, sm );
+            return predicates.containsMatch(pm, om, sm);
         else
             return !this.isEmpty();
     }
@@ -99,7 +99,7 @@ public class LegacyTripleStore implements TripleStore {
 
     @Override
     public Stream<Triple> stream(Triple tripleMatch) {
-        if(tripleMatch.isConcrete()) {
+        if (tripleMatch.isConcrete()) {
             return subjects.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
         }
 
@@ -108,18 +108,18 @@ public class LegacyTripleStore implements TripleStore {
         final Node sm = tripleMatch.getSubject();
 
         if (sm.isConcrete())
-            return subjects.streamForMatches( sm, pm, om );
+            return subjects.streamForMatches(sm, pm, om);
         else if (om.isConcrete())
-            return objects.streamForMatches( om, sm, pm );
+            return objects.streamForMatches(om, sm, pm);
         else if (pm.isConcrete())
-            return predicates.streamForMatches( pm, om, sm );
+            return predicates.streamForMatches(pm, om, sm);
         else
             return subjects.keyStream();
     }
 
     @Override
     public ExtendedIterator<Triple> find(Triple tripleMatch) {
-        if(tripleMatch.isConcrete()) {
+        if (tripleMatch.isConcrete()) {
             return subjects.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NullIterator.emptyIterator();
         }
         final Node pm = tripleMatch.getPredicate();
@@ -127,11 +127,11 @@ public class LegacyTripleStore implements TripleStore {
         final Node sm = tripleMatch.getSubject();
 
         if (sm.isConcrete())
-            return subjects.iteratorForMatches( sm, pm, om );
+            return subjects.iteratorForMatches(sm, pm, om);
         else if (om.isConcrete())
-            return objects.iteratorForMatches( om, sm, pm );
+            return objects.iteratorForMatches(om, sm, pm);
         else if (pm.isConcrete())
-            return predicates.iteratorForMatches( pm, om, sm );
+            return predicates.iteratorForMatches(pm, om, sm);
         else
             return subjects.keyIterator();
     }

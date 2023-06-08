@@ -20,6 +20,7 @@ package org.apache.jena.mem2.collection;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Spliterator;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -35,6 +36,8 @@ public interface JenaMap<Key, Value> extends JenaMapSetCommon<Key> {
     Value getOrDefault(Key key, Value defaultValue);
 
     Value computeIfAbsent(Key key, Supplier<Value> absentValueSupplier);
+
+    void compute(Key key, Function<Value, Value> valueProcessor);
 
     ExtendedIterator<Value> valueIterator();
 

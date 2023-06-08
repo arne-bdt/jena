@@ -24,13 +24,15 @@ import org.apache.jena.mem2.collection.JenaSet;
 import java.util.function.Predicate;
 
 /**
-    A bunch of triples - a stripped-down set with specialized methods. A
-    bunch is expected to store triples that share some useful property 
-    (such as having the same subject or predicate).
-
-*/
+ * A bunch of triples - a stripped-down set with specialized methods. A
+ * bunch is expected to store triples that share some useful property
+ * (such as having the same subject or predicate).
+ */
 public interface TripleBunch extends JenaSet<Triple> {
-    boolean isHashed();
+    default boolean isHashed() {
+        return false;
+    }
+
     default boolean containsWithOptimizedEqualsReplacement(Triple t, Predicate<Triple> predicateReplacingEquals) {
         return anyMatch(predicateReplacingEquals);
     }

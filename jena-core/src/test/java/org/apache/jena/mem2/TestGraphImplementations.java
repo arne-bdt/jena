@@ -34,7 +34,7 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 public class TestGraphImplementations {
 
     private static Graph createGraph() {
-        return new GraphMem2Legacy();
+        return new GraphMem2Fast();
     }
 
     @Test

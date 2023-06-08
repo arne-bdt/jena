@@ -22,7 +22,7 @@ import org.apache.jena.mem2.collection.HashCommonMap;
 
 public class HashedBunchMap extends HashCommonMap<Node, TripleBunch> {
 
-    protected HashedBunchMap() {
+    public HashedBunchMap() {
         super(10);
     }
 

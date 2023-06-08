@@ -15,24 +15,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.legacy;
 
-import org.apache.jena.graph.Node;
-import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.JenaSet;
-import org.apache.jena.util.iterator.ExtendedIterator;
+package org.apache.jena.mem2;
 
-import java.util.function.Predicate;
-import java.util.stream.Stream;
+import org.apache.jena.mem2.store.fast.FastTripleStore;
 
-public interface NodeToTriplesMap extends JenaSet<Triple> {
-    void clear();
+/**
+ * A graph that stores triples in memory. This class is not thread-safe.
+ * This implementation is based on the original GraphMem implementation.
+ * The main difference is that it strictly uses term equality for all nodes.
+ * The inner workings of the used structures like ArrayBunch and HashedBunchMap are not changed.
+ */
+public class GraphMem2Fast extends GraphMem2 {
 
-    ExtendedIterator<Triple> iteratorForMatches(Node index, Node n2, Node n3);
+    public GraphMem2Fast() {
+        super(new FastTripleStore());
+    }
 
-    Stream<Triple> streamForMatches(Node index, Node n2, Node n3);
-
-    boolean containsMatch(Node index, Node n2, Node n3);
-
-    boolean containsKey(Triple triple, Node index, Predicate<Triple> predicateReplacingEquals);
 }

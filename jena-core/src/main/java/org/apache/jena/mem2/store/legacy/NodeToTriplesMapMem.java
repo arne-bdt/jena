@@ -39,8 +39,8 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
     private final Triple.Field f3;
 
     /**
-     The number of triples held in this NTM, maintained incrementally
-     (because it's a pain to compute from scratch).
+     * The number of triples held in this NTM, maintained incrementally
+     * (because it's a pain to compute from scratch).
      */
     private int size = 0;
 
@@ -50,8 +50,8 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         this.f3 = f3;
     }
 
-    private Node getIndexNode(Triple t ) {
-        return indexField.getField( t );
+    private Node getIndexNode(Triple t) {
+        return indexField.getField(t);
     }
 
     @Override
@@ -72,13 +72,12 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
 
     @Override
     public boolean tryAdd(Triple t) {
-        final Node node = getIndexNode( t );
+        final Node node = getIndexNode(t);
 
-        TripleBunch s = bunchMap.get( node );
-        if (s == null)
-        {
+        TripleBunch s = bunchMap.get(node);
+        if (s == null) {
             bunchMap.put(node, s = new ArrayBunch());
-            s.addUnchecked( t );
+            s.addUnchecked(t);
             size++;
             return true;
         }
@@ -86,8 +85,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         if ((!s.isHashed()) && s.size() == 9) {
             bunchMap.put(node, s = new HashedTripleBunch(s));
         }
-        if(s.tryAdd( t ))
-        {
+        if (s.tryAdd(t)) {
             size++;
             return true;
         }
@@ -96,30 +94,28 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
 
     @Override
     public void addUnchecked(Triple t) {
-        final Node node = getIndexNode( t );
-        TripleBunch s = bunchMap.get( node );
-        if (s == null)
-        {
+        final Node node = getIndexNode(t);
+        TripleBunch s = bunchMap.get(node);
+        if (s == null) {
             bunchMap.put(node, s = new ArrayBunch());
         } else if ((!s.isHashed()) && s.size() == 9) {
             bunchMap.put(node, s = new HashedTripleBunch(s));
         }
-        s.addUnchecked( t );
+        s.addUnchecked(t);
         size++;
     }
 
     @Override
     public boolean tryRemove(Triple t) {
-        final Node node = getIndexNode( t );
-        final TripleBunch s = bunchMap.get( node );
+        final Node node = getIndexNode(t);
+        final TripleBunch s = bunchMap.get(node);
 
         if (s == null)
             return false;
 
-        if (s.tryRemove(t))
-        {
+        if (s.tryRemove(t)) {
             size--;
-            if (s.isEmpty()) bunchMap.removeUnchecked( node );
+            if (s.isEmpty()) bunchMap.removeUnchecked(node);
             return true;
         }
         return false;
@@ -127,50 +123,47 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
 
     @Override
     public void removeUnchecked(Triple t) {
-        final Node node = getIndexNode( t );
-        final TripleBunch s = bunchMap.get( node );
+        final Node node = getIndexNode(t);
+        final TripleBunch s = bunchMap.get(node);
 
         if (s == null)
             return;
 
-        s.removeUnchecked( t );
+        s.removeUnchecked(t);
         size--;
-        if (s.isEmpty()) bunchMap.removeUnchecked( node );
+        if (s.isEmpty()) bunchMap.removeUnchecked(node);
     }
 
     @Override
     public ExtendedIterator<Triple> keyIterator() {
-        return new NiceIterator<Triple>()
-        {
+        return new NiceIterator<Triple>() {
             private final Iterator<TripleBunch> bunchIterator = bunchMap.valueIterator();
             private Iterator<Triple> current = NullIterator.instance();
 
-            @Override public Triple next()
-            {
-                if (!hasNext()) noElements( "NodeToTriples iterator" );
+            @Override
+            public Triple next() {
+                if (!hasNext()) noElements("NodeToTriples iterator");
                 return current.next();
             }
 
 
-            @Override public boolean hasNext()
-            {
-                while (true)
-                {
+            @Override
+            public boolean hasNext() {
+                while (true) {
                     if (current.hasNext()) return true;
                     if (!bunchIterator.hasNext()) return false;
                     current = bunchIterator.next().keyIterator();
                 }
             }
 
-            @Override public void forEachRemaining(Consumer<? super Triple> action)
-            {
-                if (current != null)
-                {
+            @Override
+            public void forEachRemaining(Consumer<? super Triple> action) {
+                if (current != null) {
                     current.forEachRemaining(action);
                     current = null;
                 }
                 bunchIterator.forEachRemaining(next ->
-                        next.keyIterator().forEachRemaining(action) );
+                        next.keyIterator().forEachRemaining(action));
             }
         };
     }
@@ -188,19 +181,19 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
 
     @Override
     public ExtendedIterator<Triple> iteratorForMatches(Node index, Node n2, Node n3) {
-        final TripleBunch s = bunchMap.get( index );
+        final TripleBunch s = bunchMap.get(index);
 
-        if (s == null) return NullIterator.<Triple>instance();
+        if (s == null) return NullIterator.instance();
 
         final var filter = FieldFilter.filterOn(f2, n2, f3, n3);
         return filter.hasFilter()
-                ? s.keyIterator().filterKeep( filter.getFilter() )
+                ? s.keyIterator().filterKeep(filter.getFilter())
                 : s.keyIterator();
     }
 
     @Override
     public Stream<Triple> streamForMatches(Node index, Node n2, Node n3) {
-        final TripleBunch s = bunchMap.get( index );
+        final TripleBunch s = bunchMap.get(index);
         if (s == null)
             return Stream.empty();
         final var filter = FieldFilter.filterOn(f2, n2, f3, n3);
@@ -211,7 +204,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
 
     @Override
     public boolean containsMatch(Node index, Node n2, Node n3) {
-        final TripleBunch s = bunchMap.get( index );
+        final TripleBunch s = bunchMap.get(index);
         if (s == null)
             return false;
         var filter = FieldFilter.filterOn(f2, n2, f3, n3);
@@ -222,7 +215,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
 
     @Override
     public boolean containsKey(Triple triple) {
-        final TripleBunch s = bunchMap.get( getIndexNode(triple) );
+        final TripleBunch s = bunchMap.get(getIndexNode(triple));
         if (s == null)
             return false;
 
@@ -230,7 +223,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
     }
 
     public boolean containsKey(Triple triple, Node index, Predicate<Triple> predicateReplacingEquals) {
-        final TripleBunch s = bunchMap.get( index );
+        final TripleBunch s = bunchMap.get(index);
         if (s == null)
             return false;
 

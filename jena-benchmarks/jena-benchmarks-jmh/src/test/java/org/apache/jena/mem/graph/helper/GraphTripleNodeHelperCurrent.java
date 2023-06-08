@@ -22,6 +22,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.mem2.GraphMem2Legacy;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.memB.GraphMemB;
@@ -40,6 +41,8 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
                 return new GraphMem();
             case GraphMemB:
                 return new GraphMemB();
+            case GraphMem2Fast:
+                return new GraphMem2Fast();
             case GraphMem2Legacy:
                 return new GraphMem2Legacy();
             case GraphMem2Roaring:

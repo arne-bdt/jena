@@ -24,6 +24,7 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -72,7 +73,6 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
 
     @Override
     public boolean tryPut(Key key, Value value) {
-        growPositionsArrayIfNeeded();
         final var hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
@@ -81,6 +81,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
             values[eIndex] = value;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
             positions[~pIndex] = ~eIndex;
+            growPositionsArrayIfNeeded();
             return true;
         } else {
             values[~positions[pIndex]] = value;
@@ -90,7 +91,6 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
 
     @Override
     public void put(Key key, Value value) {
-        growPositionsArrayIfNeeded();
         final var hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
@@ -99,6 +99,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
             values[eIndex] = value;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
             positions[~pIndex] = ~eIndex;
+            growPositionsArrayIfNeeded();
         } else {
             values[~positions[pIndex]] = value;
         }
@@ -132,18 +133,40 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
     public Value computeIfAbsent(Key key, Supplier<Value> absentValueSupplier) {
         var pIndex = findPosition(key, key.hashCode());
         if (pIndex < 0) {
-            if(tryGrowPositionsArrayIfNeeded()) {
-                pIndex = findPosition(key, key.hashCode());
-            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             hashCodesOrDeletedIndices[eIndex] = key.hashCode();
             final var value = absentValueSupplier.get();
             values[eIndex] = value;
             positions[~pIndex] = ~eIndex;
+            tryGrowPositionsArrayIfNeeded();
             return value;
         } else {
             return values[~positions[pIndex]];
+        }
+    }
+
+    @Override
+    public void compute(Key key, Function<Value, Value> valueProcessor) {
+        var pIndex = findPosition(key, key.hashCode());
+        if (pIndex < 0) {
+            final var value = valueProcessor.apply(null);
+            if(value == null)
+                return;
+            final var eIndex = getFreeKeyIndex();
+            keys[eIndex] = key;
+            hashCodesOrDeletedIndices[eIndex] = key.hashCode();
+            values[eIndex] = value;
+            positions[~pIndex] = ~eIndex;
+            tryGrowPositionsArrayIfNeeded();
+        } else {
+            var eIndex = ~positions[pIndex];
+            final var value = valueProcessor.apply(values[eIndex]);
+            if(value == null) {
+                removeFrom(pIndex);
+            } else {
+                values[eIndex] = value;
+            }
         }
     }
 

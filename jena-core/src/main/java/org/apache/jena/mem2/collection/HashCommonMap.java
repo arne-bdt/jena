@@ -24,6 +24,7 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -134,6 +135,26 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
         values[slot] = value;
         if (++size > threshold) grow();
         return value;
+    }
+
+    @Override
+    public void compute(Key key, Function<Value, Value> valueProcessor) {
+        final var slot = findSlot(key);
+        if (slot < 0) {
+            final var value = valueProcessor.apply(values[~slot]);
+            if(value == null) {
+                removeFrom(~slot);
+            } else {
+                values[~slot] = value;
+            }
+        } else {
+            final var value = valueProcessor.apply(null);
+            if(value == null)
+                return;
+            keys[slot] = key;
+            values[slot] = value;
+            if (++size > threshold) grow();
+        }
     }
 
     /**

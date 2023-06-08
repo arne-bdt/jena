@@ -29,6 +29,7 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.SingletonIterator;
 import org.roaringbitmap.BatchIterator;
+import org.roaringbitmap.FastAggregation;
 import org.roaringbitmap.ImmutableBitmapDataProvider;
 import org.roaringbitmap.RoaringBitmap;
 
@@ -65,7 +66,7 @@ public class RoaringTripleStore implements TripleStore {
     TripleSet triples = new TripleSet(); // We use a list here to maintain the order of triples
 
     public RoaringTripleStore() {
-        this.clear();
+
     }
 
 
@@ -75,18 +76,22 @@ public class RoaringTripleStore implements TripleStore {
         if(index < 0) { /*triple already exists*/
             return;
         }
-
-        this.subjectBitmaps.computeIfAbsent(triple.getSubject(), () -> new RoaringBitmap())
-                .add(index);
-        this.predicateBitmaps.computeIfAbsent(triple.getPredicate(), () -> new RoaringBitmap())
-                .add(index);
-        this.objectBitmaps.computeIfAbsent(triple.getObject(), () -> new RoaringBitmap())
-                .add(index);
+        addIndex(this.subjectBitmaps, triple.getSubject(), index);
+        addIndex(this.predicateBitmaps, triple.getPredicate(), index);
+        addIndex(this.objectBitmaps, triple.getObject(), index);
     }
 
-    private void removeIndex(final NodesToBitmapsMap map, final Node node, final int index) {
+    private static void addIndex(final NodesToBitmapsMap map, final Node node, final int index) {
+        final var bitmap = map.computeIfAbsent(node, () -> new RoaringBitmap());
+        bitmap.add(index);
+        //bitmap.runOptimize();
+    }
+
+
+    private static void removeIndex(final NodesToBitmapsMap map, final Node node, final int index) {
         final var bitmap = map.get(node);
         bitmap.remove(index);
+        //bitmap.trim();
         if(bitmap.isEmpty()) {
             map.removeUnchecked(node);
         }
@@ -136,7 +141,7 @@ public class RoaringTripleStore implements TripleStore {
             case SP_:
             case _PO:
             case S_O:
-                return !getBitmapForMatch(tripleMatch, matchPattern).isEmpty();
+                return hasMatchInBitmaps(tripleMatch, matchPattern);
 
             case SPO:
                 return this.triples.containsKey(tripleMatch);
@@ -185,7 +190,7 @@ public class RoaringTripleStore implements TripleStore {
                 if(null == objectBitmap)
                     return EMPTY_BITMAP;
 
-                return RoaringBitmap.and(objectBitmap, predicateBitmap);
+                return FastAggregation.naive_and(predicateBitmap, objectBitmap);
             }
 
             case S_O:
@@ -199,6 +204,66 @@ public class RoaringTripleStore implements TripleStore {
                     return EMPTY_BITMAP;
 
                 return RoaringBitmap.and(subjectBitmap, objectBitmap);
+            }
+
+            case SPO:
+                throw new IllegalArgumentException("Getting bitmap for match pattern SPO ist not supported because it is not efficient");
+
+            case ___:
+                throw new IllegalArgumentException("Cannot get bitmap for match pattern ___");
+
+            default:
+                throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
+        }
+    }
+
+    private boolean hasMatchInBitmaps(final Triple tripleMatch, final MatchPattern matchPattern) {
+        switch (matchPattern) {
+
+            case S__:
+                return this.subjectBitmaps.containsKey(tripleMatch.getSubject());
+            case _P_:
+                return this.predicateBitmaps.containsKey(tripleMatch.getPredicate());
+            case __O:
+                return this.objectBitmaps.containsKey(tripleMatch.getObject());
+
+            case SP_:
+            {
+                final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
+                if(null == subjectBitmap)
+                    return false;
+
+                final var predicateBitmap = this.predicateBitmaps.get(tripleMatch.getPredicate());
+                if(null == predicateBitmap)
+                    return false;
+
+                return RoaringBitmap.intersects(subjectBitmap, predicateBitmap);
+            }
+
+            case _PO:
+            {
+                final var predicateBitmap = this.predicateBitmaps.get(tripleMatch.getPredicate());
+                if(null == predicateBitmap)
+                    return false;
+
+                final var objectBitmap = this.objectBitmaps.get(tripleMatch.getObject());
+                if(null == objectBitmap)
+                    return false;
+
+                return RoaringBitmap.intersects(objectBitmap, predicateBitmap);
+            }
+
+            case S_O:
+            {
+                final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
+                if(null == subjectBitmap)
+                    return false;
+
+                final var objectBitmap = this.objectBitmaps.get(tripleMatch.getObject());
+                if(null == objectBitmap)
+                    return false;
+
+                return RoaringBitmap.intersects(subjectBitmap, objectBitmap);
             }
 
             case SPO:

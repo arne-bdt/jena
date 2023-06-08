@@ -47,17 +47,9 @@ public class FieldFilter {
         this.hasFilter = false;
     }
 
-    public boolean hasFilter() {
-        return hasFilter;
-    }
-
-    public Predicate<Triple> getFilter() {
-        return filter;
-    }
-
     public static FieldFilter filterOn(Triple.Field f1, Node n1, Triple.Field f2, Node n2) {
-        if(n1.isConcrete()) {
-            if(n2.isConcrete()) {
+        if (n1.isConcrete()) {
+            if (n2.isConcrete()) {
                 return new FieldFilter(t -> n1.equals(f1.getField(t)) && n2.equals(f2.getField(t)));
             }
             return new FieldFilter(t -> n1.equals(f1.getField(t)));
@@ -65,5 +57,13 @@ public class FieldFilter {
             return new FieldFilter(t -> n2.equals(f2.getField(t)));
         }
         return FieldFilter.EMPTY;
+    }
+
+    public boolean hasFilter() {
+        return hasFilter;
+    }
+
+    public Predicate<Triple> getFilter() {
+        return filter;
     }
 }

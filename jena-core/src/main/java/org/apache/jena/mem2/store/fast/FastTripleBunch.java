@@ -15,24 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.legacy;
 
-import org.apache.jena.graph.Node;
+package org.apache.jena.mem2.store.fast;
+
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.JenaSet;
-import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.mem2.collection.JenaSetHashOptimized;
 
 import java.util.function.Predicate;
-import java.util.stream.Stream;
 
-public interface NodeToTriplesMap extends JenaSet<Triple> {
-    void clear();
+/**
+ * A bunch of triples - a stripped-down set with specialized methods. A
+ * bunch is expected to store triples that share some useful property
+ * (such as having the same subject or predicate).
+ */
+public interface FastTripleBunch extends JenaSetHashOptimized<Triple> {
+    default boolean isHashed() {
+        return false;
+    }
 
-    ExtendedIterator<Triple> iteratorForMatches(Node index, Node n2, Node n3);
-
-    Stream<Triple> streamForMatches(Node index, Node n2, Node n3);
-
-    boolean containsMatch(Node index, Node n2, Node n3);
-
-    boolean containsKey(Triple triple, Node index, Predicate<Triple> predicateReplacingEquals);
+    default boolean containsWithOptimizedEqualsReplacement(Triple t, Predicate<Triple> predicateReplacingEquals) {
+        return anyMatch(predicateReplacingEquals);
+    }
 }
