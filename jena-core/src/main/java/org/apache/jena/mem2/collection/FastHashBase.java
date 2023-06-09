@@ -25,7 +25,11 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     protected int[] positions;
 
     protected FastHashBase(int initialSize) {
-        this.positions = new int[Integer.highestOneBit(((int) (initialSize / LOAD_FACTOR) + 1)) << 1];
+        var positionsSize = Integer.highestOneBit(initialSize << 1);
+        if(positionsSize < initialSize << 1) {
+            positionsSize <<= 1;
+        }
+        this.positions = new int[positionsSize];
         this.keys = newKeysArray(initialSize);
         this.hashCodesOrDeletedIndices = new int[initialSize];
     }
@@ -39,12 +43,18 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
 
     protected abstract K[] newKeysArray(int size);
 
+    /**
+     * Using the same hash code optimization as {@link java.util.HashMap#hash(Object)}
+     * @param hashCode
+     * @return
+     */
     protected final int calcStartIndexByHashCode(final int hashCode) {
-        return hashCode & (positions.length - 1);
+        /*  */
+        return ((hashCode ^ (hashCode >>> 16)) & (positions.length - 1));
     }
 
     private int calcNewPositionsSize() {
-        if (keysPos >= positions.length * LOAD_FACTOR) { /*grow*/
+        if (keysPos << 1 > positions.length) { /*grow*/
             final var newLength = positions.length << 1;
             return newLength < 0 ? Integer.MAX_VALUE : newLength;
         }

@@ -37,12 +37,12 @@ public class TestSetContains {
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
-//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
 //            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
@@ -52,7 +52,8 @@ public class TestSetContains {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastHashSetOfTriples"
+            "FastHashSetOfTriples",
+            "FastHashSetOfTriples2"
     })
     public String param1_SetImplementation;
 
@@ -61,6 +62,7 @@ public class TestSetContains {
     private HashCommonTripleSet hashCommonTripleSet;
     private FastHashSetOfTriples fastHashSetOfTriples;
 
+    private FastHashSetOfTriples2 fastHashSetOfTriples2;
     java.util.function.Supplier<Boolean> setContains;
 
     @Benchmark
@@ -95,6 +97,15 @@ public class TestSetContains {
         return found;
     }
 
+    private boolean fastHashSetOfTriples2Contains() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = fastHashSetOfTriples2.containsKey(t);
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
@@ -115,6 +126,11 @@ public class TestSetContains {
                 this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
                 triples.forEach(fastHashSetOfTriples::addUnchecked);
                 this.setContains = this::fastHashSetOfTriplesContains;
+                break;
+            case "FastHashSetOfTriples2":
+                this.fastHashSetOfTriples2 = new FastHashSetOfTriples2(triples.size());
+                triples.forEach(fastHashSetOfTriples2::addUnchecked);
+                this.setContains = this::fastHashSetOfTriples2Contains;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

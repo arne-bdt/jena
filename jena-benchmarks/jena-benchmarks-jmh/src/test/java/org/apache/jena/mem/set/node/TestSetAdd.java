@@ -38,12 +38,12 @@ public class TestSetAdd {
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
-//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
 //            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
@@ -53,6 +53,7 @@ public class TestSetAdd {
     @Param({
             "HashSet",
             "FastHashSetOfNodes",
+            "FastHashSetOfNodes2",
             "HashCommonNodeSet"
     })
     public String param1_SetImplementation;
@@ -89,6 +90,12 @@ public class TestSetAdd {
         return sut;
     }
 
+    private Object addToFastHashSetOfNodes2(Triple.Field field) {
+        var sut = new FastHashSetOfNodes2();
+        triples.forEach(t -> sut.tryAdd(field.getField(t)));
+        return sut;
+    }
+
     private Object addToHashCommonNodeSet(Triple.Field field) {
         var sut = new HashCommonNodeSet();
         triples.forEach(t -> sut.tryAdd(field.getField(t)));
@@ -104,6 +111,9 @@ public class TestSetAdd {
                 break;
             case "FastHashSetOfNodes":
                 this.addToSet = this::addToFastHashSetOfNodes;
+                break;
+            case "FastHashSetOfNodes2":
+                this.addToSet = this::addToFastHashSetOfNodes2;
                 break;
             case "HashCommonNodeSet":
                 this.addToSet = this::addToHashCommonNodeSet;

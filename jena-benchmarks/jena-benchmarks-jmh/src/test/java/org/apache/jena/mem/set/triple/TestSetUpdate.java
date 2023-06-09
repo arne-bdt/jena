@@ -37,12 +37,12 @@ public class TestSetUpdate {
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
-//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
 //            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
@@ -52,7 +52,8 @@ public class TestSetUpdate {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastHashSetOfTriples"
+            "FastHashSetOfTriples",
+            "FastHashSetOfTriples2"
     })
     public String param1_SetImplementation;
 
@@ -61,6 +62,7 @@ public class TestSetUpdate {
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
     private FastHashSetOfTriples fastHashSetOfTriples;
+    private FastHashSetOfTriples2 fastHashSetOfTriples2;
 
 
     java.util.function.Supplier<Integer> updateSet;
@@ -104,6 +106,17 @@ public class TestSetUpdate {
         return this.fastHashSetOfTriples.size();
     }
 
+    private int updateFastHashSetOfTriples2() {
+        for(int i=0; i<triplesToRemove.size(); i+=10) {
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.fastHashSetOfTriples2.tryRemove(t));
+            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+                    .forEach(t -> this.fastHashSetOfTriples2.tryAdd(t));
+            assert this.fastHashSetOfTriples2.size() == triples.size();
+        }
+        return this.fastHashSetOfTriples2.size();
+    }
+
 
     @Setup(Level.Invocation)
     public void setupInvocation() {
@@ -119,6 +132,10 @@ public class TestSetUpdate {
             case "FastHashSetOfTriples":
                 this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
                 this.triples.forEach(fastHashSetOfTriples::addUnchecked);
+                break;
+            case "FastHashSetOfTriples2":
+                this.fastHashSetOfTriples2 = new FastHashSetOfTriples2(triples.size());
+                this.triples.forEach(fastHashSetOfTriples2::addUnchecked);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);
@@ -139,6 +156,9 @@ public class TestSetUpdate {
                 break;
             case "FastHashSetOfTriples":
                 this.updateSet = this::updateFastHashSetOfTriples;
+                break;
+            case "FastHashSetOfTriples2":
+                this.updateSet = this::updateFastHashSetOfTriples2;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

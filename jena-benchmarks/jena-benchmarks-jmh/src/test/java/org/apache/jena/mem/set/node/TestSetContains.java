@@ -35,12 +35,12 @@ import java.util.List;
 public class TestSetContains {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
             "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
-//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
@@ -53,6 +53,7 @@ public class TestSetContains {
     @Param({
             "HashSet",
             "FastHashSetOfNodes",
+            "FastHashSetOfNodes2",
             "HashCommonNodeSet"
     })
     public String param1_SetImplementation;
@@ -71,6 +72,10 @@ public class TestSetContains {
     private FastHashSetOfNodes subjectFastHashSetOfNodes;
     private FastHashSetOfNodes predicateFastHashSetOfNodes;
     private FastHashSetOfNodes objectFastHashSetOfNodes;
+
+    private FastHashSetOfNodes2 subjectFastHashSetOfNodes2;
+    private FastHashSetOfNodes2 predicateFastHashSetOfNodes2;
+    private FastHashSetOfNodes2 objectFastHashSetOfNodes2;
 
     java.util.function.Supplier<Boolean> setContainsSubjects;
     java.util.function.Supplier<Boolean> setContainsPredicates;
@@ -144,6 +149,33 @@ public class TestSetContains {
         return found;
     }
 
+    private boolean FastHashSetOfNodes2ContainsSubjects() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = subjectFastHashSetOfNodes2.containsKey(t.getSubject());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean FastHashSetOfNodes2ContainsPredicates() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = predicateFastHashSetOfNodes2.containsKey(t.getPredicate());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean FastHashSetOfNodes2ContainsObjects() {
+        var found = false;
+        for(var t: triplesToFind) {
+            found = objectFastHashSetOfNodes2.containsKey(t.getObject());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
     private boolean HashCommonNodeSetContainsSubjects() {
         var found = false;
         for(var t: triplesToFind) {
@@ -202,6 +234,19 @@ public class TestSetContains {
                 this.setContainsSubjects = this::FastHashSetOfNodesContainsSubjects;
                 this.setContainsPredicates = this::FastHashSetOfNodesContainsPredicates;
                 this.setContainsObjects = this::FastHashSetOfNodesContainsObjects;
+                break;
+            case "FastHashSetOfNodes2":
+                this.subjectFastHashSetOfNodes2 = new FastHashSetOfNodes2();
+                this.predicateFastHashSetOfNodes2 = new FastHashSetOfNodes2();
+                this.objectFastHashSetOfNodes2 = new FastHashSetOfNodes2();
+                triples.forEach(t -> {
+                    subjectFastHashSetOfNodes2.tryAdd(t.getSubject());
+                    predicateFastHashSetOfNodes2.tryAdd(t.getPredicate());
+                    objectFastHashSetOfNodes2.tryAdd(t.getObject());
+                });
+                this.setContainsSubjects = this::FastHashSetOfNodes2ContainsSubjects;
+                this.setContainsPredicates = this::FastHashSetOfNodes2ContainsPredicates;
+                this.setContainsObjects = this::FastHashSetOfNodes2ContainsObjects;
                 break;
             case "HashCommonNodeSet":
                 this.subjectHashCommonNodeSet = new HashCommonNodeSet();
