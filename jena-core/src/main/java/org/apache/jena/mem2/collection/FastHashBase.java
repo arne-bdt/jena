@@ -2,7 +2,6 @@ package org.apache.jena.mem2.collection;
 
 import org.apache.jena.mem2.iterator.SparseArrayIterator;
 import org.apache.jena.mem2.spliterator.SparseArraySubSpliterator;
-import org.apache.jena.shared.JenaException;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
@@ -45,7 +44,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     }
 
     private int calcNewPositionsSize() {
-        if (keysPos >= positions.length * LOAD_FACTOR && positions.length <= 1 << 30) { /*grow*/
+        if (keysPos >= positions.length * LOAD_FACTOR) { /*grow*/
             final var newLength = positions.length << 1;
             return newLength < 0 ? Integer.MAX_VALUE : newLength;
         }
