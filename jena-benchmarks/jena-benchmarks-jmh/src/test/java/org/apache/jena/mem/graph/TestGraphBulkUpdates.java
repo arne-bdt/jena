@@ -32,10 +32,9 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
-import java.sql.Array;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.function.Predicate;
 
 @State(Scope.Benchmark)
 public class TestGraphBulkUpdates {
@@ -69,7 +68,7 @@ public class TestGraphBulkUpdates {
 
     private Graph sutCurrent;
     private org.apache.shadedJena480.graph.Graph sut480;
-    private List<org.apache.shadedJena480.graph.Triple> triplesToFind480;
+    private List<org.apache.shadedJena480.graph.Triple> triples480;
 
     private List<Triple> triples;
 
@@ -111,6 +110,9 @@ public class TestGraphBulkUpdates {
                 doubleTriples.add(t);
             }
         }
+        /* Shuffle is import because the order might play a role. We want to test the performance of the
+           contains method regardless of the order */
+        Collections.shuffle(doubleTriples);
         //System.out.println("Found " + doubleTriples.size() + " triples with double literals");
 
         for(int i=0; i<2; i++) {
@@ -147,7 +149,7 @@ public class TestGraphBulkUpdates {
                     triples.forEach(this.sut480::add);
 
                     /*clone the triples because they should not be the same objects*/
-                    this.triplesToFind480 = Releases.v480.cloneTriples(triples);
+                    this.triples480 = Releases.v480.cloneTriples(triples);
                 }
                 break;
             default:

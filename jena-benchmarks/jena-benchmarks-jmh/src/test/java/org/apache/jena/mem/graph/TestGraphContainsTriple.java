@@ -107,6 +107,9 @@ public class TestGraphContainsTriple {
 
                     /*clone the triples because they should not be the same objects*/
                     this.triplesToFindCurrent = Releases.current.cloneTriples(triples);
+                    /* Shuffle is import because the order might play a role. We want to test the performance of the
+                       contains method regardless of the order */
+                    java.util.Collections.shuffle(this.triplesToFindCurrent);
                 }
                 break;
             case JENA_4_8_0:
@@ -119,6 +122,9 @@ public class TestGraphContainsTriple {
 
                     /*clone the triples because they should not be the same objects*/
                     this.triplesToFind480 = Releases.v480.cloneTriples(triples);
+                    /* Shuffle is import because the order might play a role. We want to test the performance of the
+                       contains method regardless of the order */
+                    java.util.Collections.shuffle(this.triplesToFind480);
                 }
                 break;
             default:

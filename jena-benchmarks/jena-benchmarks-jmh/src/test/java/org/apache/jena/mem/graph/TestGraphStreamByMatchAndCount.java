@@ -187,7 +187,9 @@ public class TestGraphStreamByMatchAndCount {
                 for(var i=0; i< triples.size(); i+=sampleIncrement) {
                     this.triplesToFindCurrent.add(Releases.current.cloneTriple(triples.get(i)));
                 }
-
+                /* Shuffle is import because the order might play a role. We want to test the performance of the
+                       contains method regardless of the order */
+                java.util.Collections.shuffle(this.triplesToFindCurrent);
             }
             break;
             case JENA_4_8_0:
@@ -204,6 +206,9 @@ public class TestGraphStreamByMatchAndCount {
                 for(var i=0; i< triples.size(); i+=sampleIncrement) {
                     this.triplesToFind480.add(Releases.v480.cloneTriple(triples.get(i)));
                 }
+                /* Shuffle is import because the order might play a role. We want to test the performance of the
+                       contains method regardless of the order */
+                java.util.Collections.shuffle(this.triplesToFind480);
             }
             break;
             default:

@@ -99,6 +99,9 @@ public class TestGraphDelete {
                 this.allTriplesCurrent.forEach(this.sutCurrent::add);
                 /*cloning is important so that the triples are not reference equal */
                 this.triplesToDeleteFromSutCurrent = Releases.current.cloneTriples(this.allTriplesCurrent);
+                /* Shuffle is import because the order might play a role. We want to test the performance of the
+                       contains method regardless of the order */
+                java.util.Collections.shuffle(this.triplesToDeleteFromSutCurrent);
                 break;
 
             case JENA_4_8_0:
@@ -106,6 +109,9 @@ public class TestGraphDelete {
                 this.allTriples480.forEach(this.sut480::add);
                 /*cloning is important so that the triples are not reference equal */
                 this.triplesToDeleteFromSut480 = Releases.v480.cloneTriples(this.allTriples480);
+                /* Shuffle is import because the order might play a role. We want to test the performance of the
+                       contains method regardless of the order */
+                java.util.Collections.shuffle(this.triplesToDeleteFromSutCurrent);
                 break;
 
             default:
@@ -133,6 +139,7 @@ public class TestGraphDelete {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
+                .measurementIterations(5)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);
