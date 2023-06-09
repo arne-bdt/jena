@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem.graph;
 
+import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Context;
@@ -32,6 +33,7 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -41,16 +43,16 @@ public class TestGraphContainsAnything {
     @Param({
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
-//            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
 //            "C:/temp/res_test/xxx_CGMES_SSH.xml",
 //            "C:/temp/res_test/xxx_CGMES_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-            "../testing/BSBM/bsbm-1m.nt.gz",
-            "../testing/BSBM/bsbm-5m.nt.gz",
-            "../testing/BSBM/bsbm-25m.nt.gz",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+//            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-25m.nt.gz",
     })
     public String param0_GraphUri;
 
@@ -58,9 +60,9 @@ public class TestGraphContainsAnything {
 //            "GraphMem (current)",
 //            "GraphMemB (current)",
             "GraphMem2Fast (current)",
-            "GraphMem2Huge (current)",
+//            "GraphMem2Huge (current)",
             "GraphMem2Legacy (current)",
-            "GraphMem2Roaring (current)",
+//            "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
@@ -73,68 +75,73 @@ public class TestGraphContainsAnything {
 
     java.util.function.Function<String, Boolean> graphContains;
 
-    @Benchmark
-    public boolean graphContainsS__() {
-        return graphContains.apply("S__");
-    }
-
-    @Benchmark
-    public boolean graphContains_P_() {
-        return graphContains.apply("_P_");
-    }
-
-    @Benchmark
-    public boolean graphContains__O() {
-        return graphContains.apply("__O");
-    }
-
-    @Benchmark
-    public boolean graphContainsSP_() {
-        return graphContains.apply("SP_");
-    }
-
-    @Benchmark
-    public boolean graphContainsS_O() {
-        return graphContains.apply("S_O");
-    }
+//    @Benchmark
+//    public boolean graphContainsS__() {
+//        return graphContains.apply("S__");
+//    }
+//
+//    @Benchmark
+//    public boolean graphContains_P_() {
+//        return graphContains.apply("_P_");
+//    }
+//
+//    @Benchmark
+//    public boolean graphContains__O() {
+//        return graphContains.apply("__O");
+//    }
+//
+//    @Benchmark
+//    public boolean graphContainsSP_() {
+//        return graphContains.apply("SP_");
+//    }
+//
+//    @Benchmark
+//    public boolean graphContainsS_O() {
+//        return graphContains.apply("S_O");
+//    }
 
     @Benchmark
     public boolean graphContains_PO() {
         return graphContains.apply("_PO");
     }
 
-//    @Test
-//    public void testContainsPO() {
-//        var triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl");
-//        var sut1 = new GraphMem2Fast();
-//        var sut2 = new GraphMem2Legacy();
-//        triples.forEach(sut1::add);
-//        triples.forEach(sut2::add);
-//        var triplesToFind = Releases.current.cloneTriples(triples);
-//        Assert.assertTrue(GraphMem2FastContains(sut1, triplesToFind));
-//        Assert.assertTrue(GraphMem2LegacyContains(sut2, triplesToFind));
-//    }
-//
-//    private boolean GraphMem2FastContains(Graph sut, List<Triple> triplesToFind) {
-//        var found = false;
-//        for(var t: triplesToFind) {
-//            found = sut.contains(null, t.getPredicate(), t.getObject());
-//            Assert.assertTrue(found);
-//        }
-//        return found;
-//    }
-//
-//    private boolean GraphMem2LegacyContains(Graph sut, List<Triple> triplesToFind) {
-//        var found = false;
-//        for(var t: triplesToFind) {
-//            found = sut.contains(null, t.getPredicate(), t.getObject());
-//            if(!found) {
-//                sut.contains(null, t.getPredicate(), t.getObject());
-//            }
-//            Assert.assertTrue(found);
-//        }
-//        return found;
-//    }
+    @Test
+    public void testContainsPO() {
+        var triples = Releases.current.readTriples("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
+        var triplesToFind = Releases.current.cloneTriples(triples);
+        Assert.assertTrue(GraphMem2LegacyContains(triples, triplesToFind));
+        Assert.assertTrue(GraphMem2FastContains(triples, triplesToFind));
+    }
+
+    private static boolean GraphMem2FastContains(List<Triple> triples, List<Triple> triplesToFind) {
+        var sut = new GraphMem2Fast();
+        triples.forEach(sut::add);
+        var stopwatch = StopWatch.createStarted();
+        var found = false;
+        for(var t: triplesToFind) {
+            found = sut.contains(null, t.getPredicate(), t.getObject());
+            Assert.assertTrue(found);
+        }
+        stopwatch.stop();
+        System.out.println("GraphMem2FastContains: " + stopwatch.getTime());
+        sut.clear();
+        return found;
+    }
+
+    private static boolean GraphMem2LegacyContains(List<Triple> triples, List<Triple> triplesToFind) {
+        var sut = new GraphMem2Legacy();
+        triples.forEach(sut::add);
+        var stopwatch = StopWatch.createStarted();
+        var found = false;
+        for(var t: triplesToFind) {
+            found = sut.contains(null, t.getPredicate(), t.getObject());
+            Assert.assertTrue(found);
+        }
+        stopwatch.stop();
+        System.out.println("GraphMem2LegacyContains: " + stopwatch.getTime());
+        sut.clear();
+        return found;
+    }
 
     private boolean graphContainsCurrent(String pattern) {
         var containsPredicate = getContainsPredicateByPatternCurrent(pattern);
@@ -208,6 +215,10 @@ public class TestGraphContainsAnything {
 
                     /*clone the triples because they should not be the same objects*/
                     this.triplesToFindCurrent = Releases.current.cloneTriples(triples);
+
+                    /* Shuffle is import because the order might play a role. We want to test the performance of the
+                       contains method regardless of the order */
+                    Collections.shuffle(this.triplesToFindCurrent);
                 }
                 break;
             case JENA_4_8_0:
@@ -218,8 +229,10 @@ public class TestGraphContainsAnything {
                     var triples = Releases.v480.readTriples(param0_GraphUri);
                     triples.forEach(this.sut480::add);
 
-                    /*clone the triples because they should not be the same objects*/
+                    /* Shuffle is import because the order might play a role. We want to test the performance of the
+                       contains method regardless of the order */
                     this.triplesToFind480 = Releases.v480.cloneTriples(triples);
+                    Collections.shuffle(this.triplesToFind480);
                 }
                 break;
             default:

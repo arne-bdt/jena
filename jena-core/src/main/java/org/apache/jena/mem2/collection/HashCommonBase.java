@@ -122,7 +122,6 @@ public abstract class HashCommonBase<Key> {
 
     protected abstract void grow();
 
-
     /**
      * Work out the capacity and threshold sizes for a new improved bigger
      * table (bigger by a factor of two, at present).

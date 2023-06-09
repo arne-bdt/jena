@@ -27,7 +27,7 @@ package org.apache.jena.mem2.collection;
  * Only remove operations are not as fast as in {@link:java.util.HashSet}
  * Iterating over this set not get much faster again after removing elements.
  */
-public abstract class FastHashSet<E> extends FastHashBase<E> implements JenaSetHashOptimized<E> {
+public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimized<K> {
 
     public FastHashSet(int initialSize) {
         super(initialSize);
@@ -38,11 +38,11 @@ public abstract class FastHashSet<E> extends FastHashBase<E> implements JenaSetH
     }
 
     @Override
-    public boolean tryAdd(E key) {
+    public boolean tryAdd(K key) {
         return tryAdd(key, key.hashCode());
     }
 
-    public boolean tryAdd(E value, int hashCode) {
+    public boolean tryAdd(K value, int hashCode) {
         var pIndex = findPosition(value, hashCode);
         if (pIndex < 0) {
             final var eIndex = getFreeKeyIndex();
@@ -58,14 +58,14 @@ public abstract class FastHashSet<E> extends FastHashBase<E> implements JenaSetH
     /* Add and get the index of the added element.
      * If the element already exists, return the inverse (~) index of the existing element.
      */
-    public int addAndGetIndex(E value) {
+    public int addAndGetIndex(K value) {
         return addAndGetIndex(value, value.hashCode());
     }
 
     /* Add and get the index of the added element.
      * If the element already exists, return the inverse (~) index of the existing element.
      */
-    public int addAndGetIndex(final E value, final int hashCode) {
+    public int addAndGetIndex(final K value, final int hashCode) {
         final var pIndex = findPosition(value, hashCode);
         if (pIndex < 0) {
             final var eIndex = getFreeKeyIndex();
@@ -80,11 +80,11 @@ public abstract class FastHashSet<E> extends FastHashBase<E> implements JenaSetH
     }
 
     @Override
-    public void addUnchecked(E key) {
+    public void addUnchecked(K key) {
         addUnchecked(key, key.hashCode());
     }
 
-    public void addUnchecked(E value, int hashCode) {
+    public void addUnchecked(K value, int hashCode) {
         final var eIndex = getFreeKeyIndex();
         keys[eIndex] = value;
         hashCodesOrDeletedIndices[eIndex] = hashCode;
@@ -92,7 +92,7 @@ public abstract class FastHashSet<E> extends FastHashBase<E> implements JenaSetH
         growPositionsArrayIfNeeded();
     }
 
-    public E getKeyAt(int i) {
+    public K getKeyAt(int i) {
         return keys[i];
     }
 }

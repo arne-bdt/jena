@@ -53,12 +53,12 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements 
     }
 
     @Override
-    public boolean containsKey(Key key) {
+    public boolean containsKey(final Key key) {
         return findSlot(key) < 0;
     }
 
     @Override
-    public boolean anyMatch(Predicate<Key> predicate) {
+    public boolean anyMatch(final Predicate<Key> predicate) {
         var pos = keys.length-1;
         while (-1 < pos) {
             if (null != keys[pos] && predicate.test(keys[pos])) {

@@ -243,12 +243,12 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
 
     @Override
     public final boolean anyMatch(Predicate<K> predicate) {
-        var pos = keysPos - 1;
-        while (-1 < pos) {
-            if (null != keys[pos] && predicate.test(keys[pos])) {
-                return true;
+        for(int pos: positions) {
+            if (0 != pos) {
+                if (predicate.test(keys[~pos])) {
+                    return true;
+                }
             }
-            pos--;
         }
         return false;
     }

@@ -36,9 +36,9 @@ import java.util.function.Supplier;
  * Only remove operations are not as fast as in {@link:java.util.HashMap}
  * Iterating over this map does not get much faster again after removing elements.
  */
-public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implements JenaMap<Key, Value> {
+public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaMap<K, V> {
 
-    protected Value[] values;
+    protected V[] values;
 
     public FastHashMap(int initialSize) {
         super(initialSize);
@@ -50,7 +50,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
         this.values = newValuesArray(keys.length);
     }
 
-    protected abstract Value[] newValuesArray(int size);
+    protected abstract V[] newValuesArray(int size);
 
     @Override
     protected void growKeysAndHashCodeArrays() {
@@ -73,7 +73,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
     }
 
     @Override
-    public boolean tryPut(Key key, Value value) {
+    public boolean tryPut(K key, V value) {
         final var hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
@@ -91,7 +91,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
     }
 
     @Override
-    public void put(Key key, Value value) {
+    public void put(K key, V value) {
         final var hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
@@ -106,12 +106,12 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
         }
     }
 
-    public Value getValueAt(int i) {
+    public V getValueAt(int i) {
         return values[i];
     }
 
     @Override
-    public Value get(Key key) {
+    public V get(K key) {
         var pIndex = findPosition(key, key.hashCode());
         if (pIndex < 0) {
             return null;
@@ -121,7 +121,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
     }
 
     @Override
-    public Value getOrDefault(Key key, Value defaultValue) {
+    public V getOrDefault(K key, V defaultValue) {
         var pIndex = findPosition(key, key.hashCode());
         if (pIndex < 0) {
             return defaultValue;
@@ -131,7 +131,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
     }
 
     @Override
-    public Value computeIfAbsent(Key key, Supplier<Value> absentValueSupplier) {
+    public V computeIfAbsent(K key, Supplier<V> absentValueSupplier) {
         var pIndex = findPosition(key, key.hashCode());
         if (pIndex < 0) {
             final var eIndex = getFreeKeyIndex();
@@ -148,7 +148,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
     }
 
     @Override
-    public void compute(Key key, Function<Value, Value> valueProcessor) {
+    public void compute(K key, Function<V, V> valueProcessor) {
         final int hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
@@ -174,7 +174,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
 
 
     @Override
-    public ExtendedIterator<Value> valueIterator() {
+    public ExtendedIterator<V> valueIterator() {
         final var initialSize = size();
         final Runnable checkForConcurrentModification = () ->
         {
@@ -184,7 +184,7 @@ public abstract class FastHashMap<Key, Value> extends FastHashBase<Key> implemen
     }
 
     @Override
-    public Spliterator<Value> valueSpliterator() {
+    public Spliterator<V> valueSpliterator() {
         final var initialSize = this.size();
         final Runnable checkForConcurrentModification = () ->
         {
