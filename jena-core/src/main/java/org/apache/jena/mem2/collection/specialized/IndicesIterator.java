@@ -16,33 +16,32 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.iterator;
+package org.apache.jena.mem2.collection.specialized;
 
 import org.apache.jena.util.iterator.NiceIterator;
 
-import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 /**
- * An iterator over a sparse array, that skips null entries.
- *
- * @param <E> the type of the array elements
+ * An iterator over the indices of a {@link FastHashIndexSet}.
+ * A valid index is always positive.
+ * Negative entries are skipped.
  */
-public class SparseArrayIterator<E> extends NiceIterator<E> {
+public class IndicesIterator extends NiceIterator<Integer> {
 
-    private final E[] entries;
+    private final int[] indices;
     private final Runnable checkForConcurrentModification;
     private int pos;
 
-    public SparseArrayIterator(final E[] entries, final Runnable checkForConcurrentModification) {
-        this.entries = entries;
-        this.pos = entries.length - 1;
+    public IndicesIterator(final int[] indices, final Runnable checkForConcurrentModification) {
+        this.indices = indices;
+        this.pos = indices.length - 1;
         this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
-    public SparseArrayIterator(final E[] entries, int toIndexExclusive, final Runnable checkForConcurrentModification) {
-        this.entries = entries;
+    public IndicesIterator(final int[] indices, int toIndexExclusive, final Runnable checkForConcurrentModification) {
+        this.indices = indices;
         this.pos = toIndexExclusive - 1;
         this.checkForConcurrentModification = checkForConcurrentModification;
     }
@@ -57,7 +56,7 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
     @Override
     public boolean hasNext() {
         while (-1 < pos) {
-            if (null != entries[pos]) {
+            if (-1 < indices[pos]) {
                 return true;
             }
             pos--;
@@ -72,19 +71,19 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
      * @throws NoSuchElementException if the iteration has no more elements
      */
     @Override
-    public E next() {
+    public Integer next() {
         this.checkForConcurrentModification.run();
-        if (-1 < pos && null != entries[pos]) {
-            return entries[pos--];
+        if (-1 < pos && -1 < indices[pos]) {
+            return indices[pos--];
         }
         throw new NoSuchElementException();
     }
 
     @Override
-    public void forEachRemaining(Consumer<? super E> action) {
+    public void forEachRemaining(Consumer<? super Integer> action) {
         while (-1 < pos) {
-            if (null != entries[pos]) {
-                action.accept(entries[pos]);
+            if (-1 < indices[pos]) {
+                action.accept(indices[pos]);
             }
             pos--;
         }
