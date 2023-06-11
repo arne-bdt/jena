@@ -150,15 +150,6 @@ public class FastTripleStore implements TripleStore {
                 if (triplesBySubject == null) {
                     return false;
                 }
-                if(triplesBySubject.size() > THRESHOLD_FOR_SECOND_LOOKUP) {
-                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
-                    if (triplesByPredicate == null) {
-                        return false;
-                    }
-                    if(triplesByPredicate.size() < triplesBySubject.size()) {
-                        return triplesByPredicate.anyMatch(t -> tripleMatch.getSubject().equals(t.getSubject()));
-                    }
-                }
                 return triplesBySubject.anyMatch(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
@@ -166,15 +157,6 @@ public class FastTripleStore implements TripleStore {
                 final var triplesBySubject = subjects.get(tripleMatch.getSubject());
                 if (triplesBySubject == null) {
                     return false;
-                }
-                if(triplesBySubject.size() > THRESHOLD_FOR_SECOND_LOOKUP) {
-                    final var triplesByObject = objects.get(tripleMatch.getObject());
-                    if (triplesByObject == null) {
-                        return false;
-                    }
-                    if(triplesByObject.size() < triplesBySubject.size()) {
-                        return triplesByObject.anyMatch(t -> tripleMatch.getSubject().equals(t.getSubject()));
-                    }
                 }
                 return triplesBySubject.anyMatch(t -> tripleMatch.getObject().equals(t.getObject()));
             }
@@ -186,15 +168,6 @@ public class FastTripleStore implements TripleStore {
                 final var triplesByObject = objects.get(tripleMatch.getObject());
                 if (triplesByObject == null) {
                     return false;
-                }
-                if(triplesByObject.size() > THRESHOLD_FOR_SECOND_LOOKUP) {
-                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
-                    if (triplesByPredicate == null) {
-                        return false;
-                    }
-                    if(triplesByPredicate.size() < triplesByObject.size()) {
-                        return triplesByPredicate.anyMatch(t -> tripleMatch.getObject().equals(t.getObject()));
-                    }
                 }
                 return triplesByObject.anyMatch(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
@@ -235,15 +208,6 @@ public class FastTripleStore implements TripleStore {
                 if (triplesBySubject == null) {
                     return Stream.empty();
                 }
-                if(triplesBySubject.size() > THRESHOLD_FOR_SECOND_LOOKUP) {
-                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
-                    if (triplesByPredicate == null) {
-                        return Stream.empty();
-                    }
-                    if(triplesByPredicate.size() < triplesBySubject.size()) {
-                        return triplesByPredicate.keyStream().filter(t -> tripleMatch.getSubject().equals(t.getSubject()));
-                    }
-                }
                 return triplesBySubject.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
@@ -251,15 +215,6 @@ public class FastTripleStore implements TripleStore {
                 final var triplesBySubject = subjects.get(tripleMatch.getSubject());
                 if (triplesBySubject == null) {
                     return Stream.empty();
-                }
-                if(triplesBySubject.size() > THRESHOLD_FOR_SECOND_LOOKUP) {
-                    final var triplesByObject = objects.get(tripleMatch.getObject());
-                    if (triplesByObject == null) {
-                        return Stream.empty();
-                    }
-                    if(triplesByObject.size() < triplesBySubject.size()) {
-                        return triplesByObject.keyStream().filter(t -> tripleMatch.getSubject().equals(t.getSubject()));
-                    }
                 }
                 return triplesBySubject.keyStream().filter(t -> tripleMatch.getObject().equals(t.getObject()));
             }
@@ -273,15 +228,6 @@ public class FastTripleStore implements TripleStore {
                 final var triplesByObject = objects.get(tripleMatch.getObject());
                 if (triplesByObject == null) {
                     return Stream.empty();
-                }
-                if(triplesByObject.size() > THRESHOLD_FOR_SECOND_LOOKUP) {
-                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
-                    if (triplesByPredicate == null) {
-                        return Stream.empty();
-                    }
-                    if(triplesByPredicate.size() < triplesByObject.size()) {
-                        return triplesByPredicate.keyStream().filter(t -> tripleMatch.getObject().equals(t.getObject()));
-                    }
                 }
                 return triplesByObject.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
@@ -321,15 +267,6 @@ public class FastTripleStore implements TripleStore {
                 if (triplesBySubject == null) {
                     return NullIterator.emptyIterator();
                 }
-                if(triplesBySubject.size() > THRESHOLD_FOR_SECOND_LOOKUP) {
-                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
-                    if (triplesByPredicate == null) {
-                        return NullIterator.emptyIterator();
-                    }
-                    if(triplesByPredicate.size() < triplesBySubject.size()) {
-                        return triplesByPredicate.keyIterator().filterKeep(t -> tripleMatch.getSubject().equals(t.getSubject()));
-                    }
-                }
                 return triplesBySubject.keyIterator().filterKeep(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
@@ -337,15 +274,6 @@ public class FastTripleStore implements TripleStore {
                 final var triplesBySubject = subjects.get(tripleMatch.getSubject());
                 if (triplesBySubject == null) {
                     return NullIterator.emptyIterator();
-                }
-                if(triplesBySubject.size() > THRESHOLD_FOR_SECOND_LOOKUP) {
-                    final var triplesByObject = objects.get(tripleMatch.getObject());
-                    if (triplesByObject == null) {
-                        return NullIterator.emptyIterator();
-                    }
-                    if(triplesByObject.size() < triplesBySubject.size()) {
-                        return triplesByObject.keyIterator().filterKeep(t -> tripleMatch.getSubject().equals(t.getSubject()));
-                    }
                 }
                 return triplesBySubject.keyIterator().filterKeep(t -> tripleMatch.getObject().equals(t.getObject()));
             }
@@ -359,15 +287,6 @@ public class FastTripleStore implements TripleStore {
                 final var triplesByObject = objects.get(tripleMatch.getObject());
                 if (triplesByObject == null) {
                     return NullIterator.emptyIterator();
-                }
-                if(triplesByObject.size() > THRESHOLD_FOR_SECOND_LOOKUP) {
-                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
-                    if (triplesByPredicate == null) {
-                        return NullIterator.emptyIterator();
-                    }
-                    if(triplesByPredicate.size() < triplesByObject.size()) {
-                        return triplesByPredicate.keyIterator().filterKeep(t -> tripleMatch.getObject().equals(t.getObject()));
-                    }
                 }
                 return triplesByObject.keyIterator().filterKeep(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }

@@ -42,14 +42,8 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
 
     protected abstract K[] newKeysArray(int size);
 
-    /**
-     * Using the same hash code optimization as {@link java.util.HashMap#hash(Object)}
-     * @param hashCode
-     * @return
-     */
     protected final int calcStartIndexByHashCode(final int hashCode) {
-        /*  */
-        return ((hashCode ^ (hashCode >>> 16)) & (positions.length - 1));
+        return hashCode & (positions.length - 1);
     }
 
     private int calcNewPositionsSize() {
@@ -242,12 +236,12 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
 
     @Override
     public final boolean anyMatch(Predicate<K> predicate) {
-        for(int pos: positions) {
-            if (0 != pos) {
-                if (predicate.test(keys[~pos])) {
-                    return true;
-                }
+        var pos = keysPos - 1;
+        while (-1 < pos) {
+            if (null != keys[pos] && predicate.test(keys[pos])) {
+                return true;
             }
+            pos--;
         }
         return false;
     }
