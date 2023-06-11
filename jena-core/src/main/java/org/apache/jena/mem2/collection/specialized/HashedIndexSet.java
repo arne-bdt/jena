@@ -2,37 +2,36 @@ package org.apache.jena.mem2.collection.specialized;
 
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Predicate;
 
-public class FastHashIndexSet {
-    protected static final int MINIMUM_POSITION_SIZE = 16;
-    protected static final int MINIMUM_INDICES_SIZE = 10;
-    protected int indicesPos = 0;
-    protected int[] indices;
-    protected int lastDeletedIndicesPosInverse = 0;
-    protected int removedIndicesCount = 0;
+public class HashedIndexSet {
+    protected static final int DEFAULT_INITIAL_INDICES_SIZE = 16;
+
+    protected int count = 0;
     /**
-     * The negative indices to the entries and hashCode arrays.
-     * The indices of the positions array are derived from the hashCodes.
+     * The negative indices.
+     * The positions in the array are derived from the hashCodes.
      * Any position 0 indicates an empty element.
      */
-    protected int[] positions;
+    protected int[] inverseIndices;
 
-    public FastHashIndexSet(int initialSize) {
+    public HashedIndexSet(int initialSize) {
         var positionsSize = Integer.highestOneBit(initialSize << 1);
         if(positionsSize < initialSize << 1) {
             positionsSize <<= 1;
         }
-        this.positions = new int[positionsSize];
-        this.indices = new int[initialSize];
+        this.inverseIndices = new int[positionsSize];
     }
 
-    public FastHashIndexSet() {
-        this.positions = new int[MINIMUM_POSITION_SIZE];
-        this.indices = new int[MINIMUM_INDICES_SIZE];
+    public HashedIndexSet() {
+        this.inverseIndices = new int[DEFAULT_INITIAL_INDICES_SIZE];
+    }
+
+    private HashedIndexSet(final int[] inverseIndices, final int count) {
+        this.inverseIndices = inverseIndices;
+        this.count = count;
     }
 
     /**
@@ -41,12 +40,12 @@ public class FastHashIndexSet {
      * @return
      */
     protected final int calcStartSlotForIndex(final int index) {
-        return index & (positions.length - 1);
+        return index & (inverseIndices.length - 1);
     }
 
     private int calcNewPositionsSize() {
-        if (indicesPos << 1 > positions.length) { /*grow*/
-            final var newLength = positions.length << 1;
+        if (count << 1 > inverseIndices.length) { /*grow*/
+            final var newLength = inverseIndices.length << 1;
             return newLength < 0 ? Integer.MAX_VALUE : newLength;
         }
         return -1;
@@ -57,28 +56,13 @@ public class FastHashIndexSet {
         if (newSize < 0) {
             return;
         }
-        final var oldPositions = this.positions;
-        this.positions = new int[newSize];
+        final var oldPositions = this.inverseIndices;
+        this.inverseIndices = new int[newSize];
         for (int oldPosition : oldPositions) {
             if (0 != oldPosition) {
-                this.positions[findEmptySlotWithoutEqualityCheck(indices[~oldPosition])] = oldPosition;
+                this.inverseIndices[findEmptySlotWithoutEqualityCheck(~oldPosition)] = oldPosition;
             }
         }
-    }
-
-    protected final boolean tryGrowPositionsArrayIfNeeded() {
-        final var newSize = calcNewPositionsSize();
-        if (newSize < 0) {
-            return false;
-        }
-        final var oldPositions = this.positions;
-        this.positions = new int[newSize];
-        for (int oldPosition : oldPositions) {
-            if (0 != oldPosition) {
-                this.positions[findEmptySlotWithoutEqualityCheck(indices[~oldPosition])] = oldPosition;
-            }
-        }
-        return true;
     }
 
     /**
@@ -89,49 +73,24 @@ public class FastHashIndexSet {
      * @return the number of elements in this collection
      */
     public int size() {
-        return indicesPos - removedIndicesCount;
-    }
-
-    protected final int getFreeIndexSlot() {
-        final int index;
-        if (lastDeletedIndicesPosInverse == 0) {
-            index = indicesPos++;
-            if (index == indices.length) {
-                growIndexArray();
-            }
-        } else {
-            index = ~lastDeletedIndicesPosInverse;
-            lastDeletedIndicesPosInverse = index == indices[index] ? 0 : indices[index];
-            removedIndicesCount--;
-        }
-        return index;
-    }
-
-    protected void growIndexArray() {
-        var newSize = (indices.length >> 1) + indices.length;
-        if (newSize < 0) {
-            newSize = Integer.MAX_VALUE;
-        }
-        this.indices = Arrays.copyOf(this.indices, newSize);
+        return count;
     }
 
     public boolean tryAdd(final int index) {
-        var pSlot = findPositionsSlot(index);
-        if (pSlot < 0) {
-            final var iSlot = getFreeIndexSlot();
-            indices[iSlot] = index;
-            positions[~pSlot] = ~iSlot;
-            growPositionsArrayIfNeeded();
+        growPositionsArrayIfNeeded();
+        var slot = findSlot(index);
+        if (slot < 0) {
+            inverseIndices[~slot] = ~index;
+            count++;
             return true;
         }
         return false;
     }
 
     public void addUnchecked(final int index) {
-        final var iSlot = getFreeIndexSlot();
-        indices[iSlot] = index;
-        positions[findEmptySlotWithoutEqualityCheck(index)] = ~iSlot;
         growPositionsArrayIfNeeded();
+        inverseIndices[findEmptySlotWithoutEqualityCheck(index)] = ~index;
+        count++;
     }
 
     /**
@@ -155,32 +114,29 @@ public class FastHashIndexSet {
      *                                       is not supported by this collection
      */
     public final boolean tryRemove(final int index) {
-        final var pSlot = findPositionsSlot(index);
-        if (pSlot < 0) {
+        final var slot = findSlot(index);
+        if (slot < 0) {
             return false;
         }
-        removeFrom(pSlot);
+        removeFrom(slot);
         return true;
     }
 
     public final void removeUnchecked(final int i) {
-        removeFrom(findPositionsSlot(i));
+        removeFrom(findSlot(i));
     }
 
     protected void removeFrom(int here) {
-        final var pIndex = ~positions[here];
-        indices[pIndex] = lastDeletedIndicesPosInverse == 0 ? ~pIndex : lastDeletedIndicesPosInverse;
-        lastDeletedIndicesPosInverse = ~pIndex;
-        removedIndicesCount++;
+        count--;
         while (true) {
-            positions[here] = 0;
+            inverseIndices[here] = 0;
             int scan = here;
             while (true) {
-                if (--scan < 0) scan += positions.length;
-                if (positions[scan] == 0) return;
-                int r = calcStartSlotForIndex(indices[~positions[scan]]);
+                if (--scan < 0) scan += inverseIndices.length;
+                if (inverseIndices[scan] == 0) return;
+                int r = calcStartSlotForIndex(~inverseIndices[scan]);
                 if ((scan > r || r >= here) && (r >= here || here >= scan) && (here >= scan || scan > r)) {
-                    positions[here] = positions[scan];
+                    inverseIndices[here] = inverseIndices[scan];
                     here = scan;
                     break;
                 }
@@ -194,28 +150,28 @@ public class FastHashIndexSet {
      * @return {@code true} if this collection contains no elements
      */
     public final boolean isEmpty() {
-        return this.size() == 0;
+        return count == 0;
     }
 
     public final boolean contains(int index) {
-        var pIndex = calcStartSlotForIndex(index);
+        var slot = calcStartSlotForIndex(index);
         while (true) {
-            if (0 == positions[pIndex]) {
+            if (0 == inverseIndices[slot]) {
                 return false;
             } else {
-                if (index == indices[~positions[pIndex]]) {
+                if (index == ~inverseIndices[slot]) {
                     return true;
-                } else if (--pIndex < 0) {
-                    pIndex += positions.length;
+                } else if (--slot < 0) {
+                    slot += inverseIndices.length;
                 }
             }
         }
     }
 
     public final boolean anyMatch(Predicate<Integer> predicate) {
-        for(int pos: positions) {
+        for(int pos: inverseIndices) {
             if (0 != pos) {
-                if (predicate.test(indices[~pos])) {
+                if (predicate.test(~pos)) {
                     return true;
                 }
             }
@@ -223,26 +179,25 @@ public class FastHashIndexSet {
         return false;
     }
 
-    public final ExtendedIterator<Integer> interator() {
-        final var initialSize = size();
+    public final ExtendedIterator<Integer> iterator() {
+        final var initialSize = count;
         final Runnable checkForConcurrentModification = () ->
         {
-            if (size() != initialSize) throw new ConcurrentModificationException();
+            if (count != initialSize) throw new ConcurrentModificationException();
         };
-        return new IndicesIterator(indices, indicesPos, checkForConcurrentModification);
+        return new IndicesIterator(inverseIndices, checkForConcurrentModification);
     }
 
-    protected final int findPositionsSlot(final int i) {
-        var pIndex = calcStartSlotForIndex(i);
+    protected final int findSlot(final int index) {
+        var slot = calcStartSlotForIndex(index);
         while (true) {
-            if (0 == positions[pIndex]) {
-                return ~pIndex;
+            if (0 == inverseIndices[slot]) {
+                return ~slot;
             } else {
-                final var pos = ~positions[pIndex];
-                if (i == indices[pos]) {
-                    return pIndex;
-                } else if (--pIndex < 0) {
-                    pIndex += positions.length;
+                if (index == ~inverseIndices[slot]) {
+                    return slot;
+                } else if (--slot < 0) {
+                    slot += inverseIndices.length;
                 }
             }
         }
@@ -251,10 +206,10 @@ public class FastHashIndexSet {
     protected final int findEmptySlotWithoutEqualityCheck(final int hashCode) {
         var pIndex = calcStartSlotForIndex(hashCode);
         while (true) {
-            if (0 == positions[pIndex]) {
+            if (0 == inverseIndices[pIndex]) {
                 return pIndex;
             } else if (--pIndex < 0) {
-                pIndex += positions.length;
+                pIndex += inverseIndices.length;
             }
         }
     }
@@ -267,19 +222,69 @@ public class FastHashIndexSet {
      *                                       is not supported by this collection
      */
     public void clear() {
-        positions = new int[MINIMUM_POSITION_SIZE];
-        indices = new int[MINIMUM_INDICES_SIZE];
-        indicesPos = 0;
-        lastDeletedIndicesPosInverse = 0;
-        removedIndicesCount = 0;
+        inverseIndices = new int[DEFAULT_INITIAL_INDICES_SIZE];
+        count = 0;
     }
 
     public final Spliterator<Integer> spliterator() {
-        final var initialSize = this.size();
+        final var initialSize = count;
         final Runnable checkForConcurrentModification = () ->
         {
-            if (this.size() != initialSize) throw new ConcurrentModificationException();
+            if (count != initialSize) throw new ConcurrentModificationException();
         };
-        return new IndicesSpliterator(indices, 0, indicesPos, checkForConcurrentModification);
+        return new IndicesSpliterator(inverseIndices, checkForConcurrentModification);
+    }
+
+    public HashedIndexSet clone() {
+        return new HashedIndexSet(this.inverseIndices.clone(), this.count);
+    }
+
+    public HashedIndexSet calcIntersection(HashedIndexSet other) {
+        if(this.count < other.count) {
+            return calcIntersection(this, other);
+        } else {
+            return calcIntersection(other, this);
+        }
+    }
+
+    public static HashedIndexSet calcIntersection(HashedIndexSet smaller, HashedIndexSet larger) {
+        var result = smaller.clone();
+        var slot = result.size()-1;
+        while (-1 < slot) {
+            if (0 != smaller.inverseIndices[slot] && !larger.contains(~result.inverseIndices[slot])) {
+                result.inverseIndices[slot] = 0;
+                result.count--;
+            }
+            slot--;
+        }
+        return result;
+    }
+
+    public boolean intersects(HashedIndexSet other) {
+        if(this.count < other.count) {
+            return intersects(this, other);
+        } else {
+            return intersects(other, this);
+        }
+    }
+
+    private static boolean intersects(HashedIndexSet smaller, HashedIndexSet larger) {
+        var slot = smaller.inverseIndices.length-1;
+        var otherModBase = larger.inverseIndices.length-1;
+        while (-1 < slot) {
+            if (0 != smaller.inverseIndices[slot]) {
+                final var index = ~smaller.inverseIndices[slot];
+                var otherSlot = index & otherModBase;
+                while (0 != larger.inverseIndices[otherSlot]) {
+                    if (index == ~larger.inverseIndices[otherSlot]) {
+                        return true;
+                    } else if (--otherSlot < 0) {
+                        otherSlot += larger.inverseIndices.length;
+                    }
+                }
+            }
+            slot--;
+        }
+        return false;
     }
 }

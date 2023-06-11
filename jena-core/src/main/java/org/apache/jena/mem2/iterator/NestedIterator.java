@@ -32,6 +32,8 @@ public class NestedIterator<E, I> extends NiceIterator<E> {
     final Function<I, ExtendedIterator<E>> mapper;
     ExtendedIterator<E> currentIterator;
 
+    private boolean hasNext = false;
+
     public NestedIterator(Iterator<I> parentIterator, Function<I, ExtendedIterator<E>> mapper) {
         this.parentIterator = parentIterator;
         this.mapper = mapper;
@@ -43,20 +45,21 @@ public class NestedIterator<E, I> extends NiceIterator<E> {
     @Override
     public boolean hasNext() {
         if (this.currentIterator.hasNext()) {
-            return true;
+            return hasNext = true;
         }
         while (this.parentIterator.hasNext()) {
             this.currentIterator = this.mapper.apply(this.parentIterator.next());
             if (this.currentIterator.hasNext()) {
-                return true;
+                return hasNext = true;
             }
         }
-        return false;
+        return hasNext = false;
     }
 
     @Override
     public E next() {
-        if (this.currentIterator.hasNext()) {
+        if (hasNext || this.currentIterator.hasNext()) {
+            hasNext = false;
             return this.currentIterator.next();
         }
         while (this.parentIterator.hasNext()) {

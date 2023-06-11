@@ -16,35 +16,29 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2.iterator;
+package org.apache.jena.mem2.collection.specialized;
 
 import org.apache.jena.util.iterator.NiceIterator;
 
-import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 /**
- * An iterator over a sparse array, that skips null entries.
- *
- * @param <E> the type of the array elements
+ * An iterator over the indices of a {@link FastHashIndexSet}.
+ * A valid index is always positive.
+ * Negative entries are skipped.
  */
-public class SparseArrayIterator<E> extends NiceIterator<E> {
+public class InverseIndicesIterator extends NiceIterator<Integer> {
 
-    private final E[] entries;
+    private final int[] inverseIndices;
     private final Runnable checkForConcurrentModification;
     private int pos;
+
     private boolean hasNext=false;
 
-    public SparseArrayIterator(final E[] entries, final Runnable checkForConcurrentModification) {
-        this.entries = entries;
-        this.pos = entries.length - 1;
-        this.checkForConcurrentModification = checkForConcurrentModification;
-    }
-
-    public SparseArrayIterator(final E[] entries, int toIndexExclusive, final Runnable checkForConcurrentModification) {
-        this.entries = entries;
-        this.pos = toIndexExclusive - 1;
+    public InverseIndicesIterator(final int[] inverseIndices, final Runnable checkForConcurrentModification) {
+        this.inverseIndices = inverseIndices;
+        this.pos = inverseIndices.length - 1;
         this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
@@ -58,7 +52,7 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
     @Override
     public boolean hasNext() {
         while (-1 < pos) {
-            if (null != entries[pos]) {
+            if (0 != inverseIndices[pos]) {
                 return hasNext = true;
             }
             pos--;
@@ -73,22 +67,30 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
      * @throws NoSuchElementException if the iteration has no more elements
      */
     @Override
-    public E next() {
+    public Integer next() {
         this.checkForConcurrentModification.run();
         if (hasNext || hasNext()) {
             hasNext = false;
-            return entries[pos--];
+            return ~inverseIndices[pos--];
         }
         throw new NoSuchElementException();
     }
 
     @Override
-    public void forEachRemaining(Consumer<? super E> action) {
-        while (-1 < pos) {
-            if (null != entries[pos]) {
-                action.accept(entries[pos]);
+    public void forEachRemaining(Consumer<? super Integer> action) {
+        if(pos == inverseIndices.length - 1) {
+            for(int inverseIndex: inverseIndices) {
+                if(0 != inverseIndex) {
+                    action.accept(~inverseIndex);
+                }
             }
-            pos--;
+        } else {
+            while (-1 < pos) {
+                if (0 != inverseIndices[pos]) {
+                    action.accept(~inverseIndices[pos]);
+                }
+                pos--;
+            }
         }
         this.checkForConcurrentModification.run();
     }

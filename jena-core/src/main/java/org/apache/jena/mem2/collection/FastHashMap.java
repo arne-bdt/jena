@@ -77,12 +77,14 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
         final var hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
+            if(tryGrowPositionsArrayIfNeeded()) {
+                pIndex = findPosition(key, hashCode);
+            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             values[eIndex] = value;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
             positions[~pIndex] = ~eIndex;
-            growPositionsArrayIfNeeded();
             return true;
         } else {
             values[~positions[pIndex]] = value;
@@ -95,12 +97,14 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
         final var hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
+            if(tryGrowPositionsArrayIfNeeded()) {
+                pIndex = findPosition(key, hashCode);
+            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             values[eIndex] = value;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
             positions[~pIndex] = ~eIndex;
-            growPositionsArrayIfNeeded();
         } else {
             values[~positions[pIndex]] = value;
         }
@@ -132,15 +136,18 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     @Override
     public V computeIfAbsent(K key, Supplier<V> absentValueSupplier) {
-        var pIndex = findPosition(key, key.hashCode());
+        final var hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
+            if(tryGrowPositionsArrayIfNeeded()) {
+                pIndex = findPosition(key, hashCode);
+            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
-            hashCodesOrDeletedIndices[eIndex] = key.hashCode();
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
             final var value = absentValueSupplier.get();
             values[eIndex] = value;
             positions[~pIndex] = ~eIndex;
-            tryGrowPositionsArrayIfNeeded();
             return value;
         } else {
             return values[~positions[pIndex]];

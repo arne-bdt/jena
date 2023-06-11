@@ -34,6 +34,8 @@ public class IndicesIterator extends NiceIterator<Integer> {
     private final Runnable checkForConcurrentModification;
     private int pos;
 
+    private boolean hasNext=false;
+
     public IndicesIterator(final int[] indices, final Runnable checkForConcurrentModification) {
         this.indices = indices;
         this.pos = indices.length - 1;
@@ -57,11 +59,11 @@ public class IndicesIterator extends NiceIterator<Integer> {
     public boolean hasNext() {
         while (-1 < pos) {
             if (-1 < indices[pos]) {
-                return true;
+                return hasNext = true;
             }
             pos--;
         }
-        return false;
+        return hasNext = false;
     }
 
     /**
@@ -73,7 +75,8 @@ public class IndicesIterator extends NiceIterator<Integer> {
     @Override
     public Integer next() {
         this.checkForConcurrentModification.run();
-        if (-1 < pos && -1 < indices[pos]) {
+        if (hasNext || hasNext()) {
+            hasNext = false;
             return indices[pos--];
         }
         throw new NoSuchElementException();
@@ -81,11 +84,19 @@ public class IndicesIterator extends NiceIterator<Integer> {
 
     @Override
     public void forEachRemaining(Consumer<? super Integer> action) {
-        while (-1 < pos) {
-            if (-1 < indices[pos]) {
-                action.accept(indices[pos]);
+        if(pos == indices.length - 1) {
+            for(int index: indices) {
+                if(-1 < index) {
+                    action.accept(indices[index]);
+                }
             }
-            pos--;
+        } else {
+            while (-1 < pos) {
+                if (-1 < indices[pos]) {
+                    action.accept(indices[pos]);
+                }
+                pos--;
+            }
         }
         this.checkForConcurrentModification.run();
     }

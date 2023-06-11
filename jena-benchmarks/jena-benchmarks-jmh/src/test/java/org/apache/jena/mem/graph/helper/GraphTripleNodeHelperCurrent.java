@@ -22,10 +22,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
-import org.apache.jena.mem2.GraphMem2Fast;
-import org.apache.jena.mem2.GraphMem2Huge;
-import org.apache.jena.mem2.GraphMem2Legacy;
-import org.apache.jena.mem2.GraphMem2Roaring;
+import org.apache.jena.mem2.*;
 import org.apache.jena.memB.GraphMemB;
 import org.apache.jena.riot.RDFDataMgr;
 
@@ -43,6 +40,8 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
                 return new GraphMemB();
             case GraphMem2Fast:
                 return new GraphMem2Fast();
+            case GraphMem2FullyIndexed:
+                return new GraphMem2FullyIndexed();
             case GraphMem2Huge:
                 return new GraphMem2Huge();
             case GraphMem2Legacy:

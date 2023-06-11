@@ -18,12 +18,13 @@
 package org.apache.jena.mem.set;
 
 import org.apache.jena.mem2.collection.specialized.FastHashIndexSet;
+import org.apache.jena.mem2.collection.specialized.HashedIndexSet;
 import org.junit.Test;
 
-public class TestFashHashIndexSet {
+public class TestIndexSet {
 
     @Test
-    public void testAdd() {
+    public void testFastHashIndexSet() {
         var set = new FastHashIndexSet();
         assert set.tryAdd(0);
         assert set.tryAdd(1);
@@ -57,5 +58,39 @@ public class TestFashHashIndexSet {
         assert set.size() == 0;
     }
 
+    @Test
+    public void testHashIndexSet() {
+        var set = new HashedIndexSet();
+        assert set.tryAdd(0);
+        assert set.tryAdd(1);
+        assert set.tryAdd(2);
+
+        assert set.contains(0);
+        assert set.contains(1);
+        assert set.contains(2);
+        assert !set.isEmpty();
+        assert set.size() == 3;
+
+        assert !set.contains(3);
+
+        assert set.tryRemove(0);
+        assert !set.contains(0);
+        assert set.size() == 2;
+
+        assert set.tryRemove(2);
+        assert !set.contains(2);
+        assert set.size() == 1;
+
+        assert !set.tryAdd(1);
+
+        assert set.tryAdd(3);
+        assert set.contains(3);
+        assert set.size() == 2;
+
+        assert set.tryRemove(3);
+        assert set.tryRemove(1);
+        assert set.isEmpty();
+        assert set.size() == 0;
+    }
 
 }
