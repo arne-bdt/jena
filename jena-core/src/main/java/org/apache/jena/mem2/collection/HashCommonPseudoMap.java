@@ -33,7 +33,7 @@ import java.util.function.Supplier;
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class HashCommonKeyedSet<Key, Value> extends HashCommonBase<Value> implements JenaMap<Key, Value> {
+public abstract class HashCommonPseudoMap<Key, Value> extends HashCommonBase<Value> implements JenaMap<Key, Value> {
 
     protected abstract Key getKey(Value value);
 
@@ -42,7 +42,7 @@ public abstract class HashCommonKeyedSet<Key, Value> extends HashCommonBase<Valu
      * capacity and the corresponding threshold. All the key elements start out
      * null.
      */
-    protected HashCommonKeyedSet(int initialCapacity) {
+    protected HashCommonPseudoMap(int initialCapacity) {
         super(initialCapacity);
     }
 

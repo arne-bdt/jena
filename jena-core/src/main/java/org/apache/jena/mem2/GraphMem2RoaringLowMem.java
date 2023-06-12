@@ -15,30 +15,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.lowMem;
 
-import org.apache.jena.graph.Node;
-import org.apache.jena.mem2.collection.HashCommonPseudoMap;
+package org.apache.jena.mem2;
 
-public class LowMemHashedBunchMap extends HashCommonPseudoMap<Node, TripleBunch> {
+import org.apache.jena.mem2.store.roaringLowMem.RoaringLowMemTripleStore;
 
-    public LowMemHashedBunchMap() {
-        super(10);
+/**
+ * A graph that stores triples in memory. This class is not thread-safe.
+ */
+public class GraphMem2RoaringLowMem extends GraphMem2 {
+
+    public GraphMem2RoaringLowMem() {
+        super(new RoaringLowMemTripleStore());
     }
 
-    @Override
-    protected TripleBunch[] newKeysArray(int size) {
-        return new TripleBunch[size];
-    }
-
-
-    @Override
-    protected Node getKey(TripleBunch tripleBunch) {
-        return tripleBunch.getIndexingNode();
-    }
-
-    @Override
-    public void clear() {
-        super.clear(10);
-    }
 }

@@ -50,6 +50,8 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
                 return new GraphMem2LowMem();
             case GraphMem2Roaring:
                 return new GraphMem2Roaring();
+            case GraphMem2RoaringLowMem:
+                return new GraphMem2RoaringLowMem();
             default:
                 throw new IllegalArgumentException("Unknown graph class: " + graphClass);
         }

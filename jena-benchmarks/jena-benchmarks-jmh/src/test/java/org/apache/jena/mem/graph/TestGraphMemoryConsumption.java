@@ -45,8 +45,8 @@ public class TestGraphMemoryConsumption {
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
             "../testing/BSBM/bsbm-1m.nt.gz",
-            "../testing/BSBM/bsbm-5m.nt.gz",
-            "../testing/BSBM/bsbm-25m.nt.gz",
+//            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-25m.nt.gz",
     })
     public String param0_GraphUri;
 
@@ -56,6 +56,7 @@ public class TestGraphMemoryConsumption {
 //            "GraphMem2Fast (current)",
 //            "GraphMem2FullyIndexed (current)",
 //            "GraphMem2Huge (current)",
+            "GraphMem2RoaringLowMem (current)",
             "GraphMem2Legacy (current)",
             "GraphMem2LowMem (current)",
             "GraphMem2Roaring (current)",
