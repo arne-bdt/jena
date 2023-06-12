@@ -71,27 +71,6 @@ public abstract class HashCommonBase<Key> {
         return size == 0;
     }
 
-    public abstract boolean containsKey(Key key);
-
-    public ExtendedIterator<Key> keyIterator() {
-        final var initialSize = size;
-        final Runnable checkForConcurrentModification = () -> {
-            if (size != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArrayIterator<>(keys, checkForConcurrentModification);
-    }
-
-    public Spliterator<Key> keySpliterator() {
-        final var initialSize = size;
-        final Runnable checkForConcurrentModification = () -> {
-            if (size != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
-    }
-
-    public Stream<Key> keyStream() {
-        return StreamSupport.stream(keySpliterator(), false);
-    }
 
     /**
      * Subclasses must implement to answer a new Key[size] array.

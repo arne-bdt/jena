@@ -59,6 +59,15 @@ public class TestIndexSet {
     }
 
     @Test
+    public void testInitialSize() {
+        var set = new HashedIndexSet(4);
+        assert set.size() == 0;
+
+        set = new HashedIndexSet(2);
+        assert set.size() == 0;
+    }
+
+    @Test
     public void testHashIndexSet() {
         var set = new HashedIndexSet();
         assert set.tryAdd(0);

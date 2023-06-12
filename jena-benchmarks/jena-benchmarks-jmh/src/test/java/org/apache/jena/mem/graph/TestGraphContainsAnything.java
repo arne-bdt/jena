@@ -35,10 +35,13 @@ import org.openjdk.jmh.runner.Runner;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Predicate;
 
 @State(Scope.Benchmark)
 public class TestGraphContainsAnything {
+
+
 
     @Param({
 //            "../testing/cheeses-0.1.ttl",
@@ -57,11 +60,13 @@ public class TestGraphContainsAnything {
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
+//            "GraphMem (current)",
 //            "GraphMemB (current)",
-            "GraphMem2Fast (current)",
+//            "GraphMem2Fast (current)",
+//            "GraphMem2FullyIndexed (current)",
 //            "GraphMem2Huge (current)",
             "GraphMem2Legacy (current)",
+            "GraphMem2LowMem (current)",
             "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
@@ -218,7 +223,7 @@ public class TestGraphContainsAnything {
 
                     /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                    Collections.shuffle(this.triplesToFindCurrent);
+                    Collections.shuffle(this.triplesToFindCurrent, new Random(4721));
                 }
                 break;
             case JENA_4_8_0:
@@ -232,7 +237,7 @@ public class TestGraphContainsAnything {
                     /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
                     this.triplesToFind480 = Releases.v480.cloneTriples(triples);
-                    Collections.shuffle(this.triplesToFind480);
+                    Collections.shuffle(this.triplesToFind480, new Random(4721));
                 }
                 break;
             default:

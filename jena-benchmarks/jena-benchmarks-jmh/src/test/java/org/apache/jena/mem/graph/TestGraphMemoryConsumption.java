@@ -44,7 +44,7 @@ public class TestGraphMemoryConsumption {
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-//            "../testing/BSBM/bsbm-1m.nt.gz",
+            "../testing/BSBM/bsbm-1m.nt.gz",
             "../testing/BSBM/bsbm-5m.nt.gz",
             "../testing/BSBM/bsbm-25m.nt.gz",
     })
@@ -53,9 +53,11 @@ public class TestGraphMemoryConsumption {
     @Param({
 //            "GraphMem (current)",
 //            "GraphMemB (current)",
-            "GraphMem2Fast (current)",
+//            "GraphMem2Fast (current)",
+//            "GraphMem2FullyIndexed (current)",
 //            "GraphMem2Huge (current)",
-//            "GraphMem2Legacy (current)",
+            "GraphMem2Legacy (current)",
+            "GraphMem2LowMem (current)",
             "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })

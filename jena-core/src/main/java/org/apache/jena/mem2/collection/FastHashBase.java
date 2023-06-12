@@ -16,6 +16,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     protected int[] hashCodesOrDeletedIndices;
     protected int lastDeletedIndex = -1;
     protected int removedKeysCount = 0;
+
     /**
      * The negative indices to the entries and hashCode arrays.
      * The indices of the positions array are derived from the hashCodes.

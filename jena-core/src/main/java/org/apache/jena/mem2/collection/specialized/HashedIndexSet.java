@@ -25,6 +25,10 @@ public class HashedIndexSet {
         this.inverseIndices = new int[positionsSize];
     }
 
+    public static HashedIndexSet createSmall() {
+        return new HashedIndexSet(2);
+    }
+
     public HashedIndexSet() {
         this.inverseIndices = new int[DEFAULT_INITIAL_INDICES_SIZE];
     }

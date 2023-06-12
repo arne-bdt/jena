@@ -30,6 +30,7 @@ import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
 import java.util.List;
+import java.util.Random;
 
 @State(Scope.Benchmark)
 public class TestGraphDelete {
@@ -45,17 +46,19 @@ public class TestGraphDelete {
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
-            "../testing/BSBM/bsbm-5m.nt.gz",
-            "../testing/BSBM/bsbm-25m.nt.gz",
+//            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-25m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
+//            "GraphMem (current)",
 //            "GraphMemB (current)",
-            "GraphMem2Fast (current)",
+//            "GraphMem2Fast (current)",
+//            "GraphMem2FullyIndexed (current)",
 //            "GraphMem2Huge (current)",
             "GraphMem2Legacy (current)",
+            "GraphMem2LowMem (current)",
             "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
@@ -101,7 +104,7 @@ public class TestGraphDelete {
                 this.triplesToDeleteFromSutCurrent = Releases.current.cloneTriples(this.allTriplesCurrent);
                 /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                java.util.Collections.shuffle(this.triplesToDeleteFromSutCurrent);
+                java.util.Collections.shuffle(this.triplesToDeleteFromSutCurrent, new Random(4721));
                 break;
 
             case JENA_4_8_0:
@@ -111,7 +114,7 @@ public class TestGraphDelete {
                 this.triplesToDeleteFromSut480 = Releases.v480.cloneTriples(this.allTriples480);
                 /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                java.util.Collections.shuffle(this.triplesToDeleteFromSutCurrent);
+                java.util.Collections.shuffle(this.triplesToDeleteFromSutCurrent, new Random(4721));
                 break;
 
             default:

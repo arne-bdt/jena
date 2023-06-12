@@ -29,6 +29,7 @@ import org.openjdk.jmh.runner.Runner;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertNotNull;
@@ -181,7 +182,7 @@ public class TestGraphFindByMatchAndGetFirst {
                     this.triplesToFindCurrent = Releases.current.cloneTriples(triples);
                     /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                    java.util.Collections.shuffle(this.triplesToFindCurrent);
+                    java.util.Collections.shuffle(this.triplesToFindCurrent, new Random(4721));
                 }
                 break;
             case JENA_4_8_0:
@@ -196,7 +197,7 @@ public class TestGraphFindByMatchAndGetFirst {
                     this.triplesToFind480 = Releases.v480.cloneTriples(triples);
                     /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                    java.util.Collections.shuffle(this.triplesToFind480);
+                    java.util.Collections.shuffle(this.triplesToFind480, new Random(4721));
                 }
                 break;
             default:

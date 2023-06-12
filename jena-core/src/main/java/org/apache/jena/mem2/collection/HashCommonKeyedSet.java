@@ -20,6 +20,7 @@ package org.apache.jena.mem2.collection;
 
 import org.apache.jena.mem2.iterator.SparseArrayIterator;
 import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
+import org.apache.jena.mem2.spliterator.SparseArraySubMappingSpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
@@ -27,36 +28,31 @@ import java.util.Spliterator;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> implements JenaMap<Key, Value> {
+public abstract class HashCommonKeyedSet<Key, Value> extends HashCommonBase<Value> implements JenaMap<Key, Value> {
 
-    protected Value[] values;
+    protected abstract Key getKey(Value value);
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
      * capacity and the corresponding threshold. All the key elements start out
      * null.
      */
-    protected HashCommonMap(int initialCapacity) {
+    protected HashCommonKeyedSet(int initialCapacity) {
         super(initialCapacity);
-        this.values = newValuesArray(keys.length);
     }
 
     public void clear(int initialCapacity) {
         super.clear(initialCapacity);
-        this.values = newValuesArray(keys.length);
     }
 
     @Override
     public abstract void clear();
 
-    protected abstract Value[] newValuesArray(int size);
 
     /**
      * Search for the slot in which <code>key</code> is found. If it is absent,
@@ -68,9 +64,9 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     protected int findSlot(Key key) {
         int index = initialIndexFor(key.hashCode());
         while (true) {
-            Key current = keys[index];
+            Value current = keys[index];
             if (current == null) return index;
-            if (key.equals(current)) return ~index;
+            if (key.equals(getKey(current))) return ~index;
             if (--index < 0) index += keys.length;
         }
     }
@@ -83,7 +79,7 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     @Override
     public boolean anyMatch(Predicate<Key> predicate) {
         for (int i = 0; i < keys.length; i++) {
-            if (keys[i] != null && predicate.test(keys[i]))
+            if (keys[i] != null && predicate.test(getKey(keys[i])))
                 return true;
         }
         return false;
@@ -93,11 +89,10 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     public boolean tryPut(Key key, Value value) {
         final var slot = findSlot(key);
         if (slot < 0) {
-            values[~slot] = value;
+            keys[~slot] = value;
             return false;
         }
-        keys[slot] = key;
-        values[slot] = value;
+        keys[slot] = value;
         if (++size > threshold) grow();
         return true;
     }
@@ -106,35 +101,33 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     public void put(Key key, Value value) {
         final var slot = findSlot(key);
         if (slot < 0) {
-            values[~slot] = value;
+            keys[~slot] = value;
             return;
         }
-        keys[slot] = key;
-        values[slot] = value;
+        keys[slot] = value;
         if (++size > threshold) grow();
     }
 
     @Override
     public Value get(Key key) {
         final var slot = findSlot(key);
-        if (slot < 0) return values[~slot];
+        if (slot < 0) return keys[~slot];
         return null;
     }
 
     @Override
     public Value getOrDefault(Key key, Value defaultValue) {
         final var slot = findSlot(key);
-        if (slot < 0) return values[~slot];
+        if (slot < 0) return keys[~slot];
         return defaultValue;
     }
 
     @Override
     public Value computeIfAbsent(Key key, Supplier<Value> absentValueSupplier) {
         final var slot = findSlot(key);
-        if (slot < 0) return values[~slot];
+        if (slot < 0) return keys[~slot];
         final var value = absentValueSupplier.get();
-        keys[slot] = key;
-        values[slot] = value;
+        keys[slot] = value;
         if (++size > threshold) grow();
         return value;
     }
@@ -143,18 +136,17 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     public void compute(Key key, Function<Value, Value> valueProcessor) {
         final var slot = findSlot(key);
         if (slot < 0) {
-            final var value = valueProcessor.apply(values[~slot]);
+            final var value = valueProcessor.apply(keys[~slot]);
             if (value == null) {
                 removeFrom(~slot);
             } else {
-                values[~slot] = value;
+                keys[~slot] = value;
             }
         } else {
             final var value = valueProcessor.apply(null);
             if (value == null)
                 return;
-            keys[slot] = key;
-            values[slot] = value;
+            keys[slot] = value;
             if (++size > threshold) grow();
         }
     }
@@ -187,16 +179,12 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
 
     @Override
     protected void grow() {
-        final Key[] oldContents = keys;
-        final Value[] oldValues = values;
+        final Value[] oldContents = keys;
         keys = newKeysArray(calcGrownCapacityAndSetThreshold());
-        values = newValuesArray(keys.length);
         for (int i = 0; i < oldContents.length; i += 1) {
-            final Key key = oldContents[i];
-            if (key != null) {
-                final int slot = findSlot(key);
-                keys[slot] = key;
-                values[slot] = oldValues[i];
+            final Value value = oldContents[i];
+            if (value != null) {
+                keys[findSlot(getKey(value))] = value;
             }
         }
     }
@@ -220,38 +208,20 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
         size -= 1;
         while (true) {
             keys[here] = null;
-            values[here] = null;
             int scan = here;
             while (true) {
                 if (--scan < 0) scan += keys.length;
                 if (keys[scan] == null) return;
-                final int r = initialIndexFor(keys[scan].hashCode());
+                final int r = initialIndexFor(getKey(keys[scan]).hashCode());
                 if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r) {
                     /* Nothing. We'd have preferred an `unless` statement. */
                 } else {
                     keys[here] = keys[scan];
-                    values[here] = values[scan];
                     here = scan;
                     break;
                 }
             }
         }
-    }
-
-    public ExtendedIterator<Key> keyIterator() {
-        final var initialSize = size;
-        final Runnable checkForConcurrentModification = () -> {
-            if (size != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArrayIterator<>(keys, checkForConcurrentModification);
-    }
-
-    public Spliterator<Key> keySpliterator() {
-        final var initialSize = size;
-        final Runnable checkForConcurrentModification = () -> {
-            if (size != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
     }
 
     @Override
@@ -260,7 +230,7 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
         final Runnable checkForConcurrentModification = () -> {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
-        return new SparseArrayIterator<>(values, checkForConcurrentModification);
+        return new SparseArrayIterator<>(keys, checkForConcurrentModification);
     }
 
     @Override
@@ -269,6 +239,22 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
         final Runnable checkForConcurrentModification = () -> {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
-        return new SparseArraySpliterator<>(values, checkForConcurrentModification);
+        return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
+    }
+
+    public ExtendedIterator<Key> keyIterator() {
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () -> {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIterator<>(keys, checkForConcurrentModification).mapWith(this::getKey);
+    }
+
+    public Spliterator<Key> keySpliterator() {
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () -> {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArraySubMappingSpliterator<>(keys, this::getKey, checkForConcurrentModification);
     }
 }

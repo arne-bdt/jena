@@ -29,6 +29,7 @@ import org.openjdk.jmh.runner.Runner;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 
 @State(Scope.Benchmark)
 public class TestSetUpdate {
@@ -146,7 +147,7 @@ public class TestSetUpdate {
     public void setupTrial() throws Exception {
         this.triples = Releases.current.readTriples(param0_GraphUri);
         this.triplesToRemove = Releases.current.cloneTriples(triples);
-        Collections.shuffle(triplesToRemove);
+        Collections.shuffle(triplesToRemove, new Random(4721));
         switch (param1_SetImplementation) {
             case "HashSet":
                 this.updateSet = this::updateHashSet;

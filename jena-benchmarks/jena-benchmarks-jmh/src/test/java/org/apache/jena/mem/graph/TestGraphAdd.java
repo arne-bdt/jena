@@ -50,11 +50,13 @@ public class TestGraphAdd {
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
+//            "GraphMem (current)",
 //            "GraphMemB (current)",
-            "GraphMem2Fast (current)",
+//            "GraphMem2Fast (current)",
+//            "GraphMem2FullyIndexed (current)",
 //            "GraphMem2Huge (current)",
             "GraphMem2Legacy (current)",
+            "GraphMem2LowMem (current)",
             "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })

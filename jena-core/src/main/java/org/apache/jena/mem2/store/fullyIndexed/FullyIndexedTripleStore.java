@@ -36,6 +36,7 @@ import org.roaringbitmap.FastAggregation;
 import org.roaringbitmap.ImmutableBitmapDataProvider;
 import org.roaringbitmap.RoaringBitmap;
 
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -57,9 +58,9 @@ public class FullyIndexedTripleStore implements TripleStore {
         if (index < 0) { /*triple already exists*/
             return;
         }
-        this.subjectIndices.computeIfAbsent(triple.getSubject(), HashedIndexSet::new).addUnchecked(index);
-        this.predicateIndices.computeIfAbsent(triple.getPredicate(), HashedIndexSet::new).addUnchecked(index);
-        this.objectIndices.computeIfAbsent(triple.getObject(), HashedIndexSet::new).addUnchecked(index);
+        this.subjectIndices.computeIfAbsent(triple.getSubject(), HashedIndexSet::createSmall).addUnchecked(index);
+        this.predicateIndices.computeIfAbsent(triple.getPredicate(), HashedIndexSet::createSmall).addUnchecked(index);
+        this.objectIndices.computeIfAbsent(triple.getObject(), HashedIndexSet::createSmall).addUnchecked(index);
     }
 
     @Override
@@ -108,34 +109,21 @@ public class FullyIndexedTripleStore implements TripleStore {
                 final var sIndices = this.subjectIndices.get(tripleMatch.getSubject());
                 if (null == sIndices)
                     return false;
-
-                final var pIndices = this.predicateIndices.get(tripleMatch.getPredicate());
-                if (null == pIndices)
-                    return false;
-
-                return sIndices.intersects(pIndices);
+                return sIndices.anyMatch(index -> tripleMatch.getPredicate().equals(this.triples.getKeyAt(index).getPredicate()));
             }
             case S_O: {
                 final var sIndices = this.subjectIndices.get(tripleMatch.getSubject());
                 if (null == sIndices)
                     return false;
 
-                final var oIndices = this.objectIndices.get(tripleMatch.getObject());
-                if (null == oIndices)
-                    return false;
-
-                return sIndices.intersects(oIndices);
+                return sIndices.anyMatch(index -> tripleMatch.getObject().equals(this.triples.getKeyAt(index).getObject()));
             }
             case _PO: {
-                final var pIndices = this.predicateIndices.get(tripleMatch.getPredicate());
-                if (null == pIndices)
-                    return false;
-
                 final var oIndices = this.objectIndices.get(tripleMatch.getObject());
                 if (null == oIndices)
                     return false;
 
-                return oIndices.intersects(pIndices);
+                return oIndices.anyMatch(index -> tripleMatch.getPredicate().equals(this.triples.getKeyAt(index).getPredicate()));
             }
 
 
@@ -168,34 +156,19 @@ public class FullyIndexedTripleStore implements TripleStore {
                 final var sIndices = this.subjectIndices.get(tripleMatch.getSubject());
                 if (null == sIndices)
                     return Stream.empty();
-
-                final var pIndices = this.predicateIndices.get(tripleMatch.getPredicate());
-                if (null == pIndices)
-                    return Stream.empty();
-
-                return steamOrEmpty(sIndices.calcIntersection(pIndices));
+                return steamOrEmpty(sIndices, t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
             case S_O: {
                 final var sIndices = this.subjectIndices.get(tripleMatch.getSubject());
                 if (null == sIndices)
                     return Stream.empty();
-
-                final var oIndices = this.objectIndices.get(tripleMatch.getObject());
-                if (null == oIndices)
-                    return Stream.empty();
-
-                return steamOrEmpty(sIndices.calcIntersection(oIndices));
+                return steamOrEmpty(sIndices, t -> tripleMatch.getObject().equals(t.getObject()));
             }
             case _PO: {
-                final var pIndices = this.predicateIndices.get(tripleMatch.getPredicate());
-                if (null == pIndices)
-                    return Stream.empty();
-
                 final var oIndices = this.objectIndices.get(tripleMatch.getObject());
                 if (null == oIndices)
                     return Stream.empty();
-
-                return steamOrEmpty(oIndices.calcIntersection(pIndices));
+                return steamOrEmpty(oIndices, t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
             case ___:
                 return this.stream();
@@ -221,34 +194,19 @@ public class FullyIndexedTripleStore implements TripleStore {
                 final var sIndices = this.subjectIndices.get(tripleMatch.getSubject());
                 if (null == sIndices)
                     return NullIterator.instance();
-
-                final var pIndices = this.predicateIndices.get(tripleMatch.getPredicate());
-                if (null == pIndices)
-                    return NullIterator.instance();
-
-                return iteratorOrEmpty(sIndices.calcIntersection(pIndices));
+                return iteratorOrEmpty(sIndices, t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
             case S_O: {
                 final var sIndices = this.subjectIndices.get(tripleMatch.getSubject());
                 if (null == sIndices)
                     return NullIterator.instance();
-
-                final var oIndices = this.objectIndices.get(tripleMatch.getObject());
-                if (null == oIndices)
-                    return NullIterator.instance();
-
-                return iteratorOrEmpty(sIndices.calcIntersection(oIndices));
+                return iteratorOrEmpty(sIndices, t -> tripleMatch.getObject().equals(t.getObject()));
             }
             case _PO: {
-                final var pIndices = this.predicateIndices.get(tripleMatch.getPredicate());
-                if (null == pIndices)
-                    return NullIterator.instance();
-
                 final var oIndices = this.objectIndices.get(tripleMatch.getObject());
                 if (null == oIndices)
                     return NullIterator.instance();
-
-                return iteratorOrEmpty(oIndices.calcIntersection(pIndices));
+                return iteratorOrEmpty(oIndices, t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
             case ___:
                 return this.triples.keyIterator();
@@ -264,10 +222,22 @@ public class FullyIndexedTripleStore implements TripleStore {
                 : StreamSupport.stream(indexSet.spliterator(), false).map(this.triples::getKeyAt);
     }
 
+    private Stream<Triple> steamOrEmpty(final HashedIndexSet indexSet, final Predicate<Triple> filter) {
+        return indexSet == null || indexSet.isEmpty()
+                ? Stream.empty()
+                : StreamSupport.stream(indexSet.spliterator(), false).map(this.triples::getKeyAt).filter(filter);
+    }
+
     private ExtendedIterator<Triple> iteratorOrEmpty(final HashedIndexSet indexSet) {
         return indexSet == null || indexSet.isEmpty()
                 ? NiceIterator.emptyIterator()
                 : new IndexedTripleIterator(indexSet.iterator(), this.triples);
+    }
+
+    private ExtendedIterator<Triple> iteratorOrEmpty(final HashedIndexSet indexSet, final Predicate<Triple> filter) {
+        return indexSet == null || indexSet.isEmpty()
+                ? NiceIterator.emptyIterator()
+                : new IndexedTripleIterator(indexSet.iterator(), this.triples).filterKeep(filter);
     }
 
     private static class TripleSet extends FastHashSet<Triple> {
@@ -283,19 +253,6 @@ public class FullyIndexedTripleStore implements TripleStore {
         @Override
         protected Node[] newKeysArray(int size) {
             return new Node[size];
-        }
-
-        @Override
-        protected HashedIndexSet[] newValuesArray(int size) {
-            return new HashedIndexSet[size];
-        }
-    }
-
-    private static class NodesPairToIndexSet extends FastHashMap<Pair<Node, Node>, HashedIndexSet> {
-
-        @Override
-        protected Pair<Node, Node>[] newKeysArray(int size) {
-            return new Pair[size];
         }
 
         @Override

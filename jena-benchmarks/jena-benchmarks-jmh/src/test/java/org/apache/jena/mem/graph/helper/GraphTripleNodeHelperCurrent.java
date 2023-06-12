@@ -46,6 +46,8 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
                 return new GraphMem2Huge();
             case GraphMem2Legacy:
                 return new GraphMem2Legacy();
+            case GraphMem2LowMem:
+                return new GraphMem2LowMem();
             case GraphMem2Roaring:
                 return new GraphMem2Roaring();
             default:

@@ -30,6 +30,7 @@ import org.openjdk.jmh.runner.Runner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -47,20 +48,22 @@ public class TestGraphStreamByMatchAndCount {
 //            "C:/temp/res_test/xxx_CGMES_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
-            "../testing/BSBM/bsbm-5m.nt.gz",
-            "../testing/BSBM/bsbm-25m.nt.gz",
+//            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-25m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
+//            "GraphMem (current)",
 //            "GraphMemB (current)",
-            "GraphMem2Fast (current)",
+//            "GraphMem2Fast (current)",
+//            "GraphMem2FullyIndexed (current)",
 //            "GraphMem2Huge (current)",
             "GraphMem2Legacy (current)",
+            "GraphMem2LowMem (current)",
             "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
@@ -81,30 +84,25 @@ public class TestGraphStreamByMatchAndCount {
     public Object graphStreamS__() {
         return graphStreamByMatchAndCount.apply("S__");
     }
-
     @Benchmark
     public Object graphStream_P_() {
         return graphStreamByMatchAndCount.apply("_P_");
     }
-
+    @Benchmark
+    public Object graphStream__O() {
+        return graphStreamByMatchAndCount.apply("__O");
+    }
     @Benchmark
     public Object graphStreamSP_() {
         return graphStreamByMatchAndCount.apply("SP_");
     }
-
     @Benchmark
     public Object graphStreamS_O() {
         return graphStreamByMatchAndCount.apply("S_O");
     }
-
     @Benchmark
     public Object graphStream_PO() {
         return graphStreamByMatchAndCount.apply("_PO");
-    }
-
-    @Benchmark
-    public Object graphStream__O() {
-        return graphStreamByMatchAndCount.apply("__O");
     }
 
     private int graphStreamByMatchAndCount(String pattern) {
@@ -189,7 +187,7 @@ public class TestGraphStreamByMatchAndCount {
                 }
                 /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                java.util.Collections.shuffle(this.triplesToFindCurrent);
+                java.util.Collections.shuffle(this.triplesToFindCurrent, new Random(4721));
             }
             break;
             case JENA_4_8_0:
@@ -208,7 +206,7 @@ public class TestGraphStreamByMatchAndCount {
                 }
                 /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                java.util.Collections.shuffle(this.triplesToFind480);
+                java.util.Collections.shuffle(this.triplesToFind480, new Random(4721));
             }
             break;
             default:

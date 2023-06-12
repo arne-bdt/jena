@@ -18,6 +18,12 @@
 
 package org.apache.jena.mem2.collection;
 
+import org.apache.jena.mem2.iterator.SparseArrayIterator;
+import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
+import org.apache.jena.util.iterator.ExtendedIterator;
+
+import java.util.ConcurrentModificationException;
+import java.util.Spliterator;
 import java.util.function.Predicate;
 
 /**
@@ -156,5 +162,19 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements 
         }
     }
 
+    public ExtendedIterator<Key> keyIterator() {
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () -> {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIterator<>(keys, checkForConcurrentModification);
+    }
 
+    public Spliterator<Key> keySpliterator() {
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () -> {
+            if (size != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
+    }
 }

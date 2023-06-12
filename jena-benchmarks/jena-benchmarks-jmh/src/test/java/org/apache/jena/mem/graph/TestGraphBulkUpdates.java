@@ -35,6 +35,7 @@ import org.openjdk.jmh.runner.Runner;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 @State(Scope.Benchmark)
 public class TestGraphBulkUpdates {
@@ -56,11 +57,13 @@ public class TestGraphBulkUpdates {
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
+//            "GraphMem (current)",
 //            "GraphMemB (current)",
-            "GraphMem2Fast (current)",
+//            "GraphMem2Fast (current)",
+//            "GraphMem2FullyIndexed (current)",
 //            "GraphMem2Huge (current)",
             "GraphMem2Legacy (current)",
+            "GraphMem2LowMem (current)",
             "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
@@ -112,7 +115,7 @@ public class TestGraphBulkUpdates {
         }
         /* Shuffle is import because the order might play a role. We want to test the performance of the
            contains method regardless of the order */
-        Collections.shuffle(doubleTriples);
+        Collections.shuffle(doubleTriples, new Random(4721));
         //System.out.println("Found " + doubleTriples.size() + " triples with double literals");
 
         for(int i=0; i<2; i++) {
