@@ -34,7 +34,7 @@ public class InverseIndicesIterator extends NiceIterator<Integer> {
     private final Runnable checkForConcurrentModification;
     private int pos;
 
-    private boolean hasNext=false;
+    private boolean hasNext = false;
 
     public InverseIndicesIterator(final int[] inverseIndices, final Runnable checkForConcurrentModification) {
         this.inverseIndices = inverseIndices;
@@ -78,9 +78,9 @@ public class InverseIndicesIterator extends NiceIterator<Integer> {
 
     @Override
     public void forEachRemaining(Consumer<? super Integer> action) {
-        if(pos == inverseIndices.length - 1) {
-            for(int inverseIndex: inverseIndices) {
-                if(0 != inverseIndex) {
+        if (pos == inverseIndices.length - 1) {
+            for (int inverseIndex : inverseIndices) {
+                if (0 != inverseIndex) {
                     action.accept(~inverseIndex);
                 }
             }

@@ -19,6 +19,7 @@
 package org.apache.jena.mem.graph;
 
 import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.apache.jena.ext.com.google.common.base.Stopwatch;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -32,10 +33,12 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 @State(Scope.Benchmark)
 public class TestGraphBulkUpdates {
@@ -43,9 +46,9 @@ public class TestGraphBulkUpdates {
     @Param({
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
-//            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-//            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+            "C:/temp/res_test/xxx_CGMES_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
@@ -57,13 +60,9 @@ public class TestGraphBulkUpdates {
     public String param0_GraphUri;
 
     @Param({
-//            "GraphMem (current)",
-//            "GraphMemB (current)",
-//            "GraphMem2Fast (current)",
-//            "GraphMem2FullyIndexed (current)",
-//            "GraphMem2Huge (current)",
+            "GraphMem (current)",
+            "GraphMem2Fast (current)",
             "GraphMem2Legacy (current)",
-            "GraphMem2LowMem (current)",
             "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
@@ -106,7 +105,7 @@ public class TestGraphBulkUpdates {
 
 
     @Benchmark
-    public Graph bulkUpdate() {
+    public Graph manySingleUpdates() {
         var doubleTriples = new ArrayList<Triple>();
         for(var t: triples) {
             if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
@@ -116,9 +115,9 @@ public class TestGraphBulkUpdates {
         /* Shuffle is import because the order might play a role. We want to test the performance of the
            contains method regardless of the order */
         Collections.shuffle(doubleTriples, new Random(4721));
-        //System.out.println("Found " + doubleTriples.size() + " triples with double literals");
-
-        for(int i=0; i<2; i++) {
+        System.out.println();
+        System.out.println("Found " + doubleTriples.size() + " triples with double literals");
+        for(int i=0; i<10; i++) {
             for (var t : doubleTriples) {
                 var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
                 var oldValue = (float) oldTriple.getObject().getIndexingValue();
@@ -127,6 +126,45 @@ public class TestGraphBulkUpdates {
             }
         }
         return sutCurrent;
+    }
+
+    @Benchmark
+    public Graph bulkDeleteAndAdd() {
+        var doubleTriples = new ArrayList<Triple>();
+        for(var t: triples) {
+            if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
+                doubleTriples.add(t);
+            }
+        }
+        /* Shuffle is import because the order might play a role. We want to test the performance of the
+           contains method regardless of the order */
+
+        var random = new Random(4721);
+        Collections.shuffle(doubleTriples, random);
+        System.out.println();
+        System.out.println("Found " + doubleTriples.size() + " triples with double literals");
+        for(int i=0; i<10; i++) {
+            for (var t : doubleTriples) {
+                var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
+                this.sutCurrent.delete(oldTriple);
+            }
+            for (var t : doubleTriples) {
+                this.sutCurrent.add(Triple.create(t.getSubject(), t.getPredicate(), NodeFactory.createLiteralByValue(random.nextFloat(), t.getObject().getLiteralDatatype())));
+            }
+        }
+        return sutCurrent;
+    }
+
+    /**
+     * This method is used to get the memory consumption of the current JVM.
+     * @return the memory consumption in MB
+     */
+    private static double runGcAndGetUsedMemoryInMB() {
+        System.runFinalization();
+        System.gc();
+        Runtime.getRuntime().runFinalization();
+        Runtime.getRuntime().gc();
+        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024l)).divide(BigDecimal.valueOf(1024l)).doubleValue();
     }
 
 

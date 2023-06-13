@@ -1,18 +1,49 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.jena.mem2.collection;
 
 import org.apache.jena.mem2.iterator.SparseArrayIterator;
+import org.apache.jena.mem2.spliterator.SparseArraySubMappingSpliterator;
 import org.apache.jena.mem2.spliterator.SparseArraySubSpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
-public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
+/**
+ * Map which grows, if needed but never shrinks.
+ * This map does not guarantee any order.
+ * This map does not allow null values.
+ * This map is not thread safe.
+ * It´s purpose is to support fast add, remove, contains and stream / iterate operations.
+ * Only remove operations are not as fast as in {@link:java.util.HashMap}
+ * Iterating over this map does not get much faster again after removing elements.
+ */
+public abstract class FastPseudoMap<K, V> implements JenaMap<K, V> {
+
     protected static final int MINIMUM_HASHES_SIZE = 16;
     protected static final int MINIMUM_ELEMENTS_SIZE = 10;
-    protected int keysPos = 0;
-    protected K[] keys;
+    protected int valuePos = 0;
+    protected V[] values;
     protected int[] hashCodesOrDeletedIndices;
     protected int lastDeletedIndex = -1;
     protected int removedKeysCount = 0;
@@ -24,31 +55,31 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
      */
     protected int[] positions;
 
-    protected FastHashBase(int initialSize) {
+    protected FastPseudoMap(int initialSize) {
         var positionsSize = Integer.highestOneBit(initialSize << 1);
         if (positionsSize < initialSize << 1) {
             positionsSize <<= 1;
         }
         this.positions = new int[positionsSize];
-        this.keys = newKeysArray(initialSize);
+        this.values = newValuesArray(initialSize);
         this.hashCodesOrDeletedIndices = new int[initialSize];
     }
 
-    protected FastHashBase() {
+    protected FastPseudoMap() {
         this.positions = new int[MINIMUM_HASHES_SIZE];
-        this.keys = newKeysArray(MINIMUM_ELEMENTS_SIZE);
+        this.values = newValuesArray(MINIMUM_ELEMENTS_SIZE);
         this.hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
 
     }
 
-    protected abstract K[] newKeysArray(int size);
+    protected abstract V[] newValuesArray(int size);
 
     protected final int calcStartIndexByHashCode(final int hashCode) {
         return hashCode & (positions.length - 1);
     }
 
     private int calcNewPositionsSize() {
-        if (keysPos << 1 > positions.length) { /*grow*/
+        if (valuePos << 1 > positions.length) { /*grow*/
             final var newLength = positions.length << 1;
             return newLength < 0 ? Integer.MAX_VALUE : newLength;
         }
@@ -93,14 +124,14 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
      */
     @Override
     public int size() {
-        return keysPos - removedKeysCount;
+        return valuePos - removedKeysCount;
     }
 
     protected final int getFreeKeyIndex() {
         final int index;
         if (lastDeletedIndex == -1) {
-            index = keysPos++;
-            if (index == keys.length) {
+            index = valuePos++;
+            if (index == values.length) {
                 growKeysAndHashCodeArrays();
             }
         } else {
@@ -112,13 +143,13 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     }
 
     protected void growKeysAndHashCodeArrays() {
-        var newSize = (keys.length >> 1) + keys.length;
+        var newSize = (values.length >> 1) + values.length;
         if (newSize < 0) {
             newSize = Integer.MAX_VALUE;
         }
-        final var oldKeys = this.keys;
-        this.keys = newKeysArray(newSize);
-        System.arraycopy(oldKeys, 0, keys, 0, oldKeys.length);
+        final var oldValues = this.values;
+        this.values = newValuesArray(newSize);
+        System.arraycopy(oldValues, 0, values, 0, oldValues.length);
         final var oldHashCodes = this.hashCodesOrDeletedIndices;
         this.hashCodesOrDeletedIndices = new int[newSize];
         System.arraycopy(oldHashCodes, 0, hashCodesOrDeletedIndices, 0, oldHashCodes.length);
@@ -190,7 +221,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         hashCodesOrDeletedIndices[pIndex] = lastDeletedIndex;
         lastDeletedIndex = pIndex;
         removedKeysCount++;
-        keys[pIndex] = null;
+        values[pIndex] = null;
         while (true) {
             positions[here] = 0;
             int scan = here;
@@ -226,7 +257,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
                 return false;
             } else {
                 final var eIndex = ~positions[pIndex];
-                if (hashCode == hashCodesOrDeletedIndices[eIndex] && o.equals(keys[eIndex])) {
+                if (hashCode == hashCodesOrDeletedIndices[eIndex] && o.equals(getKey(values[eIndex]))) {
                     return true;
                 } else if (--pIndex < 0) {
                     pIndex += positions.length;
@@ -237,9 +268,9 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
 
     @Override
     public final boolean anyMatch(Predicate<K> predicate) {
-        var pos = keysPos - 1;
+        var pos = valuePos - 1;
         while (-1 < pos) {
-            if (null != keys[pos] && predicate.test(keys[pos])) {
+            if (null != values[pos] && predicate.test(getKey(values[pos]))) {
                 return true;
             }
             pos--;
@@ -254,7 +285,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         {
             if (size() != initialSize) throw new ConcurrentModificationException();
         };
-        return new SparseArrayIterator<>(keys, keysPos, checkForConcurrentModification);
+        return new SparseArrayIterator<>(values, valuePos, checkForConcurrentModification).mapWith(this::getKey);
     }
 
     protected final int findPosition(final K e, final int hashCode) {
@@ -264,7 +295,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
                 return ~pIndex;
             } else {
                 final var pos = ~positions[pIndex];
-                if (hashCode == hashCodesOrDeletedIndices[pos] && e.equals(keys[pos])) {
+                if (hashCode == hashCodesOrDeletedIndices[pos] && e.equals(getKey(values[pos]))) {
                     return pIndex;
                 } else if (--pIndex < 0) {
                     pIndex += positions.length;
@@ -294,9 +325,9 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     @Override
     public void clear() {
         positions = new int[MINIMUM_HASHES_SIZE];
-        keys = newKeysArray(MINIMUM_ELEMENTS_SIZE);
+        values = newValuesArray(MINIMUM_ELEMENTS_SIZE);
         hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
-        keysPos = 0;
+        valuePos = 0;
         lastDeletedIndex = -1;
         removedKeysCount = 0;
     }
@@ -308,6 +339,132 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         {
             if (this.size() != initialSize) throw new ConcurrentModificationException();
         };
-        return new SparseArraySubSpliterator<>(keys, 0, keysPos, checkForConcurrentModification);
+        return new SparseArraySubMappingSpliterator<>(values, 0, valuePos, this::getKey, checkForConcurrentModification);
+    }
+
+    protected abstract K getKey(final V value);
+
+    @Override
+    public boolean tryPut(K key, V value) {
+        final var hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            if (tryGrowPositionsArrayIfNeeded()) {
+                pIndex = findPosition(key, hashCode);
+            }
+            final var eIndex = getFreeKeyIndex();
+            values[eIndex] = value;
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
+            positions[~pIndex] = ~eIndex;
+            return true;
+        } else {
+            values[~positions[pIndex]] = value;
+            return false;
+        }
+    }
+
+    @Override
+    public void put(K key, V value) {
+        final var hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            if (tryGrowPositionsArrayIfNeeded()) {
+                pIndex = findPosition(key, hashCode);
+            }
+            final var eIndex = getFreeKeyIndex();
+            values[eIndex] = value;
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
+            positions[~pIndex] = ~eIndex;
+        } else {
+            values[~positions[pIndex]] = value;
+        }
+    }
+
+    public V getValueAt(int i) {
+        return values[i];
+    }
+
+    @Override
+    public V get(K key) {
+        var pIndex = findPosition(key, key.hashCode());
+        if (pIndex < 0) {
+            return null;
+        } else {
+            return values[~positions[pIndex]];
+        }
+    }
+
+    @Override
+    public V getOrDefault(K key, V defaultValue) {
+        var pIndex = findPosition(key, key.hashCode());
+        if (pIndex < 0) {
+            return defaultValue;
+        } else {
+            return values[~positions[pIndex]];
+        }
+    }
+
+    @Override
+    public V computeIfAbsent(K key, Supplier<V> absentValueSupplier) {
+        final var hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            if (tryGrowPositionsArrayIfNeeded()) {
+                pIndex = findPosition(key, hashCode);
+            }
+            final var eIndex = getFreeKeyIndex();
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
+            final var value = absentValueSupplier.get();
+            values[eIndex] = value;
+            positions[~pIndex] = ~eIndex;
+            return value;
+        } else {
+            return values[~positions[pIndex]];
+        }
+    }
+
+    @Override
+    public void compute(K key, Function<V, V> valueProcessor) {
+        final int hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            final var value = valueProcessor.apply(null);
+            if (value == null)
+                return;
+            final var eIndex = getFreeKeyIndex();
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
+            values[eIndex] = value;
+            positions[~pIndex] = ~eIndex;
+            tryGrowPositionsArrayIfNeeded();
+        } else {
+            var eIndex = ~positions[pIndex];
+            final var value = valueProcessor.apply(values[eIndex]);
+            if (value == null) {
+                removeFrom(pIndex);
+            } else {
+                values[eIndex] = value;
+            }
+        }
+    }
+
+
+    @Override
+    public ExtendedIterator<V> valueIterator() {
+        final var initialSize = size();
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size() != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIterator<>(values, valuePos, checkForConcurrentModification);
+    }
+
+    @Override
+    public Spliterator<V> valueSpliterator() {
+        final var initialSize = this.size();
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (this.size() != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArraySubSpliterator<>(values, 0, valuePos, checkForConcurrentModification);
     }
 }

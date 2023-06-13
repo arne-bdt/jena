@@ -15,26 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.lowMem;
+
+package org.apache.jena.mem2.store.lowMem2;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.mem2.collection.FastPseudoMap;
+import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.collection.JenaSet;
 
-public class LowMemHashedBunchMap extends FastPseudoMap<Node, TripleBunch> {
+/**
+ * A bunch of triples - a stripped-down set with specialized methods. A
+ * bunch is expected to store triples that share some useful property
+ * (such as having the same subject or predicate).
+ */
+public interface TripleBunch extends JenaSet<Triple> {
 
-    public LowMemHashedBunchMap() {
-        super(10);
+    Node getIndexingNode();
+
+    default boolean isHashed() {
+        return false;
     }
-
-    @Override
-    protected TripleBunch[] newValuesArray(int size) {
-        return new TripleBunch[size];
-    }
-
-
-    @Override
-    protected Node getKey(TripleBunch tripleBunch) {
-        return tripleBunch.getIndexingNode();
-    }
-
 }

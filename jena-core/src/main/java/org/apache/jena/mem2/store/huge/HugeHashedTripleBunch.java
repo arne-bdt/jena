@@ -19,9 +19,6 @@ package org.apache.jena.mem2.store.huge;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.FastHashBase;
-import org.apache.jena.mem2.collection.FastHashMap;
-import org.apache.jena.mem2.collection.FastHashSet;
 import org.apache.jena.mem2.collection.JenaSet;
 import org.apache.jena.mem2.store.fast.FastHashedTripleBunch;
 import org.apache.jena.mem2.store.roaring.RoaringBitmapTripleIterator;
@@ -104,7 +101,7 @@ public abstract class HugeHashedTripleBunch implements HudeTripleBunch {
     @Override
     public boolean tryAdd(Triple key, int hashCode) {
         final var index = triples.addAndGetIndex(key, hashCode);
-        if(index < 0)
+        if (index < 0)
             return false;
 
         indexNodeBitmaps.computeIfAbsent(getIndexingNode(key),
@@ -123,12 +120,12 @@ public abstract class HugeHashedTripleBunch implements HudeTripleBunch {
     @Override
     public boolean tryRemove(Triple key, int hashCode) {
         final var index = triples.removeAndGetIndex(key, hashCode);
-        if(index < 0)
+        if (index < 0)
             return false;
         final var indexNode = getIndexingNode(key);
         final var bitmap = indexNodeBitmaps.get(indexNode);
         bitmap.remove(index);
-        if(bitmap.isEmpty()) {
+        if (bitmap.isEmpty()) {
             indexNodeBitmaps.removeUnchecked(indexNode);
         }
         return true;
@@ -139,7 +136,7 @@ public abstract class HugeHashedTripleBunch implements HudeTripleBunch {
         final var indexNode = getIndexingNode(key);
         final var bitmap = indexNodeBitmaps.get(indexNode);
         bitmap.remove(triples.removeAndGetIndex(key, hashCode));
-        if(bitmap.isEmpty()) {
+        if (bitmap.isEmpty()) {
             indexNodeBitmaps.removeUnchecked(indexNode);
         }
     }
@@ -152,7 +149,7 @@ public abstract class HugeHashedTripleBunch implements HudeTripleBunch {
     @Override
     public ExtendedIterator<Triple> keyIterator(Node node) {
         final var bitmap = indexNodeBitmaps.get(node);
-        if(bitmap == null)
+        if (bitmap == null)
             return NullIterator.emptyIterator();
         return new RoaringBitmapTripleIterator(bitmap.getBatchIterator(), triples);
     }
@@ -160,7 +157,7 @@ public abstract class HugeHashedTripleBunch implements HudeTripleBunch {
     @Override
     public Stream<Triple> keyStream(Node node) {
         final var bitmap = indexNodeBitmaps.get(node);
-        if(bitmap == null)
+        if (bitmap == null)
             return Stream.empty();
         return bitmap.stream().mapToObj(triples::getKeyAt);
     }

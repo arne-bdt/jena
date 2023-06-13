@@ -27,8 +27,6 @@ import java.util.Spliterator;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * Shared stuff for our hashing implementations: does the base work for

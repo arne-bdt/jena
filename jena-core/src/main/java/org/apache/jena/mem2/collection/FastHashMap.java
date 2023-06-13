@@ -77,7 +77,7 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
         final var hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
-            if(tryGrowPositionsArrayIfNeeded()) {
+            if (tryGrowPositionsArrayIfNeeded()) {
                 pIndex = findPosition(key, hashCode);
             }
             final var eIndex = getFreeKeyIndex();
@@ -97,7 +97,7 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
         final var hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
-            if(tryGrowPositionsArrayIfNeeded()) {
+            if (tryGrowPositionsArrayIfNeeded()) {
                 pIndex = findPosition(key, hashCode);
             }
             final var eIndex = getFreeKeyIndex();
@@ -139,7 +139,7 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
         final var hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
-            if(tryGrowPositionsArrayIfNeeded()) {
+            if (tryGrowPositionsArrayIfNeeded()) {
                 pIndex = findPosition(key, hashCode);
             }
             final var eIndex = getFreeKeyIndex();

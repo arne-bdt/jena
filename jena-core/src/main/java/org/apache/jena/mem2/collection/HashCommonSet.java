@@ -65,7 +65,7 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements 
 
     @Override
     public boolean anyMatch(final Predicate<Key> predicate) {
-        var pos = keys.length-1;
+        var pos = keys.length - 1;
         while (-1 < pos) {
             if (null != keys[pos] && predicate.test(keys[pos])) {
                 return true;

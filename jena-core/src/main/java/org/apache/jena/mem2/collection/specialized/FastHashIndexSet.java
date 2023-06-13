@@ -23,7 +23,7 @@ public class FastHashIndexSet {
 
     public FastHashIndexSet(int initialSize) {
         var positionsSize = Integer.highestOneBit(initialSize << 1);
-        if(positionsSize < initialSize << 1) {
+        if (positionsSize < initialSize << 1) {
             positionsSize <<= 1;
         }
         this.positions = new int[positionsSize];
@@ -37,6 +37,7 @@ public class FastHashIndexSet {
 
     /**
      * Using the same hash code optimization as {@link java.util.HashMap#hash(Object)}
+     *
      * @param index
      * @return
      */
@@ -213,7 +214,7 @@ public class FastHashIndexSet {
     }
 
     public final boolean anyMatch(Predicate<Integer> predicate) {
-        for(int pos: positions) {
+        for (int pos : positions) {
             if (0 != pos) {
                 if (predicate.test(indices[~pos])) {
                     return true;

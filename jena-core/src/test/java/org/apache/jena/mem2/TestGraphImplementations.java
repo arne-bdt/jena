@@ -33,7 +33,7 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 public class TestGraphImplementations {
 
     private static Graph createGraph() {
-        return new GraphMem2Huge();
+        return new GraphMem2LowMem();
     }
 
     @Test

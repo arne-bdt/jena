@@ -3,6 +3,7 @@ package org.apache.jena.mem2.collection.specialized;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
+import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.function.Predicate;
 
@@ -19,14 +20,10 @@ public class HashedIndexSet {
 
     public HashedIndexSet(int initialSize) {
         var positionsSize = Integer.highestOneBit(initialSize << 1);
-        if(positionsSize < initialSize << 1) {
+        if (positionsSize < initialSize << 1) {
             positionsSize <<= 1;
         }
         this.inverseIndices = new int[positionsSize];
-    }
-
-    public static HashedIndexSet createSmall() {
-        return new HashedIndexSet(2);
     }
 
     public HashedIndexSet() {
@@ -38,8 +35,55 @@ public class HashedIndexSet {
         this.count = count;
     }
 
+    public static HashedIndexSet createSmall() {
+        return new HashedIndexSet(2);
+    }
+
+    public static HashedIndexSet calcIntersection(HashedIndexSet smaller, HashedIndexSet larger) {
+        var result = smaller.clone();
+        var slot = result.size() - 1;
+        while (-1 < slot) {
+            if (0 != smaller.inverseIndices[slot] && !larger.contains(~result.inverseIndices[slot])) {
+                result.inverseIndices[slot] = 0;
+                result.count--;
+            }
+            slot--;
+        }
+        return result;
+    }
+
+    private static boolean intersects(HashedIndexSet smaller, HashedIndexSet larger) {
+        var slot = smaller.inverseIndices.length - 1;
+        var otherModBase = larger.inverseIndices.length - 1;
+        while (-1 < slot) {
+            if (0 != smaller.inverseIndices[slot]) {
+                final var index = ~smaller.inverseIndices[slot];
+                var otherSlot = index & otherModBase;
+                while (0 != larger.inverseIndices[otherSlot]) {
+                    if (index == ~larger.inverseIndices[otherSlot]) {
+                        return true;
+                    } else if (--otherSlot < 0) {
+                        otherSlot += larger.inverseIndices.length;
+                    }
+                }
+            }
+            slot--;
+        }
+        return false;
+    }
+
+    public int any() {
+        for (int i : inverseIndices) {
+            if (i != 0) {
+                return ~i;
+            }
+        }
+        throw new NoSuchElementException();
+    }
+
     /**
      * Using the same hash code optimization as {@link java.util.HashMap#hash(Object)}
+     *
      * @param index
      * @return
      */
@@ -173,7 +217,7 @@ public class HashedIndexSet {
     }
 
     public final boolean anyMatch(Predicate<Integer> predicate) {
-        for(int pos: inverseIndices) {
+        for (int pos : inverseIndices) {
             if (0 != pos) {
                 if (predicate.test(~pos)) {
                     return true;
@@ -244,51 +288,18 @@ public class HashedIndexSet {
     }
 
     public HashedIndexSet calcIntersection(HashedIndexSet other) {
-        if(this.count < other.count) {
+        if (this.count < other.count) {
             return calcIntersection(this, other);
         } else {
             return calcIntersection(other, this);
         }
     }
 
-    public static HashedIndexSet calcIntersection(HashedIndexSet smaller, HashedIndexSet larger) {
-        var result = smaller.clone();
-        var slot = result.size()-1;
-        while (-1 < slot) {
-            if (0 != smaller.inverseIndices[slot] && !larger.contains(~result.inverseIndices[slot])) {
-                result.inverseIndices[slot] = 0;
-                result.count--;
-            }
-            slot--;
-        }
-        return result;
-    }
-
     public boolean intersects(HashedIndexSet other) {
-        if(this.count < other.count) {
+        if (this.count < other.count) {
             return intersects(this, other);
         } else {
             return intersects(other, this);
         }
-    }
-
-    private static boolean intersects(HashedIndexSet smaller, HashedIndexSet larger) {
-        var slot = smaller.inverseIndices.length-1;
-        var otherModBase = larger.inverseIndices.length-1;
-        while (-1 < slot) {
-            if (0 != smaller.inverseIndices[slot]) {
-                final var index = ~smaller.inverseIndices[slot];
-                var otherSlot = index & otherModBase;
-                while (0 != larger.inverseIndices[otherSlot]) {
-                    if (index == ~larger.inverseIndices[otherSlot]) {
-                        return true;
-                    } else if (--otherSlot < 0) {
-                        otherSlot += larger.inverseIndices.length;
-                    }
-                }
-            }
-            slot--;
-        }
-        return false;
     }
 }

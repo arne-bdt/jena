@@ -20,14 +20,12 @@ package org.apache.jena.mem.graph;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-import org.apache.jena.mem2.GraphMem2Fast;
-import org.apache.jena.mem2.GraphMem2Huge;
-import org.apache.jena.mem2.GraphMem2Legacy;
-import org.apache.jena.mem2.GraphMem2Roaring;
+import org.apache.jena.mem2.*;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -46,9 +44,9 @@ public class TestGraphContainsAnything {
     @Param({
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
-//            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-//            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+            "C:/temp/res_test/xxx_CGMES_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
@@ -60,13 +58,9 @@ public class TestGraphContainsAnything {
     public String param0_GraphUri;
 
     @Param({
-//            "GraphMem (current)",
-//            "GraphMemB (current)",
-//            "GraphMem2Fast (current)",
-//            "GraphMem2FullyIndexed (current)",
-//            "GraphMem2Huge (current)",
+            "GraphMem (current)",
+            "GraphMem2Fast (current)",
             "GraphMem2Legacy (current)",
-            "GraphMem2LowMem (current)",
             "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })
@@ -114,17 +108,32 @@ public class TestGraphContainsAnything {
 //    public void testContainsPO() {
 //        var triples = Releases.current.readTriples("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml");
 //        var triplesToFind = Releases.current.cloneTriples(triples);
-//        Assert.assertTrue(GraphMem2LegacyContains(triples, triplesToFind));
+//        //Assert.assertTrue(GraphMem2LegacyContains(triples, triplesToFind));
 //        Assert.assertTrue(GraphMem2FastContains(triples, triplesToFind));
 //    }
 //
 //    private static boolean GraphMem2FastContains(List<Triple> triples, List<Triple> triplesToFind) {
-//        var sut = new GraphMem2Fast();
+//        var sut = new GraphMem2LowMem();
+//        var failingTriple = new Triple(
+//                NodeFactory.createURI("file:///C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml#_289016ca-c89b-4fd1-be91-d67a7606ad6e"),
+//                NodeFactory.createURI("http://iec.ch/TC57/CIM100#Line.Region"),
+//                NodeFactory.createURI("file:///C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml#_9c396f7b-905c-4747-9815-f19703ba4555"));
+//        for(var t: triples) {
+//            if(t.equals(failingTriple)) {
+//                sut.add(t);
+//            } else {
+//                sut.add(t);
+//            }
+//        }
 //        triples.forEach(sut::add);
+//        assert sut.size() == triples.size();
 //        var stopwatch = StopWatch.createStarted();
 //        var found = false;
 //        for(var t: triplesToFind) {
 //            found = sut.contains(null, t.getPredicate(), t.getObject());
+//            if(!found) {
+//                sut.contains(null, t.getPredicate(), t.getObject());
+//            }
 //            Assert.assertTrue(found);
 //        }
 //        stopwatch.stop();

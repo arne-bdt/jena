@@ -20,9 +20,8 @@ package org.apache.jena.mem2.store.roaringLowMem;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.FastHashMap;
 import org.apache.jena.mem2.collection.FastHashSet;
-import org.apache.jena.mem2.collection.HashCommonPseudoMap;
+import org.apache.jena.mem2.collection.FastPseudoMap;
 import org.apache.jena.mem2.pattern.MatchPattern;
 import org.apache.jena.mem2.pattern.PatternClassifier;
 import org.apache.jena.mem2.store.TripleStore;
@@ -43,6 +42,7 @@ public class RoaringLowMemTripleStore implements TripleStore {
     PredicateToBitmapsMap predicateBitmaps = new PredicateToBitmapsMap();
     ObjectToBitmapsMap objectBitmaps = new ObjectToBitmapsMap();
     TripleSet triples = new TripleSet(); // We use a list here to maintain the order of triples
+
     public RoaringLowMemTripleStore() {
 
     }
@@ -336,20 +336,11 @@ public class RoaringLowMemTripleStore implements TripleStore {
         }
     }
 
-    private abstract class NodesToBitmapsMap extends HashCommonPseudoMap<Node, RoaringBitmap> {
-
-        public NodesToBitmapsMap() {
-            super(10);
-        }
+    private abstract class NodesToBitmapsMap extends FastPseudoMap<Node, RoaringBitmap> {
 
         @Override
-        protected RoaringBitmap[] newKeysArray(int size) {
+        protected RoaringBitmap[] newValuesArray(int size) {
             return new RoaringBitmap[size];
-        }
-
-        @Override
-        public void clear() {
-            super.clear(10);
         }
     }
 }

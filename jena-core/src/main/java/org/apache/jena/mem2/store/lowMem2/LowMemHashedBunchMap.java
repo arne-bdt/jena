@@ -15,19 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.lowMem;
+package org.apache.jena.mem2.store.lowMem2;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.mem2.collection.FastPseudoMap;
+import org.apache.jena.mem2.collection.HashCommonPseudoMap;
 
-public class LowMemHashedBunchMap extends FastPseudoMap<Node, TripleBunch> {
+public class LowMemHashedBunchMap extends HashCommonPseudoMap<Node, TripleBunch> {
 
     public LowMemHashedBunchMap() {
         super(10);
     }
 
     @Override
-    protected TripleBunch[] newValuesArray(int size) {
+    protected TripleBunch[] newKeysArray(int size) {
         return new TripleBunch[size];
     }
 
@@ -37,4 +37,8 @@ public class LowMemHashedBunchMap extends FastPseudoMap<Node, TripleBunch> {
         return tripleBunch.getIndexingNode();
     }
 
+    @Override
+    public void clear() {
+        super.clear(10);
+    }
 }

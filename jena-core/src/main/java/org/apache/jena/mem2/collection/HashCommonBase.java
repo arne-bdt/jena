@@ -1,14 +1,6 @@
 package org.apache.jena.mem2.collection;
 
-import org.apache.jena.mem2.iterator.SparseArrayIterator;
-import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.shared.JenaException;
-import org.apache.jena.util.iterator.ExtendedIterator;
-
-import java.util.ConcurrentModificationException;
-import java.util.Spliterator;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 public abstract class HashCommonBase<Key> {
     /**

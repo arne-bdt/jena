@@ -18,23 +18,17 @@
 
 package org.apache.jena.mem2.store.fullyIndexed;
 
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.jena.atlas.lib.tuple.Tuple2;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.FastHashMap;
 import org.apache.jena.mem2.collection.FastHashSet;
+import org.apache.jena.mem2.collection.HashCommonPseudoMap;
 import org.apache.jena.mem2.collection.specialized.HashedIndexSet;
-import org.apache.jena.mem2.pattern.MatchPattern;
 import org.apache.jena.mem2.pattern.PatternClassifier;
 import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.NullIterator;
 import org.apache.jena.util.iterator.SingletonIterator;
-import org.roaringbitmap.FastAggregation;
-import org.roaringbitmap.ImmutableBitmapDataProvider;
-import org.roaringbitmap.RoaringBitmap;
 
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -42,14 +36,24 @@ import java.util.stream.StreamSupport;
 
 public class FullyIndexedTripleStore implements TripleStore {
 
-    private static final RoaringBitmap EMPTY_BITMAP = new RoaringBitmap();
-    NodesToIndexSet subjectIndices = new NodesToIndexSet();
-    NodesToIndexSet predicateIndices = new NodesToIndexSet();
-    NodesToIndexSet objectIndices = new NodesToIndexSet();
+    SubjectToIndexSet subjectIndices = new SubjectToIndexSet();
+    PredicateToIndexSet predicateIndices = new PredicateToIndexSet();
+    ObjectToIndexSet objectIndices = new ObjectToIndexSet();
 
     TripleSet triples = new TripleSet(); // We use a list here to maintain the order of triples
+
     public FullyIndexedTripleStore() {
 
+    }
+
+    private void addIndex(final NodesToIndexSet map, final Node node, final int index) {
+        map.compute(node, set -> {
+            if (set == null) {
+                set = HashedIndexSet.createSmall();
+            }
+            set.addUnchecked(index);
+            return set;
+        });
     }
 
     @Override
@@ -58,9 +62,9 @@ public class FullyIndexedTripleStore implements TripleStore {
         if (index < 0) { /*triple already exists*/
             return;
         }
-        this.subjectIndices.computeIfAbsent(triple.getSubject(), HashedIndexSet::createSmall).addUnchecked(index);
-        this.predicateIndices.computeIfAbsent(triple.getPredicate(), HashedIndexSet::createSmall).addUnchecked(index);
-        this.objectIndices.computeIfAbsent(triple.getObject(), HashedIndexSet::createSmall).addUnchecked(index);
+        addIndex(subjectIndices, triple.getSubject(), index);
+        addIndex(predicateIndices, triple.getPredicate(), index);
+        addIndex(objectIndices, triple.getObject(), index);
     }
 
     @Override
@@ -125,8 +129,6 @@ public class FullyIndexedTripleStore implements TripleStore {
 
                 return oIndices.anyMatch(index -> tripleMatch.getPredicate().equals(this.triples.getKeyAt(index).getPredicate()));
             }
-
-
             case ___:
                 return !this.isEmpty();
 
@@ -134,6 +136,7 @@ public class FullyIndexedTripleStore implements TripleStore {
                 throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
         }
     }
+
     @Override
     public Stream<Triple> stream() {
         return this.triples.keyStream();
@@ -248,16 +251,42 @@ public class FullyIndexedTripleStore implements TripleStore {
         }
     }
 
-    private static class NodesToIndexSet extends FastHashMap<Node, HashedIndexSet> {
-
+    private class SubjectToIndexSet extends NodesToIndexSet {
         @Override
-        protected Node[] newKeysArray(int size) {
-            return new Node[size];
+        protected Node getKey(HashedIndexSet indexSet) {
+            return triples.getKeyAt(indexSet.any()).getSubject();
+        }
+    }
+
+    private class PredicateToIndexSet extends NodesToIndexSet {
+        @Override
+        protected Node getKey(HashedIndexSet indexSet) {
+            return triples.getKeyAt(indexSet.any()).getPredicate();
+        }
+    }
+
+    private class ObjectToIndexSet extends NodesToIndexSet {
+        @Override
+        protected Node getKey(HashedIndexSet indexSet) {
+            return triples.getKeyAt(indexSet.any()).getObject();
+        }
+    }
+
+    private abstract class NodesToIndexSet extends HashCommonPseudoMap<Node, HashedIndexSet> {
+
+
+        protected NodesToIndexSet() {
+            super(10);
         }
 
         @Override
-        protected HashedIndexSet[] newValuesArray(int size) {
+        protected HashedIndexSet[] newKeysArray(int size) {
             return new HashedIndexSet[size];
+        }
+
+        @Override
+        public void clear() {
+            super.clear(10);
         }
     }
 }

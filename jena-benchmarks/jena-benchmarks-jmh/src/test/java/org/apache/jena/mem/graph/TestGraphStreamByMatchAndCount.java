@@ -43,12 +43,12 @@ public class TestGraphStreamByMatchAndCount {
     @Param({
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
-//            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-//            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+            "C:/temp/res_test/xxx_CGMES_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
 //            "../testing/BSBM/bsbm-5m.nt.gz",
@@ -57,13 +57,9 @@ public class TestGraphStreamByMatchAndCount {
     public String param0_GraphUri;
 
     @Param({
-//            "GraphMem (current)",
-//            "GraphMemB (current)",
-//            "GraphMem2Fast (current)",
-//            "GraphMem2FullyIndexed (current)",
-//            "GraphMem2Huge (current)",
+            "GraphMem (current)",
+            "GraphMem2Fast (current)",
             "GraphMem2Legacy (current)",
-            "GraphMem2LowMem (current)",
             "GraphMem2Roaring (current)",
 //              "GraphMem (Jena 4.8.0)",
     })

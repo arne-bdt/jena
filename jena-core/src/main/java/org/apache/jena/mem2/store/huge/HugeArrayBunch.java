@@ -41,11 +41,12 @@ public abstract class HugeArrayBunch implements HudeTripleBunch {
 
     protected int size = 0;
     protected Triple[] elements;
-    protected abstract Node getIndexingNode(Triple t);
 
     public HugeArrayBunch() {
         elements = new Triple[INITIAL_SIZE];
     }
+
+    protected abstract Node getIndexingNode(Triple t);
 
     public boolean containsKey(Triple t) {
         int i = size;

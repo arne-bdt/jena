@@ -30,7 +30,6 @@ import java.util.stream.Stream;
 public class FastTripleStore implements TripleStore {
 
     private static final int MAX_ARRAY_BUNCH_SIZE = 16;
-    public static final int THRESHOLD_FOR_SECOND_LOOKUP = 350;
 
     final FastHashedBunchMap subjects = new FastHashedBunchMap();
     final FastHashedBunchMap predicates = new FastHashedBunchMap();

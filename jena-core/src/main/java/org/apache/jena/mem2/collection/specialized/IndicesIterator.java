@@ -34,7 +34,7 @@ public class IndicesIterator extends NiceIterator<Integer> {
     private final Runnable checkForConcurrentModification;
     private int pos;
 
-    private boolean hasNext=false;
+    private boolean hasNext = false;
 
     public IndicesIterator(final int[] indices, final Runnable checkForConcurrentModification) {
         this.indices = indices;
@@ -84,9 +84,9 @@ public class IndicesIterator extends NiceIterator<Integer> {
 
     @Override
     public void forEachRemaining(Consumer<? super Integer> action) {
-        if(pos == indices.length - 1) {
-            for(int index: indices) {
-                if(-1 < index) {
+        if (pos == indices.length - 1) {
+            for (int index : indices) {
+                if (-1 < index) {
                     action.accept(indices[index]);
                 }
             }

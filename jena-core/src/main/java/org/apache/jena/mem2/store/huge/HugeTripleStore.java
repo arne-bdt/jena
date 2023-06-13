@@ -31,72 +31,10 @@ import java.util.stream.Stream;
 
 public class HugeTripleStore implements TripleStore {
 
-    private static class ArrayBunchIndexingBySubject extends HugeArrayBunch {
-
-        @Override
-        protected Node getIndexingNode(Triple t) {
-            return t.getSubject();
-        }
-    }
-
-    private static class ArrayBunchIndexingByPredicate extends HugeArrayBunch {
-
-        @Override
-        protected Node getIndexingNode(Triple t) {
-            return t.getPredicate();
-        }
-    }
-
-    private static class ArrayBunchIndexingByObject extends HugeArrayBunch {
-
-        @Override
-        protected Node getIndexingNode(Triple t) {
-            return t.getObject();
-        }
-    }
-
-    private static class HashedBunchIndexingBySubject extends HugeHashedTripleBunch {
-
-        protected HashedBunchIndexingBySubject(JenaSet<Triple> b) {
-            super(b);
-        }
-
-        @Override
-        protected Node getIndexingNode(Triple t) {
-            return t.getSubject();
-        }
-    }
-
-    private static class HashedBunchIndexingByPredicate extends HugeHashedTripleBunch {
-
-        protected HashedBunchIndexingByPredicate(JenaSet<Triple> b) {
-            super(b);
-        }
-
-        @Override
-        protected Node getIndexingNode(Triple t) {
-            return t.getPredicate();
-        }
-    }
-
-    private static class HashedBunchIndexingByObject extends HugeHashedTripleBunch {
-
-        protected HashedBunchIndexingByObject(JenaSet<Triple> b) {
-            super(b);
-        }
-
-        @Override
-        protected Node getIndexingNode(Triple t) {
-            return t.getObject();
-        }
-    }
-
     private static final int MAX_ARRAY_BUNCH_SIZE = 16;
-
     final HugeHashedBunchMap subjects = new HugeHashedBunchMap();
     final HugeHashedBunchMap predicates = new HugeHashedBunchMap();
     final HugeHashedBunchMap objects = new HugeHashedBunchMap();
-
     private int size = 0;
 
     public HugeTripleStore() {
@@ -384,6 +322,66 @@ public class HugeTripleStore implements TripleStore {
 
             default:
                 throw new IllegalStateException("Unexpected value: " + PatternClassifier.classify(tripleMatch));
+        }
+    }
+
+    private static class ArrayBunchIndexingBySubject extends HugeArrayBunch {
+
+        @Override
+        protected Node getIndexingNode(Triple t) {
+            return t.getSubject();
+        }
+    }
+
+    private static class ArrayBunchIndexingByPredicate extends HugeArrayBunch {
+
+        @Override
+        protected Node getIndexingNode(Triple t) {
+            return t.getPredicate();
+        }
+    }
+
+    private static class ArrayBunchIndexingByObject extends HugeArrayBunch {
+
+        @Override
+        protected Node getIndexingNode(Triple t) {
+            return t.getObject();
+        }
+    }
+
+    private static class HashedBunchIndexingBySubject extends HugeHashedTripleBunch {
+
+        protected HashedBunchIndexingBySubject(JenaSet<Triple> b) {
+            super(b);
+        }
+
+        @Override
+        protected Node getIndexingNode(Triple t) {
+            return t.getSubject();
+        }
+    }
+
+    private static class HashedBunchIndexingByPredicate extends HugeHashedTripleBunch {
+
+        protected HashedBunchIndexingByPredicate(JenaSet<Triple> b) {
+            super(b);
+        }
+
+        @Override
+        protected Node getIndexingNode(Triple t) {
+            return t.getPredicate();
+        }
+    }
+
+    private static class HashedBunchIndexingByObject extends HugeHashedTripleBunch {
+
+        protected HashedBunchIndexingByObject(JenaSet<Triple> b) {
+            super(b);
+        }
+
+        @Override
+        protected Node getIndexingNode(Triple t) {
+            return t.getObject();
         }
     }
 }

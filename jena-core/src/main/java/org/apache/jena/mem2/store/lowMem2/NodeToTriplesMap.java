@@ -15,26 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.lowMem;
+package org.apache.jena.mem2.store.lowMem2;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.mem2.collection.FastPseudoMap;
+import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.collection.JenaSet;
+import org.apache.jena.util.iterator.ExtendedIterator;
 
-public class LowMemHashedBunchMap extends FastPseudoMap<Node, TripleBunch> {
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
-    public LowMemHashedBunchMap() {
-        super(10);
-    }
+public interface NodeToTriplesMap extends JenaSet<Triple> {
+    void clear();
 
-    @Override
-    protected TripleBunch[] newValuesArray(int size) {
-        return new TripleBunch[size];
-    }
+    ExtendedIterator<Triple> iteratorForMatches(Node index, Node n2, Node n3);
 
+    Stream<Triple> streamForMatches(Node index, Node n2, Node n3);
 
-    @Override
-    protected Node getKey(TripleBunch tripleBunch) {
-        return tripleBunch.getIndexingNode();
-    }
+    boolean containsMatch(Node index, Node n2, Node n3);
 
+    boolean containsKey(Triple triple, Node index, Predicate<Triple> predicateReplacingEquals);
 }

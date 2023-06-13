@@ -5,7 +5,6 @@ import org.apache.jena.mem2.collection.FastHashSet;
 import org.apache.jena.util.iterator.NiceIterator;
 
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 public class IndexedTripleIterator extends NiceIterator<Triple> {

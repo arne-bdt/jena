@@ -28,13 +28,10 @@ import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.SingletonIterator;
-import org.roaringbitmap.BatchIterator;
 import org.roaringbitmap.FastAggregation;
 import org.roaringbitmap.ImmutableBitmapDataProvider;
 import org.roaringbitmap.RoaringBitmap;
 
-import java.util.NoSuchElementException;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public class RoaringTripleStore implements TripleStore {
@@ -44,6 +41,7 @@ public class RoaringTripleStore implements TripleStore {
     NodesToBitmapsMap predicateBitmaps = new NodesToBitmapsMap();
     NodesToBitmapsMap objectBitmaps = new NodesToBitmapsMap();
     TripleSet triples = new TripleSet(); // We use a list here to maintain the order of triples
+
     public RoaringTripleStore() {
 
     }
@@ -298,7 +296,6 @@ public class RoaringTripleStore implements TripleStore {
             default:
                 throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
         }
-
     }
 
     private class TripleSet extends FastHashSet<Triple> {

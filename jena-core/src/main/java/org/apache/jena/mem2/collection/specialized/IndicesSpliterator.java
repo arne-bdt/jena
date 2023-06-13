@@ -30,7 +30,6 @@ import java.util.function.Consumer;
  * <p>
  * The spliterator will check for concurrent modifications by invoking a {@link Runnable}
  * before each action.
- *
  */
 public class IndicesSpliterator implements Spliterator<Integer> {
 
@@ -43,7 +42,7 @@ public class IndicesSpliterator implements Spliterator<Integer> {
      * Create a spliterator for the given array, with the given size.
      *
      * @param indices                        the array
-     * @param fromPos                      the index of the first element, inclusive
+     * @param fromPos                        the index of the first element, inclusive
      * @param toIndex                        the index of the last element, exclusive
      * @param checkForConcurrentModification
      */

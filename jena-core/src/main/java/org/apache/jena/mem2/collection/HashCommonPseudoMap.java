@@ -35,8 +35,6 @@ import java.util.function.Supplier;
  */
 public abstract class HashCommonPseudoMap<Key, Value> extends HashCommonBase<Value> implements JenaMap<Key, Value> {
 
-    protected abstract Key getKey(Value value);
-
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
      * capacity and the corresponding threshold. All the key elements start out
@@ -45,6 +43,8 @@ public abstract class HashCommonPseudoMap<Key, Value> extends HashCommonBase<Val
     protected HashCommonPseudoMap(int initialCapacity) {
         super(initialCapacity);
     }
+
+    protected abstract Key getKey(Value value);
 
     public void clear(int initialCapacity) {
         super.clear(initialCapacity);
