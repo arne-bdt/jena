@@ -46,7 +46,7 @@ public class TestGraphContainsTriple {
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
-            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
     })
     public String param0_GraphUri;

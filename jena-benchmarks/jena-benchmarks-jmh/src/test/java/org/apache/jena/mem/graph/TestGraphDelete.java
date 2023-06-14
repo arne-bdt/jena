@@ -46,7 +46,7 @@ public class TestGraphDelete {
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
-            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
     })
     public String param0_GraphUri;
@@ -138,7 +138,8 @@ public class TestGraphDelete {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-                .measurementIterations(5)
+                .warmupIterations(3)
+                .measurementIterations(10)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

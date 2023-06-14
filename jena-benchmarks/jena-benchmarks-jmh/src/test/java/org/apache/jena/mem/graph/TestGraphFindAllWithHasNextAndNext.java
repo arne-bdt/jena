@@ -121,6 +121,7 @@ public class TestGraphFindAllWithHasNextAndNext {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
+                .measurementIterations(8)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

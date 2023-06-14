@@ -36,7 +36,7 @@ import java.util.stream.StreamSupport;
  */
 public class FastArrayBunch implements FastTripleBunch {
 
-    private static final int INITIAL_SIZE = 2;
+    private static final int INITIAL_SIZE = 4;
 
     protected int size = 0;
     protected Triple[] elements;
