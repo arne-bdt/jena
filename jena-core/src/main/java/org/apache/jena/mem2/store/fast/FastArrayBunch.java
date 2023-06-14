@@ -34,7 +34,7 @@ import java.util.stream.StreamSupport;
  * (because, if it gets big enough for this linear growth to be bad, it should anyways
  * have been replaced by a more efficient set-of-triples implementation).
  */
-public class FastArrayBunch implements FastTripleBunch {
+public abstract class FastArrayBunch implements FastTripleBunch {
 
     private static final int INITIAL_SIZE = 4;
 
@@ -45,13 +45,15 @@ public class FastArrayBunch implements FastTripleBunch {
         elements = new Triple[INITIAL_SIZE];
     }
 
+    public abstract boolean areEqual(final Triple a, final Triple b);
+
     public boolean containsKey(Triple t) {
         int i = size;
-        while (i > 0) if (t.equals(elements[--i])) return true;
+        while (i > 0) if (areEqual(t, elements[--i])) return true;
         return false;
     }
 
-    public boolean anyMatch(Predicate<Triple> predicate) {
+    public boolean anyMatch(final Predicate<Triple> predicate) {
         int i = size;
         while (i > 0) if (predicate.test(elements[--i])) return true;
         return false;
@@ -74,7 +76,7 @@ public class FastArrayBunch implements FastTripleBunch {
     }
 
     @Override
-    public boolean tryAdd(Triple t) {
+    public boolean tryAdd(final Triple t) {
         if (this.containsKey(t)) return false;
         if (size == elements.length) grow();
         elements[size++] = t;
@@ -82,7 +84,7 @@ public class FastArrayBunch implements FastTripleBunch {
     }
 
     @Override
-    public void addUnchecked(Triple t) {
+    public void addUnchecked(final Triple t) {
         if (size == elements.length) grow();
         elements[size++] = t;
     }
@@ -100,9 +102,9 @@ public class FastArrayBunch implements FastTripleBunch {
     }
 
     @Override
-    public boolean tryRemove(Triple t) {
-        for (int i = 0; i < size; i += 1) {
-            if (t.equals(elements[i])) {
+    public boolean tryRemove(final Triple t) {
+        for (int i = 0; i < size; i++) {
+            if (areEqual(t, elements[i])) {
                 elements[i] = elements[--size];
                 return true;
             }
@@ -111,9 +113,9 @@ public class FastArrayBunch implements FastTripleBunch {
     }
 
     @Override
-    public void removeUnchecked(Triple t) {
-        for (int i = 0; i < size; i += 1) {
-            if (t.equals(elements[i])) {
+    public void removeUnchecked(final Triple t) {
+        for (int i = 0; i < size; i++) {
+            if (areEqual(t, elements[i])) {
                 elements[i] = elements[--size];
                 return;
             }
@@ -158,7 +160,7 @@ public class FastArrayBunch implements FastTripleBunch {
             int i = size;
 
             @Override
-            public boolean tryAdvance(Consumer<? super Triple> action) {
+            public boolean tryAdvance(final Consumer<? super Triple> action) {
                 if (0 < i) {
                     action.accept(elements[--i]);
                     if (size != initialSize) throw new ConcurrentModificationException();
@@ -168,7 +170,7 @@ public class FastArrayBunch implements FastTripleBunch {
             }
 
             @Override
-            public void forEachRemaining(Consumer<? super Triple> action) {
+            public void forEachRemaining(final Consumer<? super Triple> action) {
                 while (0 < i--) action.accept(elements[i]);
                 if (size != initialSize) throw new ConcurrentModificationException();
             }
@@ -208,21 +210,21 @@ public class FastArrayBunch implements FastTripleBunch {
 
     @Override
     public boolean tryAdd(Triple key, int hashCode) {
-        throw new UnsupportedOperationException();
+        return tryAdd(key);
     }
 
     @Override
     public void addUnchecked(Triple key, int hashCode) {
-        throw new UnsupportedOperationException();
+        addUnchecked(key);
     }
 
     @Override
     public boolean tryRemove(Triple key, int hashCode) {
-        throw new UnsupportedOperationException();
+        return tryRemove(key);
     }
 
     @Override
     public void removeUnchecked(Triple key, int hashCode) {
-        throw new UnsupportedOperationException();
+        removeUnchecked(key);
     }
 }

@@ -29,7 +29,33 @@ import java.util.stream.Stream;
 
 public class FastTripleStore implements TripleStore {
 
-    private static final int MAX_ARRAY_BUNCH_SIZE = 16;
+    private static class ArrayBunchWithSameSubject extends FastArrayBunch {
+
+        @Override
+        public boolean areEqual(final Triple a, final Triple b) {
+            return a.getPredicate().equals(b.getPredicate())
+                    && a.getObject().equals(b.getObject());
+        }
+    }
+
+    private static class ArrayBunchWithSamePredicate extends FastArrayBunch {
+        @Override
+        public boolean areEqual(final Triple a, final Triple b) {
+            return a.getSubject().equals(b.getSubject())
+                    && a.getObject().equals(b.getObject());
+        }
+    }
+
+    private static class ArrayBunchWithSameObject extends FastArrayBunch {
+        @Override
+        public boolean areEqual(final Triple a, final Triple b) {
+            return a.getSubject().equals(b.getSubject())
+                    && a.getPredicate().equals(b.getPredicate());
+        }
+    }
+
+    private static final int MAX_ARRAY_BUNCH_SIZE_SUBJECT = 16;
+    private static final int MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT = 32;
 
     final FastHashedBunchMap subjects = new FastHashedBunchMap();
     final FastHashedBunchMap predicates = new FastHashedBunchMap();
@@ -40,78 +66,69 @@ public class FastTripleStore implements TripleStore {
     public FastTripleStore() {
     }
 
-    private static FastTripleBunch computeAddUnchecked(FastTripleBunch bunch, final Triple t, final int hashCodeOfTriple) {
-        if (bunch == null) {
-            bunch = new FastArrayBunch();
-            bunch.addUnchecked(t);
-        } else if (bunch.isHashed()) {
-            bunch.addUnchecked(t, hashCodeOfTriple);
-        } else if (bunch.size() == MAX_ARRAY_BUNCH_SIZE) {
-            bunch = new FastHashedTripleBunch(bunch);
-            bunch.addUnchecked(t, hashCodeOfTriple);
-        } else {
-            bunch.addUnchecked(t);
-        }
-        return bunch;
-    }
-
-    private static FastTripleBunch computeRemoveUnchecked(FastTripleBunch bunch, final Triple t, final int hashCodeOfTriple) {
-        if (bunch.isHashed()) {
-            bunch.removeUnchecked(t, hashCodeOfTriple);
-        } else {
-            bunch.removeUnchecked(t);
-        }
-        return bunch.isEmpty() ? null : bunch;
-    }
-
     @Override
     public void add(Triple triple) {
         final int hashCodeOfTriple = triple.hashCode();
-        subjects.compute(triple.getSubject(), bunch -> {
-            final boolean added;
-            if (bunch == null) {
-                bunch = new FastArrayBunch();
-                bunch.addUnchecked(triple);
-                added = true;
-            } else if (bunch.isHashed()) {
-                added = bunch.tryAdd(triple, hashCodeOfTriple);
-            } else if (bunch.size() == MAX_ARRAY_BUNCH_SIZE) {
-                bunch = new FastHashedTripleBunch(bunch);
-                added = bunch.tryAdd(triple, hashCodeOfTriple);
-            } else {
-                added = bunch.tryAdd(triple);
+        final boolean added;
+        var sBunch = subjects.get(triple.getSubject());
+        if (sBunch == null) {
+            sBunch = new ArrayBunchWithSameSubject();
+            sBunch.addUnchecked(triple, hashCodeOfTriple);
+            subjects.put(triple.getSubject(), sBunch);
+            added = true;
+        } else {
+            if (!sBunch.isHashed() && sBunch.size() == MAX_ARRAY_BUNCH_SIZE_SUBJECT) {
+                sBunch = new FastHashedTripleBunch(sBunch);
+                subjects.put(triple.getSubject(), sBunch);
             }
-            if (added) {
-                predicates.compute(triple.getPredicate(), pBunch -> computeAddUnchecked(pBunch, triple, hashCodeOfTriple));
-                objects.compute(triple.getObject(), oBunch -> computeAddUnchecked(oBunch, triple, hashCodeOfTriple));
-                size++;
+            added = sBunch.tryAdd(triple, hashCodeOfTriple);
+        }
+        if(added) {
+            size++;
+            var pBunch = predicates.get(triple.getPredicate());
+            if (pBunch == null) {
+                pBunch = new ArrayBunchWithSamePredicate();
+                predicates.put(triple.getPredicate(), pBunch);
+            } else if (!pBunch.isHashed() && pBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
+                pBunch = new FastHashedTripleBunch(pBunch);
+                predicates.put(triple.getPredicate(), pBunch);
             }
-            return bunch;
-        });
+            pBunch.addUnchecked(triple, hashCodeOfTriple);
+            var oBunch = objects.get(triple.getObject());
+            if (oBunch == null) {
+                oBunch = new ArrayBunchWithSameObject();
+                objects.put(triple.getObject(), oBunch);
+            } else if (!oBunch.isHashed() && oBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
+                oBunch = new FastHashedTripleBunch(oBunch);
+                objects.put(triple.getObject(), oBunch);
+            }
+            oBunch.addUnchecked(triple, hashCodeOfTriple);
+        }
     }
 
     @Override
     public void remove(Triple triple) {
         final int hashCodeOfTriple = triple.hashCode();
-        subjects.compute(triple.getSubject(), bunch -> {
-            final boolean removed;
-            if (bunch == null) {
-                removed = false;
-            } else if (bunch.isHashed()) {
-                removed = bunch.tryRemove(triple, hashCodeOfTriple);
-            } else {
-                removed = bunch.tryRemove(triple);
+        final var sBunch = subjects.get(triple.getSubject());
+        if (sBunch == null)
+            return;
+
+        if(sBunch.tryRemove(triple, hashCodeOfTriple)) {
+            if (sBunch.isEmpty()) {
+                subjects.removeUnchecked(triple.getSubject());
             }
-            if (removed) {
-                if (bunch.isEmpty()) {
-                    bunch = null;
-                }
-                predicates.compute(triple.getPredicate(), pBunch -> computeRemoveUnchecked(pBunch, triple, hashCodeOfTriple));
-                objects.compute(triple.getObject(), oBunch -> computeRemoveUnchecked(oBunch, triple, hashCodeOfTriple));
-                size--;
+            final var pBunch = predicates.get(triple.getPredicate());
+            pBunch.removeUnchecked(triple, hashCodeOfTriple);
+            if (pBunch.isEmpty()) {
+                predicates.removeUnchecked(triple.getPredicate());
             }
-            return bunch;
-        });
+            final var oBunch = objects.get(triple.getObject());
+            oBunch.removeUnchecked(triple, hashCodeOfTriple);
+            if (oBunch.isEmpty()) {
+                objects.removeUnchecked(triple.getObject());
+            }
+            size--;
+        }
     }
 
     @Override

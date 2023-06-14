@@ -70,14 +70,9 @@ public class LegacyTripleStore implements TripleStore {
 
     @Override
     public boolean contains(Triple tripleMatch) {
-
         if (tripleMatch.isConcrete()) {
-            return subjects.containsKey(tripleMatch,
-                    tripleMatch.getSubject(),
-                    t -> tripleMatch.getPredicate().equals(t.getPredicate())
-                            && tripleMatch.getObject().equals(t.getObject()));
+            return subjects.containsKey(tripleMatch);
         }
-
 
         final Node pm = tripleMatch.getPredicate();
         final Node om = tripleMatch.getObject();

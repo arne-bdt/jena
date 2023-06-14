@@ -34,17 +34,9 @@ public class Context {
 
     public enum GraphClass {
         GraphMem,
-//        GraphMemA,
-        GraphMemB,
         GraphMem2Fast,
-        GraphMem2FullyIndexed,
-        GraphMem2Huge,
         GraphMem2Legacy,
-        GraphMem2LowMem,
         GraphMem2Roaring,
-        GraphMem2RoaringLowMem,
-//        GraphMemY,
-//        GraphMemZ
     }
 
     private final GraphClass graphClass;
@@ -57,36 +49,16 @@ public class Context {
                 this.graphClass = GraphClass.GraphMem;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
-            case "GraphMemB (current)":
-                this.graphClass = GraphClass.GraphMemB;
-                this.jenaVersion = JenaVersion.CURRENT;
-                break;
-            case "GraphMem2Roaring (current)":
-                this.graphClass = GraphClass.GraphMem2Roaring;
-                this.jenaVersion = JenaVersion.CURRENT;
-                break;
-            case "GraphMem2RoaringLowMem (current)":
-                this.graphClass = GraphClass.GraphMem2RoaringLowMem;
-                this.jenaVersion = JenaVersion.CURRENT;
-                break;
             case "GraphMem2Fast (current)":
                 this.graphClass = GraphClass.GraphMem2Fast;
-                this.jenaVersion = JenaVersion.CURRENT;
-                break;
-            case "GraphMem2FullyIndexed (current)":
-                this.graphClass = GraphClass.GraphMem2FullyIndexed;
-                this.jenaVersion = JenaVersion.CURRENT;
-                break;
-            case "GraphMem2Huge (current)":
-                this.graphClass = GraphClass.GraphMem2Huge;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
             case "GraphMem2Legacy (current)":
                 this.graphClass = GraphClass.GraphMem2Legacy;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
-            case "GraphMem2LowMem (current)":
-                this.graphClass = GraphClass.GraphMem2LowMem;
+            case "GraphMem2Roaring (current)":
+                this.graphClass = GraphClass.GraphMem2Roaring;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
             case "GraphMem (Jena 4.8.0)":

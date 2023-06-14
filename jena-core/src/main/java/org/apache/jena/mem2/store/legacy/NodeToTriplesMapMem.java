@@ -222,14 +222,6 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         return s.containsKey(triple);
     }
 
-    public boolean containsKey(Triple triple, Node index, Predicate<Triple> predicateReplacingEquals) {
-        final TripleBunch s = bunchMap.get(index);
-        if (s == null)
-            return false;
-
-        return s.containsKey(triple);
-    }
-
     @Override
     public boolean anyMatch(Predicate<Triple> predicate) {
         throw new UnsupportedOperationException();

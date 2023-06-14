@@ -33,6 +33,4 @@ public interface NodeToTriplesMap extends JenaSet<Triple> {
     Stream<Triple> streamForMatches(Node index, Node n2, Node n3);
 
     boolean containsMatch(Node index, Node n2, Node n3);
-
-    boolean containsKey(Triple triple, Node index, Predicate<Triple> predicateReplacingEquals);
 }

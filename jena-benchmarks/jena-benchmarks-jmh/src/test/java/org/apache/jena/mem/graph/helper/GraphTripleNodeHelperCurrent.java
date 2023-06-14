@@ -36,22 +36,12 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
         switch (graphClass) {
             case GraphMem:
                 return new GraphMem();
-            case GraphMemB:
-                return new GraphMemB();
             case GraphMem2Fast:
                 return new GraphMem2Fast();
-            case GraphMem2FullyIndexed:
-                return new GraphMem2FullyIndexed();
-            case GraphMem2Huge:
-                return new GraphMem2Huge();
             case GraphMem2Legacy:
                 return new GraphMem2Legacy();
-            case GraphMem2LowMem:
-                return new GraphMem2LowMem();
             case GraphMem2Roaring:
                 return new GraphMem2Roaring();
-            case GraphMem2RoaringLowMem:
-                return new GraphMem2RoaringLowMem();
             default:
                 throw new IllegalArgumentException("Unknown graph class: " + graphClass);
         }

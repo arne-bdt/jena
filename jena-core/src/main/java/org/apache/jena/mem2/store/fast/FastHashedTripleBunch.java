@@ -31,6 +31,10 @@ public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTr
         super(initialSize);
     }
 
+    public FastHashedTripleBunch() {
+        super();
+    }
+
     @Override
     protected Triple[] newKeysArray(int size) {
         return new Triple[size];
