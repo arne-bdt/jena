@@ -57,7 +57,7 @@ public class TestSetUpdate {
             "FastHashSetOfTriples2"
     })
     public String param1_SetImplementation;
-
+    java.util.function.Supplier<Integer> updateSet;
     private List<Triple> triples;
     private List<Triple> triplesToRemove;
     private HashSet<Triple> hashSet;
@@ -65,19 +65,16 @@ public class TestSetUpdate {
     private FastHashSetOfTriples fastHashSetOfTriples;
     private FastHashSetOfTriples2 fastHashSetOfTriples2;
 
-
-    java.util.function.Supplier<Integer> updateSet;
-
     @Benchmark
     public int updateSet() {
         return updateSet.get();
     }
 
     private int updateHashSet() {
-        for(int i=0; i<triplesToRemove.size(); i+=10) {
-            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+        for (int i = 0; i < triplesToRemove.size(); i += 10) {
+            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
                     .forEach(t -> this.hashSet.remove(t));
-            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
                     .forEach(t -> this.hashSet.add(t));
             assert this.hashSet.size() == triples.size();
         }
@@ -85,10 +82,10 @@ public class TestSetUpdate {
     }
 
     private int updateHashCommonTripleSet() {
-        for(int i=0; i<triplesToRemove.size(); i+=10) {
-            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+        for (int i = 0; i < triplesToRemove.size(); i += 10) {
+            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
                     .forEach(t -> this.hashCommonTripleSet.tryRemove(t));
-            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
                     .forEach(t -> this.hashCommonTripleSet.tryAdd(t));
             assert this.hashCommonTripleSet.size() == triples.size();
         }
@@ -97,10 +94,10 @@ public class TestSetUpdate {
 
 
     private int updateFastHashSetOfTriples() {
-        for(int i=0; i<triplesToRemove.size(); i+=10) {
-            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+        for (int i = 0; i < triplesToRemove.size(); i += 10) {
+            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
                     .forEach(t -> this.fastHashSetOfTriples.tryRemove(t));
-            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
                     .forEach(t -> this.fastHashSetOfTriples.tryAdd(t));
             assert this.fastHashSetOfTriples.size() == triples.size();
         }
@@ -108,10 +105,10 @@ public class TestSetUpdate {
     }
 
     private int updateFastHashSetOfTriples2() {
-        for(int i=0; i<triplesToRemove.size(); i+=10) {
-            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+        for (int i = 0; i < triplesToRemove.size(); i += 10) {
+            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
                     .forEach(t -> this.fastHashSetOfTriples2.tryRemove(t));
-            triplesToRemove.subList(i, Math.min(i+10, triplesToRemove.size()))
+            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
                     .forEach(t -> this.fastHashSetOfTriples2.tryAdd(t));
             assert this.fastHashSetOfTriples2.size() == triples.size();
         }

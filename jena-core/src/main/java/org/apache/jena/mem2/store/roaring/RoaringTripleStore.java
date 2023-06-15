@@ -49,13 +49,11 @@ public class RoaringTripleStore implements TripleStore {
     private static void addIndex(final NodesToBitmapsMap map, final Node node, final int index) {
         final var bitmap = map.computeIfAbsent(node, () -> new RoaringBitmap());
         bitmap.add(index);
-        //bitmap.runOptimize();
     }
 
     private static void removeIndex(final NodesToBitmapsMap map, final Node node, final int index) {
         final var bitmap = map.get(node);
         bitmap.remove(index);
-        //bitmap.trim();
         if (bitmap.isEmpty()) {
             map.removeUnchecked(node);
         }

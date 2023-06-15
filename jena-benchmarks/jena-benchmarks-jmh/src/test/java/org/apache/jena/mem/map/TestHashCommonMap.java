@@ -17,8 +17,8 @@
  */
 package org.apache.jena.mem.map;
 
-import org.apache.jena.mem2.collection.JenaMap;
 import org.apache.jena.mem2.collection.HashCommonMap;
+import org.apache.jena.mem2.collection.JenaMap;
 import org.junit.Before;
 import org.junit.Test;
 

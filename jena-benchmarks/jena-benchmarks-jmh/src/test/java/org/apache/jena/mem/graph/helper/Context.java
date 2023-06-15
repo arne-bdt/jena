@@ -24,24 +24,8 @@ import org.apache.jena.JenaVersion;
  */
 public class Context {
 
-    public GraphClass getGraphClass() {
-        return graphClass;
-    }
-
-    public JenaVersion getJenaVersion() {
-        return jenaVersion;
-    }
-
-    public enum GraphClass {
-        GraphMem,
-        GraphMem2Fast,
-        GraphMem2Legacy,
-        GraphMem2Roaring,
-    }
-
     private final GraphClass graphClass;
     private final JenaVersion jenaVersion;
-
 
     public Context(String graphImplementation) {
         switch (graphImplementation) {
@@ -68,6 +52,22 @@ public class Context {
             default:
                 throw new IllegalArgumentException("Unknown graph implementation: " + graphImplementation);
         }
+    }
+
+    public GraphClass getGraphClass() {
+        return graphClass;
+    }
+
+    public JenaVersion getJenaVersion() {
+        return jenaVersion;
+    }
+
+
+    public enum GraphClass {
+        GraphMem,
+        GraphMem2Fast,
+        GraphMem2Legacy,
+        GraphMem2Roaring,
     }
 
 

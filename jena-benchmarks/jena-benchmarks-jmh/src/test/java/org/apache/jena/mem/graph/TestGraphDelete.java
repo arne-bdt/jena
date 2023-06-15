@@ -23,7 +23,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-import org.apache.jena.mem2.GraphMem2Roaring;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -59,19 +58,14 @@ public class TestGraphDelete {
 //              "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
+    java.util.function.Supplier<Integer> graphDelete;
     private Context trialContext;
-
     private Graph sutCurrent;
     private org.apache.shadedJena480.graph.Graph sut480;
-
     private List<Triple> allTriplesCurrent;
     private List<org.apache.shadedJena480.graph.Triple> allTriples480;
-
     private List<Triple> triplesToDeleteFromSutCurrent;
     private List<org.apache.shadedJena480.graph.Triple> triplesToDeleteFromSut480;
-
-
-    java.util.function.Supplier<Integer> graphDelete;
 
     @Benchmark
     public int graphDelete() {

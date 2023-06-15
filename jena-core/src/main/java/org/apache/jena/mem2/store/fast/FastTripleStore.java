@@ -29,40 +29,12 @@ import java.util.stream.Stream;
 
 public class FastTripleStore implements TripleStore {
 
-    private static class ArrayBunchWithSameSubject extends FastArrayBunch {
-
-        @Override
-        public boolean areEqual(final Triple a, final Triple b) {
-            return a.getPredicate().equals(b.getPredicate())
-                    && a.getObject().equals(b.getObject());
-        }
-    }
-
-    private static class ArrayBunchWithSamePredicate extends FastArrayBunch {
-        @Override
-        public boolean areEqual(final Triple a, final Triple b) {
-            return a.getSubject().equals(b.getSubject())
-                    && a.getObject().equals(b.getObject());
-        }
-    }
-
-    private static class ArrayBunchWithSameObject extends FastArrayBunch {
-        @Override
-        public boolean areEqual(final Triple a, final Triple b) {
-            return a.getSubject().equals(b.getSubject())
-                    && a.getPredicate().equals(b.getPredicate());
-        }
-    }
-
     private static final int MAX_ARRAY_BUNCH_SIZE_SUBJECT = 16;
     private static final int MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT = 32;
-
     final FastHashedBunchMap subjects = new FastHashedBunchMap();
     final FastHashedBunchMap predicates = new FastHashedBunchMap();
     final FastHashedBunchMap objects = new FastHashedBunchMap();
-
     private int size = 0;
-
     public FastTripleStore() {
     }
 
@@ -83,22 +55,16 @@ public class FastTripleStore implements TripleStore {
             }
             added = sBunch.tryAdd(triple, hashCodeOfTriple);
         }
-        if(added) {
+        if (added) {
             size++;
-            var pBunch = predicates.get(triple.getPredicate());
-            if (pBunch == null) {
-                pBunch = new ArrayBunchWithSamePredicate();
-                predicates.put(triple.getPredicate(), pBunch);
-            } else if (!pBunch.isHashed() && pBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
+            var pBunch = predicates.computeIfAbsent(triple.getPredicate(), () -> new ArrayBunchWithSamePredicate());
+            if (!pBunch.isHashed() && pBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
                 pBunch = new FastHashedTripleBunch(pBunch);
                 predicates.put(triple.getPredicate(), pBunch);
             }
             pBunch.addUnchecked(triple, hashCodeOfTriple);
-            var oBunch = objects.get(triple.getObject());
-            if (oBunch == null) {
-                oBunch = new ArrayBunchWithSameObject();
-                objects.put(triple.getObject(), oBunch);
-            } else if (!oBunch.isHashed() && oBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
+            var oBunch = objects.computeIfAbsent(triple.getObject(), () -> new ArrayBunchWithSameObject());
+            if (!oBunch.isHashed() && oBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
                 oBunch = new FastHashedTripleBunch(oBunch);
                 objects.put(triple.getObject(), oBunch);
             }
@@ -113,7 +79,7 @@ public class FastTripleStore implements TripleStore {
         if (sBunch == null)
             return;
 
-        if(sBunch.tryRemove(triple, hashCodeOfTriple)) {
+        if (sBunch.tryRemove(triple, hashCodeOfTriple)) {
             if (sBunch.isEmpty()) {
                 subjects.removeUnchecked(triple.getSubject());
             }
@@ -190,12 +156,12 @@ public class FastTripleStore implements TripleStore {
                 // the same predicates are often grouped together. If they are at the beginning of the bunch,
                 // we can avoid the linear scan of the bunch. This is a common case for RDF data.
                 // #anyMatchRandomOrder is a bit slower if the predicate is not found than #anyMatch, but not by much.
-                if(triplesByObject.size() > 400) {
+                if (triplesByObject.size() > 400) {
                     final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
                     if (triplesByPredicate == null) {
                         return false;
                     }
-                    if(triplesByPredicate.size() < triplesByObject.size()) {
+                    if (triplesByPredicate.size() < triplesByObject.size()) {
                         return triplesByPredicate.anyMatchRandomOrder(t -> tripleMatch.getObject().equals(t.getObject()));
                     }
                 }
@@ -336,6 +302,31 @@ public class FastTripleStore implements TripleStore {
 
             default:
                 throw new IllegalStateException("Unexpected value: " + PatternClassifier.classify(tripleMatch));
+        }
+    }
+
+    private static class ArrayBunchWithSameSubject extends FastArrayBunch {
+
+        @Override
+        public boolean areEqual(final Triple a, final Triple b) {
+            return a.getPredicate().equals(b.getPredicate())
+                    && a.getObject().equals(b.getObject());
+        }
+    }
+
+    private static class ArrayBunchWithSamePredicate extends FastArrayBunch {
+        @Override
+        public boolean areEqual(final Triple a, final Triple b) {
+            return a.getSubject().equals(b.getSubject())
+                    && a.getObject().equals(b.getObject());
+        }
+    }
+
+    private static class ArrayBunchWithSameObject extends FastArrayBunch {
+        @Override
+        public boolean areEqual(final Triple a, final Triple b) {
+            return a.getSubject().equals(b.getSubject())
+                    && a.getPredicate().equals(b.getPredicate());
         }
     }
 }

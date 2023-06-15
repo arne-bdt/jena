@@ -57,13 +57,10 @@ public class TestGraphAdd {
 //              "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
-
+    java.util.function.Supplier<Object> graphAdd;
     private Context trialContext;
-
     private List<Triple> triplesCurrent;
     private List<org.apache.shadedJena480.graph.Triple> triples480;
-
-    java.util.function.Supplier<Object> graphAdd;
 
     @Benchmark
     public Object graphAdd() {

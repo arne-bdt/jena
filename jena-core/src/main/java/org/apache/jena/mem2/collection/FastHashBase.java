@@ -255,6 +255,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     /**
      * This method can be faster than {@link #anyMatch(Predicate<K>)} if one expects
      * to find many matches. But it is slower if one expects to find no matches or just a single one.
+     *
      * @param predicate
      * @return
      */

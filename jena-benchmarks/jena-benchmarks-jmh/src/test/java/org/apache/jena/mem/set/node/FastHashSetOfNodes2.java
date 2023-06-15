@@ -9,12 +9,12 @@ public class FastHashSetOfNodes2 extends FastHashSet<Node> {
         super();
     }
 
+    public FastHashSetOfNodes2(int initialCapacity) {
+        super(initialCapacity);
+    }
+
     @Override
     protected Node[] newKeysArray(int size) {
         return new Node[size];
-    }
-
-    public FastHashSetOfNodes2(int initialCapacity) {
-        super(initialCapacity);
     }
 }

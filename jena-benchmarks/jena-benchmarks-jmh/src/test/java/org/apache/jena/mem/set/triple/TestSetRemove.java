@@ -19,8 +19,8 @@
 package org.apache.jena.mem.set.triple;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
+import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -55,17 +55,13 @@ public class TestSetRemove {
             "FastHashSetOfTriples2"
     })
     public String param1_SetImplementation;
-
+    java.util.function.Supplier<Integer> removeFromSet;
     private List<Triple> triples;
     private List<Triple> triplesToRemove;
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
     private FastHashSetOfTriples fastHashSetOfTriples;
     private FastHashSetOfTriples fastHashSetOfTriples2;
-
-
-
-    java.util.function.Supplier<Integer> removeFromSet;
 
     @Benchmark
     public int setRemove() {
@@ -124,8 +120,6 @@ public class TestSetRemove {
 //        });
 //        Assert.assertTrue(set.isEmpty());
 //    }
-
-
 
 
     @Setup(Level.Invocation)

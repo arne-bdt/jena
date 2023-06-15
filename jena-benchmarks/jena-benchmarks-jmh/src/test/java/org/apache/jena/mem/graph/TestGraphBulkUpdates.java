@@ -19,7 +19,6 @@
 package org.apache.jena.mem.graph;
 
 import org.apache.jena.datatypes.xsd.XSDDatatype;
-import org.apache.jena.ext.com.google.common.base.Stopwatch;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -38,7 +37,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 @State(Scope.Benchmark)
 public class TestGraphBulkUpdates {
@@ -103,12 +101,24 @@ public class TestGraphBulkUpdates {
 //        }
 //    }
 
+    /**
+     * This method is used to get the memory consumption of the current JVM.
+     *
+     * @return the memory consumption in MB
+     */
+    private static double runGcAndGetUsedMemoryInMB() {
+        System.runFinalization();
+        System.gc();
+        Runtime.getRuntime().runFinalization();
+        Runtime.getRuntime().gc();
+        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024L)).divide(BigDecimal.valueOf(1024L)).doubleValue();
+    }
 
     @Benchmark
     public Graph manySingleUpdates() {
         var doubleTriples = new ArrayList<Triple>();
-        for(var t: triples) {
-            if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
+        for (var t : triples) {
+            if (t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
                 doubleTriples.add(t);
             }
         }
@@ -117,7 +127,7 @@ public class TestGraphBulkUpdates {
         Collections.shuffle(doubleTriples, new Random(4721));
         System.out.println();
         System.out.println("Found " + doubleTriples.size() + " triples with double literals");
-        for(int i=0; i<10; i++) {
+        for (int i = 0; i < 10; i++) {
             for (var t : doubleTriples) {
                 var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
                 var oldValue = (float) oldTriple.getObject().getIndexingValue();
@@ -131,8 +141,8 @@ public class TestGraphBulkUpdates {
     @Benchmark
     public Graph bulkDeleteAndAdd() {
         var doubleTriples = new ArrayList<Triple>();
-        for(var t: triples) {
-            if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
+        for (var t : triples) {
+            if (t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
                 doubleTriples.add(t);
             }
         }
@@ -143,7 +153,7 @@ public class TestGraphBulkUpdates {
         Collections.shuffle(doubleTriples, random);
         System.out.println();
         System.out.println("Found " + doubleTriples.size() + " triples with double literals");
-        for(int i=0; i<10; i++) {
+        for (int i = 0; i < 10; i++) {
             for (var t : doubleTriples) {
                 var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
                 this.sutCurrent.delete(oldTriple);
@@ -155,44 +165,29 @@ public class TestGraphBulkUpdates {
         return sutCurrent;
     }
 
-    /**
-     * This method is used to get the memory consumption of the current JVM.
-     * @return the memory consumption in MB
-     */
-    private static double runGcAndGetUsedMemoryInMB() {
-        System.runFinalization();
-        System.gc();
-        Runtime.getRuntime().runFinalization();
-        Runtime.getRuntime().gc();
-        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024l)).divide(BigDecimal.valueOf(1024l)).doubleValue();
-    }
-
-
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
         var trialContext = new Context(param1_GraphImplementation);
         switch (trialContext.getJenaVersion()) {
-            case CURRENT:
-                {
-                    this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
+            case CURRENT: {
+                this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
 
-                    this.triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
-                            .read(param0_GraphUri);
+                this.triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
+                        .read(param0_GraphUri);
 
-                    triples.forEach(this.sutCurrent::add);
-                }
-                break;
-            case JENA_4_8_0:
-                {
-                    this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
+                triples.forEach(this.sutCurrent::add);
+            }
+            break;
+            case JENA_4_8_0: {
+                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
 
-                    var triples = Releases.v480.readTriples(param0_GraphUri);
-                    triples.forEach(this.sut480::add);
+                var triples = Releases.v480.readTriples(param0_GraphUri);
+                triples.forEach(this.sut480::add);
 
-                    /*clone the triples because they should not be the same objects*/
-                    this.triples480 = Releases.v480.cloneTriples(triples);
-                }
-                break;
+                /*clone the triples because they should not be the same objects*/
+                this.triples480 = Releases.v480.cloneTriples(triples);
+            }
+            break;
             default:
                 throw new IllegalArgumentException("Unknown Jena version: " + trialContext.getJenaVersion());
         }

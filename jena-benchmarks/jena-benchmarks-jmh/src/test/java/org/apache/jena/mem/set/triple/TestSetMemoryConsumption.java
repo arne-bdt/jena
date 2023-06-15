@@ -57,23 +57,20 @@ public class TestSetMemoryConsumption {
             "FastHashSetOfTriples2"
     })
     public String param1_SetImplementation;
-
+    java.util.function.Supplier<Object> fillSet;
     private List<Triple> triples;
 
-    java.util.function.Supplier<Object> fillSet;
-
-    @Benchmark
-    public Object fillSet() {
-        var memoryBefore = runGcAndGetUsedMemoryInMB();
-        var stopwatch = StopWatch.createStarted();
-        var sut = fillSet.get();
-        stopwatch.stop();
-        var memoryAfter = runGcAndGetUsedMemoryInMB();
-        System.out.println(String.format("graphs: %d time to fill graphs: %s additional memory: %5.3f MB",
-                triples.size(),
-                stopwatch.formatTime(),
-                (memoryAfter - memoryBefore)));
-        return sut;
+    /**
+     * This method is used to get the memory consumption of the current JVM.
+     *
+     * @return the memory consumption in MB
+     */
+    private static double runGcAndGetUsedMemoryInMB() {
+        System.runFinalization();
+        System.gc();
+        Runtime.getRuntime().runFinalization();
+        Runtime.getRuntime().gc();
+        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024L)).divide(BigDecimal.valueOf(1024L)).doubleValue();
     }
 
 //    @Benchmark
@@ -93,6 +90,20 @@ public class TestSetMemoryConsumption {
 //                (memoryAfter - memoryBefore)));
 //        return instances;
 //    }
+
+    @Benchmark
+    public Object fillSet() {
+        var memoryBefore = runGcAndGetUsedMemoryInMB();
+        var stopwatch = StopWatch.createStarted();
+        var sut = fillSet.get();
+        stopwatch.stop();
+        var memoryAfter = runGcAndGetUsedMemoryInMB();
+        System.out.printf("graphs: %d time to fill graphs: %s additional memory: %5.3f MB%n",
+                triples.size(),
+                stopwatch.formatTime(),
+                (memoryAfter - memoryBefore));
+        return sut;
+    }
 
     private Object fillHashSet() {
         var sut = new HashSet<Triple>();
@@ -120,19 +131,6 @@ public class TestSetMemoryConsumption {
         triples.forEach(sut::addUnchecked);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
-    }
-
-
-    /**
-     * This method is used to get the memory consumption of the current JVM.
-     * @return the memory consumption in MB
-     */
-    private static double runGcAndGetUsedMemoryInMB() {
-        System.runFinalization();
-        System.gc();
-        Runtime.getRuntime().runFinalization();
-        Runtime.getRuntime().gc();
-        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory()-Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024l)).divide(BigDecimal.valueOf(1024l)).doubleValue();
     }
 
     @Setup(Level.Trial)

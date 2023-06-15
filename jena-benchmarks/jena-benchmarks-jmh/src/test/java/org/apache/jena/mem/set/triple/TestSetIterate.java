@@ -60,14 +60,12 @@ public class TestSetIterate {
             "FastHashSetOfTriples2"
     })
     public String param1_SetImplementation;
-
+    java.util.function.Supplier<Iterator<Triple>> getIterator;
     private List<Triple> triples;
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
     private FastHashSetOfTriples fastHashSetOfTriples;
     private FastHashSetOfTriples2 fastHashSetOfTriples2;
-
-    java.util.function.Supplier<Iterator<Triple>> getIterator;
 
     @Benchmark
     public Object foreachRemaining() {
@@ -81,7 +79,7 @@ public class TestSetIterate {
     @Benchmark
     public Object hasNextNext() {
         var it = getIterator.get();
-        int i= 0;
+        int i = 0;
         while (it.hasNext()) {
             it.next();
             i++;
@@ -101,6 +99,7 @@ public class TestSetIterate {
     private Iterator<Triple> getIteratorFromFastHashSetOfTriples() {
         return fastHashSetOfTriples.keyIterator();
     }
+
     private Iterator<Triple> getIteratorFromFastHashSetOfTriples2() {
         return fastHashSetOfTriples2.keyIterator();
     }

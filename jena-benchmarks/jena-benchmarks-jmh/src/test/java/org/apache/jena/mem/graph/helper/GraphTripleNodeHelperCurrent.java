@@ -22,8 +22,9 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
-import org.apache.jena.mem2.*;
-import org.apache.jena.memB.GraphMemB;
+import org.apache.jena.mem2.GraphMem2Fast;
+import org.apache.jena.mem2.GraphMem2Legacy;
+import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.riot.RDFDataMgr;
 
 import java.util.ArrayList;
@@ -75,13 +76,13 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
 
     @Override
     public Node cloneNode(Node node) {
-        if(node.isLiteral()) {
+        if (node.isLiteral()) {
             return NodeFactory.createLiteralByValue(node.getLiteralLexicalForm(), node.getLiteralLanguage(), node.getLiteralDatatype());
         }
-        if(node.isURI()) {
+        if (node.isURI()) {
             return NodeFactory.createURI(node.getURI());
         }
-        if(node.isBlank()) {
+        if (node.isBlank()) {
             return NodeFactory.createBlankNode(node.getBlankNodeLabel());
         }
         throw new IllegalArgumentException("Only literals, URIs and blank nodes are supported");

@@ -41,16 +41,9 @@ import java.util.concurrent.TimeUnit;
 public class TestSparseArraySpliteratorsForeachRemaining {
 
 
-    final static int[] stepsWithNull = new int[] {1, 2, 3, 4, 5};
-
-    List<Object[]> arraysWithNulls = new ArrayList<>(stepsWithNull.length);
-
-    List<Integer> elementsCounts = new ArrayList<>(stepsWithNull.length);
-
-
+    final static int[] stepsWithNull = new int[]{1, 2, 3, 4, 5};
     @Param({"1000000", "2000000", "3000000", "5000000"})
     public int param0_arraySize;
-
     @Param({
             "SparseArraySpliterator",
             "SparseArraySubSpliterator",
@@ -58,11 +51,13 @@ public class TestSparseArraySpliteratorsForeachRemaining {
             "SparseArraySubSpliterator2",
     })
     public String param1_iteratorImplementation;
+    List<Object[]> arraysWithNulls = new ArrayList<>(stepsWithNull.length);
+    List<Integer> elementsCounts = new ArrayList<>(stepsWithNull.length);
 
     @Benchmark
     public long testSpliteratorForeachRemaining() {
         long total = 0;
-        for(int i = 0; i < stepsWithNull.length; i++) {
+        for (int i = 0; i < stepsWithNull.length; i++) {
             var arrayWithNulls = arraysWithNulls.get(i);
             var elementsCount = elementsCounts.get(i);
             var actionCounter = new ActionCount<>();
@@ -98,11 +93,11 @@ public class TestSparseArraySpliteratorsForeachRemaining {
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
-        for(int i = 0; i < stepsWithNull.length; i++) {
+        for (int i = 0; i < stepsWithNull.length; i++) {
             var arrayWithNulls = new Object[param0_arraySize];
-            var stepsWithNull = this.stepsWithNull[i];
+            var stepsWithNull = TestSparseArraySpliteratorsForeachRemaining.stepsWithNull[i];
             var elementsCount = 0;
-            for (int k = 0; k < arrayWithNulls.length; k+=1+ stepsWithNull) {
+            for (int k = 0; k < arrayWithNulls.length; k += 1 + stepsWithNull) {
                 arrayWithNulls[k] = new Object();
                 elementsCount++;
             }
@@ -118,7 +113,7 @@ public class TestSparseArraySpliteratorsForeachRemaining {
                 // You can be more specific if you'd like to run only one benchmark per test.
                 .include(this.getClass().getName())
                 // Set the following options as needed
-                .mode (Mode.AverageTime)
+                .mode(Mode.AverageTime)
                 .timeUnit(TimeUnit.SECONDS)
                 .warmupTime(TimeValue.NONE)
                 .warmupIterations(10)

@@ -22,7 +22,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.JenaSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public interface NodeToTriplesMap extends JenaSet<Triple> {

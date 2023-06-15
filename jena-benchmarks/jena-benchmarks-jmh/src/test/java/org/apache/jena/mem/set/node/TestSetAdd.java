@@ -57,11 +57,8 @@ public class TestSetAdd {
             "HashCommonNodeSet"
     })
     public String param1_SetImplementation;
-
-
-    private List<Triple> triples;
-
     java.util.function.Function<Triple.Field, Object> addToSet;
+    private List<Triple> triples;
 
     @Benchmark
     public Object addSubjectsToSet() {

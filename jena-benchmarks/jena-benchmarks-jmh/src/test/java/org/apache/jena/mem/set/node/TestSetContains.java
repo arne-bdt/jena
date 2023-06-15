@@ -57,29 +57,22 @@ public class TestSetContains {
             "HashCommonNodeSet"
     })
     public String param1_SetImplementation;
-
-    private List<Triple> triplesToFind;
-
-    private HashSet<Node> subjectHashSet;
-    private HashSet<Node> predicateHashSet;
-    private HashSet<Node> objectHashSet;
-
-
-    private HashCommonNodeSet subjectHashCommonNodeSet;
-    private HashCommonNodeSet predicateHashCommonNodeSet;
-    private HashCommonNodeSet objectHashCommonNodeSet;
-
-    private FastHashSetOfNodes subjectFastHashSetOfNodes;
-    private FastHashSetOfNodes predicateFastHashSetOfNodes;
-    private FastHashSetOfNodes objectFastHashSetOfNodes;
-
-    private FastHashSetOfNodes2 subjectFastHashSetOfNodes2;
-    private FastHashSetOfNodes2 predicateFastHashSetOfNodes2;
-    private FastHashSetOfNodes2 objectFastHashSetOfNodes2;
-
     java.util.function.Supplier<Boolean> setContainsSubjects;
     java.util.function.Supplier<Boolean> setContainsPredicates;
     java.util.function.Supplier<Boolean> setContainsObjects;
+    private List<Triple> triplesToFind;
+    private HashSet<Node> subjectHashSet;
+    private HashSet<Node> predicateHashSet;
+    private HashSet<Node> objectHashSet;
+    private HashCommonNodeSet subjectHashCommonNodeSet;
+    private HashCommonNodeSet predicateHashCommonNodeSet;
+    private HashCommonNodeSet objectHashCommonNodeSet;
+    private FastHashSetOfNodes subjectFastHashSetOfNodes;
+    private FastHashSetOfNodes predicateFastHashSetOfNodes;
+    private FastHashSetOfNodes objectFastHashSetOfNodes;
+    private FastHashSetOfNodes2 subjectFastHashSetOfNodes2;
+    private FastHashSetOfNodes2 predicateFastHashSetOfNodes2;
+    private FastHashSetOfNodes2 objectFastHashSetOfNodes2;
 
     @Benchmark
     public boolean setContainsSubjects() {
@@ -90,6 +83,7 @@ public class TestSetContains {
     public boolean setContainsPredicates() {
         return setContainsPredicates.get();
     }
+
     @Benchmark
     public boolean setContainsObjects() {
         return setContainsObjects.get();
@@ -97,7 +91,7 @@ public class TestSetContains {
 
     private boolean hashSetContainsSubjects() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = subjectHashSet.contains(t.getSubject());
             Assert.assertTrue(found);
         }
@@ -106,7 +100,7 @@ public class TestSetContains {
 
     private boolean hashSetContainsPredicates() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = predicateHashSet.contains(t.getPredicate());
             Assert.assertTrue(found);
         }
@@ -115,7 +109,7 @@ public class TestSetContains {
 
     private boolean hashSetSetContainsObjects() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = objectHashSet.contains(t.getObject());
             Assert.assertTrue(found);
         }
@@ -124,7 +118,7 @@ public class TestSetContains {
 
     private boolean FastHashSetOfNodesContainsSubjects() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = subjectFastHashSetOfNodes.containsKey(t.getSubject());
             Assert.assertTrue(found);
         }
@@ -133,7 +127,7 @@ public class TestSetContains {
 
     private boolean FastHashSetOfNodesContainsPredicates() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = predicateFastHashSetOfNodes.containsKey(t.getPredicate());
             Assert.assertTrue(found);
         }
@@ -142,7 +136,7 @@ public class TestSetContains {
 
     private boolean FastHashSetOfNodesContainsObjects() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = objectFastHashSetOfNodes.containsKey(t.getObject());
             Assert.assertTrue(found);
         }
@@ -151,7 +145,7 @@ public class TestSetContains {
 
     private boolean FastHashSetOfNodes2ContainsSubjects() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = subjectFastHashSetOfNodes2.containsKey(t.getSubject());
             Assert.assertTrue(found);
         }
@@ -160,7 +154,7 @@ public class TestSetContains {
 
     private boolean FastHashSetOfNodes2ContainsPredicates() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = predicateFastHashSetOfNodes2.containsKey(t.getPredicate());
             Assert.assertTrue(found);
         }
@@ -169,7 +163,7 @@ public class TestSetContains {
 
     private boolean FastHashSetOfNodes2ContainsObjects() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = objectFastHashSetOfNodes2.containsKey(t.getObject());
             Assert.assertTrue(found);
         }
@@ -178,7 +172,7 @@ public class TestSetContains {
 
     private boolean HashCommonNodeSetContainsSubjects() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = subjectHashCommonNodeSet.containsKey(t.getSubject());
             Assert.assertTrue(found);
         }
@@ -187,7 +181,7 @@ public class TestSetContains {
 
     private boolean HashCommonNodeSetContainsPredicates() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = predicateHashCommonNodeSet.containsKey(t.getPredicate());
             Assert.assertTrue(found);
         }
@@ -196,7 +190,7 @@ public class TestSetContains {
 
     private boolean HashCommonNodeSetContainsObjects() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = objectHashCommonNodeSet.containsKey(t.getObject());
             Assert.assertTrue(found);
         }

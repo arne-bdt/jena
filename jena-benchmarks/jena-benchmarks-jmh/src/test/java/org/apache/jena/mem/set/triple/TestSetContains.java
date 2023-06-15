@@ -19,8 +19,8 @@
 package org.apache.jena.mem.set.triple;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
+import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -56,14 +56,12 @@ public class TestSetContains {
             "FastHashSetOfTriples2"
     })
     public String param1_SetImplementation;
-
+    java.util.function.Supplier<Boolean> setContains;
     private List<Triple> triplesToFind;
     private HashSet<Triple> tripleHashSet;
     private HashCommonTripleSet hashCommonTripleSet;
     private FastHashSetOfTriples fastHashSetOfTriples;
-
     private FastHashSetOfTriples2 fastHashSetOfTriples2;
-    java.util.function.Supplier<Boolean> setContains;
 
     @Benchmark
     public boolean setContains() {
@@ -72,7 +70,7 @@ public class TestSetContains {
 
     private boolean hashSetContains() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = tripleHashSet.contains(t);
             Assert.assertTrue(found);
         }
@@ -81,7 +79,7 @@ public class TestSetContains {
 
     private boolean hashCommonTripleSetContains() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = hashCommonTripleSet.containsKey(t);
             Assert.assertTrue(found);
         }
@@ -90,7 +88,7 @@ public class TestSetContains {
 
     private boolean fastHashSetOfTriplesContains() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = fastHashSetOfTriples.containsKey(t);
             Assert.assertTrue(found);
         }
@@ -99,7 +97,7 @@ public class TestSetContains {
 
     private boolean fastHashSetOfTriples2Contains() {
         var found = false;
-        for(var t: triplesToFind) {
+        for (var t : triplesToFind) {
             found = fastHashSetOfTriples2.containsKey(t);
             Assert.assertTrue(found);
         }

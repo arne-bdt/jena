@@ -67,14 +67,11 @@ public class TestGraphFindByMatchAndCount {
 
     @Param({"800"})
     public int param2_sampleSize;
-
+    Function<String, Object> graphFindByMatchesAndCount;
     private Graph sutCurrent;
     private org.apache.shadedJena480.graph.Graph sut480;
-
     private List<Triple> triplesToFindCurrent;
     private List<org.apache.shadedJena480.graph.Triple> triplesToFind480;
-
-    Function<String, Object> graphFindByMatchesAndCount;
 
     @Benchmark
     public Object graphFindS__() {
@@ -95,6 +92,7 @@ public class TestGraphFindByMatchAndCount {
     public Object graphFindSP_() {
         return graphFindByMatchesAndCount.apply("SP_");
     }
+
     @Benchmark
     public Object graphFindS_O() {
         return graphFindByMatchesAndCount.apply("S_O");
@@ -166,44 +164,42 @@ public class TestGraphFindByMatchAndCount {
     public void setupTrial() throws Exception {
         Context trialContext = new Context(param1_GraphImplementation);
         switch (trialContext.getJenaVersion()) {
-            case CURRENT:
-                {
-                    this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
-                    this.graphFindByMatchesAndCount = this::graphFindByMatchesAndCount;
+            case CURRENT: {
+                this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
+                this.graphFindByMatchesAndCount = this::graphFindByMatchesAndCount;
 
-                    var triples = Releases.current.readTriples(param0_GraphUri);
-                    triples.forEach(this.sutCurrent::add);
+                var triples = Releases.current.readTriples(param0_GraphUri);
+                triples.forEach(this.sutCurrent::add);
 
-                    /*clone the triples because they should not be the same objects*/
-                    this.triplesToFindCurrent = new ArrayList<>(param2_sampleSize);
-                    var sampleIncrement = triples.size() / param2_sampleSize;
-                    for(var i=0; i< triples.size(); i+=sampleIncrement) {
-                        this.triplesToFindCurrent.add(Releases.current.cloneTriple(triples.get(i)));
-                    }
+                /*clone the triples because they should not be the same objects*/
+                this.triplesToFindCurrent = new ArrayList<>(param2_sampleSize);
+                var sampleIncrement = triples.size() / param2_sampleSize;
+                for (var i = 0; i < triples.size(); i += sampleIncrement) {
+                    this.triplesToFindCurrent.add(Releases.current.cloneTriple(triples.get(i)));
+                }
                     /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                    java.util.Collections.shuffle(this.triplesToFindCurrent, new Random(4721));
+                java.util.Collections.shuffle(this.triplesToFindCurrent, new Random(4721));
+            }
+            break;
+            case JENA_4_8_0: {
+                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
+                this.graphFindByMatchesAndCount = this::graphFindByMatchesAndCount480;
+
+                var triples = Releases.v480.readTriples(param0_GraphUri);
+                triples.forEach(this.sut480::add);
+
+                /*clone the triples because they should not be the same objects*/
+                this.triplesToFind480 = new ArrayList<>(param2_sampleSize);
+                var sampleIncrement = triples.size() / param2_sampleSize;
+                for (var i = 0; i < triples.size(); i += sampleIncrement) {
+                    this.triplesToFind480.add(Releases.v480.cloneTriple(triples.get(i)));
                 }
-                break;
-            case JENA_4_8_0:
-                {
-                    this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-                    this.graphFindByMatchesAndCount = this::graphFindByMatchesAndCount480;
-
-                    var triples = Releases.v480.readTriples(param0_GraphUri);
-                    triples.forEach(this.sut480::add);
-
-                    /*clone the triples because they should not be the same objects*/
-                    this.triplesToFind480 = new ArrayList<>(param2_sampleSize);
-                    var sampleIncrement = triples.size() / param2_sampleSize;
-                    for(var i=0; i< triples.size(); i+=sampleIncrement) {
-                        this.triplesToFind480.add(Releases.v480.cloneTriple(triples.get(i)));
-                    }
                     /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                    java.util.Collections.shuffle(this.triplesToFind480, new Random(4721));
-                }
-                break;
+                java.util.Collections.shuffle(this.triplesToFind480, new Random(4721));
+            }
+            break;
             default:
                 throw new IllegalArgumentException("Unknown Jena version: " + trialContext.getJenaVersion());
         }

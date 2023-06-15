@@ -19,8 +19,8 @@
 package org.apache.jena.mem.set.triple;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
+import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -61,14 +61,12 @@ public class TestSetStreamAll {
             "FastHashSetOfTriples2"
     })
     public String param1_SetImplementation;
-
+    java.util.function.Supplier<Spliterator<Triple>> getSpliterator;
     private List<Triple> triples;
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
     private FastHashSetOfTriples fastHashSetOfTriples;
     private FastHashSetOfTriples2 fastHashSetOfTriples2;
-
-    java.util.function.Supplier<Spliterator<Triple>> getSpliterator;
 
     @Benchmark
     public Object streamSet() {
@@ -97,6 +95,7 @@ public class TestSetStreamAll {
     private Spliterator<Triple> getSpliteratorFromFastHashSetOfTriples() {
         return fastHashSetOfTriples.keySpliterator();
     }
+
     private Spliterator<Triple> getSpliteratorFromFastHashSetOfTriples2() {
         return fastHashSetOfTriples2.keySpliterator();
     }

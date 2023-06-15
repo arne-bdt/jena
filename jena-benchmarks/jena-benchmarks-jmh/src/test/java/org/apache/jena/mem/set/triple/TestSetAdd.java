@@ -19,8 +19,8 @@
 package org.apache.jena.mem.set.triple;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
+import org.apache.jena.mem.set.helper.JMHDefaultOptions;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -56,11 +56,8 @@ public class TestSetAdd {
             "FastHashSetOfTriples2"
     })
     public String param1_SetImplementation;
-
-
-    private List<Triple> triples;
-
     java.util.function.Supplier<Object> addToSet;
+    private List<Triple> triples;
 
     @Benchmark
     public Object addToSet() {
@@ -73,6 +70,7 @@ public class TestSetAdd {
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
+
     private Object addToHashCommonTripleSet() {
         var sut = new HashCommonTripleSet();
         triples.forEach(sut::tryAdd);
