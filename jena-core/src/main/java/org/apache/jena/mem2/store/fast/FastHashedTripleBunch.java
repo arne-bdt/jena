@@ -23,7 +23,7 @@ import org.apache.jena.mem2.collection.JenaSet;
 
 public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTripleBunch {
     public FastHashedTripleBunch(final JenaSet<Triple> b) {
-        super(b.size());
+        super((b.size() >> 1) + b.size()); //it should not only fit but also have some space for growth
         b.keyIterator().forEachRemaining(t -> this.addUnchecked(t));
     }
 

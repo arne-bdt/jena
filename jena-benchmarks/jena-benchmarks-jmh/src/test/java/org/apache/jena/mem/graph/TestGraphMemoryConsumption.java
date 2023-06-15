@@ -51,7 +51,7 @@ public class TestGraphMemoryConsumption {
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
+//            "GraphMem (current)",
             "GraphMem2Fast (current)",
             "GraphMem2Legacy (current)",
             "GraphMem2Roaring (current)",
