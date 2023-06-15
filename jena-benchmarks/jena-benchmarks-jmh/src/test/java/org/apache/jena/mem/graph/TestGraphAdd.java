@@ -105,8 +105,6 @@ public class TestGraphAdd {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-                .warmupIterations(3)
-                .measurementIterations(10)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

@@ -185,7 +185,21 @@ public class FastTripleStore implements TripleStore {
                 if (triplesByObject == null) {
                     return false;
                 }
-                return triplesByObject.anyMatch(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
+                // Optimization for typical RDF data, where there may be common values like "0" or "false"/"true".
+                // In this case, there may be many matches but due to the ordered nature of FastHashBase,
+                // the same predicates are often grouped together. If they are at the beginning of the bunch,
+                // we can avoid the linear scan of the bunch. This is a common case for RDF data.
+                // #anyMatchRandomOrder is a bit slower if the predicate is not found than #anyMatch, but not by much.
+                if(triplesByObject.size() > 400) {
+                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
+                    if (triplesByPredicate == null) {
+                        return false;
+                    }
+                    if(triplesByPredicate.size() < triplesByObject.size()) {
+                        return triplesByPredicate.anyMatchRandomOrder(t -> tripleMatch.getObject().equals(t.getObject()));
+                    }
+                }
+                return triplesByObject.anyMatchRandomOrder(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
             case _P_:

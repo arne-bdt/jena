@@ -21,6 +21,8 @@ package org.apache.jena.mem2.store.fast;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.JenaSetHashOptimized;
 
+import java.util.function.Predicate;
+
 /**
  * A bunch of triples - a stripped-down set with specialized methods. A
  * bunch is expected to store triples that share some useful property
@@ -30,4 +32,6 @@ public interface FastTripleBunch extends JenaSetHashOptimized<Triple> {
     default boolean isHashed() {
         return false;
     }
+
+    boolean anyMatchRandomOrder(Predicate<Triple> predicate);
 }

@@ -60,6 +60,11 @@ public abstract class FastArrayBunch implements FastTripleBunch {
     }
 
     @Override
+    public boolean anyMatchRandomOrder(Predicate<Triple> predicate) {
+        return anyMatch(predicate);
+    }
+
+    @Override
     public void clear() {
         this.elements = new Triple[INITIAL_SIZE];
         this.size = 0;

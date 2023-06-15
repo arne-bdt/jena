@@ -235,6 +235,11 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         }
     }
 
+    /**
+     * Attentions: Due to the ordering of the keys, this method may be slow
+     * if matching elements are at the start of the list.
+     * Try to use {@link #anyMatchRandomOrder(Predicate<K>)} instead.
+     */
     @Override
     public final boolean anyMatch(Predicate<K> predicate) {
         var pos = keysPos - 1;
@@ -243,6 +248,23 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
                 return true;
             }
             pos--;
+        }
+        return false;
+    }
+
+    /**
+     * This method can be faster than {@link #anyMatch(Predicate<K>)} if one expects
+     * to find many matches. But it is slower if one expects to find no matches or just a single one.
+     * @param predicate
+     * @return
+     */
+    public final boolean anyMatchRandomOrder(Predicate<K> predicate) {
+        var pIndex = positions.length - 1;
+        while (-1 < pIndex) {
+            if (0 != positions[pIndex] && predicate.test(keys[~positions[pIndex]])) {
+                return true;
+            }
+            pIndex--;
         }
         return false;
     }
