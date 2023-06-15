@@ -31,6 +31,7 @@ public class FastTripleStore implements TripleStore {
 
     private static final int MAX_ARRAY_BUNCH_SIZE_SUBJECT = 16;
     private static final int MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT = 32;
+    public static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 400;
     final FastHashedBunchMap subjects = new FastHashedBunchMap();
     final FastHashedBunchMap predicates = new FastHashedBunchMap();
     final FastHashedBunchMap objects = new FastHashedBunchMap();
@@ -156,7 +157,7 @@ public class FastTripleStore implements TripleStore {
                 // the same predicates are often grouped together. If they are at the beginning of the bunch,
                 // we can avoid the linear scan of the bunch. This is a common case for RDF data.
                 // #anyMatchRandomOrder is a bit slower if the predicate is not found than #anyMatch, but not by much.
-                if (triplesByObject.size() > 400) {
+                if (triplesByObject.size() > THRESHOLD_FOR_SECONDARY_LOOKUP) {
                     final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
                     if (triplesByPredicate == null) {
                         return false;
@@ -225,6 +226,15 @@ public class FastTripleStore implements TripleStore {
                 if (triplesByObject == null) {
                     return Stream.empty();
                 }
+                if (triplesByObject.size() > THRESHOLD_FOR_SECONDARY_LOOKUP) {
+                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
+                    if (triplesByPredicate == null) {
+                        return Stream.empty();
+                    }
+                    if (triplesByPredicate.size() < triplesByObject.size()) {
+                        return triplesByPredicate.keyStream().filter(t -> tripleMatch.getObject().equals(t.getObject()));
+                    }
+                }
                 return triplesByObject.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
@@ -283,6 +293,15 @@ public class FastTripleStore implements TripleStore {
                 final var triplesByObject = objects.get(tripleMatch.getObject());
                 if (triplesByObject == null) {
                     return NullIterator.emptyIterator();
+                }
+                if (triplesByObject.size() > THRESHOLD_FOR_SECONDARY_LOOKUP) {
+                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
+                    if (triplesByPredicate == null) {
+                        return NullIterator.emptyIterator();
+                    }
+                    if (triplesByPredicate.size() < triplesByObject.size()) {
+                        return triplesByPredicate.keyIterator().filterKeep(t -> tripleMatch.getObject().equals(t.getObject()));
+                    }
                 }
                 return triplesByObject.keyIterator().filterKeep(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
