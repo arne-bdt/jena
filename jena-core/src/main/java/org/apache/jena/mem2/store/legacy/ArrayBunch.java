@@ -74,11 +74,6 @@ public class ArrayBunch implements TripleBunch {
         return this.size == 0;
     }
 
-//        @Override
-//        public boolean isHashed() {
-//            return false;
-//        }
-
     @Override
     public boolean tryAdd(Triple t) {
         if (this.containsKey(t)) return false;

@@ -30,9 +30,7 @@ import java.util.stream.StreamSupport;
 
 /**
  * An ArrayBunch implements TripleBunch with a linear search of a short-ish
- * array of Triples. The array can grow, but it only grows by 4 elements each time
- * (because, if it gets big enough for this linear growth to be bad, it should anyways
- * have been replaced by a more efficient set-of-triples implementation).
+ * array of Triples. The array grows by factor 2.
  */
 public abstract class FastArrayBunch implements FastTripleBunch {
 
