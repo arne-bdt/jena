@@ -18,14 +18,6 @@
 
 package org.apache.jena.mem2.collection;
 
-import org.apache.jena.mem2.iterator.SparseArrayIterator;
-import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
-import org.apache.jena.util.iterator.ExtendedIterator;
-
-import java.util.ConcurrentModificationException;
-import java.util.Spliterator;
-import java.util.function.Predicate;
-
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
@@ -39,40 +31,6 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements 
      */
     protected HashCommonSet(int initialCapacity) {
         super(initialCapacity);
-    }
-
-    /**
-     * Search for the slot in which <code>key</code> is found. If it is absent,
-     * return the index of the free slot in which it could be placed. If it is present,
-     * return the bitwise complement of the index of the slot it appears in. Hence
-     * negative values imply present, positive absent, and there's no confusion
-     * around 0.
-     */
-    protected int findSlot(Key key) {
-        int index = initialIndexFor(key.hashCode());
-        while (true) {
-            Key current = keys[index];
-            if (current == null) return index;
-            if (key.equals(current)) return ~index;
-            if (--index < 0) index += keys.length;
-        }
-    }
-
-    @Override
-    public boolean containsKey(final Key key) {
-        return findSlot(key) < 0;
-    }
-
-    @Override
-    public boolean anyMatch(final Predicate<Key> predicate) {
-        var pos = keys.length - 1;
-        while (-1 < pos) {
-            if (null != keys[pos] && predicate.test(keys[pos])) {
-                return true;
-            }
-            pos--;
-        }
-        return false;
     }
 
     @Override
@@ -90,28 +48,6 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements 
         if (slot < 0) return;
         keys[slot] = key;
         if (++size > threshold) grow();
-    }
-
-    /**
-     * Remove the object <code>key</code> from this hash's keys if it
-     * is present (if it's absent, do nothing).
-     */
-    @Override
-    public boolean tryRemove(Key key) {
-        int slot = findSlot(key);
-        if (slot < 0) {
-            removeFrom(~slot);
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    public void removeUnchecked(Key key) {
-        int slot = findSlot(key);
-        if (slot < 0) {
-            removeFrom(~slot);
-        }
     }
 
     @Override
@@ -160,21 +96,5 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements 
                 }
             }
         }
-    }
-
-    public ExtendedIterator<Key> keyIterator() {
-        final var initialSize = size;
-        final Runnable checkForConcurrentModification = () -> {
-            if (size != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArrayIterator<>(keys, checkForConcurrentModification);
-    }
-
-    public Spliterator<Key> keySpliterator() {
-        final var initialSize = size;
-        final Runnable checkForConcurrentModification = () -> {
-            if (size != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
     }
 }

@@ -25,7 +25,6 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
@@ -55,37 +54,6 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     public abstract void clear();
 
     protected abstract Value[] newValuesArray(int size);
-
-    /**
-     * Search for the slot in which <code>key</code> is found. If it is absent,
-     * return the index of the free slot in which it could be placed. If it is present,
-     * return the bitwise complement of the index of the slot it appears in. Hence
-     * negative values imply present, positive absent, and there's no confusion
-     * around 0.
-     */
-    protected int findSlot(Key key) {
-        int index = initialIndexFor(key.hashCode());
-        while (true) {
-            Key current = keys[index];
-            if (current == null) return index;
-            if (key.equals(current)) return ~index;
-            if (--index < 0) index += keys.length;
-        }
-    }
-
-    @Override
-    public boolean containsKey(Key key) {
-        return findSlot(key) < 0;
-    }
-
-    @Override
-    public boolean anyMatch(Predicate<Key> predicate) {
-        for (int i = 0; i < keys.length; i++) {
-            if (keys[i] != null && predicate.test(keys[i]))
-                return true;
-        }
-        return false;
-    }
 
     @Override
     public boolean tryPut(Key key, Value value) {
@@ -157,31 +125,6 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
         }
     }
 
-    /**
-     * Remove the object <code>key</code> from this hash's keys if it
-     * is present (if it's absent, do nothing).
-     */
-    @Override
-    public boolean tryRemove(Key key) {
-        int slot = findSlot(key);
-        if (slot < 0) {
-            removeFrom(~slot);
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Remove the object <code>key</code> from this hash's keys if it
-     * is present (if it's absent, do nothing).
-     */
-    @Override
-    public void removeUnchecked(Key key) {
-        int slot = findSlot(key);
-        if (slot < 0) {
-            removeFrom(~slot);
-        }
-    }
 
     @Override
     protected void grow() {
@@ -234,22 +177,6 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
                 }
             }
         }
-    }
-
-    public ExtendedIterator<Key> keyIterator() {
-        final var initialSize = size;
-        final Runnable checkForConcurrentModification = () -> {
-            if (size != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArrayIterator<>(keys, checkForConcurrentModification);
-    }
-
-    public Spliterator<Key> keySpliterator() {
-        final var initialSize = size;
-        final Runnable checkForConcurrentModification = () -> {
-            if (size != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArraySpliterator<>(keys, checkForConcurrentModification);
     }
 
     @Override
