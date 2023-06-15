@@ -53,8 +53,7 @@ public class TestSetMemoryConsumption {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastHashSetOfTriples",
-            "FastHashSetOfTriples2"
+            "FastHashTripleSet"
     })
     public String param1_SetImplementation;
     java.util.function.Supplier<Object> fillSet;
@@ -72,24 +71,6 @@ public class TestSetMemoryConsumption {
         Runtime.getRuntime().gc();
         return BigDecimal.valueOf(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024L)).divide(BigDecimal.valueOf(1024L)).doubleValue();
     }
-
-//    @Benchmark
-//    public Object almostEmptyInstances() {
-//        var memoryBefore = runGcAndGetUsedMemoryInMB();
-//        var stopwatch = StopWatch.createStarted();
-//        triples = triples.subList(0, 4);
-//        var instances = new ArrayList<>(10000);
-//        for(int i=0; i<10000; i++) {
-//            instances.add(fillSet.get());
-//        }
-//        stopwatch.stop();
-//        var memoryAfter = runGcAndGetUsedMemoryInMB();
-//        System.out.println(String.format("graphs: %d time to fill graphs: %s additional memory: %5.3f MB",
-//                triples.size(),
-//                stopwatch.formatTime(),
-//                (memoryAfter - memoryBefore)));
-//        return instances;
-//    }
 
     @Benchmark
     public Object fillSet() {
@@ -119,19 +100,13 @@ public class TestSetMemoryConsumption {
         return sut;
     }
 
-    private Object fillFastHashSetOfTriples() {
-        var sut = new FastHashSetOfTriples();
+    private Object fillFastHashTripleSet() {
+        var sut = new FastHashTripleSet();
         triples.forEach(sut::addUnchecked);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
 
-    private Object fillFastHashSetOfTriples2() {
-        var sut = new FastHashSetOfTriples2();
-        triples.forEach(sut::addUnchecked);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
@@ -143,11 +118,8 @@ public class TestSetMemoryConsumption {
             case "HashCommonTripleSet":
                 this.fillSet = this::fillHashCommonTripleSet;
                 break;
-            case "FastHashSetOfTriples":
-                this.fillSet = this::fillFastHashSetOfTriples;
-                break;
-            case "FastHashSetOfTriples2":
-                this.fillSet = this::fillFastHashSetOfTriples2;
+            case "FastHashTripleSet":
+                this.fillSet = this::fillFastHashTripleSet;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

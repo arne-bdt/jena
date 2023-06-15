@@ -47,9 +47,7 @@ public class TestSparseArraySpliteratorsStreamParallel {
     public int param0_arraySize;
     @Param({
             "SparseArraySpliterator",
-            "SparseArraySubSpliterator",
-            "SparseArraySpliterator2",
-            "SparseArraySubSpliterator2",
+            "SparseArraySubSpliterator"
     })
     public String param1_iteratorImplementation;
     List<Object[]> arraysWithNulls = new ArrayList<>(stepsWithNull.length);

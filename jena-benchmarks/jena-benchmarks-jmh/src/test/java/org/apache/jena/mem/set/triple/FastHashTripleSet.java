@@ -3,13 +3,13 @@ package org.apache.jena.mem.set.triple;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.FastHashSet;
 
-public class FastHashSetOfTriples2 extends FastHashSet<Triple> {
+public class FastHashTripleSet extends FastHashSet<Triple> {
 
-    public FastHashSetOfTriples2() {
+    public FastHashTripleSet() {
         super();
     }
 
-    public FastHashSetOfTriples2(int initialCapacity) {
+    public FastHashTripleSet(int initialCapacity) {
         super(initialCapacity);
     }
 

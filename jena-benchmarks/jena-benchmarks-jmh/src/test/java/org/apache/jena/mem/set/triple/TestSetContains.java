@@ -52,16 +52,14 @@ public class TestSetContains {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastHashSetOfTriples",
-            "FastHashSetOfTriples2"
+            "FastHashTripleSet"
     })
     public String param1_SetImplementation;
     java.util.function.Supplier<Boolean> setContains;
     private List<Triple> triplesToFind;
     private HashSet<Triple> tripleHashSet;
     private HashCommonTripleSet hashCommonTripleSet;
-    private FastHashSetOfTriples fastHashSetOfTriples;
-    private FastHashSetOfTriples2 fastHashSetOfTriples2;
+    private FastHashTripleSet fastHashTripleSet;
 
     @Benchmark
     public boolean setContains() {
@@ -86,24 +84,14 @@ public class TestSetContains {
         return found;
     }
 
-    private boolean fastHashSetOfTriplesContains() {
+    private boolean fastHashTripleSetContains() {
         var found = false;
         for (var t : triplesToFind) {
-            found = fastHashSetOfTriples.containsKey(t);
+            found = fastHashTripleSet.containsKey(t);
             Assert.assertTrue(found);
         }
         return found;
     }
-
-    private boolean fastHashSetOfTriples2Contains() {
-        var found = false;
-        for (var t : triplesToFind) {
-            found = fastHashSetOfTriples2.containsKey(t);
-            Assert.assertTrue(found);
-        }
-        return found;
-    }
-
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
@@ -120,15 +108,10 @@ public class TestSetContains {
                 triples.forEach(hashCommonTripleSet::addUnchecked);
                 this.setContains = this::hashCommonTripleSetContains;
                 break;
-            case "FastHashSetOfTriples":
-                this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
-                triples.forEach(fastHashSetOfTriples::addUnchecked);
-                this.setContains = this::fastHashSetOfTriplesContains;
-                break;
-            case "FastHashSetOfTriples2":
-                this.fastHashSetOfTriples2 = new FastHashSetOfTriples2(triples.size());
-                triples.forEach(fastHashSetOfTriples2::addUnchecked);
-                this.setContains = this::fastHashSetOfTriples2Contains;
+            case "FastHashTripleSet":
+                this.fastHashTripleSet = new FastHashTripleSet(triples.size());
+                triples.forEach(fastHashTripleSet::addUnchecked);
+                this.setContains = this::fastHashTripleSetContains;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

@@ -52,8 +52,7 @@ public class TestSetAdd {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastHashSetOfTriples",
-            "FastHashSetOfTriples2"
+            "FastHashTripleSet",
     })
     public String param1_SetImplementation;
     java.util.function.Supplier<Object> addToSet;
@@ -78,27 +77,12 @@ public class TestSetAdd {
         return sut;
     }
 
-    private Object addToFastHashSetOfTriples() {
-        var sut = new FastHashSetOfTriples();
+    private Object addToFastHashTripleSet() {
+        var sut = new FastHashTripleSet();
         triples.forEach(sut::tryAdd);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
-
-    private Object addToFastHashSetOfTriples2() {
-        var sut = new FastHashSetOfTriples2();
-        triples.forEach(sut::tryAdd);
-        Assert.assertEquals(triples.size(), sut.size());
-        return sut;
-    }
-
-//    @Test
-//    public void testAddToFastTripleHashSet2() {
-//        var triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl");
-//        var sut = new FastHashSetOfTriples2(triples.size());
-//        triples.forEach(sut::tryAdd);
-//        Assert.assertEquals(triples.size(), sut.size());
-//    }
 
 
     @Setup(Level.Trial)
@@ -111,11 +95,8 @@ public class TestSetAdd {
             case "HashCommonTripleSet":
                 this.addToSet = this::addToHashCommonTripleSet;
                 break;
-            case "FastHashSetOfTriples":
-                this.addToSet = this::addToFastHashSetOfTriples;
-                break;
-            case "FastHashSetOfTriples2":
-                this.addToSet = this::addToFastHashSetOfTriples2;
+            case "FastHashTripleSet":
+                this.addToSet = this::addToFastHashTripleSet;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

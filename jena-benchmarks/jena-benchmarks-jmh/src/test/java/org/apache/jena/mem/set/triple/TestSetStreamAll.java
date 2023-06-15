@@ -57,16 +57,14 @@ public class TestSetStreamAll {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastHashSetOfTriples",
-            "FastHashSetOfTriples2"
+            "FastHashTripleSet"
     })
     public String param1_SetImplementation;
     java.util.function.Supplier<Spliterator<Triple>> getSpliterator;
     private List<Triple> triples;
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
-    private FastHashSetOfTriples fastHashSetOfTriples;
-    private FastHashSetOfTriples2 fastHashSetOfTriples2;
+    private FastHashTripleSet fastHashTripleSet;
 
     @Benchmark
     public Object streamSet() {
@@ -92,14 +90,9 @@ public class TestSetStreamAll {
         return hashCommonTripleSet.keySpliterator();
     }
 
-    private Spliterator<Triple> getSpliteratorFromFastHashSetOfTriples() {
-        return fastHashSetOfTriples.keySpliterator();
+    private Spliterator<Triple> getSpliteratorFromFastHashTripleSet() {
+        return fastHashTripleSet.keySpliterator();
     }
-
-    private Spliterator<Triple> getSpliteratorFromFastHashSetOfTriples2() {
-        return fastHashSetOfTriples2.keySpliterator();
-    }
-
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
@@ -115,15 +108,10 @@ public class TestSetStreamAll {
                 triples.forEach(hashCommonTripleSet::addUnchecked);
                 this.getSpliterator = this::getSpliteratorFromHashCommonTripleSet;
                 break;
-            case "FastHashSetOfTriples":
-                this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
-                triples.forEach(fastHashSetOfTriples::addUnchecked);
-                this.getSpliterator = this::getSpliteratorFromFastHashSetOfTriples;
-                break;
-            case "FastHashSetOfTriples2":
-                this.fastHashSetOfTriples2 = new FastHashSetOfTriples2(triples.size());
-                triples.forEach(fastHashSetOfTriples2::addUnchecked);
-                this.getSpliterator = this::getSpliteratorFromFastHashSetOfTriples2;
+            case "FastHashTripleSet":
+                this.fastHashTripleSet = new FastHashTripleSet(triples.size());
+                triples.forEach(fastHashTripleSet::addUnchecked);
+                this.getSpliterator = this::getSpliteratorFromFastHashTripleSet;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

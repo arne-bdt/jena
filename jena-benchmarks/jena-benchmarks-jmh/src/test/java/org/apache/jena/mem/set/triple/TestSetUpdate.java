@@ -53,8 +53,7 @@ public class TestSetUpdate {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastHashSetOfTriples",
-            "FastHashSetOfTriples2"
+            "FastHashTripleSet"
     })
     public String param1_SetImplementation;
     java.util.function.Supplier<Integer> updateSet;
@@ -62,8 +61,7 @@ public class TestSetUpdate {
     private List<Triple> triplesToRemove;
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
-    private FastHashSetOfTriples fastHashSetOfTriples;
-    private FastHashSetOfTriples2 fastHashSetOfTriples2;
+    private FastHashTripleSet fastHashTripleSet;
 
     @Benchmark
     public int updateSet() {
@@ -93,28 +91,16 @@ public class TestSetUpdate {
     }
 
 
-    private int updateFastHashSetOfTriples() {
+    private int updateFastHashTripleSet() {
         for (int i = 0; i < triplesToRemove.size(); i += 10) {
             triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
-                    .forEach(t -> this.fastHashSetOfTriples.tryRemove(t));
+                    .forEach(t -> this.fastHashTripleSet.tryRemove(t));
             triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
-                    .forEach(t -> this.fastHashSetOfTriples.tryAdd(t));
-            assert this.fastHashSetOfTriples.size() == triples.size();
+                    .forEach(t -> this.fastHashTripleSet.tryAdd(t));
+            assert this.fastHashTripleSet.size() == triples.size();
         }
-        return this.fastHashSetOfTriples.size();
+        return this.fastHashTripleSet.size();
     }
-
-    private int updateFastHashSetOfTriples2() {
-        for (int i = 0; i < triplesToRemove.size(); i += 10) {
-            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
-                    .forEach(t -> this.fastHashSetOfTriples2.tryRemove(t));
-            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
-                    .forEach(t -> this.fastHashSetOfTriples2.tryAdd(t));
-            assert this.fastHashSetOfTriples2.size() == triples.size();
-        }
-        return this.fastHashSetOfTriples2.size();
-    }
-
 
     @Setup(Level.Invocation)
     public void setupInvocation() {
@@ -127,13 +113,9 @@ public class TestSetUpdate {
                 this.hashCommonTripleSet = new HashCommonTripleSet(triples.size());
                 this.triples.forEach(hashCommonTripleSet::addUnchecked);
                 break;
-            case "FastHashSetOfTriples":
-                this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
-                this.triples.forEach(fastHashSetOfTriples::addUnchecked);
-                break;
-            case "FastHashSetOfTriples2":
-                this.fastHashSetOfTriples2 = new FastHashSetOfTriples2(triples.size());
-                this.triples.forEach(fastHashSetOfTriples2::addUnchecked);
+            case "FastHashTripleSet":
+                this.fastHashTripleSet = new FastHashTripleSet(triples.size());
+                this.triples.forEach(fastHashTripleSet::addUnchecked);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);
@@ -152,11 +134,8 @@ public class TestSetUpdate {
             case "HashCommonTripleSet":
                 this.updateSet = this::updateHashCommonTripleSet;
                 break;
-            case "FastHashSetOfTriples":
-                this.updateSet = this::updateFastHashSetOfTriples;
-                break;
-            case "FastHashSetOfTriples2":
-                this.updateSet = this::updateFastHashSetOfTriples2;
+            case "FastHashTripleSet":
+                this.updateSet = this::updateFastHashTripleSet;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

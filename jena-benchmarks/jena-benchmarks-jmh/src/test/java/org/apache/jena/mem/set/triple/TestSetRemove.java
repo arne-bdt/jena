@@ -51,8 +51,7 @@ public class TestSetRemove {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastHashSetOfTriples",
-            "FastHashSetOfTriples2"
+            "FastHashTripleSet"
     })
     public String param1_SetImplementation;
     java.util.function.Supplier<Integer> removeFromSet;
@@ -60,8 +59,7 @@ public class TestSetRemove {
     private List<Triple> triplesToRemove;
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
-    private FastHashSetOfTriples fastHashSetOfTriples;
-    private FastHashSetOfTriples fastHashSetOfTriples2;
+    private FastHashTripleSet fastHashTripleSet;
 
     @Benchmark
     public int setRemove() {
@@ -80,47 +78,11 @@ public class TestSetRemove {
         return this.hashCommonTripleSet.size();
     }
 
-    private int removeFromFastHashSetOfTriples() {
-        triplesToRemove.forEach(t -> this.fastHashSetOfTriples.removeUnchecked(t));
-        Assert.assertTrue(this.fastHashSetOfTriples.isEmpty());
-        return this.fastHashSetOfTriples.size();
+    private int removeFromFastHashTripleSet() {
+        triplesToRemove.forEach(t -> this.fastHashTripleSet.removeUnchecked(t));
+        Assert.assertTrue(this.fastHashTripleSet.isEmpty());
+        return this.fastHashTripleSet.size();
     }
-
-    private int removeFromFastHashSetOfTriples2() {
-        triplesToRemove.forEach(t -> this.fastHashSetOfTriples2.removeUnchecked(t));
-        Assert.assertTrue(this.fastHashSetOfTriples2.isEmpty());
-        return this.fastHashSetOfTriples2.size();
-    }
-
-
-//    @Test
-//    public void testDeleteFromFastTripleHashSet4() {
-//        var triples = Releases.current.readTriples("../testing/cheeses-0.1.ttl").subList(0, 3);
-//        var triplesToRemove = Releases.current.cloneTriples(triples);
-//        var set = new FastTripleHashSet4(triples.size());
-//        triples.forEach(t -> {
-//            if(!set.add(t)) {
-//                Assert.fail();
-//            }
-//        });
-//        assert set.size() == triples.size();
-//        triplesToRemove.forEach(t -> {
-//            if(!set.contains(t)) {
-//                Assert.fail();
-//            }
-//        });
-//        triplesToRemove.forEach(t -> {
-//            if(set.remove(t)) {
-//               if(set.contains(t)) {
-//                     Assert.fail();
-//               }
-//            } else {
-//                Assert.fail();
-//            }
-//        });
-//        Assert.assertTrue(set.isEmpty());
-//    }
-
 
     @Setup(Level.Invocation)
     public void setupInvocation() {
@@ -133,13 +95,9 @@ public class TestSetRemove {
                 this.hashCommonTripleSet = new HashCommonTripleSet(triples.size());
                 this.triples.forEach(hashCommonTripleSet::addUnchecked);
                 break;
-            case "FastHashSetOfTriples":
-                this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
-                this.triples.forEach(fastHashSetOfTriples::addUnchecked);
-                break;
-            case "FastHashSetOfTriples2":
-                this.fastHashSetOfTriples2 = new FastHashSetOfTriples(triples.size());
-                this.triples.forEach(fastHashSetOfTriples2::addUnchecked);
+            case "FastHashTripleSet":
+                this.fastHashTripleSet = new FastHashTripleSet(triples.size());
+                this.triples.forEach(fastHashTripleSet::addUnchecked);
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);
@@ -157,11 +115,8 @@ public class TestSetRemove {
             case "HashCommonTripleSet":
                 this.removeFromSet = this::removeFromHashCommonTripleSet;
                 break;
-            case "FastHashSetOfTriples":
-                this.removeFromSet = this::removeFromFastHashSetOfTriples;
-                break;
-            case "FastHashSetOfTriples2":
-                this.removeFromSet = this::removeFromFastHashSetOfTriples2;
+            case "FastHashTripleSet":
+                this.removeFromSet = this::removeFromFastHashTripleSet;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

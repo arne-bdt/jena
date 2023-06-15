@@ -52,9 +52,8 @@ public class TestSetAdd {
 
     @Param({
             "HashSet",
-            "FastHashSetOfNodes",
-            "FastHashSetOfNodes2",
-            "HashCommonNodeSet"
+            "HashCommonNodeSet",
+            "FastHashNodeSet"
     })
     public String param1_SetImplementation;
     java.util.function.Function<Triple.Field, Object> addToSet;
@@ -81,14 +80,8 @@ public class TestSetAdd {
         return sut;
     }
 
-    private Object addToFastHashSetOfNodes(Triple.Field field) {
-        var sut = new FastHashSetOfNodes();
-        triples.forEach(t -> sut.tryAdd(field.getField(t)));
-        return sut;
-    }
-
-    private Object addToFastHashSetOfNodes2(Triple.Field field) {
-        var sut = new FastHashSetOfNodes2();
+    private Object addToFastHashNodeSet(Triple.Field field) {
+        var sut = new FastHashNodeSet();
         triples.forEach(t -> sut.tryAdd(field.getField(t)));
         return sut;
     }
@@ -106,14 +99,11 @@ public class TestSetAdd {
             case "HashSet":
                 this.addToSet = this::addToHashSet;
                 break;
-            case "FastHashSetOfNodes":
-                this.addToSet = this::addToFastHashSetOfNodes;
-                break;
-            case "FastHashSetOfNodes2":
-                this.addToSet = this::addToFastHashSetOfNodes2;
-                break;
             case "HashCommonNodeSet":
                 this.addToSet = this::addToHashCommonNodeSet;
+                break;
+            case "FastHashNodeSet":
+                this.addToSet = this::addToFastHashNodeSet;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

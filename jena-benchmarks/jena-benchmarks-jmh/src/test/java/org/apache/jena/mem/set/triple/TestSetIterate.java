@@ -45,9 +45,9 @@ public class TestSetIterate {
 //            "C:/temp/res_test/xxx_CGMES_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+//            "../testing/BSBM/bsbm-1m.nt.gz",
 //            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
     })
@@ -56,16 +56,14 @@ public class TestSetIterate {
     @Param({
             "HashSet",
             "HashCommonTripleSet",
-            "FastHashSetOfTriples",
-            "FastHashSetOfTriples2"
+            "FastHashTripleSet"
     })
     public String param1_SetImplementation;
     java.util.function.Supplier<Iterator<Triple>> getIterator;
     private List<Triple> triples;
     private HashSet<Triple> hashSet;
     private HashCommonTripleSet hashCommonTripleSet;
-    private FastHashSetOfTriples fastHashSetOfTriples;
-    private FastHashSetOfTriples2 fastHashSetOfTriples2;
+    private FastHashTripleSet fastHashTripleSet;
 
     @Benchmark
     public Object foreachRemaining() {
@@ -96,12 +94,8 @@ public class TestSetIterate {
         return hashCommonTripleSet.keyIterator();
     }
 
-    private Iterator<Triple> getIteratorFromFastHashSetOfTriples() {
-        return fastHashSetOfTriples.keyIterator();
-    }
-
-    private Iterator<Triple> getIteratorFromFastHashSetOfTriples2() {
-        return fastHashSetOfTriples2.keyIterator();
+    private Iterator<Triple> getIteratorFromFastHashTripleSet() {
+        return fastHashTripleSet.keyIterator();
     }
 
 
@@ -119,15 +113,10 @@ public class TestSetIterate {
                 triples.forEach(hashCommonTripleSet::addUnchecked);
                 this.getIterator = this::getIteratorFromHashCommonTripleSet;
                 break;
-            case "FastHashSetOfTriples":
-                this.fastHashSetOfTriples = new FastHashSetOfTriples(triples.size());
-                triples.forEach(fastHashSetOfTriples::addUnchecked);
-                this.getIterator = this::getIteratorFromFastHashSetOfTriples;
-                break;
-            case "FastHashSetOfTriples2":
-                this.fastHashSetOfTriples2 = new FastHashSetOfTriples2(triples.size());
-                triples.forEach(fastHashSetOfTriples2::addUnchecked);
-                this.getIterator = this::getIteratorFromFastHashSetOfTriples2;
+            case "FastHashTripleSet":
+                this.fastHashTripleSet = new FastHashTripleSet(triples.size());
+                triples.forEach(fastHashTripleSet::addUnchecked);
+                this.getIterator = this::getIteratorFromFastHashTripleSet;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

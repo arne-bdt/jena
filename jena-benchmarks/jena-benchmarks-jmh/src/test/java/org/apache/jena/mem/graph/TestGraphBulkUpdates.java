@@ -19,6 +19,7 @@
 package org.apache.jena.mem.graph;
 
 import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.apache.jena.ext.com.google.common.base.Stopwatch;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -73,33 +74,74 @@ public class TestGraphBulkUpdates {
     private List<Triple> triples;
 
 
-//    @Test
-//    public void testBulkLoad() {
-//        var trialContext = new Context("GraphMem2Roaring (current)");
-//        this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
-//
-//        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
-//                .read("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
-//
-//        triples.forEach(this.sutCurrent::add);
-//
-//        var doubleTriples = new ArrayList<Triple>();
-//        for(var t: triples) {
-//            if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
-//                doubleTriples.add(t);
-//            }
-//        }
-//        System.out.println("Found " + doubleTriples.size() + " triples with double literals");
-//
-//        for(int i=0; i<2; i++) {
-//            for (var t : doubleTriples) {
-//                var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
-//                var oldValue = (float) oldTriple.getObject().getIndexingValue();
-//                this.sutCurrent.delete(oldTriple);
-//                this.sutCurrent.add(Triple.create(t.getSubject(), t.getPredicate(), NodeFactory.createLiteralByValue((oldValue + 1.0f), oldTriple.getObject().getLiteralDatatype())));
-//            }
-//        }
-//    }
+    @Test
+    public void testSingleUpdates() {
+        var trialContext = new Context("GraphMem2Fast (current)");
+        this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
+
+        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
+                .read("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
+
+        triples.forEach(this.sutCurrent::add);
+
+        var doubleTriples = new ArrayList<Triple>();
+        for(var t: triples) {
+            if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
+                doubleTriples.add(t);
+            }
+        }
+        var random = new Random(4721);
+        /* Shuffle is import because the order might play a role. We want to test the performance of the
+           contains method regardless of the order */
+        Collections.shuffle(doubleTriples, random);
+        System.out.println("Found " + doubleTriples.size() + " triples with double literals");
+        final int iterations = 2;
+        final var stopwatch = Stopwatch.createStarted();
+        for(int i=0; i<iterations; i++) {
+            for (var t : doubleTriples) {
+                var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
+                var oldValue = (float) oldTriple.getObject().getIndexingValue();
+                this.sutCurrent.delete(oldTriple);
+                this.sutCurrent.add(Triple.create(t.getSubject(), t.getPredicate(), NodeFactory.createLiteralByValue((oldValue + 1.0f), oldTriple.getObject().getLiteralDatatype())));
+            }
+        }
+        System.out.println("Time for " + doubleTriples.size()*iterations + " single updates: " + stopwatch.stop() + " on graph with " + this.sutCurrent.size() + " triples");
+    }
+
+    @Test
+    public void testBulkUpdates() {
+        var trialContext = new Context("GraphMem2Fast (current)");
+        this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
+
+        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
+                .read("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
+
+        triples.forEach(this.sutCurrent::add);
+
+        var doubleTriples = new ArrayList<Triple>();
+        for(var t: triples) {
+            if(t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
+                doubleTriples.add(t);
+            }
+        }
+        var random = new Random(4721);
+        /* Shuffle is import because the order might play a role. We want to test the performance of the
+           contains method regardless of the order */
+        Collections.shuffle(doubleTriples, random);
+        System.out.println("Found " + doubleTriples.size() + " triples with double literals");
+        final int iterations = 2;
+        final var stopwatch = Stopwatch.createStarted();
+        for(int i=0; i<iterations; i++) {
+            for (var t : doubleTriples) {
+                var oldTriple = this.sutCurrent.find(t.getSubject(), t.getPredicate(), Node.ANY).next();
+                this.sutCurrent.delete(oldTriple);
+            }
+            for (var t : doubleTriples) {
+                this.sutCurrent.add(Triple.create(t.getSubject(), t.getPredicate(), NodeFactory.createLiteralByValue(random.nextFloat(), t.getObject().getLiteralDatatype())));
+            }
+        }
+        System.out.println("Time for " + doubleTriples.size()*iterations + "  deletions and inserts in " + iterations + " batches: " + stopwatch.stop() + " on graph with " + this.sutCurrent.size() + " triples");
+    }
 
     /**
      * This method is used to get the memory consumption of the current JVM.

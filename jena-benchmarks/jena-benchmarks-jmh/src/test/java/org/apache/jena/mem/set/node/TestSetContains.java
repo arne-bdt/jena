@@ -41,7 +41,7 @@ public class TestSetContains {
 //            "C:/temp/res_test/xxx_CGMES_SSH.xml",
 //            "C:/temp/res_test/xxx_CGMES_TP.xml",
             "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
 //            "../testing/BSBM/bsbm-1m.nt.gz",
@@ -52,9 +52,8 @@ public class TestSetContains {
 
     @Param({
             "HashSet",
-            "FastHashSetOfNodes",
-            "FastHashSetOfNodes2",
-            "HashCommonNodeSet"
+            "HashCommonNodeSet",
+            "FastHashNodeSet"
     })
     public String param1_SetImplementation;
     java.util.function.Supplier<Boolean> setContainsSubjects;
@@ -67,12 +66,9 @@ public class TestSetContains {
     private HashCommonNodeSet subjectHashCommonNodeSet;
     private HashCommonNodeSet predicateHashCommonNodeSet;
     private HashCommonNodeSet objectHashCommonNodeSet;
-    private FastHashSetOfNodes subjectFastHashSetOfNodes;
-    private FastHashSetOfNodes predicateFastHashSetOfNodes;
-    private FastHashSetOfNodes objectFastHashSetOfNodes;
-    private FastHashSetOfNodes2 subjectFastHashSetOfNodes2;
-    private FastHashSetOfNodes2 predicateFastHashSetOfNodes2;
-    private FastHashSetOfNodes2 objectFastHashSetOfNodes2;
+    private FastHashNodeSet subjectFastHashNodeSet;
+    private FastHashNodeSet predicateFastHashNodeSet;
+    private FastHashNodeSet objectFastHashNodeSet;
 
     @Benchmark
     public boolean setContainsSubjects() {
@@ -116,59 +112,6 @@ public class TestSetContains {
         return found;
     }
 
-    private boolean FastHashSetOfNodesContainsSubjects() {
-        var found = false;
-        for (var t : triplesToFind) {
-            found = subjectFastHashSetOfNodes.containsKey(t.getSubject());
-            Assert.assertTrue(found);
-        }
-        return found;
-    }
-
-    private boolean FastHashSetOfNodesContainsPredicates() {
-        var found = false;
-        for (var t : triplesToFind) {
-            found = predicateFastHashSetOfNodes.containsKey(t.getPredicate());
-            Assert.assertTrue(found);
-        }
-        return found;
-    }
-
-    private boolean FastHashSetOfNodesContainsObjects() {
-        var found = false;
-        for (var t : triplesToFind) {
-            found = objectFastHashSetOfNodes.containsKey(t.getObject());
-            Assert.assertTrue(found);
-        }
-        return found;
-    }
-
-    private boolean FastHashSetOfNodes2ContainsSubjects() {
-        var found = false;
-        for (var t : triplesToFind) {
-            found = subjectFastHashSetOfNodes2.containsKey(t.getSubject());
-            Assert.assertTrue(found);
-        }
-        return found;
-    }
-
-    private boolean FastHashSetOfNodes2ContainsPredicates() {
-        var found = false;
-        for (var t : triplesToFind) {
-            found = predicateFastHashSetOfNodes2.containsKey(t.getPredicate());
-            Assert.assertTrue(found);
-        }
-        return found;
-    }
-
-    private boolean FastHashSetOfNodes2ContainsObjects() {
-        var found = false;
-        for (var t : triplesToFind) {
-            found = objectFastHashSetOfNodes2.containsKey(t.getObject());
-            Assert.assertTrue(found);
-        }
-        return found;
-    }
 
     private boolean HashCommonNodeSetContainsSubjects() {
         var found = false;
@@ -197,6 +140,32 @@ public class TestSetContains {
         return found;
     }
 
+    private boolean FastHashNodeSetContainsSubjects() {
+        var found = false;
+        for (var t : triplesToFind) {
+            found = subjectFastHashNodeSet.containsKey(t.getSubject());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean FastHashNodeSetContainsPredicates() {
+        var found = false;
+        for (var t : triplesToFind) {
+            found = predicateFastHashNodeSet.containsKey(t.getPredicate());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
+
+    private boolean FastHashNodeSetContainsObjects() {
+        var found = false;
+        for (var t : triplesToFind) {
+            found = objectFastHashNodeSet.containsKey(t.getObject());
+            Assert.assertTrue(found);
+        }
+        return found;
+    }
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
@@ -216,32 +185,6 @@ public class TestSetContains {
                 this.setContainsPredicates = this::hashSetContainsPredicates;
                 this.setContainsObjects = this::hashSetSetContainsObjects;
                 break;
-            case "FastHashSetOfNodes":
-                this.subjectFastHashSetOfNodes = new FastHashSetOfNodes();
-                this.predicateFastHashSetOfNodes = new FastHashSetOfNodes();
-                this.objectFastHashSetOfNodes = new FastHashSetOfNodes();
-                triples.forEach(t -> {
-                    subjectFastHashSetOfNodes.tryAdd(t.getSubject());
-                    predicateFastHashSetOfNodes.tryAdd(t.getPredicate());
-                    objectFastHashSetOfNodes.tryAdd(t.getObject());
-                });
-                this.setContainsSubjects = this::FastHashSetOfNodesContainsSubjects;
-                this.setContainsPredicates = this::FastHashSetOfNodesContainsPredicates;
-                this.setContainsObjects = this::FastHashSetOfNodesContainsObjects;
-                break;
-            case "FastHashSetOfNodes2":
-                this.subjectFastHashSetOfNodes2 = new FastHashSetOfNodes2();
-                this.predicateFastHashSetOfNodes2 = new FastHashSetOfNodes2();
-                this.objectFastHashSetOfNodes2 = new FastHashSetOfNodes2();
-                triples.forEach(t -> {
-                    subjectFastHashSetOfNodes2.tryAdd(t.getSubject());
-                    predicateFastHashSetOfNodes2.tryAdd(t.getPredicate());
-                    objectFastHashSetOfNodes2.tryAdd(t.getObject());
-                });
-                this.setContainsSubjects = this::FastHashSetOfNodes2ContainsSubjects;
-                this.setContainsPredicates = this::FastHashSetOfNodes2ContainsPredicates;
-                this.setContainsObjects = this::FastHashSetOfNodes2ContainsObjects;
-                break;
             case "HashCommonNodeSet":
                 this.subjectHashCommonNodeSet = new HashCommonNodeSet();
                 this.predicateHashCommonNodeSet = new HashCommonNodeSet();
@@ -254,6 +197,19 @@ public class TestSetContains {
                 this.setContainsSubjects = this::HashCommonNodeSetContainsSubjects;
                 this.setContainsPredicates = this::HashCommonNodeSetContainsPredicates;
                 this.setContainsObjects = this::HashCommonNodeSetContainsObjects;
+                break;
+            case "FastHashNodeSet":
+                this.subjectFastHashNodeSet = new FastHashNodeSet();
+                this.predicateFastHashNodeSet = new FastHashNodeSet();
+                this.objectFastHashNodeSet = new FastHashNodeSet();
+                triples.forEach(t -> {
+                    subjectFastHashNodeSet.tryAdd(t.getSubject());
+                    predicateFastHashNodeSet.tryAdd(t.getPredicate());
+                    objectFastHashNodeSet.tryAdd(t.getObject());
+                });
+                this.setContainsSubjects = this::FastHashNodeSetContainsSubjects;
+                this.setContainsPredicates = this::FastHashNodeSetContainsPredicates;
+                this.setContainsObjects = this::FastHashNodeSetContainsObjects;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);
