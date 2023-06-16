@@ -37,10 +37,10 @@ import java.util.stream.Stream;
 public class RoaringTripleStore implements TripleStore {
 
     private static final RoaringBitmap EMPTY_BITMAP = new RoaringBitmap();
-    NodesToBitmapsMap subjectBitmaps = new NodesToBitmapsMap();
-    NodesToBitmapsMap predicateBitmaps = new NodesToBitmapsMap();
-    NodesToBitmapsMap objectBitmaps = new NodesToBitmapsMap();
-    TripleSet triples = new TripleSet(); // We use a list here to maintain the order of triples
+    final NodesToBitmapsMap subjectBitmaps = new NodesToBitmapsMap();
+    final NodesToBitmapsMap predicateBitmaps = new NodesToBitmapsMap();
+    final NodesToBitmapsMap objectBitmaps = new NodesToBitmapsMap();
+    final TripleSet triples = new TripleSet(); // We use a list here to maintain the order of triples
 
     public RoaringTripleStore() {
 
