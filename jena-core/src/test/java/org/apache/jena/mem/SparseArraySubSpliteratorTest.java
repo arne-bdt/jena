@@ -482,10 +482,10 @@ public class SparseArraySubSpliteratorTest {
         Spliterator<Integer> spliterator = new SparseArraySubSpliterator<>(array, () -> {
         });
         // Estimated size is not exact
-        assertBetween(100, 101, spliterator.estimateSize());
+        assertEquals(array.length, spliterator.estimateSize());
         Spliterator<Integer> split = spliterator.trySplit();
-        assertBetween(50, 51, spliterator.estimateSize());
-        assertBetween(50, 51, split.estimateSize());
+        assertEquals(array.length / 2, spliterator.estimateSize());
+        assertEquals(array.length / 2, split.estimateSize());
     }
 
     private void assertBetween(long min, long max, long estimateSize) {

@@ -141,9 +141,6 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
         if (pos < 2) {
             return null;
         }
-        if (this.estimateSize() < 2L) {
-            return null;
-        }
         final int toIndexOfSubIterator = this.pos;
         this.pos = pos >>> 1;
         return new SparseArraySubSpliterator<E>(entries, this.pos, toIndexOfSubIterator, checkForConcurrentModification);
@@ -171,7 +168,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
      * corresponding to its maximum depth.
      */
     @Override
-    public long estimateSize() { return entries.length - pos; }
+    public long estimateSize() { return pos; }
 
     /**
      * Returns a set of characteristics of this Spliterator and its

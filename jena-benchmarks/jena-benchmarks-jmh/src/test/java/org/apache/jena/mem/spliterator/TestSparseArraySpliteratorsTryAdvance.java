@@ -19,8 +19,7 @@
 package org.apache.jena.mem.spliterator;
 
 import org.apache.jena.atlas.iterator.ActionCount;
-import org.apache.jena.mem.SparseArraySpliterator;
-import org.apache.jena.mem.SparseArraySubSpliterator;
+import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -46,7 +45,6 @@ public class TestSparseArraySpliteratorsTryAdvance {
     public int param0_arraySize;
     @Param({
             "SparseArraySpliterator",
-            "SparseArraySubSpliterator"
     })
     public String param1_iteratorImplementation;
     List<Object[]> arraysWithNulls = new ArrayList<>(stepsWithNull.length);
@@ -82,9 +80,6 @@ public class TestSparseArraySpliteratorsTryAdvance {
         switch (param1_iteratorImplementation) {
             case "SparseArraySpliterator":
                 return new SparseArraySpliterator<>(arrayWithNulls, checkForConcurrentModification);
-
-            case "SparseArraySubSpliterator":
-                return new SparseArraySubSpliterator<>(arrayWithNulls, checkForConcurrentModification);
 
             default:
                 throw new IllegalArgumentException("Unknown spliterator implementation: " + param1_iteratorImplementation);

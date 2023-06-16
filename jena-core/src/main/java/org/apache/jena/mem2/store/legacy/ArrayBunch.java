@@ -19,6 +19,7 @@
 package org.apache.jena.mem2.store.legacy;
 
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.spliterator.ArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 
@@ -152,49 +153,11 @@ public class ArrayBunch implements TripleBunch {
 
     @Override
     public Spliterator<Triple> keySpliterator() {
-        return new Spliterator<Triple>() {
-
-            private final int initialSize = size;
-
-            int i = size;
-
-            @Override
-            public boolean tryAdvance(Consumer<? super Triple> action) {
-                if (0 < i) {
-                    action.accept(elements[--i]);
-                    if (size != initialSize) throw new ConcurrentModificationException();
-                    return true;
-                }
-                return false;
-            }
-
-            @Override
-            public void forEachRemaining(Consumer<? super Triple> action) {
-                while (0 < i--) action.accept(elements[i]);
-                if (size != initialSize) throw new ConcurrentModificationException();
-            }
-
-            @Override
-            public Spliterator<Triple> trySplit() {
-                /* the number of elements here should always be small, so splitting is not wise  */
-                return null;
-            }
-
-            @Override
-            public long estimateSize() {
-                return i;
-            }
-
-            @Override
-            public long getExactSizeIfKnown() {
-                return i;
-            }
-
-            @Override
-            public int characteristics() {
-                return DISTINCT | SIZED | NONNULL | IMMUTABLE;
-            }
+        final var initialSize = size;
+        final Runnable checkForConcurrentModification = () -> {
+            if (size != initialSize) throw new ConcurrentModificationException();
         };
+        return new ArraySpliterator<>(elements, 0, size, checkForConcurrentModification);
     }
 
     @Override

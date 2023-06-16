@@ -15,13 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem;
+package org.apache.jena.mem2.spliterator;
 
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Spliterator;
 
+import static java.util.Spliterator.*;
 import static org.junit.Assert.*;
 
 public class SparseArraySpliteratorTest {
@@ -523,5 +524,31 @@ public class SparseArraySpliteratorTest {
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertBetween(5, 6, spliterator.estimateSize());
+    }
+
+    @Test
+    public void characteristics() {
+        Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 , 5 };
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
+        });
+        assertEquals(DISTINCT | NONNULL | IMMUTABLE, spliterator.characteristics());
+    }
+
+    @Test
+    public void splitWithOneElementNull() {
+        Integer[] array = new Integer[]{ 1 };
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
+        });
+        assertNull(spliterator.trySplit());
+    }
+
+    @Test
+    public void splitWithOneRemainingElementNull() {
+        Integer[] array = new Integer[]{ 1, 2 };
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
+        });
+        spliterator.tryAdvance((i) -> {
+        });
+        assertNull(spliterator.trySplit());
     }
 }

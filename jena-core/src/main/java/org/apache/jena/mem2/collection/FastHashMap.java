@@ -19,7 +19,7 @@
 package org.apache.jena.mem2.collection;
 
 import org.apache.jena.mem2.iterator.SparseArrayIterator;
-import org.apache.jena.mem2.spliterator.SparseArraySubSpliterator;
+import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
@@ -197,6 +197,6 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
         {
             if (this.size() != initialSize) throw new ConcurrentModificationException();
         };
-        return new SparseArraySubSpliterator<>(values, 0, keysPos, checkForConcurrentModification);
+        return new SparseArraySpliterator<>(values, 0, keysPos, checkForConcurrentModification);
     }
 }

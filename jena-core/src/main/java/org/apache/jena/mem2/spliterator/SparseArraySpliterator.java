@@ -30,13 +30,29 @@ import java.util.function.Consumer;
  * The spliterator will check for concurrent modifications by invoking a {@link Runnable}
  * before each action.
  *
- * @param <E> the type of the array elements
+ * @param <E>
  */
 public class SparseArraySpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
+    private final int fromIndex;
     private final Runnable checkForConcurrentModification;
     private int pos;
+
+    /**
+     * Create a spliterator for the given array, with the given size.
+     *
+     * @param entries                        the array
+     * @param fromIndex                      the index of the first element, inclusive
+     * @param toIndex                        the index of the last element, exclusive
+     * @param checkForConcurrentModification
+     */
+    public SparseArraySpliterator(final E[] entries, final int fromIndex, final int toIndex, final Runnable checkForConcurrentModification) {
+        this.entries = entries;
+        this.fromIndex = fromIndex;
+        this.pos = toIndex;
+        this.checkForConcurrentModification = checkForConcurrentModification;
+    }
 
     /**
      * Create a spliterator for the given array, with the given size.
@@ -44,9 +60,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
      * @param entries the array
      */
     public SparseArraySpliterator(final E[] entries, final Runnable checkForConcurrentModification) {
-        this.entries = entries;
-        this.pos = entries.length;
-        this.checkForConcurrentModification = checkForConcurrentModification;
+        this(entries, 0, entries.length, checkForConcurrentModification);
     }
 
 
@@ -65,7 +79,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
     @Override
     public boolean tryAdvance(Consumer<? super E> action) {
         this.checkForConcurrentModification.run();
-        while (-1 < --pos) {
+        while (fromIndex <= --pos) {
             if (null != entries[pos]) {
                 action.accept(entries[pos]);
                 return true;
@@ -89,7 +103,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
     @Override
     public void forEachRemaining(Consumer<? super E> action) {
         pos--;
-        while (-1 < pos) {
+        while (fromIndex <= pos) {
             if (null != entries[pos]) {
                 action.accept(entries[pos]);
             }
@@ -139,15 +153,13 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
      */
     @Override
     public Spliterator<E> trySplit() {
-        if (pos < 2) {
-            return null;
-        }
-        if (this.estimateSize() < 2L) {
+        final int entriesCount = pos - fromIndex;
+        if (entriesCount < 2) {
             return null;
         }
         final int toIndexOfSubIterator = this.pos;
-        this.pos = pos >>> 1;
-        return new SparseArraySubSpliterator<E>(entries, this.pos, toIndexOfSubIterator, checkForConcurrentModification);
+        this.pos = fromIndex + (entriesCount >>> 1);
+        return new SparseArraySpliterator<>(entries, this.pos, toIndexOfSubIterator, checkForConcurrentModification);
     }
 
     /**
@@ -173,8 +185,9 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
      */
     @Override
     public long estimateSize() {
-        return entries.length - pos;
+        return pos - fromIndex;
     }
+
 
     /**
      * Returns a set of characteristics of this Spliterator and its

@@ -156,9 +156,6 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
         if (entriesCount < 2) {
             return null;
         }
-        if (this.estimateSize() < 2L) {
-            return null;
-        }
         final int toIndexOfSubIterator = this.pos;
         this.pos = fromIndex + (entriesCount >>> 1);
         return new SparseArraySubSpliterator<>(entries, this.pos, toIndexOfSubIterator, checkForConcurrentModification);

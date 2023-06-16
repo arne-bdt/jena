@@ -20,6 +20,7 @@ package org.apache.jena.mem2.iterator;
 
 import org.apache.jena.util.iterator.NiceIterator;
 
+import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
@@ -28,7 +29,7 @@ import java.util.function.Consumer;
  *
  * @param <E> the type of the array elements
  */
-public class SparseArrayIterator<E> extends NiceIterator<E> {
+public class SparseArrayIterator<E> extends NiceIterator<E> implements Iterator<E> {
 
     private final E[] entries;
     private final Runnable checkForConcurrentModification;
