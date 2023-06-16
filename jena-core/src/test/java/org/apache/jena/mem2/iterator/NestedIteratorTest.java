@@ -25,14 +25,14 @@ import org.junit.Test;
 import java.util.*;
 import java.util.function.Function;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class NestedIteratorTest {
+    private static final List<String> EMPTY_LIST = Collections.emptyList();
     private NestedIterator<String, List<String>> nestedIterator;
     private Iterator<List<String>> parentIterator;
     private Function<List<String>, ExtendedIterator<String>> mapper;
-
-    private static List<String> EMPTY_LIST = Collections.emptyList();
 
     @Before
     public void setUp() {

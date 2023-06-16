@@ -15,7 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.jena.mem2.collection;
 
 import org.apache.jena.mem2.iterator.SparseArrayIterator;

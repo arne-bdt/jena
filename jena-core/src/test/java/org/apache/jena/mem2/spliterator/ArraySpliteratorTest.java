@@ -42,7 +42,7 @@ public class ArraySpliteratorTest {
     @Test
     public void tryAdvanceOne() {
         {
-            Integer[] array = new Integer[] { 1 };
+            Integer[] array = new Integer[]{1};
             Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -57,7 +57,7 @@ public class ArraySpliteratorTest {
     @Test
     public void tryAdvanceTwo() {
         {
-            Integer[] array = new Integer[]{ 1 , 2 };
+            Integer[] array = new Integer[]{1, 2};
             Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -73,7 +73,7 @@ public class ArraySpliteratorTest {
     @Test
     public void tryAdvanceThree() {
         {
-            Integer[] array = new Integer[]{ 1 , 2 , 3 };
+            Integer[] array = new Integer[]{1, 2, 3};
             Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -104,7 +104,7 @@ public class ArraySpliteratorTest {
     @Test
     public void forEachRemainingOne() {
         {
-            Integer[] array = new Integer[]{ 1 };
+            Integer[] array = new Integer[]{1};
             Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -119,7 +119,7 @@ public class ArraySpliteratorTest {
     @Test
     public void forEachRemainingTwo() {
         {
-            Integer[] array = new Integer[]{ 1 , 2 };
+            Integer[] array = new Integer[]{1, 2};
             Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -133,9 +133,9 @@ public class ArraySpliteratorTest {
     }
 
     @Test
-    public void forEachRemainingThree(){
+    public void forEachRemainingThree() {
         {
-            Integer[] array = new Integer[]{ 1 , 2 , 3 };
+            Integer[] array = new Integer[]{1, 2, 3};
             Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -159,7 +159,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void trySplitOne() {
-        Integer[] array = new Integer[]{ 1 };
+        Integer[] array = new Integer[]{1};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         assertNull(spliterator.trySplit());
@@ -167,7 +167,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void trySplitTwo() {
-        Integer[] array = new Integer[]{ 1 , 2 };
+        Integer[] array = new Integer[]{1, 2};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
@@ -179,7 +179,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void trySplitThree() {
-        Integer[] array = new Integer[]{ 1 , 2 , 3 };
+        Integer[] array = new Integer[]{1, 2, 3};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
@@ -191,7 +191,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void trySplitFour() {
-        Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 };
+        Integer[] array = new Integer[]{1, 2, 3, 4};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
@@ -203,7 +203,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void trySplitFive() {
-        Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 , 5 };
+        Integer[] array = new Integer[]{1, 2, 3, 4, 5};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
@@ -217,7 +217,7 @@ public class ArraySpliteratorTest {
     public void trySplitOneHundred() {
         Integer[] array = new Integer[200];
         for (int i = 0; i < array.length; i++) {
-            if(i % 2 == 0) {
+            if (i % 2 == 0) {
                 array[i] = i;
             }
         }
@@ -245,7 +245,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void estimateSizeOne() {
-        Integer[] array = new Integer[]{ 1 };
+        Integer[] array = new Integer[]{1};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         assertBetween(1, 2, spliterator.estimateSize());
@@ -253,7 +253,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void estimateSizeTwo() {
-        Integer[] array = new Integer[]{ 1 , 2 };
+        Integer[] array = new Integer[]{1, 2};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         assertBetween(2, 3, spliterator.estimateSize());
@@ -261,7 +261,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void estimateSizeFive() {
-        Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 , 5 };
+        Integer[] array = new Integer[]{1, 2, 3, 4, 5};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         assertBetween(5, 6, spliterator.estimateSize());
@@ -269,7 +269,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void characteristics() {
-        Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 , 5 };
+        Integer[] array = new Integer[]{1, 2, 3, 4, 5};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         assertEquals(DISTINCT | SIZED | SUBSIZED | NONNULL | IMMUTABLE, spliterator.characteristics());
@@ -277,7 +277,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void splitWithOneElementNull() {
-        Integer[] array = new Integer[]{ 1 };
+        Integer[] array = new Integer[]{1};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         assertNull(spliterator.trySplit());
@@ -285,7 +285,7 @@ public class ArraySpliteratorTest {
 
     @Test
     public void splitWithOneRemainingElementNull() {
-        Integer[] array = new Integer[]{ 1, 2 };
+        Integer[] array = new Integer[]{1, 2};
         Spliterator<Integer> spliterator = new ArraySpliterator<>(array, () -> {
         });
         spliterator.tryAdvance((i) -> {

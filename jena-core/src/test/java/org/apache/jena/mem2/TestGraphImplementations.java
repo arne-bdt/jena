@@ -36,6 +36,10 @@ public class TestGraphImplementations {
         return new GraphMem2Fast();
     }
 
+    public static Node node(String n) {
+        return NodeCreateUtils.create(PrefixMapping.Standard, n);
+    }
+
     @Test
     public void testDelete() {
         var sut = createGraph();
@@ -119,10 +123,6 @@ public class TestGraphImplementations {
         Assert.assertFalse(sut.contains(node("x"), null, node("x")));
         Assert.assertFalse(sut.contains(node("y"), node("R"), null));
         Assert.assertFalse(sut.contains(node("y"), node("T"), node("a")));
-    }
-
-    public static Node node(String n) {
-        return NodeCreateUtils.create(PrefixMapping.Standard, n);
     }
 
     @Test

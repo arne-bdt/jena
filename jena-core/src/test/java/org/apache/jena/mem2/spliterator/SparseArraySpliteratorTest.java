@@ -50,7 +50,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void tryAdvanceOne() {
         {
-            Integer[] array = new Integer[] { 1 };
+            Integer[] array = new Integer[]{1};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -61,7 +61,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(1);
         }
         {
-            Integer[] array = new Integer[]{ 1 , null };
+            Integer[] array = new Integer[]{1, null};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -72,7 +72,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(1);
         }
         {
-            Integer[] array = new Integer[]{ null , 1 };
+            Integer[] array = new Integer[]{null, 1};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -87,7 +87,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void tryAdvanceTwo() {
         {
-            Integer[] array = new Integer[]{ 1 , 2 };
+            Integer[] array = new Integer[]{1, 2};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -99,7 +99,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(2);
         }
         {
-            Integer[] array = new Integer[]{ 1 , null , 2 };
+            Integer[] array = new Integer[]{1, null, 2};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -111,7 +111,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(2);
         }
         {
-            Integer[] array = new Integer[]{ 1 , null , null , 2 };
+            Integer[] array = new Integer[]{1, null, null, 2};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -123,7 +123,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(2);
         }
         {
-            Integer[] array = new Integer[]{ null , 1 , null , 2 };
+            Integer[] array = new Integer[]{null, 1, null, 2};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -135,7 +135,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(2);
         }
         {
-            Integer[] array = new Integer[]{ null , 1 , null , null , 2 };
+            Integer[] array = new Integer[]{null, 1, null, null, 2};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -151,7 +151,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void tryAdvanceThree() {
         {
-            Integer[] array = new Integer[]{ 1 , 2 , 3 };
+            Integer[] array = new Integer[]{1, 2, 3};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -164,7 +164,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(3);
         }
         {
-            Integer[] array = new Integer[]{ 1 , null , 2 , 3 };
+            Integer[] array = new Integer[]{1, null, 2, 3};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -177,7 +177,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(3);
         }
         {
-            Integer[] array = new Integer[]{ 1 , null , null , 2 , 3 };
+            Integer[] array = new Integer[]{1, null, null, 2, 3};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -190,7 +190,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(3);
         }
         {
-            Integer[] array = new Integer[]{ null , 1 , null , 2 , null , 3 };
+            Integer[] array = new Integer[]{null, 1, null, 2, null, 3};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -230,7 +230,7 @@ public class SparseArraySpliteratorTest {
             assertEquals(0, itemsFound.size());
         }
         {
-            Integer[] array = new Integer[]{ null };
+            Integer[] array = new Integer[]{null};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -244,7 +244,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void forEachRemainingOne() {
         {
-            Integer[] array = new Integer[]{ 1 };
+            Integer[] array = new Integer[]{1};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -255,7 +255,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(1);
         }
         {
-            Integer[] array = new Integer[]{ null , 1 };
+            Integer[] array = new Integer[]{null, 1};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -266,7 +266,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(1);
         }
         {
-            Integer[] array = new Integer[]{ 1 , null };
+            Integer[] array = new Integer[]{1, null};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -281,7 +281,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void forEachRemainingTwo() {
         {
-            Integer[] array = new Integer[]{ 1 , 2 };
+            Integer[] array = new Integer[]{1, 2};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -293,7 +293,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(2);
         }
         {
-            Integer[] array = new Integer[]{ 1 , null , 2 };
+            Integer[] array = new Integer[]{1, null, 2};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -305,7 +305,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(2);
         }
         {
-            Integer[] array = new Integer[]{ 1 , null , null , 2 };
+            Integer[] array = new Integer[]{1, null, null, 2};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -317,7 +317,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(2);
         }
         {
-            Integer[] array = new Integer[]{ null , 1 , null , 2 };
+            Integer[] array = new Integer[]{null, 1, null, 2};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -329,7 +329,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(2);
         }
         {
-            Integer[] array = new Integer[]{ null , 1 , null , null , 2 };
+            Integer[] array = new Integer[]{null, 1, null, null, 2};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -343,9 +343,9 @@ public class SparseArraySpliteratorTest {
     }
 
     @Test
-    public void forEachRemainingThree(){
+    public void forEachRemainingThree() {
         {
-            Integer[] array = new Integer[]{ 1 , 2 , 3 };
+            Integer[] array = new Integer[]{1, 2, 3};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -358,7 +358,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(3);
         }
         {
-            Integer[] array = new Integer[]{ 1 , null , 2 , 3 };
+            Integer[] array = new Integer[]{1, null, 2, 3};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -371,7 +371,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(3);
         }
         {
-            Integer[] array = new Integer[]{ 1 , null , null , 2 , 3 };
+            Integer[] array = new Integer[]{1, null, null, 2, 3};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -384,7 +384,7 @@ public class SparseArraySpliteratorTest {
             itemsFound.contains(3);
         }
         {
-            Integer[] array = new Integer[]{ null , 1 , null , 2 , 3 };
+            Integer[] array = new Integer[]{null, 1, null, 2, 3};
             Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
             });
             var itemsFound = new ArrayList<>();
@@ -418,7 +418,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void trySplitOne() {
-        Integer[] array = new Integer[]{ 1 };
+        Integer[] array = new Integer[]{1};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertNull(spliterator.trySplit());
@@ -426,7 +426,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void trySplitTwo() {
-        Integer[] array = new Integer[]{ 1 , 2 };
+        Integer[] array = new Integer[]{1, 2};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
@@ -438,7 +438,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void trySplitThree() {
-        Integer[] array = new Integer[]{ 1 , 2 , 3 };
+        Integer[] array = new Integer[]{1, 2, 3};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
@@ -450,7 +450,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void trySplitFour() {
-        Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 };
+        Integer[] array = new Integer[]{1, 2, 3, 4};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
@@ -462,7 +462,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void trySplitFive() {
-        Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 , 5 };
+        Integer[] array = new Integer[]{1, 2, 3, 4, 5};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         // Estimated size is not exact
@@ -476,7 +476,7 @@ public class SparseArraySpliteratorTest {
     public void trySplitOneHundred() {
         Integer[] array = new Integer[200];
         for (int i = 0; i < array.length; i++) {
-            if(i % 2 == 0) {
+            if (i % 2 == 0) {
                 array[i] = i;
             }
         }
@@ -504,7 +504,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void estimateSizeOne() {
-        Integer[] array = new Integer[]{ 1 };
+        Integer[] array = new Integer[]{1};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertBetween(1, 2, spliterator.estimateSize());
@@ -512,7 +512,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void estimateSizeTwo() {
-        Integer[] array = new Integer[]{ 1 , 2 };
+        Integer[] array = new Integer[]{1, 2};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertBetween(2, 3, spliterator.estimateSize());
@@ -520,7 +520,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void estimateSizeFive() {
-        Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 , 5 };
+        Integer[] array = new Integer[]{1, 2, 3, 4, 5};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertBetween(5, 6, spliterator.estimateSize());
@@ -528,7 +528,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void characteristics() {
-        Integer[] array = new Integer[]{ 1 , 2 , 3 , 4 , 5 };
+        Integer[] array = new Integer[]{1, 2, 3, 4, 5};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertEquals(DISTINCT | NONNULL | IMMUTABLE, spliterator.characteristics());
@@ -536,7 +536,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void splitWithOneElementNull() {
-        Integer[] array = new Integer[]{ 1 };
+        Integer[] array = new Integer[]{1};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         assertNull(spliterator.trySplit());
@@ -544,7 +544,7 @@ public class SparseArraySpliteratorTest {
 
     @Test
     public void splitWithOneRemainingElementNull() {
-        Integer[] array = new Integer[]{ 1, 2 };
+        Integer[] array = new Integer[]{1, 2};
         Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
         });
         spliterator.tryAdvance((i) -> {

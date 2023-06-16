@@ -29,13 +29,14 @@ import java.util.stream.Stream;
 
 public class FastTripleStore implements TripleStore {
 
+    public static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 400;
     private static final int MAX_ARRAY_BUNCH_SIZE_SUBJECT = 16;
     private static final int MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT = 32;
-    public static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 400;
     final FastHashedBunchMap subjects = new FastHashedBunchMap();
     final FastHashedBunchMap predicates = new FastHashedBunchMap();
     final FastHashedBunchMap objects = new FastHashedBunchMap();
     private int size = 0;
+
     public FastTripleStore() {
     }
 
@@ -324,7 +325,7 @@ public class FastTripleStore implements TripleStore {
         }
     }
 
-    private static class ArrayBunchWithSameSubject extends FastArrayBunch {
+    protected static class ArrayBunchWithSameSubject extends FastArrayBunch {
 
         @Override
         public boolean areEqual(final Triple a, final Triple b) {
@@ -333,7 +334,7 @@ public class FastTripleStore implements TripleStore {
         }
     }
 
-    private static class ArrayBunchWithSamePredicate extends FastArrayBunch {
+    protected static class ArrayBunchWithSamePredicate extends FastArrayBunch {
         @Override
         public boolean areEqual(final Triple a, final Triple b) {
             return a.getSubject().equals(b.getSubject())
@@ -341,7 +342,7 @@ public class FastTripleStore implements TripleStore {
         }
     }
 
-    private static class ArrayBunchWithSameObject extends FastArrayBunch {
+    protected static class ArrayBunchWithSameObject extends FastArrayBunch {
         @Override
         public boolean areEqual(final Triple a, final Triple b) {
             return a.getSubject().equals(b.getSubject())

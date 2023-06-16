@@ -21,7 +21,7 @@ import org.junit.Test;
 
 import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.apache.jena.testing_framework.GraphHelper.triple;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class PatternClassifierTest {
 

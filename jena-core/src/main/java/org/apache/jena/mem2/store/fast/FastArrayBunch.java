@@ -18,7 +18,6 @@
 package org.apache.jena.mem2.store.fast;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.iterator.SparseArrayIterator;
 import org.apache.jena.mem2.spliterator.ArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;

@@ -29,8 +29,9 @@ public class SparseArrayIteratorTest {
 
     @Test
     public void testHasNextAndNextWithNonNullEntries() {
-        String[] entries = new String[] { "first",  "second", "third" };
-        iterator = new SparseArrayIterator<>(entries, () -> {});
+        String[] entries = new String[]{"first", "second", "third"};
+        iterator = new SparseArrayIterator<>(entries, () -> {
+        });
 
         assertTrue(iterator.hasNext());
         assertEquals("third", iterator.next());
@@ -43,8 +44,9 @@ public class SparseArrayIteratorTest {
 
     @Test
     public void testConstrucorWithToIndexConstraint3() {
-        String[] entries = new String[] { "first",  "second", "third" };
-        iterator = new SparseArrayIterator<>(entries, 3, () -> {});
+        String[] entries = new String[]{"first", "second", "third"};
+        iterator = new SparseArrayIterator<>(entries, 3, () -> {
+        });
 
         assertTrue(iterator.hasNext());
         assertEquals("third", iterator.next());
@@ -57,8 +59,9 @@ public class SparseArrayIteratorTest {
 
     @Test
     public void testConstrucorWithToIndexConstraint2() {
-        String[] entries = new String[] { "first",  "second", "third" };
-        iterator = new SparseArrayIterator<>(entries, 2, () -> {});
+        String[] entries = new String[]{"first", "second", "third"};
+        iterator = new SparseArrayIterator<>(entries, 2, () -> {
+        });
 
         assertTrue(iterator.hasNext());
         assertEquals("second", iterator.next());
@@ -69,8 +72,9 @@ public class SparseArrayIteratorTest {
 
     @Test
     public void testConstrucorWithToIndexConstraint1() {
-        String[] entries = new String[] { "first",  "second", "third" };
-        iterator = new SparseArrayIterator<>(entries, 1, () -> {});
+        String[] entries = new String[]{"first", "second", "third"};
+        iterator = new SparseArrayIterator<>(entries, 1, () -> {
+        });
 
         assertTrue(iterator.hasNext());
         assertEquals("first", iterator.next());
@@ -79,8 +83,9 @@ public class SparseArrayIteratorTest {
 
     @Test(expected = NoSuchElementException.class)
     public void testConstrucorWithToIndexConstraint0() {
-        String[] entries = new String[] { "first",  "second", "third" };
-        iterator = new SparseArrayIterator<>(entries, 0, () -> {});
+        String[] entries = new String[]{"first", "second", "third"};
+        iterator = new SparseArrayIterator<>(entries, 0, () -> {
+        });
 
         assertFalse(iterator.hasNext());
         iterator.next();  // should throw NoSuchElementException
@@ -88,8 +93,9 @@ public class SparseArrayIteratorTest {
 
     @Test
     public void testHasNextAndNextWithNullEntries() {
-        String[] entries = new String[] { "first", null, "third", null, "fifth" };
-        iterator = new SparseArrayIterator<>(entries, () -> {});
+        String[] entries = new String[]{"first", null, "third", null, "fifth"};
+        iterator = new SparseArrayIterator<>(entries, () -> {
+        });
 
         assertTrue(iterator.hasNext());
         assertEquals("fifth", iterator.next());
@@ -102,8 +108,9 @@ public class SparseArrayIteratorTest {
 
     @Test(expected = NoSuchElementException.class)
     public void testHasNextAndNextWithNoElements() {
-        String[] entries = new String[] {};
-        iterator = new SparseArrayIterator<>(entries, () -> {});
+        String[] entries = new String[]{};
+        iterator = new SparseArrayIterator<>(entries, () -> {
+        });
 
         assertFalse(iterator.hasNext());
         iterator.next();  // should throw NoSuchElementException
@@ -111,9 +118,10 @@ public class SparseArrayIteratorTest {
 
     @Test
     public void testForEachRemaining() {
-        String[] entries = new String[] { "first", null, "third", null, "fifth" };
-        iterator = new SparseArrayIterator<>(entries, () -> {});
-        int[] count = new int[] { 0 };
+        String[] entries = new String[]{"first", null, "third", null, "fifth"};
+        iterator = new SparseArrayIterator<>(entries, () -> {
+        });
+        int[] count = new int[]{0};
         iterator.forEachRemaining(entry -> {
             assertNotNull(entry);
             count[0]++;
