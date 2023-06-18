@@ -26,6 +26,8 @@ import java.util.stream.Stream;
 
 import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.apache.jena.testing_framework.GraphHelper.triple;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.*;
 
 public class GraphMem2Test {
@@ -153,5 +155,19 @@ public class GraphMem2Test {
 
         inOrder(mockStore).verify(mockStore, times(1)).countTriples();
         verifyNoMoreInteractions(mockStore);
+    }
+
+    @Test
+    public void testGetCapabilities() {
+        TripleStore mockStore = mock();
+
+        var sut = new GraphMem2(mockStore);
+        var capapbilities = sut.getCapabilities();
+
+        assertTrue(capapbilities.sizeAccurate());
+        assertTrue(capapbilities.addAllowed());
+        assertTrue(capapbilities.deleteAllowed());
+        assertFalse(capapbilities.handlesLiteralTyping());
+
     }
 }

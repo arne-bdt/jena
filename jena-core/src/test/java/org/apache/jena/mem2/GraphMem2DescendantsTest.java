@@ -20,29 +20,46 @@ package org.apache.jena.mem2;
 
 import org.apache.jena.datatypes.xsd.impl.XSDDouble;
 import org.apache.jena.graph.Graph;
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.shared.PrefixMapping;
-import org.apache.jena.testing_framework.NodeCreateUtils;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+import java.util.Arrays;
+import java.util.Collection;
+
+import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.apache.jena.testing_framework.GraphHelper.triple;
 
-public class TestGraphImplementations {
+@RunWith(Parameterized.class)
+public class GraphMem2DescendantsTest {
 
-    private static Graph createGraph() {
-        return new GraphMem2Fast();
+    final Class<Graph> graphClass;
+    Graph sut;
+
+    public GraphMem2DescendantsTest(String className, Class<Graph> graphClass) {
+        this.graphClass = graphClass;
     }
 
-    public static Node node(String n) {
-        return NodeCreateUtils.create(PrefixMapping.Standard, n);
+    @Parameterized.Parameters(name = "{0}")
+    public static Collection setImplementations() {
+        return Arrays.asList(new Object[][]{
+                {GraphMem2Fast.class.getName(), GraphMem2Fast.class},
+                {GraphMem2Legacy.class.getName(), GraphMem2Legacy.class},
+                {GraphMem2Roaring.class.getName(), GraphMem2Roaring.class}
+        });
+    }
+
+    @Before
+    public void setUp() throws Exception {
+        sut = graphClass.getDeclaredConstructor().newInstance();
     }
 
     @Test
     public void testDelete() {
-        var sut = createGraph();
         sut.add(triple("x R y"));
         Assert.assertEquals(1, sut.size());
         sut.delete(triple("x R y"));
@@ -52,7 +69,6 @@ public class TestGraphImplementations {
 
     @Test
     public void testFind() {
-        var sut = createGraph();
         sut.add(triple("x R y"));
         Assert.assertEquals(1, sut.find(triple("x R y")).toList().size());
         Assert.assertEquals(0, sut.find(triple("x R z")).toList().size());
@@ -60,14 +76,12 @@ public class TestGraphImplementations {
 
     @Test
     public void testStream() {
-        var sut = createGraph();
         sut.add(triple("x R y"));
         Assert.assertEquals(1, sut.stream().count());
     }
 
     @Test
     public void testFind1() {
-        var sut = createGraph();
         sut.add(triple("x R y"));
         Assert.assertEquals(1, sut.find(null, null, null).toList().size());
         Assert.assertEquals(1, sut.find(null, null, node("y")).toList().size());
@@ -81,7 +95,6 @@ public class TestGraphImplementations {
 
     @Test
     public void testFind2() {
-        var sut = createGraph();
         sut.add(triple("x R y"));
         Assert.assertEquals(1, sut.find(null, null, null).toList().size());
         Assert.assertEquals(0, sut.find(null, null, node("z")).toList().size());
@@ -95,7 +108,6 @@ public class TestGraphImplementations {
 
     @Test
     public void testContains1() {
-        var sut = createGraph();
         sut.add(triple("x R y"));
         sut.add(triple("y S z"));
         sut.add(triple("z T a"));
@@ -111,7 +123,6 @@ public class TestGraphImplementations {
 
     @Test
     public void testContains2() {
-        var sut = createGraph();
         sut.add(triple("x R y"));
         sut.add(triple("y S z"));
         sut.add(triple("z T a"));
@@ -127,7 +138,6 @@ public class TestGraphImplementations {
 
     @Test
     public void testContains() {
-        var sut = createGraph();
         sut.add(triple("x R y"));
         Assert.assertTrue(sut.contains(triple("x R y")));
         Assert.assertFalse(sut.contains(triple("x R z")));
@@ -135,7 +145,6 @@ public class TestGraphImplementations {
 
     @Test
     public void testContainsValueObject() {
-        var sut = createGraph();
         sut.add(Triple.create(
                 NodeFactory.createURI("x"),
                 NodeFactory.createURI("R"),
@@ -156,7 +165,6 @@ public class TestGraphImplementations {
 
     @Test
     public void testContainsValueSubject() {
-        var sut = createGraph();
         var containedTriple = Triple.create(
                 NodeFactory.createLiteral("0.1", XSDDouble.XSDdouble),
                 NodeFactory.createURI("x"),
@@ -187,7 +195,6 @@ public class TestGraphImplementations {
 
     @Test
     public void testContainsValuePredicate() {
-        var sut = createGraph();
         sut.add(Triple.create(
                 NodeFactory.createURI("x"),
                 NodeFactory.createLiteral("0.1", XSDDouble.XSDdouble),

@@ -23,7 +23,6 @@ import org.apache.jena.mem2.store.fast.FastArrayBunch;
 import org.apache.jena.mem2.store.fast.FastHashedTripleBunch;
 import org.apache.jena.mem2.store.legacy.ArrayBunch;
 import org.apache.jena.mem2.store.legacy.HashedTripleBunch;
-import org.hamcrest.MatcherAssert;
 import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 import org.junit.Before;
@@ -63,7 +62,7 @@ public class JenaSetTest {
 
     @Before
     public void setUp() throws Exception {
-        sut = setClass.newInstance();
+        sut = setClass.getDeclaredConstructor().newInstance();
     }
 
     @Test
@@ -123,6 +122,23 @@ public class JenaSetTest {
         iter.next(); // throws NoSuchElementException
     }
 
+    @Test(expected = ConcurrentModificationException.class)
+    public void testKeyIteratorNextThrowsConcurrentModificationException() {
+        sut.tryAdd(triple("s o p"));
+        var iter = sut.keyIterator();
+        sut.tryAdd(triple("s o p2"));
+        iter.next(); // throws ConcurrentModificationException
+    }
+
+    @Test(expected = ConcurrentModificationException.class)
+    public void testKeySpliteratorAdvanceThrowsConcurrentModificationException() {
+        sut.tryAdd(triple("s o p"));
+        var spliterator = sut.keySpliterator();
+        sut.tryAdd(triple("s o p2"));
+        spliterator.tryAdvance(t -> {
+        }); // throws ConcurrentModificationException
+    }
+
     @Test
     public void testKeyIterator1() {
         final var t0 = triple("s o p");
@@ -130,7 +146,8 @@ public class JenaSetTest {
         sut.tryAdd(t0);
 
         final var iter = sut.keyIterator();
-        assertThat(iter.toList(), IsIterableContainingInAnyOrder.containsInAnyOrder(t0));
+        assertEquals(t0, iter.next());
+        assertFalse(iter.hasNext());
     }
 
     @Test

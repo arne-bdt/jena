@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem2;
 
+import org.apache.jena.graph.Capabilities;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphWithPerform;
@@ -135,5 +136,33 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     @Override
     public int graphBaseSize() {
         return this.tripleStore.countTriples();
+    }
+
+    private Capabilities capabilities;
+
+    @Override
+    public Capabilities getCapabilities() {
+        if (capabilities == null) capabilities = new Capabilities() {
+            @Override
+            public boolean sizeAccurate() {
+                return true;
+            }
+
+            @Override
+            public boolean addAllowed() {
+                return true;
+            }
+
+            @Override
+            public boolean deleteAllowed() {
+                return true;
+            }
+
+            @Override
+            public boolean handlesLiteralTyping() {
+                return false;
+            }
+        };
+        return capabilities;
     }
 }

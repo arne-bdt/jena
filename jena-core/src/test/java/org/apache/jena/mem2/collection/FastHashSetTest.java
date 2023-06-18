@@ -20,7 +20,6 @@ package org.apache.jena.mem2.collection;
 import org.junit.Before;
 import org.junit.Test;
 
-import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.junit.Assert.*;
 
 /**

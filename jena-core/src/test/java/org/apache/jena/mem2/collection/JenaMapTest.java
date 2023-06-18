@@ -53,7 +53,7 @@ public class JenaMapTest {
 
     @Before
     public void setUp() throws Exception {
-        sut = mapClass.newInstance();
+        sut = mapClass.getDeclaredConstructor().newInstance();
     }
 
     @Test
@@ -187,6 +187,40 @@ public class JenaMapTest {
         var iter = sut.valueIterator();
         assertFalse(iter.hasNext());
         iter.next(); // throws NoSuchElementException
+    }
+
+    @Test(expected = ConcurrentModificationException.class)
+    public void testKeyIteratorNextThrowsConcurrentModificationException() {
+        sut.put(node("s"), null);
+        var iter = sut.keyIterator();
+        sut.put(node("s2"), null);
+        iter.next(); // throws ConcurrentModificationException
+    }
+
+    @Test(expected = ConcurrentModificationException.class)
+    public void testKeySpliteratorAdvanceThrowsConcurrentModificationException() {
+        sut.put(node("s"), null);
+        var spliterator = sut.keySpliterator();
+        sut.put(node("s2"), null);
+        spliterator.tryAdvance(t -> {
+        }); // throws ConcurrentModificationException
+    }
+
+    @Test(expected = ConcurrentModificationException.class)
+    public void testValueIteratorNextThrowsConcurrentModificationException() {
+        sut.put(node("s"), null);
+        var iter = sut.keyIterator();
+        sut.put(node("s2"), null);
+        iter.next(); // throws ConcurrentModificationException
+    }
+
+    @Test(expected = ConcurrentModificationException.class)
+    public void testValueSpliteratorAdvanceThrowsConcurrentModificationException() {
+        sut.put(node("s"), null);
+        var spliterator = sut.valueSpliterator();
+        sut.put(node("s2"), null);
+        spliterator.tryAdvance(t -> {
+        }); // throws ConcurrentModificationException
     }
 
     @Test

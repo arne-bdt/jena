@@ -21,7 +21,7 @@ import org.apache.jena.graph.Node;
 import org.junit.Test;
 
 import static org.apache.jena.testing_framework.GraphHelper.node;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class FastHashMapTest {
 
