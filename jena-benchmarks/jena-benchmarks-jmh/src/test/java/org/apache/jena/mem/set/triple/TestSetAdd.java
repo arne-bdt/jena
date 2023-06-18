@@ -84,7 +84,6 @@ public class TestSetAdd {
         return sut;
     }
 
-
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
         triples = Releases.current.readTriples(param0_GraphUri);

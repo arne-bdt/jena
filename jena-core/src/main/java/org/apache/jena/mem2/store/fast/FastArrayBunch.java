@@ -26,8 +26,6 @@ import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * An ArrayBunch implements TripleBunch with a linear search of a short-ish
@@ -162,11 +160,6 @@ public abstract class FastArrayBunch implements FastTripleBunch {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
         return new ArraySpliterator<>(elements, 0, size, checkForConcurrentModification);
-    }
-
-    @Override
-    public Stream<Triple> keyStream() {
-        return StreamSupport.stream(keySpliterator(), false);
     }
 
     @Override

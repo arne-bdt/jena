@@ -15,18 +15,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem.set.triple;
+package org.apache.jena.mem.map.node;
 
-import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.HashCommonSet;
+import org.apache.jena.graph.Node;
+import org.apache.jena.mem2.collection.HashCommonMap;
 
-public class HashCommonTripleSet extends HashCommonSet<Triple> {
-    public HashCommonTripleSet() {
-        super(10);
+public class HashCommonNodeMap extends HashCommonMap<Node, Object> {
+
+    /**
+     * Initialise this hashed thingy to have <code>initialCapacity</code> as its
+     * capacity and the corresponding threshold. All the key elements start out
+     * null.
+     *
+     * @param initialCapacity
+     */
+    public HashCommonNodeMap(int initialCapacity) {
+        super(initialCapacity);
     }
 
-    public HashCommonTripleSet(int initialCapacity) {
-        super(initialCapacity);
+    /**
+     * Initialise this hashed thingy to have <code>10</code> as its
+     * capacity and the corresponding threshold. All the key elements start out
+     * null.
+     */
+    public HashCommonNodeMap() {
+        this(10);
+    }
+
+    @Override
+    protected Node[] newKeysArray(int size) {
+        return new Node[size];
     }
 
     @Override
@@ -35,7 +53,7 @@ public class HashCommonTripleSet extends HashCommonSet<Triple> {
     }
 
     @Override
-    protected Triple[] newKeysArray(int size) {
-        return new Triple[size];
+    protected Object[] newValuesArray(int size) {
+        return new Object[size];
     }
 }

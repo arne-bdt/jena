@@ -15,24 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem.set.triple;
+package org.apache.jena.mem.map.node;
 
-import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.collection.FastHashSet;
+import org.apache.jena.graph.Node;
+import org.apache.jena.mem2.collection.FastHashMap;
 
-public class FastHashTripleSet extends FastHashSet<Triple> {
+public class FastHashNodeMap extends FastHashMap<Node, Object> {
 
-    public FastHashTripleSet() {
+    public FastHashNodeMap() {
         super();
     }
 
-    public FastHashTripleSet(int initialCapacity) {
-        super(initialCapacity);
+    @Override
+    protected Object[] newValuesArray(int size) {
+        return new Object[size];
     }
 
-
     @Override
-    protected Triple[] newKeysArray(int size) {
-        return new Triple[size];
+    protected Node[] newKeysArray(int size) {
+        return new Node[size];
     }
 }

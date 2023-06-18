@@ -24,7 +24,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public interface JenaMapSetCommon<Key> {
+public interface JenaMapSetCommon<E> {
 
     void clear();
 
@@ -32,20 +32,24 @@ public interface JenaMapSetCommon<Key> {
 
     boolean isEmpty();
 
-    boolean containsKey(Key key);
+    boolean containsKey(E key);
 
-    boolean anyMatch(Predicate<Key> predicate);
+    boolean anyMatch(Predicate<E> predicate);
 
-    boolean tryRemove(Key key);
+    boolean tryRemove(E key);
 
-    void removeUnchecked(Key key);
+    void removeUnchecked(E key);
 
-    ExtendedIterator<Key> keyIterator();
+    ExtendedIterator<E> keyIterator();
 
-    Spliterator<Key> keySpliterator();
+    Spliterator<E> keySpliterator();
 
-    default Stream<Key> keyStream() {
+    default Stream<E> keyStream() {
         return StreamSupport.stream(keySpliterator(), false);
+    }
+
+    default Stream<E> keyStreamParallel() {
+        return StreamSupport.stream(keySpliterator(), true);
     }
 
 }

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.set.node;
+package org.apache.jena.mem.map.node;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
@@ -27,12 +27,12 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 
 
 @State(Scope.Benchmark)
-public class TestSetAdd {
+public class TestMapAdd {
 
     @Param({
 //            "../testing/cheeses-0.1.ttl",
@@ -51,7 +51,7 @@ public class TestSetAdd {
     public String param0_GraphUri;
 
     @Param({
-            "HashSet",
+            "HashMap",
             "HashCommonNodeSet",
             "FastHashNodeSet"
     })
@@ -74,21 +74,21 @@ public class TestSetAdd {
         return addToSet.apply(Triple.Field.fieldObject);
     }
 
-    private Object addToHashSet(Triple.Field field) {
-        var sut = new HashSet<Node>();
-        triples.forEach(t -> sut.add(field.getField(t)));
+    private Object addToHashMap(Triple.Field field) {
+        var sut = new HashMap<Node, Object>();
+        triples.forEach(t -> sut.put(field.getField(t), null));
         return sut;
     }
 
-    private Object addToFastHashNodeSet(Triple.Field field) {
-        var sut = new FastHashNodeSet();
-        triples.forEach(t -> sut.tryAdd(field.getField(t)));
+    private Object addToFastHashNodeMap(Triple.Field field) {
+        var sut = new FastHashNodeMap();
+        triples.forEach(t -> sut.tryPut(field.getField(t), null));
         return sut;
     }
 
-    private Object addToHashCommonNodeSet(Triple.Field field) {
-        var sut = new HashCommonNodeSet();
-        triples.forEach(t -> sut.tryAdd(field.getField(t)));
+    private Object addToHashCommonNodeMap(Triple.Field field) {
+        var sut = new HashCommonNodeMap();
+        triples.forEach(t -> sut.tryPut(field.getField(t), null));
         return sut;
     }
 
@@ -96,14 +96,14 @@ public class TestSetAdd {
     public void setupTrial() throws Exception {
         triples = Releases.current.readTriples(param0_GraphUri);
         switch (param1_SetImplementation) {
-            case "HashSet":
-                this.addToSet = this::addToHashSet;
+            case "HashMap":
+                this.addToSet = this::addToHashMap;
                 break;
             case "HashCommonNodeSet":
-                this.addToSet = this::addToHashCommonNodeSet;
+                this.addToSet = this::addToHashCommonNodeMap;
                 break;
             case "FastHashNodeSet":
-                this.addToSet = this::addToFastHashNodeSet;
+                this.addToSet = this::addToFastHashNodeMap;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);

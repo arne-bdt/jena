@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem.set.node;
+package org.apache.jena.mem.map.node;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
@@ -27,12 +27,12 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 
 
 @State(Scope.Benchmark)
-public class TestSetContains {
+public class TestMapContains {
 
     @Param({
 //            "../testing/cheeses-0.1.ttl",
@@ -60,15 +60,16 @@ public class TestSetContains {
     java.util.function.Supplier<Boolean> setContainsPredicates;
     java.util.function.Supplier<Boolean> setContainsObjects;
     private List<Triple> triplesToFind;
-    private HashSet<Node> subjectHashSet;
-    private HashSet<Node> predicateHashSet;
-    private HashSet<Node> objectHashSet;
-    private HashCommonNodeSet subjectHashCommonNodeSet;
-    private HashCommonNodeSet predicateHashCommonNodeSet;
-    private HashCommonNodeSet objectHashCommonNodeSet;
-    private FastHashNodeSet subjectFastHashNodeSet;
-    private FastHashNodeSet predicateFastHashNodeSet;
-    private FastHashNodeSet objectFastHashNodeSet;
+    private HashMap<Node, Object> subjectHashMap;
+    private HashMap<Node, Object> predicateHashMap;
+    private HashMap<Node, Object> objectHashMap;
+    private HashCommonNodeMap subjectHashCommonNodeMap;
+    private HashCommonNodeMap predicateHashCommonNodeMap;
+    private HashCommonNodeMap objectHashCommonNodeMap;
+    private FastHashNodeMap subjectFastHashNodeSet;
+    private FastHashNodeMap predicateFastHashNodeSet;
+    private FastHashNodeMap objectFastHashNodeSet;
+
 
     @Benchmark
     public boolean setContainsSubjects() {
@@ -85,62 +86,62 @@ public class TestSetContains {
         return setContainsObjects.get();
     }
 
-    private boolean hashSetContainsSubjects() {
+    private boolean hashMapContainsSubjects() {
         var found = false;
         for (var t : triplesToFind) {
-            found = subjectHashSet.contains(t.getSubject());
+            found = subjectHashMap.containsKey(t.getSubject());
             Assert.assertTrue(found);
         }
         return found;
     }
 
-    private boolean hashSetContainsPredicates() {
+    private boolean hashMapContainsPredicates() {
         var found = false;
         for (var t : triplesToFind) {
-            found = predicateHashSet.contains(t.getPredicate());
+            found = predicateHashMap.containsKey(t.getPredicate());
             Assert.assertTrue(found);
         }
         return found;
     }
 
-    private boolean hashSetSetContainsObjects() {
+    private boolean hashMapContainsObjects() {
         var found = false;
         for (var t : triplesToFind) {
-            found = objectHashSet.contains(t.getObject());
+            found = objectHashMap.containsKey(t.getObject());
             Assert.assertTrue(found);
         }
         return found;
     }
 
 
-    private boolean HashCommonNodeSetContainsSubjects() {
+    private boolean HashCommonNodeMapContainsSubjects() {
         var found = false;
         for (var t : triplesToFind) {
-            found = subjectHashCommonNodeSet.containsKey(t.getSubject());
+            found = subjectHashCommonNodeMap.containsKey(t.getSubject());
             Assert.assertTrue(found);
         }
         return found;
     }
 
-    private boolean HashCommonNodeSetContainsPredicates() {
+    private boolean HashCommonNodeMapContainsPredicates() {
         var found = false;
         for (var t : triplesToFind) {
-            found = predicateHashCommonNodeSet.containsKey(t.getPredicate());
+            found = predicateHashCommonNodeMap.containsKey(t.getPredicate());
             Assert.assertTrue(found);
         }
         return found;
     }
 
-    private boolean HashCommonNodeSetContainsObjects() {
+    private boolean HashCommonNodeMapContainsObjects() {
         var found = false;
         for (var t : triplesToFind) {
-            found = objectHashCommonNodeSet.containsKey(t.getObject());
+            found = objectHashCommonNodeMap.containsKey(t.getObject());
             Assert.assertTrue(found);
         }
         return found;
     }
 
-    private boolean FastHashNodeSetContainsSubjects() {
+    private boolean FastHashNodeMapContainsSubjects() {
         var found = false;
         for (var t : triplesToFind) {
             found = subjectFastHashNodeSet.containsKey(t.getSubject());
@@ -149,7 +150,7 @@ public class TestSetContains {
         return found;
     }
 
-    private boolean FastHashNodeSetContainsPredicates() {
+    private boolean FastHashNodeMapContainsPredicates() {
         var found = false;
         for (var t : triplesToFind) {
             found = predicateFastHashNodeSet.containsKey(t.getPredicate());
@@ -158,7 +159,7 @@ public class TestSetContains {
         return found;
     }
 
-    private boolean FastHashNodeSetContainsObjects() {
+    private boolean FastHashNodeMapContainsObjects() {
         var found = false;
         for (var t : triplesToFind) {
             found = objectFastHashNodeSet.containsKey(t.getObject());
@@ -173,43 +174,43 @@ public class TestSetContains {
         this.triplesToFind = Releases.current.cloneTriples(triples);
         switch (param1_SetImplementation) {
             case "HashSet":
-                this.subjectHashSet = new HashSet<>();
-                this.predicateHashSet = new HashSet<>();
-                this.objectHashSet = new HashSet<>();
+                this.subjectHashMap = new HashMap<>();
+                this.predicateHashMap = new HashMap<>();
+                this.objectHashMap = new HashMap<>();
                 triples.forEach(t -> {
-                    subjectHashSet.add(t.getSubject());
-                    predicateHashSet.add(t.getPredicate());
-                    objectHashSet.add(t.getObject());
+                    subjectHashMap.put(t.getSubject(), null);
+                    predicateHashMap.put(t.getPredicate(), null);
+                    objectHashMap.put(t.getObject(), null);
                 });
-                this.setContainsSubjects = this::hashSetContainsSubjects;
-                this.setContainsPredicates = this::hashSetContainsPredicates;
-                this.setContainsObjects = this::hashSetSetContainsObjects;
+                this.setContainsSubjects = this::hashMapContainsSubjects;
+                this.setContainsPredicates = this::hashMapContainsPredicates;
+                this.setContainsObjects = this::hashMapContainsObjects;
                 break;
             case "HashCommonNodeSet":
-                this.subjectHashCommonNodeSet = new HashCommonNodeSet();
-                this.predicateHashCommonNodeSet = new HashCommonNodeSet();
-                this.objectHashCommonNodeSet = new HashCommonNodeSet();
+                this.subjectHashCommonNodeMap = new HashCommonNodeMap();
+                this.predicateHashCommonNodeMap = new HashCommonNodeMap();
+                this.objectHashCommonNodeMap = new HashCommonNodeMap();
                 triples.forEach(t -> {
-                    subjectHashCommonNodeSet.tryAdd(t.getSubject());
-                    predicateHashCommonNodeSet.tryAdd(t.getPredicate());
-                    objectHashCommonNodeSet.tryAdd(t.getObject());
+                    subjectHashCommonNodeMap.tryPut(t.getSubject(), null);
+                    predicateHashCommonNodeMap.tryPut(t.getPredicate(), null);
+                    objectHashCommonNodeMap.tryPut(t.getObject(), null);
                 });
-                this.setContainsSubjects = this::HashCommonNodeSetContainsSubjects;
-                this.setContainsPredicates = this::HashCommonNodeSetContainsPredicates;
-                this.setContainsObjects = this::HashCommonNodeSetContainsObjects;
+                this.setContainsSubjects = this::HashCommonNodeMapContainsSubjects;
+                this.setContainsPredicates = this::HashCommonNodeMapContainsPredicates;
+                this.setContainsObjects = this::HashCommonNodeMapContainsObjects;
                 break;
             case "FastHashNodeSet":
-                this.subjectFastHashNodeSet = new FastHashNodeSet();
-                this.predicateFastHashNodeSet = new FastHashNodeSet();
-                this.objectFastHashNodeSet = new FastHashNodeSet();
+                this.subjectFastHashNodeSet = new FastHashNodeMap();
+                this.predicateFastHashNodeSet = new FastHashNodeMap();
+                this.objectFastHashNodeSet = new FastHashNodeMap();
                 triples.forEach(t -> {
-                    subjectFastHashNodeSet.tryAdd(t.getSubject());
-                    predicateFastHashNodeSet.tryAdd(t.getPredicate());
-                    objectFastHashNodeSet.tryAdd(t.getObject());
+                    subjectFastHashNodeSet.tryPut(t.getSubject(), null);
+                    predicateFastHashNodeSet.tryPut(t.getPredicate(), null);
+                    objectFastHashNodeSet.tryPut(t.getObject(), null);
                 });
-                this.setContainsSubjects = this::FastHashNodeSetContainsSubjects;
-                this.setContainsPredicates = this::FastHashNodeSetContainsPredicates;
-                this.setContainsObjects = this::FastHashNodeSetContainsObjects;
+                this.setContainsSubjects = this::FastHashNodeMapContainsSubjects;
+                this.setContainsPredicates = this::FastHashNodeMapContainsPredicates;
+                this.setContainsObjects = this::FastHashNodeMapContainsObjects;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown set implementation: " + param1_SetImplementation);
