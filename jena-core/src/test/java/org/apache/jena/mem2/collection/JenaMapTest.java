@@ -66,40 +66,40 @@ public class JenaMapTest {
     @Test
     public void testTryPut() {
         assertTrue(sut.tryPut(node("s"), 1));
-        assertEquals(sut.size(), 1);
+        assertEquals(1, sut.size());
         assertFalse(sut.tryPut(node("s"), 2));
-        assertEquals(sut.size(), 1);
+        assertEquals(1, sut.size());
     }
 
     @Test
     public void testTryPutOverridesValue() {
         sut.tryPut(node("s"), 1);
-        assertEquals(sut.get(node("s")), 1);
+        assertEquals(1, sut.get(node("s")));
         sut.tryPut(node("s"), 2);
-        assertEquals(sut.get(node("s")), 2);
+        assertEquals(2, sut.get(node("s")));
     }
 
     @Test
     public void testPut() {
         sut.put(node("s"), 1);
-        assertEquals(sut.size(), 1);
+        assertEquals(1, sut.size());
         sut.put(node("s"), 2);
-        assertEquals(sut.size(), 1);
+        assertEquals(1, sut.size());
     }
 
     @Test
     public void testPutOverridesValue() {
         sut.put(node("s"), 1);
-        assertEquals(sut.get(node("s")), 1);
+        assertEquals(1, sut.get(node("s")));
         sut.put(node("s"), 2);
-        assertEquals(sut.get(node("s")), 2);
+        assertEquals(2, sut.get(node("s")));
     }
 
     @Test
     public void testTryRemove() {
         sut.put(node("s"), null);
         assertTrue(sut.tryRemove(node("s")));
-        assertEquals(sut.size(), 0);
+        assertEquals(0, sut.size());
         assertFalse(sut.tryRemove(node("s")));
     }
 
@@ -107,13 +107,13 @@ public class JenaMapTest {
     public void testRemoveUnchecked() {
         sut.put(node("s"), null);
         sut.removeUnchecked(node("s"));
-        assertEquals(sut.size(), 0);
+        assertEquals(0, sut.size());
     }
 
     @Test
     public void testGet() {
         sut.put(node("s"), 1);
-        assertEquals(sut.get(node("s")), 1);
+        assertEquals(1, sut.get(node("s")));
         assertNull(sut.get(node("s2")));
     }
 
@@ -121,23 +121,23 @@ public class JenaMapTest {
     public void testGet2() {
         sut.put(node("s"), 1);
         sut.put(node("s2"), 2);
-        assertEquals(sut.get(node("s")), 1);
-        assertEquals(sut.get(node("s2")), 2);
+        assertEquals(1, sut.get(node("s")));
+        assertEquals(2, sut.get(node("s2")));
     }
 
     @Test
     public void testGetOrDefault() {
         sut.put(node("s"), 1);
-        assertEquals(sut.getOrDefault(node("s"), 2), 1);
-        assertEquals(sut.getOrDefault(node("s2"), 2), 2);
+        assertEquals(1, sut.getOrDefault(node("s"), 2));
+        assertEquals(2, sut.getOrDefault(node("s2"), 2));
     }
 
     @Test
     public void testComputeIfAbsent() {
         sut.computeIfAbsent(node("s"), () -> 1);
-        assertEquals(sut.get(node("s")), 1);
+        assertEquals(1, sut.get(node("s")));
         sut.computeIfAbsent(node("s"), () -> 2);
-        assertEquals(sut.get(node("s")), 1);
+        assertEquals(1, sut.get(node("s")));
     }
 
     @Test
@@ -146,14 +146,14 @@ public class JenaMapTest {
             assertNull(v);
             return 1;
         });
-        assertEquals(sut.get(node("s")), 1);
+        assertEquals(1, sut.get(node("s")));
         sut.compute(node("s"), (v) -> {
-            assertEquals(v, 1);
+            assertEquals(1, v);
             return 2;
         });
-        assertEquals(sut.get(node("s")), 2);
+        assertEquals(2, sut.get(node("s")));
         sut.compute(node("s"), (v) -> {
-            assertEquals(v, 2);
+            assertEquals(2, v);
             return null;
         });
         assertNull(sut.get(node("s")));
@@ -164,7 +164,7 @@ public class JenaMapTest {
     public void testClear() {
         sut.put(node("s"), null);
         sut.clear();
-        assertEquals(sut.size(), 0);
+        assertEquals(0, sut.size());
     }
 
     @Test
@@ -533,7 +533,7 @@ public class JenaMapTest {
     }
 
     @Test
-    public void add1000Nodes() {
+    public void put1000Nodes() {
         for (int i = 0; i < 1000; i++) {
             sut.put(node("s" + i), null);
         }
@@ -541,11 +541,43 @@ public class JenaMapTest {
     }
 
     @Test
-    public void addAndRemove1000Triples() {
+    public void tryPut1000Nodes() {
+        for (int i = 0; i < 1000; i++) {
+            sut.tryPut(node("s" + i), null);
+        }
+        assertEquals(1000, sut.size());
+    }
+
+    @Test
+    public void computeIfAbsend1000Nodes() {
+        for (int i = 0; i < 1000; i++) {
+            sut.computeIfAbsent(node("s" + i), () -> new Object());
+        }
+        assertEquals(1000, sut.size());
+    }
+
+    @Test
+    public void putAndRemoveUnchecked1000Triples() {
         final var nodes = new ArrayList<Node>();
         for (int i = 0; i < 1000; i++) {
             final var n = node("s" + i);
             sut.put(n, null);
+            nodes.add(n);
+        }
+        assertEquals(1000, sut.size());
+        Collections.shuffle(nodes);
+        for (final var t : nodes) {
+            sut.removeUnchecked(t);
+        }
+        assertTrue(sut.isEmpty());
+    }
+
+    @Test
+    public void tryPutAndTryRemove1000Triples() {
+        final var nodes = new ArrayList<Node>();
+        for (int i = 0; i < 1000; i++) {
+            final var n = node("s" + i);
+            sut.tryPut(n, null);
             nodes.add(n);
         }
         assertEquals(1000, sut.size());

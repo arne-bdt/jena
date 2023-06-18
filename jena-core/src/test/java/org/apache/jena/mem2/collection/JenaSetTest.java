@@ -23,6 +23,7 @@ import org.apache.jena.mem2.store.fast.FastArrayBunch;
 import org.apache.jena.mem2.store.fast.FastHashedTripleBunch;
 import org.apache.jena.mem2.store.legacy.ArrayBunch;
 import org.apache.jena.mem2.store.legacy.HashedTripleBunch;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 import org.junit.Before;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.apache.jena.testing_framework.GraphHelper.triple;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
@@ -75,20 +77,20 @@ public class JenaSetTest {
     public void testTryAdd() {
         assertTrue(sut.tryAdd(triple("s o p")));
         assertFalse(sut.tryAdd(triple("s o p")));
-        assertEquals(sut.size(), 1);
+        assertEquals(1, sut.size());
     }
 
     @Test
     public void testAddUnchecked() {
         sut.addUnchecked(triple("s o p"));
-        assertEquals(sut.size(), 1);
+        assertEquals(1, sut.size());
     }
 
     @Test
     public void testTryRemove() {
         sut.tryAdd(triple("s o p"));
         assertTrue(sut.tryRemove(triple("s o p")));
-        assertEquals(sut.size(), 0);
+        assertEquals(0, sut.size());
         assertFalse(sut.tryRemove(triple("s o p")));
     }
 
@@ -96,14 +98,14 @@ public class JenaSetTest {
     public void testRemoveUnchecked() {
         sut.tryAdd(triple("s o p"));
         sut.removeUnchecked(triple("s o p"));
-        assertEquals(sut.size(), 0);
+        assertEquals(0, sut.size());
     }
 
     @Test
     public void testClear() {
         sut.tryAdd(triple("s o p"));
         sut.clear();
-        assertEquals(sut.size(), 0);
+        assertEquals(0, sut.size());
     }
 
     @Test
