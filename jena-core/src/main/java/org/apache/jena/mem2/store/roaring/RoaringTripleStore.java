@@ -105,12 +105,8 @@ public class RoaringTripleStore implements TripleStore {
         switch (matchPattern) {
 
             case S__:
-                return this.subjectBitmaps.containsKey(tripleMatch.getSubject());
             case _P_:
-                return this.predicateBitmaps.containsKey(tripleMatch.getPredicate());
             case __O:
-                return this.objectBitmaps.containsKey(tripleMatch.getObject());
-
             case SP_:
             case _PO:
             case S_O:

@@ -23,6 +23,7 @@ import org.apache.jena.mem2.store.fast.FastArrayBunch;
 import org.apache.jena.mem2.store.fast.FastHashedTripleBunch;
 import org.apache.jena.mem2.store.legacy.ArrayBunch;
 import org.apache.jena.mem2.store.legacy.HashedTripleBunch;
+import org.apache.jena.mem2.store.legacy.NodeToTriplesMapMem;
 import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 import org.junit.Before;
@@ -51,12 +52,13 @@ public class JenaSetTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection setImplementations() {
         return Arrays.asList(new Object[][]{
-                {HashCommonSet.class.getName(), HashCommonTripleSet.class},
-                {FastHashSet.class.getName(), FastTripleHashSet.class},
                 {ArrayBunch.class.getName(), ArrayBunch.class},
                 {FastArrayBunch.class.getName(), FastArrayTripleBunch.class},
-                {HashedTripleBunch.class.getName(), HashedTripleBunch.class},
                 {FastHashedTripleBunch.class.getName(), FastHashedTripleBunch.class},
+                {FastHashSet.class.getName(), FastTripleHashSet.class},
+                {HashCommonSet.class.getName(), HashCommonTripleSet.class},
+                {HashedTripleBunch.class.getName(), HashedTripleBunch.class},
+                {NodeToTriplesMapMem.class.getName(), NodeToTriplesMapMem.class},
         });
     }
 
@@ -90,6 +92,10 @@ public class JenaSetTest {
         sut.tryAdd(triple("s o p"));
         assertTrue(sut.tryRemove(triple("s o p")));
         assertEquals(0, sut.size());
+
+        assertFalse(sut.tryRemove(triple("s o p")));
+
+        sut.tryAdd(triple("s o p1"));
         assertFalse(sut.tryRemove(triple("s o p")));
     }
 
@@ -134,7 +140,7 @@ public class JenaSetTest {
     public void testKeySpliteratorAdvanceThrowsConcurrentModificationException() {
         sut.tryAdd(triple("s o p"));
         var spliterator = sut.keySpliterator();
-        sut.tryAdd(triple("s o p2"));
+        sut.tryAdd(triple("t o p2"));
         spliterator.tryAdvance(t -> {
         }); // throws ConcurrentModificationException
     }
@@ -345,9 +351,17 @@ public class JenaSetTest {
     }
 
     @Test
-    public void add1000Triples() {
+    public void tryAdd1000Triples() {
         for (int i = 0; i < 1000; i++) {
             sut.tryAdd(triple("s o " + i));
+        }
+        assertEquals(1000, sut.size());
+    }
+
+    @Test
+    public void addUnchecked1000Triples() {
+        for (int i = 0; i < 1000; i++) {
+            sut.addUnchecked(triple("s o " + i));
         }
         assertEquals(1000, sut.size());
     }

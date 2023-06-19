@@ -22,6 +22,7 @@ import org.apache.jena.datatypes.xsd.impl.XSDDouble;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 import org.junit.Before;
 import org.junit.Test;
@@ -157,6 +158,8 @@ public class GraphMem2DescendantsTest {
 
     @Test
     public void testFindS__() {
+        assertFalse(sut.find(node("a"), null, null).hasNext());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -185,10 +188,15 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.find(node("c"), null, null).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
+
+        findings = sut.find(node("d"), null, null).toList();
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
-    public void testFindP__() {
+    public void testFind_P_() {
+        assertFalse(sut.find(null, node("A"), null).hasNext());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -214,10 +222,15 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.find(null, node("B"), null).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
+
+        findings = sut.find(null, node("C"), null).toList();
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
-    public void testFind__P() {
+    public void testFind__O() {
+        assertFalse(sut.find(null, null, node("a")).hasNext());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -246,10 +259,15 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.find(null, null, node("c")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAc, bAc, cBc));
+
+        findings = sut.find(null, null, node("d")).toList();
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testFindSP_() {
+        assertFalse(sut.find(node("a"), node("A"), null).hasNext());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -278,10 +296,18 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.find(node("c"), node("B"), null).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
+
+        findings = sut.find(node("d"), node("C"), null).toList();
+        assertThat(findings, IsEmptyCollection.empty());
+
+        findings = sut.find(node("a"), node("B"), null).toList();
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testFindS_O() {
+        assertFalse(sut.find(node("a"), null, node("a")).hasNext());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -310,10 +336,18 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.find(node("c"), null, node("a")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa));
+
+        findings = sut.find(node("d"), null, node("a")).toList();
+        assertThat(findings, IsEmptyCollection.empty());
+
+        findings = sut.find(node("a"), null, node("d")).toList();
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
-    public void testFind_OP() {
+    public void testFind_PO() {
+        assertFalse(sut.find(null, node("A"), node("a")).hasNext());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -339,6 +373,12 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.find(null, node("B"), node("a")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa));
+
+        findings = sut.find(null, node("C"), node("a")).toList();
+        assertThat(findings, IsEmptyCollection.empty());
+
+        findings = sut.find(null, node("A"), node("d")).toList();
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
@@ -354,6 +394,8 @@ public class GraphMem2DescendantsTest {
 
     @Test
     public void testStreamSPO() {
+        assertEquals(0, sut.stream(node("x"), node("R"), node("y")).count());
+
         var t = triple("x R y");
         sut.add(t);
         var findings = sut.stream(t.getSubject(), t.getPredicate(), t.getObject()).collect(Collectors.toList());
@@ -363,6 +405,8 @@ public class GraphMem2DescendantsTest {
 
     @Test
     public void testStream___() {
+        assertEquals(0, sut.stream(null, null, null).count());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -389,6 +433,8 @@ public class GraphMem2DescendantsTest {
 
     @Test
     public void testStreamS__() {
+        assertEquals(0, sut.stream(node("a"), null, null).count());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -417,10 +463,15 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.stream(cBa.getSubject(), null, null).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
+
+        findings = sut.stream(node("d"), null, null).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testStream_P_() {
+        assertEquals(0, sut.stream(null, node("A"), null).count());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -446,10 +497,15 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.stream(null, cBa.getPredicate(), null).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
+
+        findings = sut.stream(null, node("C"), null).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testStream__O() {
+        assertEquals(0, sut.stream(null, null, node("a")).count());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -478,10 +534,15 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.stream(null, null, aAc.getObject()).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAc, bAc, cBc));
+
+        findings = sut.stream(null, null, node("d")).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testStreamSP_() {
+        assertEquals(0, sut.stream(node("a"), node("A"), null).count());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -510,10 +571,18 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.stream(cBa.getSubject(), cBa.getPredicate(), null).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
+
+        findings = sut.stream(node("a"), node("C"), null).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
+
+        findings = sut.stream(node("d"), node("D"), null).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testStreamS_O() {
+        assertEquals(0, sut.stream(node("a"), null, node("a")).count());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -542,10 +611,21 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.stream(cBa.getSubject(), null, cBa.getObject()).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa));
+
+        findings = sut.stream(node("d"), null, node("d")).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
+
+        findings = sut.stream(node("d"), null, node("a")).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
+
+        findings = sut.stream(node("a"), null, node("d")).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testStream_PO() {
+        assertEquals(0, sut.stream(null, node("A"), node("a")).count());
+
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
         final var aAc = triple("a A c");
@@ -574,6 +654,15 @@ public class GraphMem2DescendantsTest {
 
         findings = sut.stream(null, cBa.getPredicate(), cBa.getObject()).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa));
+
+        findings = sut.stream(null, node("C"), node("a")).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
+
+        findings = sut.stream(null, node("A"), node("d")).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
+
+        findings = sut.stream(null, node("D"), node("d")).collect(Collectors.toList());
+        assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
@@ -613,7 +702,250 @@ public class GraphMem2DescendantsTest {
         assertFalse(sut.contains(node("y"), node("T"), node("a")));
     }
 
+    @Test
+    public void testContainsSPO() {
+        assertFalse(sut.contains(node("a"), node("A"), node("a")));
 
+        var t = triple("a A a");
+        sut.add(t);
+        assertTrue(sut.contains(t.getSubject(), t.getPredicate(), t.getObject()));
+        assertFalse(sut.contains(t.getSubject(), t.getPredicate(), node("b")));
+        assertFalse(sut.contains(t.getSubject(), node("B"), t.getObject()));
+        assertFalse(sut.contains(node("b"), t.getPredicate(), t.getObject()));
+    }
+
+    @Test
+    public void testContains___() {
+        assertFalse(sut.contains(null, null, null));
+
+        final var aAa = triple("a A a");
+        final var aAb = triple("a A b");
+        final var aAc = triple("a A c");
+        final var bAa = triple("b A a");
+        final var bAb = triple("b A b");
+        final var bAc = triple("b A c");
+        final var cBa = triple("c B a");
+        final var cBb = triple("c B b");
+        final var cBc = triple("c B c");
+
+        sut.add(aAa);
+        sut.add(aAb);
+        sut.add(aAc);
+        sut.add(bAa);
+        sut.add(bAb);
+        sut.add(bAc);
+        sut.add(cBa);
+        sut.add(cBb);
+        sut.add(cBc);
+
+        assertTrue(sut.contains(null, null, null));
+    }
+
+    @Test
+    public void testContainsS__() {
+        assertFalse(sut.contains(node("a"), null, null));
+
+        final var aAa = triple("a A a");
+        final var aAb = triple("a A b");
+        final var aAc = triple("a A c");
+        final var bAa = triple("b A a");
+        final var bAb = triple("b A b");
+        final var bAc = triple("b A c");
+        final var cBa = triple("c B a");
+        final var cBb = triple("c B b");
+        final var cBc = triple("c B c");
+
+        sut.add(aAa);
+        sut.add(aAb);
+        sut.add(aAc);
+        sut.add(bAa);
+        sut.add(bAb);
+        sut.add(bAc);
+        sut.add(cBa);
+        sut.add(cBb);
+        sut.add(cBc);
+
+        assertTrue(sut.contains(aAa.getSubject(), null, null));
+
+        assertTrue(sut.contains(bAa.getSubject(), null, null));
+
+        assertTrue(sut.contains(cBa.getSubject(), null, null));
+
+        assertFalse(sut.contains(node("d"), null, null));
+    }
+
+    @Test
+    public void testContains_P_() {
+        assertFalse(sut.contains(null, node("A"), null));
+
+        final var aAa = triple("a A a");
+        final var aAb = triple("a A b");
+        final var aAc = triple("a A c");
+        final var bAa = triple("b A a");
+        final var bAb = triple("b A b");
+        final var bAc = triple("b A c");
+        final var cBa = triple("c B a");
+        final var cBb = triple("c B b");
+        final var cBc = triple("c B c");
+
+        sut.add(aAa);
+        sut.add(aAb);
+        sut.add(aAc);
+        sut.add(bAa);
+        sut.add(bAb);
+        sut.add(bAc);
+        sut.add(cBa);
+        sut.add(cBb);
+        sut.add(cBc);
+
+        assertTrue(sut.contains(null, aAa.getPredicate(), null));
+
+        assertTrue(sut.contains(null, cBa.getPredicate(), null));
+
+        assertFalse(sut.contains(null, node("C"), null));
+    }
+
+    @Test
+    public void testContains__O() {
+        assertFalse(sut.contains(null, null, node("a")));
+
+        final var aAa = triple("a A a");
+        final var aAb = triple("a A b");
+        final var aAc = triple("a A c");
+        final var bAa = triple("b A a");
+        final var bAb = triple("b A b");
+        final var bAc = triple("b A c");
+        final var cBa = triple("c B a");
+        final var cBb = triple("c B b");
+        final var cBc = triple("c B c");
+
+        sut.add(aAa);
+        sut.add(aAb);
+        sut.add(aAc);
+        sut.add(bAa);
+        sut.add(bAb);
+        sut.add(bAc);
+        sut.add(cBa);
+        sut.add(cBb);
+        sut.add(cBc);
+
+        assertTrue(sut.contains(null, null, aAa.getObject()));
+
+        assertTrue(sut.contains(null, null, aAb.getObject()));
+
+        assertTrue(sut.contains(null, null, aAc.getObject()));
+
+        assertFalse(sut.contains(null, null, node("d")));
+    }
+
+    @Test
+    public void testContainsSP_() {
+        assertFalse(sut.contains(node("a"), node("A"), null));
+
+        final var aAa = triple("a A a");
+        final var aAb = triple("a A b");
+        final var aAc = triple("a A c");
+        final var bAa = triple("b A a");
+        final var bAb = triple("b A b");
+        final var bAc = triple("b A c");
+        final var cBa = triple("c B a");
+        final var cBb = triple("c B b");
+        final var cBc = triple("c B c");
+
+        sut.add(aAa);
+        sut.add(aAb);
+        sut.add(aAc);
+        sut.add(bAa);
+        sut.add(bAb);
+        sut.add(bAc);
+        sut.add(cBa);
+        sut.add(cBb);
+        sut.add(cBc);
+
+        assertTrue(sut.contains(aAa.getSubject(), aAa.getPredicate(), null));
+
+        assertTrue(sut.contains(bAa.getSubject(), bAa.getPredicate(), null));
+
+        assertTrue(sut.contains(cBa.getSubject(), cBa.getPredicate(), null));
+
+        assertFalse(sut.contains(node("a"), node("C"), null));
+
+        assertFalse(sut.contains(node("d"), node("D"), null));
+    }
+
+    @Test
+    public void testContainsS_O() {
+        assertFalse(sut.contains(node("a"), null, node("a")));
+
+        final var aAa = triple("a A a");
+        final var aAb = triple("a A b");
+        final var aAc = triple("a A c");
+        final var bAa = triple("b A a");
+        final var bAb = triple("b A b");
+        final var bAc = triple("b A c");
+        final var cBa = triple("c B a");
+        final var cBb = triple("c B b");
+        final var cBc = triple("c B c");
+
+        sut.add(aAa);
+        sut.add(aAb);
+        sut.add(aAc);
+        sut.add(bAa);
+        sut.add(bAb);
+        sut.add(bAc);
+        sut.add(cBa);
+        sut.add(cBb);
+        sut.add(cBc);
+
+        assertTrue(sut.contains(aAa.getSubject(), null, aAa.getObject()));
+
+        assertTrue(sut.contains(bAa.getSubject(), null, bAa.getObject()));
+
+        assertTrue(sut.contains(cBa.getSubject(), null, cBa.getObject()));
+
+        assertFalse(sut.contains(node("d"), null, node("d")));
+
+        assertFalse(sut.contains(node("d"), null, node("a")));
+
+        assertFalse(sut.contains(node("a"), null, node("d")));
+    }
+
+    @Test
+    public void testContains_PO() {
+        assertFalse(sut.contains(null, node("A"), node("a")));
+
+        final var aAa = triple("a A a");
+        final var aAb = triple("a A b");
+        final var aAc = triple("a A c");
+        final var bAa = triple("b A a");
+        final var bAb = triple("b A b");
+        final var bAc = triple("b A c");
+        final var cBa = triple("c B a");
+        final var cBb = triple("c B b");
+        final var cBc = triple("c B c");
+
+        sut.add(aAa);
+        sut.add(aAb);
+        sut.add(aAc);
+        sut.add(bAa);
+        sut.add(bAb);
+        sut.add(bAc);
+        sut.add(cBa);
+        sut.add(cBb);
+        sut.add(cBc);
+
+        assertTrue(sut.contains(null, aAa.getPredicate(), aAa.getObject()));
+
+        assertTrue(sut.contains(null, bAa.getPredicate(), bAa.getObject()));
+
+        assertTrue(sut.contains(null, cBa.getPredicate(), cBa.getObject()));
+
+        assertFalse(sut.contains(null, node("C"), node("a")));
+
+        assertFalse(sut.contains(null, node("A"), node("d")));
+
+        assertFalse(sut.contains(null, node("D"), node("d")));
+    }
 
     @Test
     public void testContainsValueObject() {

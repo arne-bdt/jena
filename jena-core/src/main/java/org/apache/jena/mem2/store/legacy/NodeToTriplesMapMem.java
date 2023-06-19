@@ -20,6 +20,8 @@ package org.apache.jena.mem2.store.legacy;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.JenaMap;
+import org.apache.jena.mem2.iterator.NestedIterator;
+import org.apache.jena.mem2.store.fast.FastTripleBunch;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.NullIterator;
@@ -48,6 +50,13 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         this.indexField = indexField;
         this.f2 = f2;
         this.f3 = f3;
+    }
+
+    /**
+     * Default constructor to be used in tests
+     */
+    public NodeToTriplesMapMem() {
+        this(Triple.Field.fieldSubject, Triple.Field.fieldPredicate, Triple.Field.fieldObject);
     }
 
     private Node getIndexNode(Triple t) {
@@ -136,36 +145,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
 
     @Override
     public ExtendedIterator<Triple> keyIterator() {
-        return new NiceIterator<Triple>() {
-            private final Iterator<TripleBunch> bunchIterator = bunchMap.valueIterator();
-            private Iterator<Triple> current = NullIterator.instance();
-
-            @Override
-            public Triple next() {
-                if (!hasNext()) noElements("NodeToTriples iterator");
-                return current.next();
-            }
-
-
-            @Override
-            public boolean hasNext() {
-                while (true) {
-                    if (current.hasNext()) return true;
-                    if (!bunchIterator.hasNext()) return false;
-                    current = bunchIterator.next().keyIterator();
-                }
-            }
-
-            @Override
-            public void forEachRemaining(Consumer<? super Triple> action) {
-                if (current != null) {
-                    current.forEachRemaining(action);
-                    current = null;
-                }
-                bunchIterator.forEachRemaining(next ->
-                        next.keyIterator().forEachRemaining(action));
-            }
-        };
+        return new NestedIterator<>(bunchMap.valueIterator(), TripleBunch::keyIterator);
     }
 
     @Override
@@ -224,6 +204,6 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
 
     @Override
     public boolean anyMatch(Predicate<Triple> predicate) {
-        throw new UnsupportedOperationException();
+        return bunchMap.valueStream().anyMatch(bunch -> bunch.anyMatch(predicate));
     }
 }
