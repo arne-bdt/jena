@@ -34,6 +34,7 @@ import java.util.stream.Stream;
 public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     final TripleStore tripleStore;
+    private Capabilities capabilities;
 
     public GraphMem2(TripleStore tripleStore) {
         super();
@@ -127,7 +128,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
         return this.tripleStore.contains(tripleMatch);
     }
 
-
     /**
      * Answer the number of triples in this graph. Default implementation counts its
      * way through the results of a findAll. Subclasses must override if they want
@@ -137,8 +137,6 @@ public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
     public int graphBaseSize() {
         return this.tripleStore.countTriples();
     }
-
-    private Capabilities capabilities;
 
     @Override
     public Capabilities getCapabilities() {

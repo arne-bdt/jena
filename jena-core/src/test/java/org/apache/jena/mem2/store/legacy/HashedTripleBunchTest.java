@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.store.fast;
+package org.apache.jena.mem2.store.legacy;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.AbstractJenaSetTripleTest;
@@ -25,39 +25,27 @@ import org.junit.Test;
 import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.assertEquals;
 
-public class FastHashedTripleBunchTest extends AbstractJenaSetTripleTest {
+public class HashedTripleBunchTest extends AbstractJenaSetTripleTest {
 
     @Override
     protected JenaSet<Triple> createTripleSet() {
-        return new FastHashedTripleBunch();
+        return new HashedTripleBunch();
     }
 
     @Test
     public void testConstructorWithArrayBunchEmpty() {
-        final var arrayBunch = new FastArrayBunch() {
-
-            @Override
-            public boolean areEqual(Triple a, Triple b) {
-                return a.equals(b);
-            }
-        };
-        final var sut = new FastHashedTripleBunch(arrayBunch);
+        final var arrayBunch = new ArrayBunch();
+        final var sut = new HashedTripleBunch(arrayBunch);
         assertEquals(0, sut.size());
     }
 
     @Test
     public void testConstructorWithArrayBunch() {
-        final var arrayBunch = new FastArrayBunch() {
-
-            @Override
-            public boolean areEqual(Triple a, Triple b) {
-                return a.equals(b);
-            }
-        };
+        final var arrayBunch = new ArrayBunch();
         arrayBunch.tryAdd(triple("s P o"));
         arrayBunch.tryAdd(triple("s P o1"));
         arrayBunch.tryAdd(triple("s P o2"));
-        final var sut = new FastHashedTripleBunch(arrayBunch);
+        final var sut = new HashedTripleBunch(arrayBunch);
         assertEquals(3, sut.size());
     }
 }

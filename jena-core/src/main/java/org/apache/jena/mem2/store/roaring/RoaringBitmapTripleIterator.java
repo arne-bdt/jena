@@ -22,18 +22,23 @@ import org.apache.jena.mem2.collection.FastHashSet;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.roaringbitmap.BatchIterator;
 
+import java.util.ConcurrentModificationException;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 public class RoaringBitmapTripleIterator extends NiceIterator<Triple> {
+    protected static int BUFFER_SIZE = 64;
     private final BatchIterator iterator;
     private final FastHashSet<Triple> triples;
-    private final int[] buffer = new int[64];
+    private final int initialSize;
+
+    private final int[] buffer = new int[BUFFER_SIZE];
     private int bufferIndex = -1;
 
     public RoaringBitmapTripleIterator(BatchIterator iterator, FastHashSet<Triple> triples) {
         this.iterator = iterator;
         this.triples = triples;
+        this.initialSize = triples.size();
     }
 
     @Override
@@ -45,6 +50,7 @@ public class RoaringBitmapTripleIterator extends NiceIterator<Triple> {
 
     @Override
     public Triple next() {
+        if (triples.size() != initialSize) throw new ConcurrentModificationException();
         if (bufferIndex > 0)
             return triples.getKeyAt(buffer[--bufferIndex]);
 
@@ -68,5 +74,7 @@ public class RoaringBitmapTripleIterator extends NiceIterator<Triple> {
                 action.accept(triples.getKeyAt(buffer[i]));
             }
         }
+        bufferIndex = 0;
+        if (triples.size() != initialSize) throw new ConcurrentModificationException();
     }
 }

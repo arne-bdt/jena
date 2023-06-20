@@ -19,19 +19,15 @@
 package org.apache.jena.mem2.collection;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.store.fast.FastArrayBunch;
-import org.apache.jena.mem2.store.fast.FastHashedTripleBunch;
-import org.apache.jena.mem2.store.legacy.ArrayBunch;
-import org.apache.jena.mem2.store.legacy.HashedTripleBunch;
-import org.apache.jena.mem2.store.legacy.NodeToTriplesMapMem;
 import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.ConcurrentModificationException;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -39,32 +35,15 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.*;
 
-@RunWith(Parameterized.class)
-public class JenaSetTest {
+public abstract class AbstractJenaSetTripleTest {
 
-    final Class<JenaSet<Triple>> setClass;
-    JenaSet<Triple> sut;
+    protected JenaSet<Triple> sut;
 
-    public JenaSetTest(String className, Class<JenaSet<Triple>> setClass) {
-        this.setClass = setClass;
-    }
-
-    @Parameterized.Parameters(name = "{0}")
-    public static Collection setImplementations() {
-        return Arrays.asList(new Object[][]{
-                {ArrayBunch.class.getName(), ArrayBunch.class},
-                {FastArrayBunch.class.getName(), FastArrayTripleBunch.class},
-                {FastHashedTripleBunch.class.getName(), FastHashedTripleBunch.class},
-                {FastHashSet.class.getName(), FastTripleHashSet.class},
-                {HashCommonSet.class.getName(), HashCommonTripleSet.class},
-                {HashedTripleBunch.class.getName(), HashedTripleBunch.class},
-                {NodeToTriplesMapMem.class.getName(), NodeToTriplesMapMem.class},
-        });
-    }
+    protected abstract JenaSet<Triple> createTripleSet();
 
     @Before
     public void setUp() throws Exception {
-        sut = setClass.getDeclaredConstructor().newInstance();
+        sut = createTripleSet();
     }
 
     @Test
@@ -405,13 +384,5 @@ public class JenaSetTest {
             return new Triple[size];
         }
     }
-
-    private static class FastArrayTripleBunch extends FastArrayBunch {
-        @Override
-        public boolean areEqual(Triple a, Triple b) {
-            return a.equals(b);
-        }
-    }
-
 
 }

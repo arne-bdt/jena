@@ -21,14 +21,10 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.JenaMap;
 import org.apache.jena.mem2.iterator.NestedIterator;
-import org.apache.jena.mem2.store.fast.FastTripleBunch;
 import org.apache.jena.util.iterator.ExtendedIterator;
-import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.NullIterator;
 
-import java.util.Iterator;
 import java.util.Spliterator;
-import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -50,13 +46,6 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         this.indexField = indexField;
         this.f2 = f2;
         this.f3 = f3;
-    }
-
-    /**
-     * Default constructor to be used in tests
-     */
-    public NodeToTriplesMapMem() {
-        this(Triple.Field.fieldSubject, Triple.Field.fieldPredicate, Triple.Field.fieldObject);
     }
 
     private Node getIndexNode(Triple t) {

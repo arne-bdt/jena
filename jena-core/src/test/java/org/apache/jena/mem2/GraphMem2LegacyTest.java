@@ -15,21 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2;
 
-import org.apache.jena.graph.Triple;
+import org.apache.jena.graph.Graph;
 
-/**
- * This test shall test only the parts of the {@link FastHashSet} which are not tested by the {@link AbstractJenaSetTripleTest}.
- */
-public class FastHashSetTest extends AbstractJenaSetTripleTest {
+public class GraphMem2LegacyTest extends AbstractGraphMem2Test {
+
     @Override
-    protected JenaSet<Triple> createTripleSet() {
-        return new FastHashSet<Triple>() {
-            @Override
-            protected Triple[] newKeysArray(int size) {
-                return new Triple[size];
-            }
-        };
+    protected Graph createGraph() {
+        return new GraphMem2Legacy();
     }
 }

@@ -23,37 +23,26 @@ import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.ConcurrentModificationException;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.junit.Assert.*;
 
-@RunWith(Parameterized.class)
-public class JenaMapTest {
+public abstract class AbstractJenaMapNodeTest {
 
-    final Class<JenaMap<Node, Object>> mapClass;
-    JenaMap<Node, Object> sut;
+    protected JenaMap<Node, Object> sut;
 
-    public JenaMapTest(String className, Class<JenaMap<Node, Object>> mapClass) {
-        this.mapClass = mapClass;
-    }
-
-    @Parameterized.Parameters(name = "{0}")
-    public static Collection setImplementations() {
-        return Arrays.asList(new Object[][]{
-                {HashCommonMap.class.getName(), HashCommonNodeMap.class},
-                {FastHashSet.class.getName(), FastNodeHashMap.class}
-        });
-    }
+    protected abstract JenaMap<Node, Object> createNodeMap();
 
     @Before
     public void setUp() throws Exception {
-        sut = mapClass.getDeclaredConstructor().newInstance();
+        sut = createNodeMap();
     }
 
     @Test

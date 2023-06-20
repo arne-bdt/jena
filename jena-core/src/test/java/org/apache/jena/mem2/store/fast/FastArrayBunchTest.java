@@ -20,44 +20,17 @@ package org.apache.jena.mem2.store.fast;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.AbstractJenaSetTripleTest;
 import org.apache.jena.mem2.collection.JenaSet;
-import org.junit.Test;
 
-import static org.apache.jena.testing_framework.GraphHelper.triple;
-import static org.junit.Assert.assertEquals;
+public class FastArrayBunchTest extends AbstractJenaSetTripleTest {
 
-public class FastHashedTripleBunchTest extends AbstractJenaSetTripleTest {
 
     @Override
     protected JenaSet<Triple> createTripleSet() {
-        return new FastHashedTripleBunch();
-    }
-
-    @Test
-    public void testConstructorWithArrayBunchEmpty() {
-        final var arrayBunch = new FastArrayBunch() {
-
+        return new FastArrayBunch() {
             @Override
             public boolean areEqual(Triple a, Triple b) {
                 return a.equals(b);
             }
         };
-        final var sut = new FastHashedTripleBunch(arrayBunch);
-        assertEquals(0, sut.size());
-    }
-
-    @Test
-    public void testConstructorWithArrayBunch() {
-        final var arrayBunch = new FastArrayBunch() {
-
-            @Override
-            public boolean areEqual(Triple a, Triple b) {
-                return a.equals(b);
-            }
-        };
-        arrayBunch.tryAdd(triple("s P o"));
-        arrayBunch.tryAdd(triple("s P o1"));
-        arrayBunch.tryAdd(triple("s P o2"));
-        final var sut = new FastHashedTripleBunch(arrayBunch);
-        assertEquals(3, sut.size());
     }
 }

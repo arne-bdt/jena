@@ -25,8 +25,7 @@ import org.junit.Test;
 import java.util.*;
 import java.util.function.Function;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class NestedIteratorTest {
     private static final List<String> EMPTY_LIST = Collections.emptyList();
@@ -80,5 +79,23 @@ public class NestedIteratorTest {
             count[0]++;
         });
         assertEquals(6, count[0]);
+    }
+
+    @Test
+    public void testHasNextNext() {
+        nestedIterator = new NestedIterator<>(parentIterator, mapper);
+        assertTrue(nestedIterator.hasNext());
+        assertEquals("1.1", nestedIterator.next());
+        assertTrue(nestedIterator.hasNext());
+        assertEquals("1.2", nestedIterator.next());
+        assertTrue(nestedIterator.hasNext());
+        assertEquals("2.1", nestedIterator.next());
+        assertTrue(nestedIterator.hasNext());
+        assertEquals("2.2", nestedIterator.next());
+        assertTrue(nestedIterator.hasNext());
+        assertEquals("3.1", nestedIterator.next());
+        assertTrue(nestedIterator.hasNext());
+        assertEquals("3.2", nestedIterator.next());
+        assertFalse(nestedIterator.hasNext());
     }
 }

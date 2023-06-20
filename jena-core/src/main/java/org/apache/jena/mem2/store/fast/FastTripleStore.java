@@ -29,9 +29,9 @@ import java.util.stream.Stream;
 
 public class FastTripleStore implements TripleStore {
 
-    public static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 400;
-    private static final int MAX_ARRAY_BUNCH_SIZE_SUBJECT = 16;
-    private static final int MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT = 32;
+    protected static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 400;
+    protected static final int MAX_ARRAY_BUNCH_SIZE_SUBJECT = 16;
+    protected static final int MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT = 32;
     final FastHashedBunchMap subjects = new FastHashedBunchMap();
     final FastHashedBunchMap predicates = new FastHashedBunchMap();
     final FastHashedBunchMap objects = new FastHashedBunchMap();

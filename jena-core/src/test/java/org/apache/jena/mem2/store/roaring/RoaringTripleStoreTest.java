@@ -15,21 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem2.collection;
+package org.apache.jena.mem2.store.roaring;
 
-import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.store.AbstractTripleStoreTest;
+import org.apache.jena.mem2.store.TripleStore;
 
-/**
- * This test shall test only the parts of the {@link FastHashSet} which are not tested by the {@link AbstractJenaSetTripleTest}.
- */
-public class FastHashSetTest extends AbstractJenaSetTripleTest {
+public class RoaringTripleStoreTest extends AbstractTripleStoreTest {
+
     @Override
-    protected JenaSet<Triple> createTripleSet() {
-        return new FastHashSet<Triple>() {
-            @Override
-            protected Triple[] newKeysArray(int size) {
-                return new Triple[size];
-            }
-        };
+    protected TripleStore createTripleStore() {
+        return new RoaringTripleStore();
     }
 }

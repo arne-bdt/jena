@@ -16,21 +16,16 @@
  * limitations under the License.
  */
 
-package org.apache.jena.mem2;
+package org.apache.jena.mem2.store;
 
 import org.apache.jena.datatypes.xsd.impl.XSDDouble;
-import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.stream.Collectors;
 
 import static org.apache.jena.testing_framework.GraphHelper.node;
@@ -38,36 +33,23 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.*;
 
-@RunWith(Parameterized.class)
-public class GraphMem2DescendantsTest {
+public abstract class AbstractTripleStoreTest {
 
-    final Class<Graph> graphClass;
-    Graph sut;
+    protected TripleStore sut;
 
-    public GraphMem2DescendantsTest(String className, Class<Graph> graphClass) {
-        this.graphClass = graphClass;
-    }
-
-    @Parameterized.Parameters(name = "{0}")
-    public static Collection setImplementations() {
-        return Arrays.asList(new Object[][]{
-                {GraphMem2Fast.class.getName(), GraphMem2Fast.class},
-                {GraphMem2Legacy.class.getName(), GraphMem2Legacy.class},
-                {GraphMem2Roaring.class.getName(), GraphMem2Roaring.class}
-        });
-    }
+    protected abstract TripleStore createTripleStore();
 
     @Before
     public void setUp() throws Exception {
-        sut = graphClass.getDeclaredConstructor().newInstance();
+        sut = createTripleStore();
     }
 
     @Test
     public void testClear() {
         sut.add(triple("x R y"));
-        assertEquals(1, sut.size());
+        assertEquals(1, sut.countTriples());
         sut.clear();
-        assertEquals(0, sut.size());
+        assertEquals(0, sut.countTriples());
         assertTrue(sut.isEmpty());
     }
 
@@ -75,9 +57,9 @@ public class GraphMem2DescendantsTest {
     @Test
     public void testDelete() {
         sut.add(triple("x R y"));
-        assertEquals(1, sut.size());
-        sut.delete(triple("x R y"));
-        assertEquals(0, sut.size());
+        assertEquals(1, sut.countTriples());
+        sut.remove(triple("x R y"));
+        assertEquals(0, sut.countTriples());
         assertTrue(sut.isEmpty());
     }
 
@@ -91,27 +73,27 @@ public class GraphMem2DescendantsTest {
     @Test
     public void testFind1() {
         sut.add(triple("x R y"));
-        assertEquals(1, sut.find(null, null, null).toList().size());
-        assertEquals(1, sut.find(null, null, node("y")).toList().size());
-        assertEquals(1, sut.find(null, node("R"), null).toList().size());
-        assertEquals(1, sut.find(null, node("R"), node("y")).toList().size());
-        assertEquals(1, sut.find(node("x"), null, null).toList().size());
-        assertEquals(1, sut.find(node("x"), null, node("y")).toList().size());
-        assertEquals(1, sut.find(node("x"), node("R"), null).toList().size());
-        assertEquals(1, sut.find(node("x"), node("R"), node("y")).toList().size());
+        assertEquals(1, sut.find(triple("?? ?? ??")).toList().size());
+        assertEquals(1, sut.find(triple("?? ?? y")).toList().size());
+        assertEquals(1, sut.find(triple("?? R ??")).toList().size());
+        assertEquals(1, sut.find(triple("?? R y")).toList().size());
+        assertEquals(1, sut.find(triple("x ?? ??")).toList().size());
+        assertEquals(1, sut.find(triple("x ?? y")).toList().size());
+        assertEquals(1, sut.find(triple("x R ??")).toList().size());
+        assertEquals(1, sut.find(triple("x R y")).toList().size());
     }
 
     @Test
     public void testFind2() {
         sut.add(triple("x R y"));
-        assertEquals(1, sut.find(null, null, null).toList().size());
-        assertEquals(0, sut.find(null, null, node("z")).toList().size());
-        assertEquals(0, sut.find(null, node("S"), null).toList().size());
-        assertEquals(0, sut.find(null, node("S"), node("y")).toList().size());
-        assertEquals(0, sut.find(node("y"), null, null).toList().size());
-        assertEquals(0, sut.find(node("y"), null, node("y")).toList().size());
-        assertEquals(0, sut.find(node("y"), node("R"), null).toList().size());
-        assertEquals(0, sut.find(node("y"), node("R"), node("y")).toList().size());
+        assertEquals(1, sut.find(triple("?? ?? ??")).toList().size());
+        assertEquals(0, sut.find(triple("?? ?? z")).toList().size());
+        assertEquals(0, sut.find(triple("?? S ??")).toList().size());
+        assertEquals(0, sut.find(triple("?? S y")).toList().size());
+        assertEquals(0, sut.find(triple("y ?? ??")).toList().size());
+        assertEquals(0, sut.find(triple("y ?? y")).toList().size());
+        assertEquals(0, sut.find(triple("y R ??")).toList().size());
+        assertEquals(0, sut.find(triple("y R y")).toList().size());
     }
 
     @Test
@@ -126,8 +108,8 @@ public class GraphMem2DescendantsTest {
     @Test
     public void testFindSPO() {
         sut.add(triple("x R y"));
-        assertEquals(1, sut.find(node("x"), node("R"), node("y")).toList().size());
-        assertEquals(0, sut.find(node("x"), node("R"), node("z")).toList().size());
+        assertEquals(1, sut.find(triple("x R y")).toList().size());
+        assertEquals(0, sut.find(triple("x R z")).toList().size());
     }
 
     @Test
@@ -152,13 +134,13 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.find(null, null, null).toList();
+        var findings = sut.find(triple("?? ?? ??")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, aAb, aAc, bAa, bAb, bAc, cBa, cBb, cBc));
     }
 
     @Test
     public void testFindS__() {
-        assertFalse(sut.find(node("a"), null, null).hasNext());
+        assertFalse(sut.find(triple("a ?? ??")).hasNext());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -180,22 +162,22 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.find(node("a"), null, null).toList();
+        var findings = sut.find(triple("a ?? ??")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, aAb, aAc));
 
-        findings = sut.find(node("b"), null, null).toList();
+        findings = sut.find(triple("b ?? ??")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(bAa, bAb, bAc));
 
-        findings = sut.find(node("c"), null, null).toList();
+        findings = sut.find(triple("c ?? ??")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
 
-        findings = sut.find(node("d"), null, null).toList();
+        findings = sut.find(triple("d ?? ??")).toList();
         assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testFind_P_() {
-        assertFalse(sut.find(null, node("A"), null).hasNext());
+        assertFalse(sut.find(triple("?? A ??")).hasNext());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -217,19 +199,19 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.find(null, node("A"), null).toList();
+        var findings = sut.find(triple("?? A ??")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, aAb, aAc, bAa, bAb, bAc));
 
-        findings = sut.find(null, node("B"), null).toList();
+        findings = sut.find(triple("?? B ??")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
 
-        findings = sut.find(null, node("C"), null).toList();
+        findings = sut.find(triple("?? C ??")).toList();
         assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testFind__O() {
-        assertFalse(sut.find(null, null, node("a")).hasNext());
+        assertFalse(sut.find(triple("?? ?? a")).hasNext());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -251,22 +233,22 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.find(null, null, node("a")).toList();
+        var findings = sut.find(triple("?? ?? a")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, bAa, cBa));
 
-        findings = sut.find(null, null, node("b")).toList();
+        findings = sut.find(triple("?? ?? b")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAb, bAb, cBb));
 
-        findings = sut.find(null, null, node("c")).toList();
+        findings = sut.find(triple("?? ?? c")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAc, bAc, cBc));
 
-        findings = sut.find(null, null, node("d")).toList();
+        findings = sut.find(triple("?? ?? d")).toList();
         assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testFindSP_() {
-        assertFalse(sut.find(node("a"), node("A"), null).hasNext());
+        assertFalse(sut.find(triple("a A ??")).hasNext());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -288,25 +270,25 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.find(node("a"), node("A"), null).toList();
+        var findings = sut.find(triple("a A ??")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, aAb, aAc));
 
-        findings = sut.find(node("b"), node("A"), null).toList();
+        findings = sut.find(triple("b A ??")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(bAa, bAb, bAc));
 
-        findings = sut.find(node("c"), node("B"), null).toList();
+        findings = sut.find(triple("c B ??")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
 
-        findings = sut.find(node("d"), node("C"), null).toList();
+        findings = sut.find(triple("d C ??")).toList();
         assertThat(findings, IsEmptyCollection.empty());
 
-        findings = sut.find(node("a"), node("B"), null).toList();
+        findings = sut.find(triple("a B ??")).toList();
         assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testFindS_O() {
-        assertFalse(sut.find(node("a"), null, node("a")).hasNext());
+        assertFalse(sut.find(triple("a ?? a")).hasNext());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -328,25 +310,25 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.find(node("a"), null, node("a")).toList();
+        var findings = sut.find(triple("a ?? a")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa));
 
-        findings = sut.find(node("b"), null, node("a")).toList();
+        findings = sut.find(triple("b ?? a")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(bAa));
 
-        findings = sut.find(node("c"), null, node("a")).toList();
+        findings = sut.find(triple("c ?? a")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa));
 
-        findings = sut.find(node("d"), null, node("a")).toList();
+        findings = sut.find(triple("d ?? a")).toList();
         assertThat(findings, IsEmptyCollection.empty());
 
-        findings = sut.find(node("a"), null, node("d")).toList();
+        findings = sut.find(triple("a ?? d")).toList();
         assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testFind_PO() {
-        assertFalse(sut.find(null, node("A"), node("a")).hasNext());
+        assertFalse(sut.find(triple("?? A a")).hasNext());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -368,16 +350,16 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.find(null, node("A"), node("a")).toList();
+        var findings = sut.find(triple("?? A a")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, bAa));
 
-        findings = sut.find(null, node("B"), node("a")).toList();
+        findings = sut.find(triple("?? B a")).toList();
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa));
 
-        findings = sut.find(null, node("C"), node("a")).toList();
+        findings = sut.find(triple("?? C a")).toList();
         assertThat(findings, IsEmptyCollection.empty());
 
-        findings = sut.find(null, node("A"), node("d")).toList();
+        findings = sut.find(triple("?? A d")).toList();
         assertThat(findings, IsEmptyCollection.empty());
     }
 
@@ -394,18 +376,18 @@ public class GraphMem2DescendantsTest {
 
     @Test
     public void testStreamSPO() {
-        assertEquals(0, sut.stream(node("x"), node("R"), node("y")).count());
+        assertEquals(0, sut.stream(triple("x R y")).count());
 
         var t = triple("x R y");
         sut.add(t);
-        var findings = sut.stream(t.getSubject(), t.getPredicate(), t.getObject()).collect(Collectors.toList());
+        var findings = sut.stream(t).collect(Collectors.toList());
         assertEquals(1, findings.size());
         assertEquals(findings.get(0), t);
     }
 
     @Test
     public void testStream___() {
-        assertEquals(0, sut.stream(null, null, null).count());
+        assertEquals(0, sut.stream(triple("?? ?? ??")).count());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -427,13 +409,13 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.stream(null, null, null).collect(Collectors.toList());
+        var findings = sut.stream(triple("?? ?? ??")).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, aAb, aAc, bAa, bAb, bAc, cBa, cBb, cBc));
     }
 
     @Test
     public void testStreamS__() {
-        assertEquals(0, sut.stream(node("a"), null, null).count());
+        assertEquals(0, sut.stream(triple("a ?? ??")).count());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -455,22 +437,22 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.stream(aAa.getSubject(), null, null).collect(Collectors.toList());
+        var findings = sut.stream(Triple.createMatch(aAa.getSubject(), null, null)).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, aAb, aAc));
 
-        findings = sut.stream(bAa.getSubject(), null, null).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(bAa.getSubject(), null, null)).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(bAa, bAb, bAc));
 
-        findings = sut.stream(cBa.getSubject(), null, null).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(cBa.getSubject(), null, null)).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
 
-        findings = sut.stream(node("d"), null, null).collect(Collectors.toList());
+        findings = sut.stream(triple("d ?? ??")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testStream_P_() {
-        assertEquals(0, sut.stream(null, node("A"), null).count());
+        assertEquals(0, sut.stream(triple("?? A ??")).count());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -492,19 +474,19 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.stream(null, aAa.getPredicate(), null).collect(Collectors.toList());
+        var findings = sut.stream(Triple.createMatch(null, aAa.getPredicate(), null)).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, aAb, aAc, bAa, bAb, bAc));
 
-        findings = sut.stream(null, cBa.getPredicate(), null).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(null, cBa.getPredicate(), null)).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
 
-        findings = sut.stream(null, node("C"), null).collect(Collectors.toList());
+        findings = sut.stream(triple("?? C ??")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testStream__O() {
-        assertEquals(0, sut.stream(null, null, node("a")).count());
+        assertEquals(0, sut.stream(triple("?? ?? a")).count());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -526,22 +508,22 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.stream(null, null, aAa.getObject()).collect(Collectors.toList());
+        var findings = sut.stream(Triple.createMatch(null, null, aAa.getObject())).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, bAa, cBa));
 
-        findings = sut.stream(null, null, aAb.getObject()).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(null, null, aAb.getObject())).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAb, bAb, cBb));
 
-        findings = sut.stream(null, null, aAc.getObject()).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(null, null, aAc.getObject())).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAc, bAc, cBc));
 
-        findings = sut.stream(null, null, node("d")).collect(Collectors.toList());
+        findings = sut.stream(triple("?? ?? d")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testStreamSP_() {
-        assertEquals(0, sut.stream(node("a"), node("A"), null).count());
+        assertEquals(0, sut.stream(triple("a A ??")).count());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -563,25 +545,25 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.stream(aAa.getSubject(), aAa.getPredicate(), null).collect(Collectors.toList());
+        var findings = sut.stream(Triple.createMatch(aAa.getSubject(), aAa.getPredicate(), null)).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, aAb, aAc));
 
-        findings = sut.stream(bAa.getSubject(), bAa.getPredicate(), null).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(bAa.getSubject(), bAa.getPredicate(), null)).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(bAa, bAb, bAc));
 
-        findings = sut.stream(cBa.getSubject(), cBa.getPredicate(), null).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(cBa.getSubject(), cBa.getPredicate(), null)).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa, cBb, cBc));
 
-        findings = sut.stream(node("a"), node("C"), null).collect(Collectors.toList());
+        findings = sut.stream(triple("a C ??")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
 
-        findings = sut.stream(node("d"), node("D"), null).collect(Collectors.toList());
+        findings = sut.stream(triple("d D ??")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testStreamS_O() {
-        assertEquals(0, sut.stream(node("a"), null, node("a")).count());
+        assertEquals(0, sut.stream(triple("a ?? a")).count());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -603,28 +585,28 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.stream(aAa.getSubject(), null, aAa.getObject()).collect(Collectors.toList());
+        var findings = sut.stream(Triple.createMatch(aAa.getSubject(), null, aAa.getObject())).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa));
 
-        findings = sut.stream(bAa.getSubject(), null, bAa.getObject()).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(bAa.getSubject(), null, bAa.getObject())).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(bAa));
 
-        findings = sut.stream(cBa.getSubject(), null, cBa.getObject()).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(cBa.getSubject(), null, cBa.getObject())).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa));
 
-        findings = sut.stream(node("d"), null, node("d")).collect(Collectors.toList());
+        findings = sut.stream(triple("d ?? d")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
 
-        findings = sut.stream(node("d"), null, node("a")).collect(Collectors.toList());
+        findings = sut.stream(triple("d ?? a")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
 
-        findings = sut.stream(node("a"), null, node("d")).collect(Collectors.toList());
+        findings = sut.stream(triple("a ?? d")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
     }
 
     @Test
     public void testStream_PO() {
-        assertEquals(0, sut.stream(null, node("A"), node("a")).count());
+        assertEquals(0, sut.stream(triple("?? A a")).count());
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -646,22 +628,22 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        var findings = sut.stream(null, aAa.getPredicate(), aAa.getObject()).collect(Collectors.toList());
+        var findings = sut.stream(Triple.createMatch(null, aAa.getPredicate(), aAa.getObject())).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, bAa));
 
-        findings = sut.stream(null, bAa.getPredicate(), bAa.getObject()).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(null, bAa.getPredicate(), bAa.getObject())).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(aAa, bAa));
 
-        findings = sut.stream(null, cBa.getPredicate(), cBa.getObject()).collect(Collectors.toList());
+        findings = sut.stream(Triple.createMatch(null, cBa.getPredicate(), cBa.getObject())).collect(Collectors.toList());
         assertThat(findings, IsIterableContainingInAnyOrder.containsInAnyOrder(cBa));
 
-        findings = sut.stream(null, node("C"), node("a")).collect(Collectors.toList());
+        findings = sut.stream(triple("?? C a")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
 
-        findings = sut.stream(null, node("A"), node("d")).collect(Collectors.toList());
+        findings = sut.stream(triple("?? A d")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
 
-        findings = sut.stream(null, node("D"), node("d")).collect(Collectors.toList());
+        findings = sut.stream(triple("?? D d")).collect(Collectors.toList());
         assertThat(findings, IsEmptyCollection.empty());
     }
 
@@ -677,14 +659,14 @@ public class GraphMem2DescendantsTest {
         sut.add(triple("x R y"));
         sut.add(triple("y S z"));
         sut.add(triple("z T a"));
-        assertTrue(sut.contains(null, null, null));
-        assertTrue(sut.contains(null, null, node("y")));
-        assertTrue(sut.contains(null, node("R"), null));
-        assertTrue(sut.contains(null, node("R"), node("y")));
-        assertTrue(sut.contains(node("x"), null, null));
-        assertTrue(sut.contains(node("x"), null, node("y")));
-        assertTrue(sut.contains(node("x"), node("R"), null));
-        assertTrue(sut.contains(node("x"), node("R"), node("y")));
+        assertTrue(sut.contains(triple("?? ?? ??")));
+        assertTrue(sut.contains(triple("?? ?? y")));
+        assertTrue(sut.contains(triple("?? R ??")));
+        assertTrue(sut.contains(triple("?? R y")));
+        assertTrue(sut.contains(triple("x ?? ??")));
+        assertTrue(sut.contains(triple("x ?? y")));
+        assertTrue(sut.contains(triple("x R ??")));
+        assertTrue(sut.contains(triple("x R y")));
     }
 
     @Test
@@ -692,31 +674,31 @@ public class GraphMem2DescendantsTest {
         sut.add(triple("x R y"));
         sut.add(triple("y S z"));
         sut.add(triple("z T a"));
-        assertTrue(sut.contains(null, null, null));
-        assertFalse(sut.contains(null, null, node("x")));
-        assertFalse(sut.contains(null, node("U"), null));
-        assertFalse(sut.contains(null, node("R"), node("z")));
-        assertFalse(sut.contains(node("a"), null, null));
-        assertFalse(sut.contains(node("x"), null, node("x")));
-        assertFalse(sut.contains(node("y"), node("R"), null));
-        assertFalse(sut.contains(node("y"), node("T"), node("a")));
+        assertTrue(sut.contains(triple("?? ?? ??")));
+        assertFalse(sut.contains(triple("?? ?? x")));
+        assertFalse(sut.contains(triple("?? U ??")));
+        assertFalse(sut.contains(triple("?? R z")));
+        assertFalse(sut.contains(triple("a ?? ??")));
+        assertFalse(sut.contains(triple("x ?? x")));
+        assertFalse(sut.contains(triple("y R ??")));
+        assertFalse(sut.contains(triple("y T a")));
     }
 
     @Test
     public void testContainsSPO() {
-        assertFalse(sut.contains(node("a"), node("A"), node("a")));
+        assertFalse(sut.contains(triple("a A a")));
 
         var t = triple("a A a");
         sut.add(t);
-        assertTrue(sut.contains(t.getSubject(), t.getPredicate(), t.getObject()));
-        assertFalse(sut.contains(t.getSubject(), t.getPredicate(), node("b")));
-        assertFalse(sut.contains(t.getSubject(), node("B"), t.getObject()));
-        assertFalse(sut.contains(node("b"), t.getPredicate(), t.getObject()));
+        assertTrue(sut.contains(t));
+        assertFalse(sut.contains(Triple.createMatch(t.getSubject(), t.getPredicate(), node("b"))));
+        assertFalse(sut.contains(Triple.createMatch(t.getSubject(), node("B"), t.getObject())));
+        assertFalse(sut.contains(Triple.createMatch(node("b"), t.getPredicate(), t.getObject())));
     }
 
     @Test
     public void testContains___() {
-        assertFalse(sut.contains(null, null, null));
+        assertFalse(sut.contains(triple("?? ?? ??")));
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -738,12 +720,12 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        assertTrue(sut.contains(null, null, null));
+        assertTrue(sut.contains(triple("?? ?? ??")));
     }
 
     @Test
     public void testContainsS__() {
-        assertFalse(sut.contains(node("a"), null, null));
+        assertFalse(sut.contains(triple("a ?? ??")));
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -765,18 +747,18 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        assertTrue(sut.contains(aAa.getSubject(), null, null));
+        assertTrue(sut.contains(Triple.createMatch(aAa.getSubject(), null, null)));
 
-        assertTrue(sut.contains(bAa.getSubject(), null, null));
+        assertTrue(sut.contains(Triple.createMatch(bAa.getSubject(), null, null)));
 
-        assertTrue(sut.contains(cBa.getSubject(), null, null));
+        assertTrue(sut.contains(Triple.createMatch(cBa.getSubject(), null, null)));
 
-        assertFalse(sut.contains(node("d"), null, null));
+        assertFalse(sut.contains(triple("d ?? ??")));
     }
 
     @Test
     public void testContains_P_() {
-        assertFalse(sut.contains(null, node("A"), null));
+        assertFalse(sut.contains(triple("?? A ??")));
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -798,16 +780,16 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        assertTrue(sut.contains(null, aAa.getPredicate(), null));
+        assertTrue(sut.contains(Triple.createMatch(null, aAa.getPredicate(), null)));
 
-        assertTrue(sut.contains(null, cBa.getPredicate(), null));
+        assertTrue(sut.contains(Triple.createMatch(null, cBa.getPredicate(), null)));
 
-        assertFalse(sut.contains(null, node("C"), null));
+        assertFalse(sut.contains(triple("?? C ??")));
     }
 
     @Test
     public void testContains__O() {
-        assertFalse(sut.contains(null, null, node("a")));
+        assertFalse(sut.contains(triple("?? ?? a")));
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -829,18 +811,18 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        assertTrue(sut.contains(null, null, aAa.getObject()));
+        assertTrue(sut.contains(Triple.createMatch(null, null, aAa.getObject())));
 
-        assertTrue(sut.contains(null, null, aAb.getObject()));
+        assertTrue(sut.contains(Triple.createMatch(null, null, aAb.getObject())));
 
-        assertTrue(sut.contains(null, null, aAc.getObject()));
+        assertTrue(sut.contains(Triple.createMatch(null, null, aAc.getObject())));
 
-        assertFalse(sut.contains(null, null, node("d")));
+        assertFalse(sut.contains(triple("?? ?? d")));
     }
 
     @Test
     public void testContainsSP_() {
-        assertFalse(sut.contains(node("a"), node("A"), null));
+        assertFalse(sut.contains(triple("a A ??")));
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -862,20 +844,20 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        assertTrue(sut.contains(aAa.getSubject(), aAa.getPredicate(), null));
+        assertTrue(sut.contains(Triple.createMatch(aAa.getSubject(), aAa.getPredicate(), null)));
 
-        assertTrue(sut.contains(bAa.getSubject(), bAa.getPredicate(), null));
+        assertTrue(sut.contains(Triple.createMatch(bAa.getSubject(), bAa.getPredicate(), null)));
 
-        assertTrue(sut.contains(cBa.getSubject(), cBa.getPredicate(), null));
+        assertTrue(sut.contains(Triple.createMatch(cBa.getSubject(), cBa.getPredicate(), null)));
 
-        assertFalse(sut.contains(node("a"), node("C"), null));
+        assertFalse(sut.contains(triple("a C ??")));
 
-        assertFalse(sut.contains(node("d"), node("D"), null));
+        assertFalse(sut.contains(triple("d D ??")));
     }
 
     @Test
     public void testContainsS_O() {
-        assertFalse(sut.contains(node("a"), null, node("a")));
+        assertFalse(sut.contains(triple("a ?? a")));
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -897,22 +879,22 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        assertTrue(sut.contains(aAa.getSubject(), null, aAa.getObject()));
+        assertTrue(sut.contains(Triple.createMatch(aAa.getSubject(), null, aAa.getObject())));
 
-        assertTrue(sut.contains(bAa.getSubject(), null, bAa.getObject()));
+        assertTrue(sut.contains(Triple.createMatch(bAa.getSubject(), null, bAa.getObject())));
 
-        assertTrue(sut.contains(cBa.getSubject(), null, cBa.getObject()));
+        assertTrue(sut.contains(Triple.createMatch(cBa.getSubject(), null, cBa.getObject())));
 
-        assertFalse(sut.contains(node("d"), null, node("d")));
+        assertFalse(sut.contains(triple("d ?? d")));
 
-        assertFalse(sut.contains(node("d"), null, node("a")));
+        assertFalse(sut.contains(triple("d ?? a")));
 
-        assertFalse(sut.contains(node("a"), null, node("d")));
+        assertFalse(sut.contains(triple("a ?? d")));
     }
 
     @Test
     public void testContains_PO() {
-        assertFalse(sut.contains(null, node("A"), node("a")));
+        assertFalse(sut.contains(triple("?? A a")));
 
         final var aAa = triple("a A a");
         final var aAb = triple("a A b");
@@ -934,17 +916,17 @@ public class GraphMem2DescendantsTest {
         sut.add(cBb);
         sut.add(cBc);
 
-        assertTrue(sut.contains(null, aAa.getPredicate(), aAa.getObject()));
+        assertTrue(sut.contains(Triple.createMatch(null, aAa.getPredicate(), aAa.getObject())));
 
-        assertTrue(sut.contains(null, bAa.getPredicate(), bAa.getObject()));
+        assertTrue(sut.contains(Triple.createMatch(null, bAa.getPredicate(), bAa.getObject())));
 
-        assertTrue(sut.contains(null, cBa.getPredicate(), cBa.getObject()));
+        assertTrue(sut.contains(Triple.createMatch(null, cBa.getPredicate(), cBa.getObject())));
 
-        assertFalse(sut.contains(null, node("C"), node("a")));
+        assertFalse(sut.contains(triple("?? C a")));
 
-        assertFalse(sut.contains(null, node("A"), node("d")));
+        assertFalse(sut.contains(triple("?? A d")));
 
-        assertFalse(sut.contains(null, node("D"), node("d")));
+        assertFalse(sut.contains(triple("?? D d")));
     }
 
     @Test

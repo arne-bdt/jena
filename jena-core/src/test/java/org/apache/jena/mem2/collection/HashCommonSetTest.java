@@ -19,16 +19,20 @@ package org.apache.jena.mem2.collection;
 
 import org.apache.jena.graph.Triple;
 
-/**
- * This test shall test only the parts of the {@link FastHashSet} which are not tested by the {@link AbstractJenaSetTripleTest}.
- */
-public class FastHashSetTest extends AbstractJenaSetTripleTest {
+
+public class HashCommonSetTest extends AbstractJenaSetTripleTest {
+
     @Override
     protected JenaSet<Triple> createTripleSet() {
-        return new FastHashSet<Triple>() {
+        return new HashCommonSet<Triple>(10) {
             @Override
             protected Triple[] newKeysArray(int size) {
                 return new Triple[size];
+            }
+
+            @Override
+            public void clear() {
+                super.clear(10);
             }
         };
     }
