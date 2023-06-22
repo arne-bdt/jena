@@ -56,6 +56,7 @@ public class SparseArrayIterator<E> extends NiceIterator<E> implements Iterator<
      * @return {@code true} if the iteration has more elements
      */
     @Override
+    @SuppressWarnings("squid:S1121")
     public boolean hasNext() {
         while (-1 < pos) {
             if (null != entries[pos]) {

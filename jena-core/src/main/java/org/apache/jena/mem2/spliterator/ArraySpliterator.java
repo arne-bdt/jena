@@ -178,6 +178,7 @@ public class ArraySpliterator<E> implements Spliterator<E> {
      * corresponding to its maximum depth.
      */
     @Override
+    @SuppressWarnings("squid:S2184")
     public long estimateSize() {
         return pos - fromIndex;
     }

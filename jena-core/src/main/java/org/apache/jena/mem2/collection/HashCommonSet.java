@@ -21,7 +21,7 @@ package org.apache.jena.mem2.collection;
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements JenaSet<Key> {
+public abstract class HashCommonSet<K> extends HashCommonBase<K> implements JenaSet<K> {
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
@@ -33,7 +33,7 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements 
     }
 
     @Override
-    public boolean tryAdd(Key key) {
+    public boolean tryAdd(K key) {
         final var slot = findSlot(key);
         if (slot < 0) return false;
         keys[slot] = key;
@@ -42,7 +42,7 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements 
     }
 
     @Override
-    public void addUnchecked(Key key) {
+    public void addUnchecked(K key) {
         final var slot = findSlot(key);
         if (slot < 0) return;
         keys[slot] = key;
@@ -51,10 +51,10 @@ public abstract class HashCommonSet<Key> extends HashCommonBase<Key> implements 
 
     @Override
     protected void grow() {
-        final Key[] oldContents = keys;
+        final K[] oldContents = keys;
         keys = newKeysArray(calcGrownCapacityAndSetThreshold());
         for (int i = 0; i < oldContents.length; i += 1) {
-            final Key key = oldContents[i];
+            final K key = oldContents[i];
             if (key != null) {
                 final int slot = findSlot(key);
                 keys[slot] = key;

@@ -25,33 +25,33 @@ public enum MatchPattern {
     /**
      * Match a triple with a concrete subject, predicate and object.
      */
-    SPO,
+    SUB_PRE_OBJ,
     /**
      * Match a triple with a concrete subject and predicate, and a wildcard object.
      */
-    SP_,
+    SUB_PRE_ANY,
     /**
      * Match a triple with a concrete subject and object, and a wildcard predicate.
      */
-    S_O,
+    SUB_ANY_OBJ,
     /**
      * Match a triple with a concrete subject, and wildcard predicate and object.
      */
-    S__,
+    SUB_ANY_ANY,
     /**
      * Match a triple with a concrete predicate and object, and a wildcard subject.
      */
-    _PO,
+    ANY_PRE_OBJ,
     /**
      * Match a triple with a concrete predicate, and wildcard subject and object.
      */
-    _P_,
+    ANY_PRE_ANY,
     /**
      * Match a triple with a concrete object, and wildcard subject and predicate.
      */
-    __O,
+    ANY_ANY_OBJ,
     /**
      * Match a triple with a wildcard subject, predicate and object.
      */
-    ___
+    ANY_ANY_ANY
 }

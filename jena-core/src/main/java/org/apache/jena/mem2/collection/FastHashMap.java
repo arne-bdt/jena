@@ -24,8 +24,8 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
-import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 /**
  * Map which grows, if needed but never shrinks.
@@ -40,12 +40,12 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     protected V[] values;
 
-    public FastHashMap(int initialSize) {
+    protected FastHashMap(int initialSize) {
         super(initialSize);
         this.values = newValuesArray(keys.length);
     }
 
-    public FastHashMap() {
+    protected FastHashMap() {
         super();
         this.values = newValuesArray(keys.length);
     }
@@ -155,7 +155,7 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
     }
 
     @Override
-    public void compute(K key, Function<V, V> valueProcessor) {
+    public void compute(K key, UnaryOperator<V> valueProcessor) {
         final int hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {

@@ -27,26 +27,26 @@ public class PatternClassifierTest {
 
     @Test
     public void testClassifyTriple() {
-        assertEquals(MatchPattern.SPO, PatternClassifier.classify(triple("s p o")));
-        assertEquals(MatchPattern.SP_, PatternClassifier.classify(triple("s p ??")));
-        assertEquals(MatchPattern.S_O, PatternClassifier.classify(triple("s ?? o")));
-        assertEquals(MatchPattern.S__, PatternClassifier.classify(triple("s ?? ??")));
-        assertEquals(MatchPattern._PO, PatternClassifier.classify(triple("?? p o")));
-        assertEquals(MatchPattern._P_, PatternClassifier.classify(triple("?? p ??")));
-        assertEquals(MatchPattern.__O, PatternClassifier.classify(triple("?? ?? o")));
-        assertEquals(MatchPattern.___, PatternClassifier.classify(triple("?? ?? ??")));
+        assertEquals(MatchPattern.SUB_PRE_OBJ, PatternClassifier.classify(triple("s p o")));
+        assertEquals(MatchPattern.SUB_PRE_ANY, PatternClassifier.classify(triple("s p ??")));
+        assertEquals(MatchPattern.SUB_ANY_OBJ, PatternClassifier.classify(triple("s ?? o")));
+        assertEquals(MatchPattern.SUB_ANY_ANY, PatternClassifier.classify(triple("s ?? ??")));
+        assertEquals(MatchPattern.ANY_PRE_OBJ, PatternClassifier.classify(triple("?? p o")));
+        assertEquals(MatchPattern.ANY_PRE_ANY, PatternClassifier.classify(triple("?? p ??")));
+        assertEquals(MatchPattern.ANY_ANY_OBJ, PatternClassifier.classify(triple("?? ?? o")));
+        assertEquals(MatchPattern.ANY_ANY_ANY, PatternClassifier.classify(triple("?? ?? ??")));
     }
 
     @Test
     public void testClassifyNodes() {
-        assertEquals(MatchPattern.SPO, PatternClassifier.classify(node("s"), node("p"), node("o")));
-        assertEquals(MatchPattern.SP_, PatternClassifier.classify(node("s"), node("p"), node("??")));
-        assertEquals(MatchPattern.S_O, PatternClassifier.classify(node("s"), node("??"), node("o")));
-        assertEquals(MatchPattern.S__, PatternClassifier.classify(node("s"), node("??"), node("??")));
-        assertEquals(MatchPattern._PO, PatternClassifier.classify(node("??"), node("p"), node("o")));
-        assertEquals(MatchPattern._P_, PatternClassifier.classify(node("??"), node("p"), node("??")));
-        assertEquals(MatchPattern.__O, PatternClassifier.classify(node("??"), node("??"), node("o")));
-        assertEquals(MatchPattern.___, PatternClassifier.classify(node("??"), node("??"), node("??")));
+        assertEquals(MatchPattern.SUB_PRE_OBJ, PatternClassifier.classify(node("s"), node("p"), node("o")));
+        assertEquals(MatchPattern.SUB_PRE_ANY, PatternClassifier.classify(node("s"), node("p"), node("??")));
+        assertEquals(MatchPattern.SUB_ANY_OBJ, PatternClassifier.classify(node("s"), node("??"), node("o")));
+        assertEquals(MatchPattern.SUB_ANY_ANY, PatternClassifier.classify(node("s"), node("??"), node("??")));
+        assertEquals(MatchPattern.ANY_PRE_OBJ, PatternClassifier.classify(node("??"), node("p"), node("o")));
+        assertEquals(MatchPattern.ANY_PRE_ANY, PatternClassifier.classify(node("??"), node("p"), node("??")));
+        assertEquals(MatchPattern.ANY_ANY_OBJ, PatternClassifier.classify(node("??"), node("??"), node("o")));
+        assertEquals(MatchPattern.ANY_ANY_ANY, PatternClassifier.classify(node("??"), node("??"), node("??")));
     }
 
 }

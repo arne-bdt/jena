@@ -43,6 +43,7 @@ public class NestedIterator<E, I> extends NiceIterator<E> {
     }
 
     @Override
+    @SuppressWarnings("squid:S1121")
     public boolean hasNext() {
         if (this.currentIterator.hasNext()) {
             return hasNext = true;

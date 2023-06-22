@@ -23,6 +23,7 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 
 import java.util.ConcurrentModificationException;
+import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -38,7 +39,7 @@ public abstract class FastArrayBunch implements FastTripleBunch {
     protected int size = 0;
     protected Triple[] elements;
 
-    public FastArrayBunch() {
+    protected FastArrayBunch() {
         elements = new Triple[INITIAL_SIZE];
     }
 
@@ -139,7 +140,7 @@ public abstract class FastArrayBunch implements FastTripleBunch {
             @Override
             public Triple next() {
                 if (size != initialSize) throw new ConcurrentModificationException();
-                if (i == 0) noElements("no elements left in ArrayBunch iteration");
+                if (i == 0) throw new NoSuchElementException();
                 return elements[--i];
             }
 

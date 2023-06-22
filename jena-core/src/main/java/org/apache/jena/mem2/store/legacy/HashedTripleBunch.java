@@ -23,8 +23,8 @@ import org.apache.jena.mem2.collection.JenaSet;
 
 public class HashedTripleBunch extends HashCommonSet<Triple> implements TripleBunch {
     protected HashedTripleBunch(final JenaSet<Triple> b) {
-        super(nextSize((int) (b.size() / loadFactor)));
-        b.keyIterator().forEachRemaining(t -> this.addUnchecked(t));
+        super(nextSize((int) (b.size() / LOAD_FACTOR)));
+        b.keyIterator().forEachRemaining(this::addUnchecked);
     }
 
     public HashedTripleBunch() {

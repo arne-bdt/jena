@@ -23,16 +23,16 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
-import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 /**
  * Shared stuff for our hashing implementations: does the base work for
  * hashing and growth sizes.
  */
-public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> implements JenaMap<Key, Value> {
+public abstract class HashCommonMap<K, V> extends HashCommonBase<K> implements JenaMap<K, V> {
 
-    protected Value[] values;
+    protected V[] values;
 
     /**
      * Initialise this hashed thingy to have <code>initialCapacity</code> as its
@@ -44,18 +44,16 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
         this.values = newValuesArray(keys.length);
     }
 
+    @Override
     public void clear(int initialCapacity) {
         super.clear(initialCapacity);
         this.values = newValuesArray(keys.length);
     }
 
-    @Override
-    public abstract void clear();
-
-    protected abstract Value[] newValuesArray(int size);
+    protected abstract V[] newValuesArray(int size);
 
     @Override
-    public boolean tryPut(Key key, Value value) {
+    public boolean tryPut(K key, V value) {
         final var slot = findSlot(key);
         if (slot < 0) {
             values[~slot] = value;
@@ -68,7 +66,7 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     }
 
     @Override
-    public void put(Key key, Value value) {
+    public void put(K key, V value) {
         final var slot = findSlot(key);
         if (slot < 0) {
             values[~slot] = value;
@@ -80,21 +78,21 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     }
 
     @Override
-    public Value get(Key key) {
+    public V get(K key) {
         final var slot = findSlot(key);
         if (slot < 0) return values[~slot];
         return null;
     }
 
     @Override
-    public Value getOrDefault(Key key, Value defaultValue) {
+    public V getOrDefault(K key, V defaultValue) {
         final var slot = findSlot(key);
         if (slot < 0) return values[~slot];
         return defaultValue;
     }
 
     @Override
-    public Value computeIfAbsent(Key key, Supplier<Value> absentValueSupplier) {
+    public V computeIfAbsent(K key, Supplier<V> absentValueSupplier) {
         final var slot = findSlot(key);
         if (slot < 0) return values[~slot];
         final var value = absentValueSupplier.get();
@@ -105,7 +103,7 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     }
 
     @Override
-    public void compute(Key key, Function<Value, Value> valueProcessor) {
+    public void compute(K key, UnaryOperator<V> valueProcessor) {
         final var slot = findSlot(key);
         if (slot < 0) {
             final var value = valueProcessor.apply(values[~slot]);
@@ -127,12 +125,12 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
 
     @Override
     protected void grow() {
-        final Key[] oldContents = keys;
-        final Value[] oldValues = values;
+        final K[] oldContents = keys;
+        final V[] oldValues = values;
         keys = newKeysArray(calcGrownCapacityAndSetThreshold());
         values = newValuesArray(keys.length);
         for (int i = 0; i < oldContents.length; i += 1) {
-            final Key key = oldContents[i];
+            final K key = oldContents[i];
             if (key != null) {
                 final int slot = findSlot(key);
                 keys[slot] = key;
@@ -179,7 +177,7 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     }
 
     @Override
-    public ExtendedIterator<Value> valueIterator() {
+    public ExtendedIterator<V> valueIterator() {
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () -> {
             if (size != initialSize) throw new ConcurrentModificationException();
@@ -188,7 +186,7 @@ public abstract class HashCommonMap<Key, Value> extends HashCommonBase<Key> impl
     }
 
     @Override
-    public Spliterator<Value> valueSpliterator() {
+    public Spliterator<V> valueSpliterator() {
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () -> {
             if (size != initialSize) throw new ConcurrentModificationException();

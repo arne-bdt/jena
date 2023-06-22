@@ -22,7 +22,7 @@ import org.apache.jena.mem2.iterator.NestedIterator;
 import org.apache.jena.mem2.pattern.PatternClassifier;
 import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
-import org.apache.jena.util.iterator.NullIterator;
+import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.SingletonIterator;
 
 import java.util.stream.Stream;
@@ -36,9 +36,6 @@ public class FastTripleStore implements TripleStore {
     final FastHashedBunchMap predicates = new FastHashedBunchMap();
     final FastHashedBunchMap objects = new FastHashedBunchMap();
     private int size = 0;
-
-    public FastTripleStore() {
-    }
 
     @Override
     public void add(Triple triple) {
@@ -59,13 +56,13 @@ public class FastTripleStore implements TripleStore {
         }
         if (added) {
             size++;
-            var pBunch = predicates.computeIfAbsent(triple.getPredicate(), () -> new ArrayBunchWithSamePredicate());
+            var pBunch = predicates.computeIfAbsent(triple.getPredicate(), ArrayBunchWithSamePredicate::new);
             if (!pBunch.isHashed() && pBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
                 pBunch = new FastHashedTripleBunch(pBunch);
                 predicates.put(triple.getPredicate(), pBunch);
             }
             pBunch.addUnchecked(triple, hashCodeOfTriple);
-            var oBunch = objects.computeIfAbsent(triple.getObject(), () -> new ArrayBunchWithSameObject());
+            var oBunch = objects.computeIfAbsent(triple.getObject(), ArrayBunchWithSameObject::new);
             if (!oBunch.isHashed() && oBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
                 oBunch = new FastHashedTripleBunch(oBunch);
                 objects.put(triple.getObject(), oBunch);
@@ -121,7 +118,7 @@ public class FastTripleStore implements TripleStore {
     public boolean contains(Triple tripleMatch) {
         switch (PatternClassifier.classify(tripleMatch)) {
 
-            case SPO: {
+            case SUB_PRE_OBJ: {
                 final var triples = subjects.get(tripleMatch.getSubject());
                 if (triples == null) {
                     return false;
@@ -129,7 +126,7 @@ public class FastTripleStore implements TripleStore {
                 return triples.containsKey(tripleMatch);
             }
 
-            case SP_: {
+            case SUB_PRE_ANY: {
                 final var triplesBySubject = subjects.get(tripleMatch.getSubject());
                 if (triplesBySubject == null) {
                     return false;
@@ -137,7 +134,7 @@ public class FastTripleStore implements TripleStore {
                 return triplesBySubject.anyMatch(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case S_O: {
+            case SUB_ANY_OBJ: {
                 final var triplesBySubject = subjects.get(tripleMatch.getSubject());
                 if (triplesBySubject == null) {
                     return false;
@@ -145,10 +142,10 @@ public class FastTripleStore implements TripleStore {
                 return triplesBySubject.anyMatch(t -> tripleMatch.getObject().equals(t.getObject()));
             }
 
-            case S__:
+            case SUB_ANY_ANY:
                 return subjects.containsKey(tripleMatch.getSubject());
 
-            case _PO: {
+            case ANY_PRE_OBJ: {
                 final var triplesByObject = objects.get(tripleMatch.getObject());
                 if (triplesByObject == null) {
                     return false;
@@ -170,17 +167,17 @@ public class FastTripleStore implements TripleStore {
                 return triplesByObject.anyMatchRandomOrder(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case _P_:
+            case ANY_PRE_ANY:
                 return predicates.containsKey(tripleMatch.getPredicate());
 
-            case __O:
+            case ANY_ANY_OBJ:
                 return objects.containsKey(tripleMatch.getObject());
 
-            case ___:
+            case ANY_ANY_ANY:
                 return !isEmpty();
 
             default:
-                throw new IllegalStateException("Unexpected value: " + PatternClassifier.classify(tripleMatch));
+                throw new IllegalStateException(String.format("Unexpected value: %s", PatternClassifier.classify(tripleMatch)));
         }
     }
 
@@ -193,7 +190,7 @@ public class FastTripleStore implements TripleStore {
     public Stream<Triple> stream(Triple tripleMatch) {
         switch (PatternClassifier.classify(tripleMatch)) {
 
-            case SPO: {
+            case SUB_PRE_OBJ: {
                 final var triples = subjects.get(tripleMatch.getSubject());
                 if (triples == null) {
                     return Stream.empty();
@@ -201,7 +198,7 @@ public class FastTripleStore implements TripleStore {
                 return triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
             }
 
-            case SP_: {
+            case SUB_PRE_ANY: {
                 final var triplesBySubject = subjects.get(tripleMatch.getSubject());
                 if (triplesBySubject == null) {
                     return Stream.empty();
@@ -209,7 +206,7 @@ public class FastTripleStore implements TripleStore {
                 return triplesBySubject.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case S_O: {
+            case SUB_ANY_OBJ: {
                 final var triplesBySubject = subjects.get(tripleMatch.getSubject());
                 if (triplesBySubject == null) {
                     return Stream.empty();
@@ -217,12 +214,12 @@ public class FastTripleStore implements TripleStore {
                 return triplesBySubject.keyStream().filter(t -> tripleMatch.getObject().equals(t.getObject()));
             }
 
-            case S__: {
+            case SUB_ANY_ANY: {
                 final var triples = subjects.get(tripleMatch.getSubject());
                 return triples == null ? Stream.empty() : triples.keyStream();
             }
 
-            case _PO: {
+            case ANY_PRE_OBJ: {
                 final var triplesByObject = objects.get(tripleMatch.getObject());
                 if (triplesByObject == null) {
                     return Stream.empty();
@@ -239,17 +236,17 @@ public class FastTripleStore implements TripleStore {
                 return triplesByObject.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case _P_: {
+            case ANY_PRE_ANY: {
                 final var triples = predicates.get(tripleMatch.getPredicate());
                 return triples == null ? Stream.empty() : triples.keyStream();
             }
 
-            case __O: {
+            case ANY_ANY_OBJ: {
                 final var triples = objects.get(tripleMatch.getObject());
                 return triples == null ? Stream.empty() : triples.keyStream();
             }
 
-            case ___:
+            case ANY_ANY_ANY:
                 return stream();
 
             default:
@@ -261,44 +258,44 @@ public class FastTripleStore implements TripleStore {
     public ExtendedIterator<Triple> find(Triple tripleMatch) {
         switch (PatternClassifier.classify(tripleMatch)) {
 
-            case SPO: {
+            case SUB_PRE_OBJ: {
                 final var triples = subjects.get(tripleMatch.getSubject());
                 if (triples == null) {
-                    return NullIterator.emptyIterator();
+                    return NiceIterator.emptyIterator();
                 }
-                return triples.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NullIterator.emptyIterator();
+                return triples.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NiceIterator.emptyIterator();
             }
 
-            case SP_: {
+            case SUB_PRE_ANY: {
                 final var triplesBySubject = subjects.get(tripleMatch.getSubject());
                 if (triplesBySubject == null) {
-                    return NullIterator.emptyIterator();
+                    return NiceIterator.emptyIterator();
                 }
                 return triplesBySubject.keyIterator().filterKeep(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case S_O: {
+            case SUB_ANY_OBJ: {
                 final var triplesBySubject = subjects.get(tripleMatch.getSubject());
                 if (triplesBySubject == null) {
-                    return NullIterator.emptyIterator();
+                    return NiceIterator.emptyIterator();
                 }
                 return triplesBySubject.keyIterator().filterKeep(t -> tripleMatch.getObject().equals(t.getObject()));
             }
 
-            case S__: {
+            case SUB_ANY_ANY: {
                 final var triples = subjects.get(tripleMatch.getSubject());
-                return triples == null ? NullIterator.emptyIterator() : triples.keyIterator();
+                return triples == null ? NiceIterator.emptyIterator() : triples.keyIterator();
             }
 
-            case _PO: {
+            case ANY_PRE_OBJ: {
                 final var triplesByObject = objects.get(tripleMatch.getObject());
                 if (triplesByObject == null) {
-                    return NullIterator.emptyIterator();
+                    return NiceIterator.emptyIterator();
                 }
                 if (triplesByObject.size() > THRESHOLD_FOR_SECONDARY_LOOKUP) {
                     final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
                     if (triplesByPredicate == null) {
-                        return NullIterator.emptyIterator();
+                        return NiceIterator.emptyIterator();
                     }
                     if (triplesByPredicate.size() < triplesByObject.size()) {
                         return triplesByPredicate.keyIterator().filterKeep(t -> tripleMatch.getObject().equals(t.getObject()));
@@ -307,17 +304,17 @@ public class FastTripleStore implements TripleStore {
                 return triplesByObject.keyIterator().filterKeep(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
-            case _P_: {
+            case ANY_PRE_ANY: {
                 final var triples = predicates.get(tripleMatch.getPredicate());
-                return triples == null ? NullIterator.emptyIterator() : triples.keyIterator();
+                return triples == null ? NiceIterator.emptyIterator() : triples.keyIterator();
             }
 
-            case __O: {
+            case ANY_ANY_OBJ: {
                 final var triples = objects.get(tripleMatch.getObject());
-                return triples == null ? NullIterator.emptyIterator() : triples.keyIterator();
+                return triples == null ? NiceIterator.emptyIterator() : triples.keyIterator();
             }
 
-            case ___:
+            case ANY_ANY_ANY:
                 return new NestedIterator<>(subjects.valueIterator(), FastTripleBunch::keyIterator);
 
             default:

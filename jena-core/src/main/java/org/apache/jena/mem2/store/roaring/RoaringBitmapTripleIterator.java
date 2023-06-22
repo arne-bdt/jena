@@ -27,7 +27,7 @@ import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 public class RoaringBitmapTripleIterator extends NiceIterator<Triple> {
-    protected static int BUFFER_SIZE = 64;
+    protected static final int BUFFER_SIZE = 64;
     private final BatchIterator iterator;
     private final FastHashSet<Triple> triples;
     private final int initialSize;

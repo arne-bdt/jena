@@ -34,7 +34,6 @@ import java.util.stream.Stream;
 public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 
     final TripleStore tripleStore;
-    private Capabilities capabilities;
 
     public GraphMem2(TripleStore tripleStore) {
         super();

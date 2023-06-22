@@ -36,18 +36,15 @@ import java.util.stream.Stream;
 
 public class RoaringTripleStore implements TripleStore {
 
+    private static final String UNKNOWN_PATTERN_CLASSIFIER = "Unknown pattern classifier: %s";
     private static final RoaringBitmap EMPTY_BITMAP = new RoaringBitmap();
     final NodesToBitmapsMap subjectBitmaps = new NodesToBitmapsMap();
     final NodesToBitmapsMap predicateBitmaps = new NodesToBitmapsMap();
     final NodesToBitmapsMap objectBitmaps = new NodesToBitmapsMap();
     final TripleSet triples = new TripleSet(); // We use a list here to maintain the order of triples
 
-    public RoaringTripleStore() {
-
-    }
-
     private static void addIndex(final NodesToBitmapsMap map, final Node node, final int index) {
-        final var bitmap = map.computeIfAbsent(node, () -> new RoaringBitmap());
+        final var bitmap = map.computeIfAbsent(node, RoaringBitmap::new);
         bitmap.add(index);
     }
 
@@ -104,36 +101,36 @@ public class RoaringTripleStore implements TripleStore {
         final var matchPattern = PatternClassifier.classify(tripleMatch);
         switch (matchPattern) {
 
-            case S__:
-            case _P_:
-            case __O:
-            case SP_:
-            case _PO:
-            case S_O:
+            case SUB_ANY_ANY:
+            case ANY_PRE_ANY:
+            case ANY_ANY_OBJ:
+            case SUB_PRE_ANY:
+            case ANY_PRE_OBJ:
+            case SUB_ANY_OBJ:
                 return hasMatchInBitmaps(tripleMatch, matchPattern);
 
-            case SPO:
+            case SUB_PRE_OBJ:
                 return this.triples.containsKey(tripleMatch);
 
-            case ___:
+            case ANY_ANY_ANY:
                 return !this.isEmpty();
 
             default:
-                throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
+                throw new IllegalStateException(String.format(UNKNOWN_PATTERN_CLASSIFIER, PatternClassifier.classify(tripleMatch)));
         }
     }
 
     private ImmutableBitmapDataProvider getBitmapForMatch(final Triple tripleMatch, final MatchPattern matchPattern) {
         switch (matchPattern) {
 
-            case S__:
+            case SUB_ANY_ANY:
                 return this.subjectBitmaps.getOrDefault(tripleMatch.getSubject(), EMPTY_BITMAP);
-            case _P_:
+            case ANY_PRE_ANY:
                 return this.predicateBitmaps.getOrDefault(tripleMatch.getPredicate(), EMPTY_BITMAP);
-            case __O:
+            case ANY_ANY_OBJ:
                 return this.objectBitmaps.getOrDefault(tripleMatch.getObject(), EMPTY_BITMAP);
 
-            case SP_: {
+            case SUB_PRE_ANY: {
                 final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
                 if (null == subjectBitmap)
                     return EMPTY_BITMAP;
@@ -145,7 +142,7 @@ public class RoaringTripleStore implements TripleStore {
                 return RoaringBitmap.and(subjectBitmap, predicateBitmap);
             }
 
-            case _PO: {
+            case ANY_PRE_OBJ: {
                 final var predicateBitmap = this.predicateBitmaps.get(tripleMatch.getPredicate());
                 if (null == predicateBitmap)
                     return EMPTY_BITMAP;
@@ -157,7 +154,7 @@ public class RoaringTripleStore implements TripleStore {
                 return FastAggregation.naive_and(predicateBitmap, objectBitmap);
             }
 
-            case S_O: {
+            case SUB_ANY_OBJ: {
                 final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
                 if (null == subjectBitmap)
                     return EMPTY_BITMAP;
@@ -169,28 +166,28 @@ public class RoaringTripleStore implements TripleStore {
                 return RoaringBitmap.and(subjectBitmap, objectBitmap);
             }
 
-            case SPO:
+            case SUB_PRE_OBJ:
                 throw new IllegalArgumentException("Getting bitmap for match pattern SPO ist not supported because it is not efficient");
 
-            case ___:
+            case ANY_ANY_ANY:
                 throw new IllegalArgumentException("Cannot get bitmap for match pattern ___");
 
             default:
-                throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
+                throw new IllegalStateException(String.format(UNKNOWN_PATTERN_CLASSIFIER, PatternClassifier.classify(tripleMatch)));
         }
     }
 
     private boolean hasMatchInBitmaps(final Triple tripleMatch, final MatchPattern matchPattern) {
         switch (matchPattern) {
 
-            case S__:
+            case SUB_ANY_ANY:
                 return this.subjectBitmaps.containsKey(tripleMatch.getSubject());
-            case _P_:
+            case ANY_PRE_ANY:
                 return this.predicateBitmaps.containsKey(tripleMatch.getPredicate());
-            case __O:
+            case ANY_ANY_OBJ:
                 return this.objectBitmaps.containsKey(tripleMatch.getObject());
 
-            case SP_: {
+            case SUB_PRE_ANY: {
                 final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
                 if (null == subjectBitmap)
                     return false;
@@ -202,7 +199,7 @@ public class RoaringTripleStore implements TripleStore {
                 return RoaringBitmap.intersects(subjectBitmap, predicateBitmap);
             }
 
-            case _PO: {
+            case ANY_PRE_OBJ: {
                 final var predicateBitmap = this.predicateBitmaps.get(tripleMatch.getPredicate());
                 if (null == predicateBitmap)
                     return false;
@@ -214,7 +211,7 @@ public class RoaringTripleStore implements TripleStore {
                 return RoaringBitmap.intersects(objectBitmap, predicateBitmap);
             }
 
-            case S_O: {
+            case SUB_ANY_OBJ: {
                 final var subjectBitmap = this.subjectBitmaps.get(tripleMatch.getSubject());
                 if (null == subjectBitmap)
                     return false;
@@ -226,14 +223,14 @@ public class RoaringTripleStore implements TripleStore {
                 return RoaringBitmap.intersects(subjectBitmap, objectBitmap);
             }
 
-            case SPO:
+            case SUB_PRE_OBJ:
                 throw new IllegalArgumentException("Getting bitmap for match pattern SPO ist not supported because it is not efficient");
 
-            case ___:
+            case ANY_ANY_ANY:
                 throw new IllegalArgumentException("Cannot get bitmap for match pattern ___");
 
             default:
-                throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
+                throw new IllegalStateException(String.format(UNKNOWN_PATTERN_CLASSIFIER, PatternClassifier.classify(tripleMatch)));
         }
     }
 
@@ -247,19 +244,19 @@ public class RoaringTripleStore implements TripleStore {
         var pattern = PatternClassifier.classify(tripleMatch);
         switch (pattern) {
 
-            case SPO:
+            case SUB_PRE_OBJ:
                 return this.triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
 
-            case SP_:
-            case S_O:
-            case S__:
-            case _PO:
-            case _P_:
-            case __O:
+            case SUB_PRE_ANY:
+            case SUB_ANY_OBJ:
+            case SUB_ANY_ANY:
+            case ANY_PRE_OBJ:
+            case ANY_PRE_ANY:
+            case ANY_ANY_OBJ:
                 final var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
                 return bitmap.stream().mapToObj(this.triples::getKeyAt);
 
-            case ___:
+            case ANY_ANY_ANY:
                 return this.stream();
 
             default:
@@ -272,19 +269,19 @@ public class RoaringTripleStore implements TripleStore {
         var pattern = PatternClassifier.classify(tripleMatch);
         switch (pattern) {
 
-            case SPO:
-                return this.triples.containsKey(tripleMatch) ? new SingletonIterator(tripleMatch) : NiceIterator.emptyIterator();
+            case SUB_PRE_OBJ:
+                return this.triples.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NiceIterator.emptyIterator();
 
-            case SP_:
-            case S_O:
-            case S__:
-            case _PO:
-            case _P_:
-            case __O:
+            case SUB_PRE_ANY:
+            case SUB_ANY_OBJ:
+            case SUB_ANY_ANY:
+            case ANY_PRE_OBJ:
+            case ANY_PRE_ANY:
+            case ANY_ANY_OBJ:
                 final var bitmap = this.getBitmapForMatch(tripleMatch, pattern);
                 return new RoaringBitmapTripleIterator(bitmap.getBatchIterator(), this.triples);
 
-            case ___:
+            case ANY_ANY_ANY:
                 return this.triples.keyIterator();
 
             default:

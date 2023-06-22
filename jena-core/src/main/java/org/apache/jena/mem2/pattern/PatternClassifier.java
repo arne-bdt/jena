@@ -35,33 +35,36 @@ import org.apache.jena.graph.Triple;
  */
 public class PatternClassifier {
 
+    private PatternClassifier() {
+    }
+
     public static MatchPattern classify(Triple tripleMatch) {
         if (tripleMatch.getSubject().isConcrete()) {
             if (tripleMatch.getPredicate().isConcrete()) {
                 if (tripleMatch.getObject().isConcrete()) {
-                    return MatchPattern.SPO;
+                    return MatchPattern.SUB_PRE_OBJ;
                 } else {
-                    return MatchPattern.SP_;
+                    return MatchPattern.SUB_PRE_ANY;
                 }
             } else {
                 if (tripleMatch.getObject().isConcrete()) {
-                    return MatchPattern.S_O;
+                    return MatchPattern.SUB_ANY_OBJ;
                 } else {
-                    return MatchPattern.S__;
+                    return MatchPattern.SUB_ANY_ANY;
                 }
             }
         } else {
             if (tripleMatch.getPredicate().isConcrete()) {
                 if (tripleMatch.getObject().isConcrete()) {
-                    return MatchPattern._PO;
+                    return MatchPattern.ANY_PRE_OBJ;
                 } else {
-                    return MatchPattern._P_;
+                    return MatchPattern.ANY_PRE_ANY;
                 }
             } else {
                 if (tripleMatch.getObject().isConcrete()) {
-                    return MatchPattern.__O;
+                    return MatchPattern.ANY_ANY_OBJ;
                 } else {
-                    return MatchPattern.___;
+                    return MatchPattern.ANY_ANY_ANY;
                 }
             }
         }
@@ -72,29 +75,29 @@ public class PatternClassifier {
         if (null != sm && sm.isConcrete()) {
             if (null != pm && pm.isConcrete()) {
                 if (null != om && om.isConcrete()) {
-                    return MatchPattern.SPO;
+                    return MatchPattern.SUB_PRE_OBJ;
                 } else {
-                    return MatchPattern.SP_;
+                    return MatchPattern.SUB_PRE_ANY;
                 }
             } else {
                 if (null != om && om.isConcrete()) {
-                    return MatchPattern.S_O;
+                    return MatchPattern.SUB_ANY_OBJ;
                 } else {
-                    return MatchPattern.S__;
+                    return MatchPattern.SUB_ANY_ANY;
                 }
             }
         } else {
             if (null != pm && pm.isConcrete()) {
                 if (null != om && om.isConcrete()) {
-                    return MatchPattern._PO;
+                    return MatchPattern.ANY_PRE_OBJ;
                 } else {
-                    return MatchPattern._P_;
+                    return MatchPattern.ANY_PRE_ANY;
                 }
             } else {
                 if (null != om && om.isConcrete()) {
-                    return MatchPattern.__O;
+                    return MatchPattern.ANY_ANY_OBJ;
                 } else {
-                    return MatchPattern.___;
+                    return MatchPattern.ANY_ANY_ANY;
                 }
             }
         }

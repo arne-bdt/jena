@@ -20,34 +20,34 @@ package org.apache.jena.mem2.collection;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Spliterator;
-import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public interface JenaMap<Key, Value> extends JenaMapSetCommon<Key> {
+public interface JenaMap<K, V> extends JenaMapSetCommon<K> {
 
-    boolean tryPut(Key key, Value value);
+    boolean tryPut(K key, V value);
 
-    void put(Key key, Value value);
+    void put(K key, V value);
 
-    Value get(Key key);
+    V get(K key);
 
-    Value getOrDefault(Key key, Value defaultValue);
+    V getOrDefault(K key, V defaultValue);
 
-    Value computeIfAbsent(Key key, Supplier<Value> absentValueSupplier);
+    V computeIfAbsent(K key, Supplier<V> absentValueSupplier);
 
-    void compute(Key key, Function<Value, Value> valueProcessor);
+    void compute(K key, UnaryOperator<V> valueProcessor);
 
-    ExtendedIterator<Value> valueIterator();
+    ExtendedIterator<V> valueIterator();
 
-    Spliterator<Value> valueSpliterator();
+    Spliterator<V> valueSpliterator();
 
-    default Stream<Value> valueStream() {
+    default Stream<V> valueStream() {
         return StreamSupport.stream(valueSpliterator(), false);
     }
 
-    default Stream<Value> valueStreamParallel() {
+    default Stream<V> valueStreamParallel() {
         return StreamSupport.stream(valueSpliterator(), false);
     }
 }

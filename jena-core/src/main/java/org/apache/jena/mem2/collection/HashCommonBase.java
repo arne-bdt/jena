@@ -26,14 +26,14 @@ import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Predicate;
 
-public abstract class HashCommonBase<Key> {
+public abstract class HashCommonBase<E> {
     /**
      * Jeremy suggests, from his experiments, that load factors more than
      * 0.6 leave the table too dense, and little advantage is gained below 0.4.
      * Although that was with a quadratic probe, I'm borrowing the same
      * plausible range, and use 0.5 by default.
      */
-    protected static final double loadFactor = 0.5;
+    protected static final double LOAD_FACTOR = 0.5;
     // Hash tables are 0.25 to 0.5 full so these numbers
     // are for storing about 1/3 of that number of items.
     // The larger sizes are added so that the system has "soft failure"
@@ -48,7 +48,7 @@ public abstract class HashCommonBase<Key> {
      * for triple sets and for node->bunch maps, it has to be an Object array; we
      * take the casting hit.
      */
-    protected Key[] keys;
+    protected E[] keys;
     /**
      * The threshold number of elements above which we resize the table;
      * equal to the capacity times the load factor.
@@ -59,9 +59,9 @@ public abstract class HashCommonBase<Key> {
      */
     protected int size = 0;
 
-    public HashCommonBase(int initialCapacity) {
+    protected HashCommonBase(int initialCapacity) {
         keys = newKeysArray(initialCapacity);
-        threshold = (int) (keys.length * loadFactor);
+        threshold = (int) (keys.length * LOAD_FACTOR);
     }
 
     protected static int nextSize(int atLeast) {
@@ -76,7 +76,7 @@ public abstract class HashCommonBase<Key> {
     protected void clear(int initialCapacity) {
         size = 0;
         keys = newKeysArray(initialCapacity);
-        threshold = (int) (keys.length * loadFactor);
+        threshold = (int) (keys.length * LOAD_FACTOR);
     }
 
     public int size() {
@@ -91,7 +91,7 @@ public abstract class HashCommonBase<Key> {
     /**
      * Subclasses must implement to answer a new Key[size] array.
      */
-    protected abstract Key[] newKeysArray(int size);
+    protected abstract E[] newKeysArray(int size);
 
     /**
      * Answer the initial index for the object <code>key</code> in the table.
@@ -123,7 +123,7 @@ public abstract class HashCommonBase<Key> {
      */
     protected int calcGrownCapacityAndSetThreshold() {
         final var capacity = HashCommonBase.nextSize(keys.length * 2);
-        threshold = (int) (capacity * loadFactor);
+        threshold = (int) (capacity * LOAD_FACTOR);
         return capacity;
     }
 
@@ -133,7 +133,7 @@ public abstract class HashCommonBase<Key> {
      * Remove the object <code>key</code> from this hash's keys if it
      * is present (if it's absent, do nothing).
      */
-    public boolean tryRemove(final Key key) {
+    public boolean tryRemove(final E key) {
         int slot = findSlot(key);
         if (slot < 0) {
             removeFrom(~slot);
@@ -146,7 +146,7 @@ public abstract class HashCommonBase<Key> {
      * Remove the object <code>key</code> from this hash's keys if it
      * is present (if it's absent, do nothing).
      */
-    public void removeUnchecked(final Key key) {
+    public void removeUnchecked(final E key) {
         int slot = findSlot(key);
         if (slot < 0) {
             removeFrom(~slot);
@@ -160,21 +160,21 @@ public abstract class HashCommonBase<Key> {
      * negative values imply present, positive absent, and there's no confusion
      * around 0.
      */
-    protected int findSlot(Key key) {
+    protected int findSlot(E key) {
         int index = initialIndexFor(key.hashCode());
         while (true) {
-            Key current = keys[index];
+            E current = keys[index];
             if (current == null) return index;
             if (key.equals(current)) return ~index;
             if (--index < 0) index += keys.length;
         }
     }
 
-    public boolean containsKey(final Key key) {
+    public boolean containsKey(final E key) {
         return findSlot(key) < 0;
     }
 
-    public boolean anyMatch(final Predicate<Key> predicate) {
+    public boolean anyMatch(final Predicate<E> predicate) {
         var pos = keys.length - 1;
         while (-1 < pos) {
             if (null != keys[pos] && predicate.test(keys[pos])) {
@@ -185,7 +185,7 @@ public abstract class HashCommonBase<Key> {
         return false;
     }
 
-    public ExtendedIterator<Key> keyIterator() {
+    public ExtendedIterator<E> keyIterator() {
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () -> {
             if (size != initialSize) throw new ConcurrentModificationException();
@@ -193,7 +193,7 @@ public abstract class HashCommonBase<Key> {
         return new SparseArrayIterator<>(keys, checkForConcurrentModification);
     }
 
-    public Spliterator<Key> keySpliterator() {
+    public Spliterator<E> keySpliterator() {
         final var initialSize = size;
         final Runnable checkForConcurrentModification = () -> {
             if (size != initialSize) throw new ConcurrentModificationException();

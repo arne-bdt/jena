@@ -152,14 +152,6 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
      *
      * @param o element to be removed from this collection, if present
      * @return {@code true} if an element was removed as a result of this call
-     * @throws ClassCastException            if the type of the specified element
-     *                                       is incompatible with this collection
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws NullPointerException          if the specified element is null and this
-     *                                       collection does not permit null elements
-     *                                       (<a href="{@docRoot}/java.base/java/util/Collection.html#optional-restrictions">optional</a>)
-     * @throws UnsupportedOperationException if the {@code remove} operation
-     *                                       is not supported by this collection
      */
     @Override
     public final boolean tryRemove(K o) {
@@ -255,7 +247,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     /**
      * Attentions: Due to the ordering of the keys, this method may be slow
      * if matching elements are at the start of the list.
-     * Try to use {@link #anyMatchRandomOrder(Predicate<K>)} instead.
+     * Try to use {@link #anyMatchRandomOrder(Predicate)} instead.
      */
     @Override
     public final boolean anyMatch(Predicate<K> predicate) {
@@ -270,11 +262,11 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     }
 
     /**
-     * This method can be faster than {@link #anyMatch(Predicate<K>)} if one expects
+     * This method can be faster than {@link #anyMatch(Predicate)} if one expects
      * to find many matches. But it is slower if one expects to find no matches or just a single one.
      *
-     * @param predicate
-     * @return
+     * @param predicate the predicate to apply to elements of this collection
+     * @return {@code true} if any element of the collection matches the predicate
      */
     public final boolean anyMatchRandomOrder(Predicate<K> predicate) {
         var pIndex = positions.length - 1;

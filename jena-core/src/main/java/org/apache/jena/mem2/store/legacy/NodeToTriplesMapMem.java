@@ -69,6 +69,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
     }
 
     @Override
+    @SuppressWarnings("squid:S1121")
     public boolean tryAdd(Triple t) {
         final Node node = getIndexNode(t);
 
@@ -91,6 +92,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
     }
 
     @Override
+    @SuppressWarnings("squid:S1121")
     public void addUnchecked(Triple t) {
         final Node node = getIndexNode(t);
         TripleBunch s = bunchMap.get(node);

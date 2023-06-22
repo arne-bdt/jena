@@ -21,7 +21,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
-import org.apache.jena.util.iterator.NullIterator;
+import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.SingletonIterator;
 
 import java.util.stream.Stream;
@@ -115,7 +115,7 @@ public class LegacyTripleStore implements TripleStore {
     @Override
     public ExtendedIterator<Triple> find(Triple tripleMatch) {
         if (tripleMatch.isConcrete()) {
-            return subjects.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NullIterator.emptyIterator();
+            return subjects.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NiceIterator.emptyIterator();
         }
         final Node pm = tripleMatch.getPredicate();
         final Node om = tripleMatch.getObject();

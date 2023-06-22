@@ -29,11 +29,11 @@ package org.apache.jena.mem2.collection;
  */
 public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimized<K> {
 
-    public FastHashSet(int initialSize) {
+    protected FastHashSet(int initialSize) {
         super(initialSize);
     }
 
-    public FastHashSet() {
+    protected FastHashSet() {
         super();
     }
 
