@@ -24,7 +24,7 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import java.util.stream.Stream;
 
 /**
- * A triple store is a collection of triples that supports fast access to
+ * A triple store is a collection of triples that supports access to
  * triples matching a triple pattern.
  */
 public interface TripleStore {

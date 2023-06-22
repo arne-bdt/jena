@@ -24,12 +24,38 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.stream.Stream;
 
+/**
+ * A map from a node to the triples that have that node as subject, predicate or object.
+ */
 public interface NodeToTriplesMap extends JenaSet<Triple> {
-    void clear();
 
+    /**
+     * Answer an iterator over all the triples in this map that match the pattern.
+     *
+     * @param index The node to match as key.
+     * @param n2    A node to match, or Node.ANY.
+     * @param n3    A node to match, or Node.ANY.
+     * @return An iterator over all the triples in this map that match the pattern.
+     */
     ExtendedIterator<Triple> iteratorForMatches(Node index, Node n2, Node n3);
 
+    /**
+     * Answer a stream over all the triples in this map that match the pattern.
+     *
+     * @param index The node to match as key.
+     * @param n2    A node to match, or Node.ANY.
+     * @param n3    A node to match, or Node.ANY.
+     * @return A stream over all the triples in this map that match the pattern.
+     */
     Stream<Triple> streamForMatches(Node index, Node n2, Node n3);
 
+    /**
+     * Answer true iff this map contains a triple that matches the pattern.
+     *
+     * @param index The node to match as key.
+     * @param n2    A node to match, or Node.ANY.
+     * @param n3    A node to match, or Node.ANY.
+     * @return True iff this map contains a triple that matches the pattern.
+     */
     boolean containsMatch(Node index, Node n2, Node n3);
 }

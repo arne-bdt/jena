@@ -26,6 +26,13 @@ import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Predicate;
 
+/**
+ * Common code for hash tables and sets.
+ * The hash table is a lookup table.
+ * The hash codes are not stored. When the table grows, all hash codes need to be recalculated.
+ *
+ * @param <E> the element type
+ */
 public abstract class HashCommonBase<E> {
     /**
      * Jeremy suggests, from his experiments, that load factors more than

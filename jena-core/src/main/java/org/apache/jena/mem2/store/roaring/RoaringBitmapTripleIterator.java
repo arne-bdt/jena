@@ -26,6 +26,11 @@ import java.util.ConcurrentModificationException;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
+/**
+ * A triple iterator that iterates over triple indices in a given RoaringBitmap {@link BatchIterator}.
+ * All triples are stored in a {@link FastHashSet} and each triple is retrieved from the set by its index.
+ * The bitmap  typically is a subset of the triple indices in the set.
+ */
 public class RoaringBitmapTripleIterator extends NiceIterator<Triple> {
     protected static final int BUFFER_SIZE = 64;
     private final BatchIterator iterator;

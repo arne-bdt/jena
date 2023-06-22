@@ -22,9 +22,18 @@ import org.apache.jena.mem2.store.fast.FastTripleStore;
 
 /**
  * A graph that stores triples in memory. This class is not thread-safe.
- * This implementation is based on the original GraphMem implementation.
- * The main difference is that it strictly uses term equality for all nodes.
- * The inner workings of the used structures like ArrayBunch and HashedBunchMap are not changed.
+ * <p>
+ * Purpose: GraphMem2Fast is a strong candidate for becoming the new default in-memory graph in the upcoming Jena 5,
+ * thanks to its improved performance and relatively minor increase in memory usage.
+ * <p>
+ * Faster than {@link GraphMem2Legacy} (specially Graph#add, Graph#find and Graph#stream)
+ * Memory consumption is about 6-35% higher than {@link GraphMem2Legacy}
+ * Maps and sets are based on {@link org.apache.jena.mem2.collection.FastHashBase}
+ * Benefits from multiple small optimizations. (see: {@link FastTripleStore})
+ * <p>
+ * The heritage of GraphMem:
+ * - Also uses 3 hash-maps indexed by subjects, predicates, and objects
+ * - Values of the maps also switch from arrays to hash sets for the triples
  */
 public class GraphMem2Fast extends GraphMem2 {
 

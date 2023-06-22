@@ -20,6 +20,9 @@ package org.apache.jena.mem2.store.fast;
 import org.apache.jena.graph.Node;
 import org.apache.jena.mem2.collection.FastHashMap;
 
+/**
+ * Map from nodes to triple bunches.
+ */
 public class FastHashedBunchMap extends FastHashMap<Node, FastTripleBunch> {
 
     public FastHashedBunchMap() {

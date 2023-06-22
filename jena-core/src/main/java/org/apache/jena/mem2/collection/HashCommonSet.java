@@ -18,8 +18,7 @@
 package org.apache.jena.mem2.collection;
 
 /**
- * Shared stuff for our hashing implementations: does the base work for
- * hashing and growth sizes.
+ * Implementation of {@link JenaSet} based on {@link HashCommonBase}.
  */
 public abstract class HashCommonSet<K> extends HashCommonBase<K> implements JenaSet<K> {
 

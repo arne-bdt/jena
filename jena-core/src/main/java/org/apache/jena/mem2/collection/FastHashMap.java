@@ -29,12 +29,12 @@ import java.util.function.UnaryOperator;
 
 /**
  * Map which grows, if needed but never shrinks.
- * This map does not guarantee any order.
- * This map does not allow null values.
+ * This map does not guarantee any order. Although due to the way it is implemented the elements have a certain order.
+ * This map does not allow null keys.
  * This map is not thread safe.
  * It´s purpose is to support fast add, remove, contains and stream / iterate operations.
  * Only remove operations are not as fast as in {@link java.util.HashMap}
- * Iterating over this map does not get much faster again after removing elements.
+ * Iterating over this map does not get much faster again after removing elements because the map is not compacted.
  */
 public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaMap<K, V> {
 

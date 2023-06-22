@@ -26,6 +26,13 @@ import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+/**
+ * Iterator that iterates over the elements of an iterator of iterators.
+ * The inner iterators are created by a mapper function.
+ *
+ * @param <E> the type of the elements
+ * @param <I> the type of the inner iterators
+ */
 public class NestedIterator<E, I> extends NiceIterator<E> {
 
     final Iterator<I> parentIterator;

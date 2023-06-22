@@ -19,6 +19,7 @@
 package org.apache.jena.mem2.store.fast;
 
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.collection.JenaMapSetCommon;
 import org.apache.jena.mem2.collection.JenaSetHashOptimized;
 
 import java.util.function.Predicate;
@@ -29,7 +30,22 @@ import java.util.function.Predicate;
  * (such as having the same subject or predicate).
  */
 public interface FastTripleBunch extends JenaSetHashOptimized<Triple> {
+    /**
+     * Answer true iff this bunch is implemented as an array.
+     * This field is used to optimize some operations by avoiding the need for instanceOf tests.
+     *
+     * @return
+     */
     boolean isArray();
 
+    /**
+     * This method is used to optimize _PO match operations.
+     * The {@link JenaMapSetCommon#anyMatch(Predicate)} method is faster if there are only a few matches.
+     * This method is faster if there are many matches and the set is ordered in an unfavorable way.
+     * _PO matches usually fall into this category.
+     *
+     * @param predicate
+     * @return
+     */
     boolean anyMatchRandomOrder(Predicate<Triple> predicate);
 }

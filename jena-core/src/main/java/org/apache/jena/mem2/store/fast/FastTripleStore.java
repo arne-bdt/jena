@@ -18,6 +18,7 @@
 package org.apache.jena.mem2.store.fast;
 
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.collection.FastHashMap;
 import org.apache.jena.mem2.iterator.NestedIterator;
 import org.apache.jena.mem2.pattern.PatternClassifier;
 import org.apache.jena.mem2.store.TripleStore;
@@ -27,6 +28,38 @@ import org.apache.jena.util.iterator.SingletonIterator;
 
 import java.util.stream.Stream;
 
+/**
+ * A triple store that uses hash tables to map from nodes to triple bunches.
+ * <p>
+ * Inner structure:
+ * - three {@link FastHashMap}, one for each node (subject, predicate, object) in the triple
+ * - each map maps from a node to a {@link FastTripleBunch}
+ * - for up to 16 triples with the same subject, the bunch is an {@link FastArrayBunch}, otherwise it is
+ * a {@link FastHashedTripleBunch}
+ * - for up to 32 triples with the same predicate and object, the bunch is an {@link FastArrayBunch}, otherwise it is
+ * a {@link FastHashedTripleBunch}
+ * <p>
+ * Other optimizations:
+ * - each triple is added to three {@link FastTripleBunch}es. To avoid the overhead of calculating the hash code three
+ * times, the hash code is calculated once and passed to the {@link FastTripleBunch}es.
+ * - the different sizes for the {@link FastArrayBunch}es are chosen:
+ * - to avoid the memory-overhead of {@link FastHashedTripleBunch} for a small number of triples
+ * - the subject bunch is smaller than the predicate and object bunches, because the subject is typically used for
+ * #contains operations, which are faster for {@link FastHashedTripleBunch}es.
+ * - the predicate and object bunches are the same size, because they are typically used for #find operations, which
+ * typically do not answer #contains operations. Making them much larger might slow down #remove operations on the
+ * graph.
+ * - "ANY_PRE_OBJ" matches primarily use the object bunch unless the size of the bunch is larger than 400 triples. In
+ * that case, there is a secondary lookup in the predicate bunch. Then the smaller bunch is used for the lookup.
+ * Especially for RDF graphs there are some very common object nodes like "true"/"false" or "0"/"1". In that case,
+ * a secondary lookup in the predicate bunch might be faster than a primary lookup in the object bunch.
+ * - FastTripleStore#contains uses {@link org.apache.jena.mem2.store.fast.FastTripleBunch#anyMatchRandomOrder} for
+ * "ANY_PRE_OBJ" lookups. This is only faster than {@link: org.apache.jena.mem2.collection.JenaMapSetCommon#anyMatch}
+ * if there are many matches and the set is ordered in an unfavorable way. "ANY_PRE_OBJ" matches usually fall into
+ * this category. This optimization was only needed because the {@link FastTripleBunch}es does not use the random
+ * order of the triples in #anyMatch but the ordered dense array of triples, which is faster if there are only a few
+ * matches.
+ */
 public class FastTripleStore implements TripleStore {
 
     protected static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 400;

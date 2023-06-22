@@ -21,10 +21,18 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.FastHashSet;
 import org.apache.jena.mem2.collection.JenaSet;
 
+/**
+ * A set of triples - backed by {@link FastHashSet}.
+ */
 public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTripleBunch {
-    public FastHashedTripleBunch(final JenaSet<Triple> b) {
-        super((b.size() >> 1) + b.size()); //it should not only fit but also have some space for growth
-        b.keyIterator().forEachRemaining(this::addUnchecked);
+    /**
+     * Create a new triple bunch from the given set of triples.
+     *
+     * @param set the set of triples
+     */
+    public FastHashedTripleBunch(final JenaSet<Triple> set) {
+        super((set.size() >> 1) + set.size()); //it should not only fit but also have some space for growth
+        set.keyIterator().forEachRemaining(this::addUnchecked);
     }
 
     public FastHashedTripleBunch() {

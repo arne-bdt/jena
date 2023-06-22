@@ -21,6 +21,9 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.HashCommonSet;
 import org.apache.jena.mem2.collection.JenaSet;
 
+/**
+ * A bunch of triples, implemented as a set of triples.
+ */
 public class HashedTripleBunch extends HashCommonSet<Triple> implements TripleBunch {
     protected HashedTripleBunch(final JenaSet<Triple> b) {
         super(nextSize((int) (b.size() / LOAD_FACTOR)));

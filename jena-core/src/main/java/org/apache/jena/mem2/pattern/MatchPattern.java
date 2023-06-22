@@ -20,6 +20,7 @@ package org.apache.jena.mem2.pattern;
 
 /**
  * A pattern for matching triples.
+ * The pattern is defined by the wildcard positions for the subject, predicate and object.
  */
 public enum MatchPattern {
     /**

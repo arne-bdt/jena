@@ -19,6 +19,8 @@ package org.apache.jena.mem2.store.legacy;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.collection.HashCommonMap;
+import org.apache.jena.mem2.collection.JenaSet;
 import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
@@ -26,6 +28,23 @@ import org.apache.jena.util.iterator.SingletonIterator;
 
 import java.util.stream.Stream;
 
+/**
+ * Successor of {@link org.apache.jena.mem.GraphTripleStoreMem} that uses term-equality
+ * instead of literal value equality.
+ * This implementation also does not support {@link java.util.Iterator#remove()}.
+ * <p>
+ * Inner structure:
+ * - three {@link NodeToTriplesMapMem} instances for each of the three triple fields (subject, predicate, object)
+ * - each of these maps is a {@link HashCommonMap} with {@link Node} keys and {@link JenaSet<Triple>} values.
+ * - for up to 9 triples with the same subject, predicate or object, the {@link JenaSet<Triple>} is
+ * a {@link ArrayBunch}, otherwise it is a {@link HashedTripleBunch}.
+ * <p>
+ * Additional optimizations:
+ * - because we know that if a triple exists in one of the maps, it also exists in the other two, we can use the
+ * {@link org.apache.jena.mem2.collection.JenaSet#addUnchecked(java.lang.Object)} and
+ * {@link org.apache.jena.mem2.collection.JenaMapSetCommon#removeUnchecked(java.lang.Object)} methods to avoid
+ * unnecessary checks.
+ */
 public class LegacyTripleStore implements TripleStore {
 
     private final NodeToTriplesMap subjects

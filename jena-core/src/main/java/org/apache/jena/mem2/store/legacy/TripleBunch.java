@@ -27,5 +27,11 @@ import org.apache.jena.mem2.collection.JenaSet;
  * (such as having the same subject or predicate).
  */
 public interface TripleBunch extends JenaSet<Triple> {
+    /**
+     * Answer true iff this bunch is implemented as an array.
+     * This field is used to optimize some operations by avoiding the need for instanceOf tests.
+     *
+     * @return
+     */
     boolean isArray();
 }

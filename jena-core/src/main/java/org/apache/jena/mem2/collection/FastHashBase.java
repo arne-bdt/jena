@@ -25,6 +25,37 @@ import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Predicate;
 
+/**
+ * This is the base class for {@link FastHashSet} and {@link FastHashSet}.
+ * It only grows but never shrinks.
+ * This map does not guarantee any order. Although due to the way it is implemented the elements have a certain order.
+ * This map does not allow null keys.
+ * This map is not thread safe.
+ * <p>
+ * The positions array stores negative indices to the entries and hashCode arrays.
+ * The positions array is implemented as a power of two sized array. (like in {@link java.util.HashMap}) This allows
+ * to use a fast modulo operation to calculate the index. The indices of the positions array are derived from the
+ * hashCodes.
+ * Any position 0 indicates an empty element. The comparison with 0 is faster than comparing elements with null.
+ * <p>
+ * The keys are stored in a keys array and the hashCodesOrDeletedIndices array
+ * stores the hashCodes of the keys.
+ * hashCodesOrDeletedIndices is also used to store the indices of the deleted keys to save memory. It works like a
+ * linked list of deleted keys. The index of the previously deleted key is stored in the hashCodesOrDeletedIndices
+ * array. lastDeletedIndex is the index of the last deleted key in the hashCodesOrDeletedIndices array and serves as
+ * the head of the linked list of deleted keys.
+ * These two arrays grow together. They grow like {@link java.util.ArrayList} with a factor of 1.5.
+ * <p>
+ * keysPos is the index of the next free position in the keys array.
+ * The keys array is usually completely filled from index 0 to keysPos. Exceptions are the deleted keys.
+ * Indices that have been deleted are reused for new keys before the keys array is extended.
+ * The dense nature of the keys array enables fast iteration.
+ * <p>
+ * The index of a key in the keys array never changes. So the index of a key can be used as a handle to the key and
+ * for random access.
+ *
+ * @param <K> the type of the keys
+ */
 public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     protected static final int MINIMUM_HASHES_SIZE = 16;
     protected static final int MINIMUM_ELEMENTS_SIZE = 8;

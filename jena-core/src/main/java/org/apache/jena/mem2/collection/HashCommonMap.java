@@ -27,8 +27,7 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 /**
- * Shared stuff for our hashing implementations: does the base work for
- * hashing and growth sizes.
+ * Implementation of {@link JenaMap} based on {@link HashCommonBase}.
  */
 public abstract class HashCommonMap<K, V> extends HashCommonBase<K> implements JenaMap<K, V> {
 

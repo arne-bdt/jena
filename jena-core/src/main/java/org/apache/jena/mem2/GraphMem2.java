@@ -30,6 +30,10 @@ import java.util.stream.Stream;
 
 /**
  * A graph that stores triples in memory. This class is not thread-safe.
+ * All triples are stored in a {@link TripleStore}.
+ * <p>
+ * Implementation mus always comply to term-equality semantics. The characteristics of the
+ * implementations always have handlesLiteralTyping() == false.
  */
 public class GraphMem2 extends GraphMemBase implements GraphWithPerform {
 

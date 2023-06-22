@@ -34,6 +34,24 @@ import org.roaringbitmap.RoaringBitmap;
 
 import java.util.stream.Stream;
 
+/**
+ * A triple store that is ideal for handling extremely large graphs.
+ * <p>
+ * Internal structure:
+ * - One indexed hash set (same as GraphMem2Fast uses) that holds all triples
+ * - Three hash maps indexed by subjects, predicates, and objects with RoaringBitmaps as values
+ * - The bitmaps contain the indices of the triples in the central hash set
+ * <p>
+ * The bitmaps are used to quickly find triples that match a given pattern.
+ * The bitmaps operations like {@link FastAggregation#naive_and(RoaringBitmap...)} and
+ * {@link RoaringBitmap#intersects(RoaringBitmap, RoaringBitmap)} are used to find matches for the pattern
+ * S_O, SP_, and _PO pretty fast, even in large graphs.
+ * <p>
+ * Additional optimizations:
+ * - because we know that if a triple exists in one of the maps, it also exists in the other two, we can use the
+ * {@link org.apache.jena.mem2.collection.JenaMapSetCommon#removeUnchecked(java.lang.Object)} method to avoid
+ * unnecessary checks.
+ */
 public class RoaringTripleStore implements TripleStore {
 
     private static final String UNKNOWN_PATTERN_CLASSIFIER = "Unknown pattern classifier: %s";
@@ -139,7 +157,7 @@ public class RoaringTripleStore implements TripleStore {
                 if (null == predicateBitmap)
                     return EMPTY_BITMAP;
 
-                return RoaringBitmap.and(subjectBitmap, predicateBitmap);
+                return FastAggregation.naive_and(subjectBitmap, predicateBitmap);
             }
 
             case ANY_PRE_OBJ: {
@@ -163,7 +181,7 @@ public class RoaringTripleStore implements TripleStore {
                 if (null == objectBitmap)
                     return EMPTY_BITMAP;
 
-                return RoaringBitmap.and(subjectBitmap, objectBitmap);
+                return FastAggregation.naive_and(subjectBitmap, objectBitmap);
             }
 
             case SUB_PRE_OBJ:
@@ -289,6 +307,9 @@ public class RoaringTripleStore implements TripleStore {
         }
     }
 
+    /**
+     * Set of triples that is backed by a {@link TripleSet}.
+     */
     private static class TripleSet extends FastHashSet<Triple> {
 
         @Override
@@ -297,6 +318,9 @@ public class RoaringTripleStore implements TripleStore {
         }
     }
 
+    /**
+     * Map from {@link Node} to {@link RoaringBitmap}.
+     */
     private static class NodesToBitmapsMap extends FastHashMap<Node, RoaringBitmap> {
 
         @Override

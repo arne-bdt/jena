@@ -24,30 +24,88 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+/**
+ * Common interface for {@link JenaMap} and {@link JenaSet}. *
+ *
+ * @param <E> the type of the keys/elements in the collection
+ */
 public interface JenaMapSetCommon<E> {
 
+    /**
+     * Clear the collection.
+     */
     void clear();
 
+    /**
+     * @return the number of elements in the collection
+     */
     int size();
 
+    /**
+     * @return true if the collection is empty
+     */
     boolean isEmpty();
 
+    /**
+     * Check whether the collection contains a given key.
+     *
+     * @param key the key to look for
+     * @return true if the collection contains the key
+     */
     boolean containsKey(E key);
 
+    /**
+     * Check whether the collection contains any element matching the predicate.
+     *
+     * @param predicate the predicate to match
+     * @return true if the collection contains any element matching the predicate
+     */
     boolean anyMatch(Predicate<E> predicate);
 
+    /**
+     * Tries to remove a key from the collection.
+     *
+     * @param key the key to remove
+     * @return true if the key was removed. If the key was not present, false is returned.
+     */
     boolean tryRemove(E key);
 
+    /**
+     * Removes a key from the collection.
+     * Attention: Implementations may assume that the key is present.
+     *
+     * @param key the key to remove
+     */
     void removeUnchecked(E key);
 
+    /**
+     * Get an iterator over the keys in the collection.
+     *
+     * @return an iterator over the keys in the collection
+     */
     ExtendedIterator<E> keyIterator();
 
+    /**
+     * Get a spliterator over the keys in the collection.
+     *
+     * @return a spliterator over the keys in the collection
+     */
     Spliterator<E> keySpliterator();
 
+    /**
+     * Get a stream over the keys in the collection.
+     *
+     * @return a stream over the keys in the collection
+     */
     default Stream<E> keyStream() {
         return StreamSupport.stream(keySpliterator(), false);
     }
 
+    /**
+     * Get a parallel stream over the keys in the collection.
+     *
+     * @return a parallel stream over the keys in the collection
+     */
     default Stream<E> keyStreamParallel() {
         return StreamSupport.stream(keySpliterator(), true);
     }

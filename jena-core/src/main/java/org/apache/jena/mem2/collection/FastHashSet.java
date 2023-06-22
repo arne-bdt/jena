@@ -20,12 +20,12 @@ package org.apache.jena.mem2.collection;
 
 /**
  * Set which grows, if needed but never shrinks.
- * This set does not guarantee any order.
+ * This set does not guarantee any order. Although due to the way it is implemented the elements have a certain order.
  * This set does not allow null values.
  * This set is not thread safe.
  * It´s purpose is to support fast add, remove, contains and stream / iterate operations.
  * Only remove operations are not as fast as in {@link java.util.HashSet}
- * Iterating over this set not get much faster again after removing elements.
+ * Iterating over this set not get much faster again after removing elements because the set is not compacted.
  */
 public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimized<K> {
 
