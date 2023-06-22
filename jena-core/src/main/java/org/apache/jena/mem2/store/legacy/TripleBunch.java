@@ -27,7 +27,5 @@ import org.apache.jena.mem2.collection.JenaSet;
  * (such as having the same subject or predicate).
  */
 public interface TripleBunch extends JenaSet<Triple> {
-    default boolean isHashed() {
-        return false;
-    }
+    boolean isArray();
 }

@@ -24,7 +24,7 @@ package org.apache.jena.mem2.collection;
  * This set does not allow null values.
  * This set is not thread safe.
  * It´s purpose is to support fast add, remove, contains and stream / iterate operations.
- * Only remove operations are not as fast as in {@link:java.util.HashSet}
+ * Only remove operations are not as fast as in {@link java.util.HashSet}
  * Iterating over this set not get much faster again after removing elements.
  */
 public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimized<K> {

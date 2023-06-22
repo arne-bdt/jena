@@ -289,7 +289,7 @@ public class RoaringTripleStore implements TripleStore {
         }
     }
 
-    private class TripleSet extends FastHashSet<Triple> {
+    private static class TripleSet extends FastHashSet<Triple> {
 
         @Override
         protected Triple[] newKeysArray(int size) {
@@ -297,7 +297,7 @@ public class RoaringTripleStore implements TripleStore {
         }
     }
 
-    private class NodesToBitmapsMap extends FastHashMap<Node, RoaringBitmap> {
+    private static class NodesToBitmapsMap extends FastHashMap<Node, RoaringBitmap> {
 
         @Override
         protected Node[] newKeysArray(int size) {

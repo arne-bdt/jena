@@ -20,6 +20,7 @@ package org.apache.jena.mem2.store.legacy;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.JenaMap;
+import org.apache.jena.mem2.collection.JenaMapSetCommon;
 import org.apache.jena.mem2.iterator.NestedIterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NullIterator;
@@ -81,7 +82,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
             return true;
         }
 
-        if ((!s.isHashed()) && s.size() == 9) {
+        if ((s.isArray()) && s.size() == 9) {
             bunchMap.put(node, s = new HashedTripleBunch(s));
         }
         if (s.tryAdd(t)) {
@@ -98,7 +99,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
         TripleBunch s = bunchMap.get(node);
         if (s == null) {
             bunchMap.put(node, s = new ArrayBunch());
-        } else if ((!s.isHashed()) && s.size() == 9) {
+        } else if ((s.isArray()) && s.size() == 9) {
             bunchMap.put(node, s = new HashedTripleBunch(s));
         }
         s.addUnchecked(t);
@@ -147,7 +148,7 @@ public class NodeToTriplesMapMem implements NodeToTriplesMap {
     @Override
     public Stream<Triple> keyStream() {
         return StreamSupport.stream(bunchMap.valueSpliterator(), false)
-                .flatMap(bunch -> bunch.keyStream());
+                .flatMap(JenaMapSetCommon::keyStream);
     }
 
     @Override

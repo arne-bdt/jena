@@ -42,7 +42,7 @@ public class HashedTripleBunch extends HashCommonSet<Triple> implements TripleBu
     }
 
     @Override
-    public boolean isHashed() {
-        return true;
+    public boolean isArray() {
+        return false;
     }
 }

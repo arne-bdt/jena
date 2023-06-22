@@ -37,7 +37,7 @@ public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTr
     }
 
     @Override
-    public boolean isHashed() {
-        return true;
+    public boolean isArray() {
+        return false;
     }
 }

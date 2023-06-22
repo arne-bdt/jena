@@ -70,7 +70,7 @@ public abstract class HashCommonBase<E> {
         }
         //return atLeast ;        // Input is 2*current capacity.
         // There are some very large numbers in the primes table.
-        throw new JenaException("Failed to find a 'next size': atleast = " + atLeast);
+        throw new JenaException("Failed to find a 'next size': atLeast = " + atLeast);
     }
 
     protected void clear(int initialCapacity) {
@@ -156,7 +156,7 @@ public abstract class HashCommonBase<E> {
     /**
      * Search for the slot in which <code>key</code> is found. If it is absent,
      * return the index of the free slot in which it could be placed. If it is present,
-     * return the bitwise complement of the index of the slot it appears in. Hence
+     * return the bitwise complement of the index of the slot it appears in. Hence,
      * negative values imply present, positive absent, and there's no confusion
      * around 0.
      */

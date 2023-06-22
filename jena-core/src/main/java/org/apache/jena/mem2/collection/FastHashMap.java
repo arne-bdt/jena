@@ -33,7 +33,7 @@ import java.util.function.UnaryOperator;
  * This map does not allow null values.
  * This map is not thread safe.
  * It´s purpose is to support fast add, remove, contains and stream / iterate operations.
- * Only remove operations are not as fast as in {@link:java.util.HashMap}
+ * Only remove operations are not as fast as in {@link java.util.HashMap}
  * Iterating over this map does not get much faster again after removing elements.
  */
 public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaMap<K, V> {

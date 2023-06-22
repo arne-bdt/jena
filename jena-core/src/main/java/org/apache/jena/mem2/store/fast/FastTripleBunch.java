@@ -29,9 +29,7 @@ import java.util.function.Predicate;
  * (such as having the same subject or predicate).
  */
 public interface FastTripleBunch extends JenaSetHashOptimized<Triple> {
-    default boolean isHashed() {
-        return false;
-    }
+    boolean isArray();
 
     boolean anyMatchRandomOrder(Predicate<Triple> predicate);
 }

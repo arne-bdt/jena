@@ -164,9 +164,7 @@ public abstract class HashCommonMap<K, V> extends HashCommonBase<K> implements J
                 if (--scan < 0) scan += keys.length;
                 if (keys[scan] == null) return;
                 final int r = initialIndexFor(keys[scan].hashCode());
-                if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r) {
-                    /* Nothing. We'd have preferred an `unless` statement. */
-                } else {
+                if ((scan > r || r >= here) && (r >= here || here >= scan) && (here >= scan || scan > r)) {
                     keys[here] = keys[scan];
                     values[here] = values[scan];
                     here = scan;

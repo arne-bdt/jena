@@ -127,7 +127,7 @@ public abstract class FastArrayBunch implements FastTripleBunch {
 
     @Override
     public ExtendedIterator<Triple> keyIterator() {
-        return new NiceIterator<Triple>() {
+        return new NiceIterator<>() {
             private final int initialSize = size;
 
             private int i = size;
@@ -164,8 +164,8 @@ public abstract class FastArrayBunch implements FastTripleBunch {
     }
 
     @Override
-    public boolean isHashed() {
-        return false;
+    public boolean isArray() {
+        return true;
     }
 
     @Override

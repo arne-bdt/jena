@@ -32,7 +32,7 @@ import java.util.function.Predicate;
 /**
  * An ArrayBunch implements TripleBunch with a linear search of a short-ish
  * array of Triples. The array can grow, but it only grows by 4 elements each time
- * (because, if it gets big enough for this linear growth to be bad, it should anyways
+ * (because, if it gets big enough for this linear growth to be bad, it should always
  * have been replaced by a more efficient set-of-triples implementation).
  */
 public class ArrayBunch implements TripleBunch {
@@ -123,7 +123,7 @@ public class ArrayBunch implements TripleBunch {
 
     @Override
     public ExtendedIterator<Triple> keyIterator() {
-        return new NiceIterator<Triple>() {
+        return new NiceIterator<>() {
             private final int initialSize = size;
 
             private int i = size;
@@ -155,5 +155,10 @@ public class ArrayBunch implements TripleBunch {
             if (size != initialSize) throw new ConcurrentModificationException();
         };
         return new ArraySpliterator<>(elements, 0, size, checkForConcurrentModification);
+    }
+
+    @Override
+    public boolean isArray() {
+        return true;
     }
 }

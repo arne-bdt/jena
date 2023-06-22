@@ -53,8 +53,7 @@ public abstract class HashCommonSet<K> extends HashCommonBase<K> implements Jena
     protected void grow() {
         final K[] oldContents = keys;
         keys = newKeysArray(calcGrownCapacityAndSetThreshold());
-        for (int i = 0; i < oldContents.length; i += 1) {
-            final K key = oldContents[i];
+        for (final K key : oldContents) {
             if (key != null) {
                 final int slot = findSlot(key);
                 keys[slot] = key;
@@ -86,9 +85,7 @@ public abstract class HashCommonSet<K> extends HashCommonBase<K> implements Jena
                 if (--scan < 0) scan += keys.length;
                 if (keys[scan] == null) return;
                 final int r = initialIndexFor(keys[scan].hashCode());
-                if (scan <= r && r < here || r < here && here < scan || here < scan && scan <= r) {
-                    /* Nothing. We'd have preferred an `unless` statement. */
-                } else {
+                if ((scan > r || r >= here) && (r >= here || here >= scan) && (here >= scan || scan > r)) {
                     keys[here] = keys[scan];
                     here = scan;
                     break;
