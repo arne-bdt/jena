@@ -6,17 +6,15 @@ import org.apache.jena.query.TxnType;
 import org.apache.jena.shared.AddDeniedException;
 import org.apache.jena.shared.DeleteDeniedException;
 import org.apache.jena.shared.PrefixMapping;
-import org.apache.jena.sparql.JenaTransactionException;
 import org.apache.jena.sparql.core.Transactional;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -25,236 +23,148 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphWrapperTransactional.class);
 
-    private static final int DEFAULT_TRANSACTION_TIMEOUT_MS = 30000;
-
-    private static final int KEEP_INFO_ABOUT_TRANSACTION_TIMEOUT_FOR_X_TIMES_THE_TIMEOUT = 5;
-
-    private static final int DEFAULT_STAlE_TRANSACTION_REMOVAL_SCHEDULER_INTERVAL_MS = 5000;
-
-    /**
-     * This lock is used to ensure that only one thread can write to the graph at a time.
-     * A Semaphore is used instead of a ReentrantLock because it allows the lock to be released
-     * in a different thread than the one that acquired it.
-     */
-    private final Semaphore writeSemaphore = new Semaphore(1);
-    private final ReentrantLock lockForStaleGraph = new java.util.concurrent.locks.ReentrantLock();
-    private final AtomicLong dataVersion = new AtomicLong(0);
-    private final Supplier<Graph> graphFactory;
-    private volatile Graph staleGraph;
-    private volatile Graph activeGraph;
-    private volatile GraphReadOnlyWrapper lastCommittedGraph;
-    private volatile boolean activeGraphHasAtLeastOneDelta = false;
+    final static TransactionCoordinator transactionCoordinator = null;
     private final ConcurrentLinkedQueue<FastDeltaGraph> deltasToApplyToStaleGraph = new ConcurrentLinkedQueue<>();
-    private final ThreadLocal<Boolean> txnInTransaction = ThreadLocal.withInitial(() -> Boolean.FALSE);
-    private final ThreadLocal<TxnType> txnType = new ThreadLocal();
-    private final ThreadLocal<ReadWrite> txnMode = new ThreadLocal();
-    private final ThreadLocal<Graph> txnGraph = new ThreadLocal<>();
-    private final ThreadLocal<Long> txnReadTransactionVersion = new ThreadLocal<>();
+    private final ReentrantLock lockForUpdatingStaleGraph = new java.util.concurrent.locks.ReentrantLock();
 
-    private final int transactionTimeoutMs;
+    private final ReentrantLock lockForBeginTransaction = new java.util.concurrent.locks.ReentrantLock();
+    private final Supplier<Graph> graphFactory;
+    private volatile GraphWrapperChainingDeltasTransactional staleGraph;
+    private volatile GraphWrapperChainingDeltasTransactional activeGraph;
 
-    private final int staleTransactionRemovalSchedulerIntervalMs;
+    private final AtomicBoolean activeGraphHasAtLeastOneDelta = new AtomicBoolean(false);
 
     private final ForkJoinPool forkJoinPool;
 
     public GraphWrapperTransactional(final Supplier<Graph> graphFactory) {
-        this(graphFactory, DEFAULT_TRANSACTION_TIMEOUT_MS, ForkJoinPool.commonPool());
+        this(graphFactory, ForkJoinPool.commonPool());
     }
 
     public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory) {
-        this(graphToWrap, graphFactory, DEFAULT_TRANSACTION_TIMEOUT_MS, ForkJoinPool.commonPool());
+        this(graphToWrap, graphFactory, ForkJoinPool.commonPool());
     }
 
-    public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory, final int transactionTimeoutMs, final ForkJoinPool forkJoinPool) {
-        this(graphToWrap, graphFactory, transactionTimeoutMs, forkJoinPool, DEFAULT_STAlE_TRANSACTION_REMOVAL_SCHEDULER_INTERVAL_MS);
-    }
-
-    public GraphWrapperTransactional(final Supplier<Graph> graphFactory, final int transactionTimeoutMs, final ForkJoinPool forkJoinPool) {
-        this(graphFactory, transactionTimeoutMs, forkJoinPool, DEFAULT_STAlE_TRANSACTION_REMOVAL_SCHEDULER_INTERVAL_MS);
-    }
-
-    public GraphWrapperTransactional(final Supplier<Graph> graphFactory, final int transactionTimeoutMs, final ForkJoinPool forkJoinPool, final int staleTransactionRemovalSchedulerIntervalMs) {
+    public GraphWrapperTransactional(final Supplier<Graph> graphFactory, final ForkJoinPool forkJoinPool) {
         this.graphFactory = graphFactory;
-        this.staleGraph = graphFactory.get();
-        this.activeGraph = graphFactory.get();
-        this.lastCommittedGraph = new GraphReadOnlyWrapper(activeGraph);
-        this.transactionTimeoutMs = transactionTimeoutMs;
-        this.staleTransactionRemovalSchedulerIntervalMs = staleTransactionRemovalSchedulerIntervalMs;
+        this.staleGraph = new GraphWrapperChainingDeltasTransactional(graphFactory, transactionCoordinator,
+                forkJoinPool, deltasToApplyToStaleGraph::add);
+        this.activeGraph = new GraphWrapperChainingDeltasTransactional(graphFactory, transactionCoordinator,
+                forkJoinPool, deltasToApplyToStaleGraph::add);
         this.forkJoinPool = forkJoinPool;
     }
 
-    public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory, final int transactionTimeoutMs, final ForkJoinPool forkJoinPool, final int staleTransactionRemovalSchedulerIntervalMs) {
+    public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory,
+                                     final ForkJoinPool forkJoinPool) {
         this.graphFactory = graphFactory;
-        this.staleGraph = graphToWrap;
-        this.activeGraph = graphFactory.get();
-        graphToWrap.find().forEachRemaining(this.activeGraph::add);
-        this.lastCommittedGraph = new GraphReadOnlyWrapper(activeGraph);
-        this.transactionTimeoutMs = transactionTimeoutMs;
-        this.staleTransactionRemovalSchedulerIntervalMs = staleTransactionRemovalSchedulerIntervalMs;
+        this.staleGraph = new GraphWrapperChainingDeltasTransactional(graphToWrap, graphFactory,
+                transactionCoordinator, forkJoinPool, deltasToApplyToStaleGraph::add);
+        this.activeGraph = new GraphWrapperChainingDeltasTransactional(graphToWrap, graphFactory,
+                transactionCoordinator, forkJoinPool, deltasToApplyToStaleGraph::add);
         this.forkJoinPool = forkJoinPool;
-    }
-
-    private Graph getGraphForCurrentTransaction() {
-        final var txnGraph = this.txnGraph.get();
-        if (txnGraph == null) {
-            // TODO: Check if the transaction may have timed out.
-            throw new JenaTransactionException("Not in a transaction");
-        }
-        return txnGraph;
     }
 
     @Override
     public void begin(TxnType txnType) {
-        if (isInTransaction())
-            new JenaTransactionException("Already in a transaction");
-        ReadWrite readWrite = TxnType.convert(txnType);
-        if (readWrite == ReadWrite.WRITE) {
-            try {
-                final var timeoutMs = transactionTimeoutMs + staleTransactionRemovalSchedulerIntervalMs;
-                if (!writeSemaphore.tryAcquire(timeoutMs, TimeUnit.MILLISECONDS)) {
-                    LOGGER.error("Failed to acquire write semaphore within " + timeoutMs + " ms.");
-                    throw new JenaTransactionException("Failed to acquire write semaphore within " + timeoutMs + " ms.");
-                }
-            } catch (InterruptedException e) {
-                LOGGER.error("Failed to acquire write semaphore.", e);
-                new JenaTransactionException("Failed to acquire write semaphore.", e);
-            }
-        }
-        this.txnInTransaction.set(true);
-        this.txnMode.set(readWrite);
-        this.txnType.set(txnType);
-        switch (readWrite) {
-            case READ:
-                txnGraph.set(lastCommittedGraph);
-                txnReadTransactionVersion.set(dataVersion.get());
-                break;
-            case WRITE:
-                activeGraph = new FastDeltaGraph(activeGraph);
-                txnGraph.set(activeGraph);
-                break;
+        try {
+            lockForBeginTransaction.lock();
+            switchStaleAndActiveIfNeededAndPossible();
+            activeGraph.begin(txnType);
+        } finally {
+            lockForBeginTransaction.unlock();
         }
     }
 
     private void switchStaleAndActiveIfNeededAndPossible() {
-        if (activeGraphHasAtLeastOneDelta) {
-            lockForStaleGraph.lock();
+        if (activeGraphHasAtLeastOneDelta.get()          // only if the active graph has at least one delta
+                && lockForUpdatingStaleGraph.tryLock()) {     // and the stale graph is not currently updated
             try {
-                if (activeGraphHasAtLeastOneDelta) {
+                if (activeGraphHasAtLeastOneDelta.get() // check again, because it could have changed in the meantime
+                        && !staleGraph.hasOpenReadTransactions() // only if there are no open read transactions on the stale graph
+                        && !transactionCoordinator.hasActiveWriteTransaction()) { // and there is no active write transaction
                     final var tmp = staleGraph;
                     staleGraph = activeGraph;
                     activeGraph = tmp;
-                    activeGraphHasAtLeastOneDelta = true;
+                    activeGraphHasAtLeastOneDelta.set(false);
                 }
             } finally {
-                lockForStaleGraph.unlock();
+                lockForUpdatingStaleGraph.unlock();
             }
         }
     }
 
     @Override
     public ReadWrite transactionMode() {
-        return txnMode.get();
+        return activeGraph.transactionMode();
     }
 
     @Override
     public TxnType transactionType() {
-        return txnType.get();
+        return activeGraph.transactionType();
     }
 
     @Override
     public boolean isInTransaction() {
-        return txnInTransaction.get();
+        return activeGraph.isInTransaction();
     }
 
     @Override
     public boolean promote(Promote txnType) {
-        if (!writeSemaphore.tryAcquire()) {
-            return false;
-        }
-        // if we are promoting to isolated, we need to check that the data hasn't changed
-        if (txnType == Promote.ISOLATED
-                && txnReadTransactionVersion.get() != dataVersion.get()) {
-            writeSemaphore.release();
-            return false;
-        }
-        txnMode.set(ReadWrite.WRITE);
-        activeGraph = new FastDeltaGraph(activeGraph);
-        txnGraph.set(activeGraph);
-        return true;
+        return activeGraph.promote(txnType);
     }
 
     @Override
     public void commit() {
-        if (isTransactionMode(ReadWrite.WRITE)) {
-            final var delta = (FastDeltaGraph) activeGraph;
-            if (delta.hasChanges()) {
-                lastCommittedGraph = new GraphReadOnlyWrapper(activeGraph);
-                dataVersion.getAndIncrement();
-                deltasToApplyToStaleGraph.add(delta);
-                activeGraphHasAtLeastOneDelta = true;
-                forkJoinPool.execute(this::updateStaleGraph);
-            } else {
-                activeGraph = delta.getBase();
-            }
+        activeGraph.commit();
+        if (!this.deltasToApplyToStaleGraph.isEmpty()) {
+            activeGraphHasAtLeastOneDelta.set(true);
+            forkJoinPool.execute(this::updateStaleGraphIfPossible);
         }
-        endOnceByRemovingThreadLocalsAndUnlocking();
     }
 
-    private void updateStaleGraph() {
+    private void updateStaleGraphIfPossible() {
         if (!deltasToApplyToStaleGraph.isEmpty()) {
-            lockForStaleGraph.lock();
-            try {
-                while (!deltasToApplyToStaleGraph.isEmpty()) {
-                    final var delta = deltasToApplyToStaleGraph.poll();
-                    delta.getDeletions().forEachRemaining(staleGraph::delete);
-                    delta.getAdditions().forEachRemaining(staleGraph::add);
+            if (!staleGraph.hasOpenReadTransactions()) {
+                lockForUpdatingStaleGraph.lock();
+                try {
+                    while (!deltasToApplyToStaleGraph.isEmpty()) {
+                        final var delta = deltasToApplyToStaleGraph.peek();
+                        staleGraph.executeDirectlyOnWrappedGraph(stale -> {
+                            delta.getDeletions().forEachRemaining(stale::delete);
+                            delta.getAdditions().forEachRemaining(stale::add);
+                        });
+                        deltasToApplyToStaleGraph.poll();
+                    }
+                } catch (Throwable throwable) {
+                    LOGGER.error("Error while updating stale graph.", throwable);
+                } finally {
+                    lockForUpdatingStaleGraph.unlock();
                 }
-            } finally {
-                lockForStaleGraph.unlock();
+            } else {
+                // While there are still open read transactions, we wait a bit and try again.
+                // There are no new read transactions possible, so we will eventually succeed.
+                // The only caller of this method is the commit method. This is the only place
+                // where we add deltas to the queue and that here is work to do.
+                CompletableFuture.delayedExecutor(
+                                transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs(),
+                                java.util.concurrent.TimeUnit.MILLISECONDS, forkJoinPool)
+                        .execute(this::updateStaleGraphIfPossible);
             }
         }
     }
 
     @Override
     public void abort() {
-        if (isTransactionMode(ReadWrite.WRITE)) {
-            activeGraph = ((FastDeltaGraph) activeGraph).getBase();
-        }
-        endOnceByRemovingThreadLocalsAndUnlocking();
+        activeGraph.abort();
     }
 
     @Override
     public void end() {
-        if (isTransactionMode(ReadWrite.WRITE)) {
-            abort();
-            new JenaTransactionException("Write transaction - no commit or abort before end()");
-        }
-        endOnceByRemovingThreadLocalsAndUnlocking();
+        activeGraph.end();
     }
-
-    private boolean isTransactionMode(ReadWrite mode) {
-        if (!isInTransaction())
-            return false;
-        return transactionMode() == mode;
-    }
-
-    private void endOnceByRemovingThreadLocalsAndUnlocking() {
-        if (isInTransaction()) {
-            if (transactionMode() == ReadWrite.WRITE) {
-                writeSemaphore.release();
-            }
-            txnGraph.remove();
-            txnMode.remove();
-            txnType.remove();
-            txnInTransaction.remove();
-            txnReadTransactionVersion.remove();
-        }
-    }
-
 
     @Override
     public boolean dependsOn(Graph other) {
-        return getGraphForCurrentTransaction().dependsOn(other);
+        return activeGraph.dependsOn(other);
     }
 
     @Override
@@ -264,106 +174,106 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     @Override
     public Capabilities getCapabilities() {
-        return getGraphForCurrentTransaction().getCapabilities();
+        return activeGraph.getCapabilities();
     }
 
     @Override
     public GraphEventManager getEventManager() {
-        return getGraphForCurrentTransaction().getEventManager();
+        return activeGraph.getEventManager();
     }
 
     @Override
     public PrefixMapping getPrefixMapping() {
-        return getGraphForCurrentTransaction().getPrefixMapping();
+        return activeGraph.getPrefixMapping();
     }
 
     @Override
     public void add(Triple t) throws AddDeniedException {
-        getGraphForCurrentTransaction().add(t);
+        activeGraph.add(t);
     }
 
     @Override
     public void add(Node s, Node p, Node o) throws AddDeniedException {
-        getGraphForCurrentTransaction().add(s, p, o);
+        activeGraph.add(s, p, o);
     }
 
     @Override
     public void delete(Triple t) throws DeleteDeniedException {
-        getGraphForCurrentTransaction().delete(t);
+        activeGraph.delete(t);
     }
 
     @Override
     public void delete(Node s, Node p, Node o) throws DeleteDeniedException {
-        getGraphForCurrentTransaction().delete(s, p, o);
+        activeGraph.delete(s, p, o);
     }
 
     @Override
     public ExtendedIterator<Triple> find(Triple m) {
-        return getGraphForCurrentTransaction().find(m);
+        return activeGraph.find(m);
     }
 
     @Override
     public ExtendedIterator<Triple> find(Node s, Node p, Node o) {
-        return getGraphForCurrentTransaction().find(s, p, o);
+        return activeGraph.find(s, p, o);
     }
 
     @Override
     public Stream<Triple> stream(Node s, Node p, Node o) {
-        return getGraphForCurrentTransaction().stream(s, p, o);
+        return activeGraph.stream(s, p, o);
     }
 
     @Override
     public Stream<Triple> stream() {
-        return getGraphForCurrentTransaction().stream();
+        return activeGraph.stream();
     }
 
     @Override
     public ExtendedIterator<Triple> find() {
-        return getGraphForCurrentTransaction().find();
+        return activeGraph.find();
     }
 
     @Override
     public boolean isIsomorphicWith(Graph g) {
-        return getGraphForCurrentTransaction().isIsomorphicWith(g);
+        return activeGraph.isIsomorphicWith(g);
     }
 
     @Override
     public boolean contains(Node s, Node p, Node o) {
-        return getGraphForCurrentTransaction().contains(s, p, o);
+        return activeGraph.contains(s, p, o);
     }
 
     @Override
     public boolean contains(Triple t) {
-        return getGraphForCurrentTransaction().contains(t);
+        return activeGraph.contains(t);
     }
 
     @Override
     public void clear() {
-        getGraphForCurrentTransaction().clear();
+        activeGraph.clear();
     }
 
     @Override
     public void remove(Node s, Node p, Node o) {
-        getGraphForCurrentTransaction().remove(s, p, o);
+        activeGraph.remove(s, p, o);
     }
 
     @Override
     public void close() {
-        getGraphForCurrentTransaction().close();
+        activeGraph.close();
     }
 
     @Override
     public boolean isEmpty() {
-        return getGraphForCurrentTransaction().isEmpty();
+        return activeGraph.isEmpty();
     }
 
     @Override
     public int size() {
-        return getGraphForCurrentTransaction().size();
+        return activeGraph.size();
     }
 
     @Override
     public boolean isClosed() {
-        return getGraphForCurrentTransaction().isClosed();
+        return activeGraph.isClosed();
     }
 }

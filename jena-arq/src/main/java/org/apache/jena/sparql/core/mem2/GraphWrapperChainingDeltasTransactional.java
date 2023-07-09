@@ -12,16 +12,16 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-public class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
+class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphWrapperChainingDeltasTransactional.class);
 
@@ -34,7 +34,6 @@ public class GraphWrapperChainingDeltasTransactional implements Graph, Transacti
     private final AtomicLong dataVersion = new AtomicLong(0);
     private final AtomicInteger openReadTransactions = new AtomicInteger(0);
     private final Supplier<Graph> graphFactory;
-    private final ConcurrentLinkedQueue<FastDeltaGraph> chainOfDeltas = new ConcurrentLinkedQueue<>();
     private final ThreadLocal<Boolean> txnInTransaction = ThreadLocal.withInitial(() -> Boolean.FALSE);
     private final ThreadLocal<TxnType> txnType = new ThreadLocal();
     private final ThreadLocal<ReadWrite> txnMode = new ThreadLocal();
@@ -46,25 +45,39 @@ public class GraphWrapperChainingDeltasTransactional implements Graph, Transacti
     private volatile Graph wrappedGraph;
     private volatile GraphReadOnlyWrapper lastCommittedGraph;
 
-    public GraphWrapperChainingDeltasTransactional(final Supplier<Graph> graphFactory, final TransactionCoordinator transactionCoordinator) {
-        this(graphFactory, transactionCoordinator, ForkJoinPool.commonPool());
+    private final Consumer<FastDeltaGraph> committedDeltasConsumer;
+
+    public GraphWrapperChainingDeltasTransactional(final Supplier<Graph> graphFactory,
+                                                   final TransactionCoordinator transactionCoordinator,
+                                                   final Consumer<FastDeltaGraph> committedDeltasConsumer) {
+        this(graphFactory, transactionCoordinator, ForkJoinPool.commonPool(), committedDeltasConsumer);
     }
 
-    public GraphWrapperChainingDeltasTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory, final TransactionCoordinator transactionCoordinator) {
-        this(graphToWrap, graphFactory, transactionCoordinator, ForkJoinPool.commonPool());
+    public GraphWrapperChainingDeltasTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory,
+                                                   final TransactionCoordinator transactionCoordinator,
+                                                   final Consumer<FastDeltaGraph> committedDeltasConsumer) {
+        this(graphToWrap, graphFactory, transactionCoordinator, ForkJoinPool.commonPool(), committedDeltasConsumer);
     }
 
-    public GraphWrapperChainingDeltasTransactional(final Supplier<Graph> graphFactory, final TransactionCoordinator transactionCoordinator, final ForkJoinPool forkJoinPool) {
+    public GraphWrapperChainingDeltasTransactional(final Supplier<Graph> graphFactory,
+                                                   final TransactionCoordinator transactionCoordinator,
+                                                   final ForkJoinPool forkJoinPool,
+                                                   final Consumer<FastDeltaGraph> committedDeltasConsumer) {
         this.graphFactory = graphFactory;
         this.wrappedGraph = graphFactory.get();
+        this.committedDeltasConsumer = committedDeltasConsumer;
         this.lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
         this.transactionCoordinator = transactionCoordinator;
         this.forkJoinPool = forkJoinPool;
     }
 
-    public GraphWrapperChainingDeltasTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory, final TransactionCoordinator transactionCoordinator, final ForkJoinPool forkJoinPool) {
+    public GraphWrapperChainingDeltasTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory,
+                                                   final TransactionCoordinator transactionCoordinator,
+                                                   final ForkJoinPool forkJoinPool,
+                                                   final Consumer<FastDeltaGraph> committedDeltasConsumer) {
         this.graphFactory = graphFactory;
         this.wrappedGraph = graphToWrap;
+        this.committedDeltasConsumer = committedDeltasConsumer;
         this.lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
         this.transactionCoordinator = transactionCoordinator;
         this.forkJoinPool = forkJoinPool;
@@ -74,15 +87,44 @@ public class GraphWrapperChainingDeltasTransactional implements Graph, Transacti
         final var txnGraph = this.txnGraph.get();
         transactionCoordinator.refreshTimeoutForCurrentThread();
         if (txnGraph == null) {
-            throw new JenaTransactionException("Not in a transaction");
+            throw new JenaTransactionException("Not in a transaction.");
         }
         return txnGraph;
+    }
+
+    public boolean hasOpenReadTransactions() {
+        return openReadTransactions.get() > 0;
+    }
+
+    public void executeDirectlyOnWrappedGraph(Consumer<Graph> wrappedGraphConsumer) {
+        if (isInTransaction()) {
+            throw new JenaTransactionException("Cannot access wrapped graph while in a transaction.");
+        }
+        if (hasOpenReadTransactions()) {
+            throw new JenaTransactionException("Cannot access wrapped graph while there are open read transactions.");
+        }
+        try {
+            final var timeoutMs = transactionCoordinator.getTransactionTimeoutMs()
+                    + transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs();
+            if (!writeSemaphore.tryAcquire(timeoutMs, TimeUnit.MILLISECONDS)) {
+                LOGGER.error("Failed to acquire write semaphore within " + timeoutMs + " ms.");
+                throw new JenaTransactionException("Failed to acquire write semaphore within " + timeoutMs + " ms.");
+            }
+            try {
+                wrappedGraphConsumer.accept(wrappedGraph);
+            } finally {
+                writeSemaphore.release();
+            }
+        } catch (InterruptedException e) {
+            LOGGER.error("Failed to acquire write semaphore.", e);
+            new JenaTransactionException("Failed to acquire write semaphore.", e);
+        }
     }
 
     @Override
     public void begin(TxnType txnType) {
         if (isInTransaction())
-            new JenaTransactionException("Already in a transaction");
+            new JenaTransactionException("Already in a transaction.");
         ReadWrite readWrite = TxnType.convert(txnType);
         if (readWrite == ReadWrite.WRITE) {
             try {
@@ -162,15 +204,25 @@ public class GraphWrapperChainingDeltasTransactional implements Graph, Transacti
 
     @Override
     public void commit() {
-        transactionCoordinator.unregisterCurrentThread();
-        if (isTransactionMode(ReadWrite.WRITE)) {
-            final var delta = (FastDeltaGraph) wrappedGraph;
-            if (delta.hasChanges()) {
-                lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
-                dataVersion.getAndIncrement();
-                chainOfDeltas.add(delta);
-            } else {
-                wrappedGraph = delta.getBase();
+        if (isInTransaction()) {
+            transactionCoordinator.unregisterCurrentThread();
+            switch (transactionMode()) {
+                case READ:
+                    openReadTransactions.getAndDecrement();
+                    break;
+                case WRITE:
+                    final var delta = (FastDeltaGraph) wrappedGraph;
+                    if (delta.hasChanges()) {
+                        lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
+                        dataVersion.getAndIncrement();
+                        committedDeltasConsumer.accept(delta);
+                    } else {
+                        wrappedGraph = delta.getBase();
+                    }
+                    break;
+                default:
+                    endOnceByRemovingThreadLocalsAndUnlocking();
+                    throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
             }
         }
         endOnceByRemovingThreadLocalsAndUnlocking();
@@ -178,9 +230,19 @@ public class GraphWrapperChainingDeltasTransactional implements Graph, Transacti
 
     @Override
     public void abort() {
-        transactionCoordinator.unregisterCurrentThread();
-        if (isTransactionMode(ReadWrite.WRITE)) {
-            wrappedGraph = graphBeforeCurrentWriteTransaction;
+        if (isInTransaction()) {
+            transactionCoordinator.unregisterCurrentThread();
+            switch (transactionMode()) {
+                case READ:
+                    openReadTransactions.getAndDecrement();
+                    break;
+                case WRITE:
+                    wrappedGraph = graphBeforeCurrentWriteTransaction;
+                    break;
+                default:
+                    endOnceByRemovingThreadLocalsAndUnlocking();
+                    throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
+            }
         }
         endOnceByRemovingThreadLocalsAndUnlocking();
     }
@@ -191,8 +253,9 @@ public class GraphWrapperChainingDeltasTransactional implements Graph, Transacti
         if (isTransactionMode(ReadWrite.WRITE)) {
             abort();
             new JenaTransactionException("Write transaction - no commit or abort before end()");
+        } else {
+            abort();
         }
-        endOnceByRemovingThreadLocalsAndUnlocking();
     }
 
     private boolean isTransactionMode(ReadWrite mode) {
