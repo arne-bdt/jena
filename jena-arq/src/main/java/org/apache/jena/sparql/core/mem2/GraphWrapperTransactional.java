@@ -1,6 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.jena.sparql.core.mem2;
 
 import org.apache.jena.graph.*;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.query.TxnType;
 import org.apache.jena.shared.AddDeniedException;
@@ -23,12 +42,11 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphWrapperTransactional.class);
 
-    final static TransactionCoordinator transactionCoordinator = null;
+    private final TransactionCoordinator transactionCoordinator;
     private final ConcurrentLinkedQueue<FastDeltaGraph> deltasToApplyToStaleGraph = new ConcurrentLinkedQueue<>();
     private final ReentrantLock lockForUpdatingStaleGraph = new java.util.concurrent.locks.ReentrantLock();
 
     private final ReentrantLock lockForBeginTransaction = new java.util.concurrent.locks.ReentrantLock();
-    private final Supplier<Graph> graphFactory;
     private volatile GraphWrapperChainingDeltasTransactional staleGraph;
     private volatile GraphWrapperChainingDeltasTransactional activeGraph;
 
@@ -36,31 +54,42 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     private final ForkJoinPool forkJoinPool;
 
-    public GraphWrapperTransactional(final Supplier<Graph> graphFactory) {
-        this(graphFactory, ForkJoinPool.commonPool());
+    public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator) {
+        this(transactionCoordinator, GraphMem2Fast::new);
     }
 
-    public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory) {
-        this(graphToWrap, graphFactory, ForkJoinPool.commonPool());
+
+    public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator, final Supplier<Graph> graphFactory) {
+        this(transactionCoordinator, graphFactory, ForkJoinPool.commonPool());
     }
 
-    public GraphWrapperTransactional(final Supplier<Graph> graphFactory, final ForkJoinPool forkJoinPool) {
-        this.graphFactory = graphFactory;
+    public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator, final Graph graphToWrap, final Supplier<Graph> graphFactory) {
+        this(transactionCoordinator, graphToWrap, graphFactory, ForkJoinPool.commonPool());
+    }
+
+    public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator,
+                                     final Supplier<Graph> graphFactory, final ForkJoinPool forkJoinPool) {
+        this.transactionCoordinator = transactionCoordinator;
         this.staleGraph = new GraphWrapperChainingDeltasTransactional(graphFactory, transactionCoordinator,
-                forkJoinPool, deltasToApplyToStaleGraph::add);
+                deltasToApplyToStaleGraph::add);
         this.activeGraph = new GraphWrapperChainingDeltasTransactional(graphFactory, transactionCoordinator,
-                forkJoinPool, deltasToApplyToStaleGraph::add);
+                deltasToApplyToStaleGraph::add);
         this.forkJoinPool = forkJoinPool;
     }
 
-    public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory,
+    public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator,
+                                     final Graph graphToWrap, final Supplier<Graph> graphFactory,
                                      final ForkJoinPool forkJoinPool) {
-        this.graphFactory = graphFactory;
+        this.transactionCoordinator = transactionCoordinator;
         this.staleGraph = new GraphWrapperChainingDeltasTransactional(graphToWrap, graphFactory,
-                transactionCoordinator, forkJoinPool, deltasToApplyToStaleGraph::add);
+                transactionCoordinator, deltasToApplyToStaleGraph::add);
         this.activeGraph = new GraphWrapperChainingDeltasTransactional(graphToWrap, graphFactory,
-                transactionCoordinator, forkJoinPool, deltasToApplyToStaleGraph::add);
+                transactionCoordinator, deltasToApplyToStaleGraph::add);
         this.forkJoinPool = forkJoinPool;
+    }
+
+    public TransactionCoordinator getTransactionCoordinator() {
+        return transactionCoordinator;
     }
 
     @Override
@@ -75,12 +104,16 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     }
 
     private void switchStaleAndActiveIfNeededAndPossible() {
-        if (activeGraphHasAtLeastOneDelta.get()          // only if the active graph has at least one delta
-                && lockForUpdatingStaleGraph.tryLock()) {     // and the stale graph is not currently updated
+        if (activeGraphHasAtLeastOneDelta.get()              // only if the active graph has at least one delta
+                && !staleGraph.hasOpenReadTransactions()     // only if there are no open read transactions on the stale graph
+                && !activeGraph.hasOpenWriteTransaction()) { // and there is no active write transaction
             try {
-                if (activeGraphHasAtLeastOneDelta.get() // check again, because it could have changed in the meantime
-                        && !staleGraph.hasOpenReadTransactions() // only if there are no open read transactions on the stale graph
-                        && !transactionCoordinator.hasActiveWriteTransaction()) { // and there is no active write transaction
+                lockForUpdatingStaleGraph.lock();            // wait for the stale graph to be updated
+                // check again, because it could have changed in the meantime
+                if (this.deltasToApplyToStaleGraph.isEmpty() //check if all deltas have been applied to the stale graph
+                        && activeGraphHasAtLeastOneDelta.get()
+                        && !staleGraph.hasOpenReadTransactions()
+                        && !activeGraph.hasOpenWriteTransaction()) {
                     final var tmp = staleGraph;
                     staleGraph = activeGraph;
                     activeGraph = tmp;
@@ -260,6 +293,7 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     @Override
     public void close() {
         activeGraph.close();
+        staleGraph.close();
     }
 
     @Override
