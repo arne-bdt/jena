@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
@@ -40,17 +41,20 @@ import java.util.stream.Stream;
 
 public class GraphWrapperTransactional implements Graph, Transactional {
 
+    private static final int MAX_DELTA_CHAIN_LENGTH = 100;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphWrapperTransactional.class);
 
     private final TransactionCoordinator transactionCoordinator;
     private final ConcurrentLinkedQueue<FastDeltaGraph> deltasToApplyToStaleGraph = new ConcurrentLinkedQueue<>();
-    private final ReentrantLock lockForUpdatingStaleGraph = new java.util.concurrent.locks.ReentrantLock();
+    private final Semaphore semaphoreForUpdatingStaleGraph = new Semaphore(1);
 
     private final ReentrantLock lockForBeginTransaction = new java.util.concurrent.locks.ReentrantLock();
-    private final AtomicBoolean activeGraphHasAtLeastOneDelta = new AtomicBoolean(false);
     private final ForkJoinPool forkJoinPool;
     private volatile GraphWrapperChainingDeltasTransactional staleGraph;
     private volatile GraphWrapperChainingDeltasTransactional activeGraph;
+
+    private final AtomicBoolean delayedUpdateHasBeenScheduled = new AtomicBoolean(false);
 
     public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator) {
         this(transactionCoordinator, GraphMem2Fast::new);
@@ -92,33 +96,29 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     @Override
     public void begin(TxnType txnType) {
-        try {
-            lockForBeginTransaction.lock();
-            switchStaleAndActiveIfNeededAndPossible();
-            activeGraph.begin(txnType);
-        } finally {
-            lockForBeginTransaction.unlock();
-        }
+        switchStaleAndActiveIfNeededAndPossible();
+        activeGraph.begin(txnType);
     }
 
     private void switchStaleAndActiveIfNeededAndPossible() {
-        if (activeGraphHasAtLeastOneDelta.get()              // only if the active graph has at least one delta
+        if (activeGraph.getLengthOfDeltaChain() > 0          // only if the active graph has at least one delta
                 && !staleGraph.hasOpenReadTransactions()     // only if there are no open read transactions on the stale graph
                 && !activeGraph.hasOpenWriteTransaction()) { // and there is no active write transaction
             try {
-                lockForUpdatingStaleGraph.lock();            // wait for the stale graph to be updated
+                semaphoreForUpdatingStaleGraph.acquire();            // wait for the stale graph to be updated
                 // check again, because it could have changed in the meantime
                 if (this.deltasToApplyToStaleGraph.isEmpty() //check if all deltas have been applied to the stale graph
-                        && activeGraphHasAtLeastOneDelta.get()
+                        && activeGraph.getLengthOfDeltaChain() > 0
                         && !staleGraph.hasOpenReadTransactions()
                         && !activeGraph.hasOpenWriteTransaction()) {
                     final var tmp = staleGraph;
                     staleGraph = activeGraph;
                     activeGraph = tmp;
-                    activeGraphHasAtLeastOneDelta.set(false);
                 }
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             } finally {
-                lockForUpdatingStaleGraph.unlock();
+                semaphoreForUpdatingStaleGraph.release();
             }
         }
     }
@@ -147,18 +147,23 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     public void commit() {
         activeGraph.commit();
         if (!this.deltasToApplyToStaleGraph.isEmpty()) {
-            activeGraphHasAtLeastOneDelta.set(true);
+            if (activeGraph.getLengthOfDeltaChain() > MAX_DELTA_CHAIN_LENGTH) {
+                // if there are many consecutive write transactions, they might always be faster than the async call
+                // to update the stale graph. That way, they might block the update for a long time.
+                // In this case, we call the update synchronously to avoid this problem.
+                this.updateStaleGraphIfPossible();
+            }
             forkJoinPool.execute(this::updateStaleGraphIfPossible);
         }
     }
 
     private void updateStaleGraphIfPossible() {
         if (!staleGraph.hasOpenReadTransactions()) {
-            lockForUpdatingStaleGraph.lock();
             try {
+                semaphoreForUpdatingStaleGraph.acquire();
                 while (!deltasToApplyToStaleGraph.isEmpty()) {
                     final var delta = deltasToApplyToStaleGraph.peek();
-                    staleGraph.executeDirectlyOnWrappedGraph(stale -> {
+                    staleGraph.mergeDeltasAndExecuteDirectlyOnWrappedGraph(stale -> {
                         delta.getDeletions().forEachRemaining(stale::delete);
                         delta.getAdditions().forEachRemaining(stale::add);
                     });
@@ -167,18 +172,24 @@ public class GraphWrapperTransactional implements Graph, Transactional {
             } catch (Throwable throwable) {
                 LOGGER.error("Error while updating stale graph.", throwable);
             } finally {
-                lockForUpdatingStaleGraph.unlock();
+                semaphoreForUpdatingStaleGraph.release();
             }
-        } else {
+        } else if (!delayedUpdateHasBeenScheduled.get()) { // avoid scheduling multiple delayed updates
             // While there are still open read transactions, we wait a bit and try again.
             // There are no new read transactions possible, so we will eventually succeed.
             // The only caller of this method is the commit method. This is the only place
             // where we add deltas to the queue and that here is work to do.
+            delayedUpdateHasBeenScheduled.set(true);
             CompletableFuture.delayedExecutor(
                             transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs(),
                             java.util.concurrent.TimeUnit.MILLISECONDS, forkJoinPool)
-                    .execute(this::updateStaleGraphIfPossible);
+                    .execute(this::delayedUpdateStaleGraphIfPossible);
         }
+    }
+
+    private void delayedUpdateStaleGraphIfPossible() {
+        delayedUpdateHasBeenScheduled.set(false);
+        updateStaleGraphIfPossible();
     }
 
     @Override
