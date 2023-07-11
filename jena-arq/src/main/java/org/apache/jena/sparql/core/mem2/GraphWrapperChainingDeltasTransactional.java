@@ -49,6 +49,9 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
      */
     private final Semaphore writeSemaphore = new Semaphore(1);
     private final AtomicLong dataVersion = new AtomicLong(0);
+
+    private final AtomicInteger lengthOfDeltaChain = new AtomicInteger(0);
+
     private final AtomicInteger openReadTransactions = new AtomicInteger(0);
     private final Supplier<Graph> graphFactory;
     private final ThreadLocal<Boolean> txnInTransaction = ThreadLocal.withInitial(() -> Boolean.FALSE);
@@ -91,6 +94,17 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
         return txnGraph;
     }
 
+    private static Graph mergeDeltas(Graph graph) {
+        if (graph instanceof FastDeltaGraph delta) {
+            var base = mergeDeltas(delta);
+            delta.getDeletions().forEachRemaining(base::delete);
+            delta.getAdditions().forEachRemaining(base::add);
+            return base;
+        } else {
+            return graph;
+        }
+    }
+
     public boolean hasOpenReadTransactions() {
         return openReadTransactions.get() > 0;
     }
@@ -99,7 +113,11 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
         return writeSemaphore.availablePermits() == 0;
     }
 
-    public void executeDirectlyOnWrappedGraph(Consumer<Graph> wrappedGraphConsumer) {
+    public int getLengthOfDeltaChain() {
+        return lengthOfDeltaChain.get();
+    }
+
+    public void mergeDeltasAndExecuteDirectlyOnWrappedGraph(Consumer<Graph> wrappedGraphConsumer) {
         if (isInTransaction()) {
             throw new JenaTransactionException("Cannot access wrapped graph while in a transaction.");
         }
@@ -113,6 +131,8 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
                 LOGGER.error("Failed to acquire write semaphore within " + timeoutMs + " ms.");
                 throw new JenaTransactionException("Failed to acquire write semaphore within " + timeoutMs + " ms.");
             }
+            wrappedGraph = mergeDeltas(wrappedGraph);
+            lengthOfDeltaChain.set(0);
             try {
                 wrappedGraphConsumer.accept(wrappedGraph);
             } finally {
@@ -218,6 +238,7 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
                     if (delta.hasChanges()) {
                         lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
                         dataVersion.getAndIncrement();
+                        lengthOfDeltaChain.getAndIncrement();
                         committedDeltasConsumer.accept(delta);
                     } else {
                         wrappedGraph = delta.getBase();
