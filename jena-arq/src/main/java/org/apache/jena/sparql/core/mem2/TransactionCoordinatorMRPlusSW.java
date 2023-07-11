@@ -73,7 +73,7 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
                         LOGGER.error("Thread '{}' [{}] is not alive. Calling runnable timed out thread.",
                                 tInfo.getThread().getName(), tInfo.getThread().getId());
                     }
-                    tInfo.callTimedOutRunnable();
+                    tInfo.callTimedOutRunnableAndCatchAll();
                     activeThreadsByThreadId.remove(tInfo.getThread().getId());
                     timedOutThreadsByThreadId.put(tInfo.getThread().getId(), tInfo);
                 });
@@ -143,7 +143,7 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
                 .forEach(tInfo -> {
                     LOGGER.error("Thread '{}' [{}] time out runnable is called due to closing of transaction coordinator",
                             tInfo.getThread().getName(), tInfo.getThread().getId());
-                    tInfo.callTimedOutRunnable();
+                    tInfo.callTimedOutRunnableAndCatchAll();
                 });
         this.activeThreadsByThreadId.clear();
         this.timedOutThreadsByThreadId.clear();
@@ -164,8 +164,15 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
             return thread;
         }
 
-        public void callTimedOutRunnable() {
-            timedOutRunnable.run();
+        public void callTimedOutRunnableAndCatchAll() {
+            try {
+                timedOutRunnable.run();
+            } catch (Throwable t) {
+                LOGGER.error(String.format("Error while calling runnable for timed out thread '%s' [%s]",
+                                thread.getName(),
+                                thread.getId()),
+                        t);
+            }
         }
 
         public void refresh() {
