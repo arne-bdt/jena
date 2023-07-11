@@ -57,11 +57,10 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
     private final ThreadLocal<Graph> txnGraph = new ThreadLocal<>();
     private final ThreadLocal<Long> txnReadTransactionVersion = new ThreadLocal<>();
     private final TransactionCoordinator transactionCoordinator;
+    private final Consumer<FastDeltaGraph> committedDeltasConsumer;
     private volatile Graph graphBeforeCurrentWriteTransaction;
     private volatile Graph wrappedGraph;
     private volatile GraphReadOnlyWrapper lastCommittedGraph;
-
-    private final Consumer<FastDeltaGraph> committedDeltasConsumer;
 
     public GraphWrapperChainingDeltasTransactional(final Supplier<Graph> graphFactory,
                                                    final TransactionCoordinator transactionCoordinator,

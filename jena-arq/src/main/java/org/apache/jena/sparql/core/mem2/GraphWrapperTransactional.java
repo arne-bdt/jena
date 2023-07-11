@@ -47,12 +47,10 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     private final ReentrantLock lockForUpdatingStaleGraph = new java.util.concurrent.locks.ReentrantLock();
 
     private final ReentrantLock lockForBeginTransaction = new java.util.concurrent.locks.ReentrantLock();
+    private final AtomicBoolean activeGraphHasAtLeastOneDelta = new AtomicBoolean(false);
+    private final ForkJoinPool forkJoinPool;
     private volatile GraphWrapperChainingDeltasTransactional staleGraph;
     private volatile GraphWrapperChainingDeltasTransactional activeGraph;
-
-    private final AtomicBoolean activeGraphHasAtLeastOneDelta = new AtomicBoolean(false);
-
-    private final ForkJoinPool forkJoinPool;
 
     public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator) {
         this(transactionCoordinator, GraphMem2Fast::new);
@@ -155,33 +153,31 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     }
 
     private void updateStaleGraphIfPossible() {
-        if (!deltasToApplyToStaleGraph.isEmpty()) {
-            if (!staleGraph.hasOpenReadTransactions()) {
-                lockForUpdatingStaleGraph.lock();
-                try {
-                    while (!deltasToApplyToStaleGraph.isEmpty()) {
-                        final var delta = deltasToApplyToStaleGraph.peek();
-                        staleGraph.executeDirectlyOnWrappedGraph(stale -> {
-                            delta.getDeletions().forEachRemaining(stale::delete);
-                            delta.getAdditions().forEachRemaining(stale::add);
-                        });
-                        deltasToApplyToStaleGraph.poll();
-                    }
-                } catch (Throwable throwable) {
-                    LOGGER.error("Error while updating stale graph.", throwable);
-                } finally {
-                    lockForUpdatingStaleGraph.unlock();
+        if (!staleGraph.hasOpenReadTransactions()) {
+            lockForUpdatingStaleGraph.lock();
+            try {
+                while (!deltasToApplyToStaleGraph.isEmpty()) {
+                    final var delta = deltasToApplyToStaleGraph.peek();
+                    staleGraph.executeDirectlyOnWrappedGraph(stale -> {
+                        delta.getDeletions().forEachRemaining(stale::delete);
+                        delta.getAdditions().forEachRemaining(stale::add);
+                    });
+                    deltasToApplyToStaleGraph.poll();
                 }
-            } else {
-                // While there are still open read transactions, we wait a bit and try again.
-                // There are no new read transactions possible, so we will eventually succeed.
-                // The only caller of this method is the commit method. This is the only place
-                // where we add deltas to the queue and that here is work to do.
-                CompletableFuture.delayedExecutor(
-                                transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs(),
-                                java.util.concurrent.TimeUnit.MILLISECONDS, forkJoinPool)
-                        .execute(this::updateStaleGraphIfPossible);
+            } catch (Throwable throwable) {
+                LOGGER.error("Error while updating stale graph.", throwable);
+            } finally {
+                lockForUpdatingStaleGraph.unlock();
             }
+        } else {
+            // While there are still open read transactions, we wait a bit and try again.
+            // There are no new read transactions possible, so we will eventually succeed.
+            // The only caller of this method is the commit method. This is the only place
+            // where we add deltas to the queue and that here is work to do.
+            CompletableFuture.delayedExecutor(
+                            transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs(),
+                            java.util.concurrent.TimeUnit.MILLISECONDS, forkJoinPool)
+                    .execute(this::updateStaleGraphIfPossible);
         }
     }
 
