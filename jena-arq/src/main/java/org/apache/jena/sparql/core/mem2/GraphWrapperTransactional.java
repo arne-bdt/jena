@@ -50,22 +50,10 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     private final ReentrantLock lockForBeginTransaction = new java.util.concurrent.locks.ReentrantLock();
     private final ForkJoinPool forkJoinPool;
-    private GraphWrapperChainingDeltasTransactional staleGraph;
-    private GraphWrapperChainingDeltasTransactional activeGraph;
     private final ThreadLocal<GraphWrapperChainingDeltasTransactional> txnGraph = new ThreadLocal<>();
     private final AtomicBoolean delayedUpdateHasBeenScheduled = new AtomicBoolean(false);
-
-    int getNumberOfDeltasToApplyToStaleGraph() {
-        return deltasToApplyToStaleGraph.size();
-    }
-
-    int getActiveGraphLengthOfDeltaChain() {
-        return activeGraph.getLengthOfDeltaChain();
-    }
-
-    int getStaleGraphLengthOfDeltaChain() {
-        return staleGraph.getLengthOfDeltaChain();
-    }
+    private GraphWrapperChainingDeltasTransactional staleGraph;
+    private GraphWrapperChainingDeltasTransactional activeGraph;
 
     public GraphWrapperTransactional() {
         this(GraphMem2Fast::new);
@@ -92,6 +80,18 @@ public class GraphWrapperTransactional implements Graph, Transactional {
         this.activeGraph = new GraphWrapperChainingDeltasTransactional(graphToWrap, graphFactory,
                 deltasToApplyToStaleGraph::add);
         this.forkJoinPool = forkJoinPool;
+    }
+
+    int getNumberOfDeltasToApplyToStaleGraph() {
+        return deltasToApplyToStaleGraph.size();
+    }
+
+    int getActiveGraphLengthOfDeltaChain() {
+        return activeGraph.getLengthOfDeltaChain();
+    }
+
+    int getStaleGraphLengthOfDeltaChain() {
+        return staleGraph.getLengthOfDeltaChain();
     }
 
     private GraphWrapperChainingDeltasTransactional getGraphForCurrentTransaction() {
