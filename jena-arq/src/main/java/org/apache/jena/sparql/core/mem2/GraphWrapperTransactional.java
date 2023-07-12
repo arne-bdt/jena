@@ -56,10 +56,21 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     private final ThreadLocal<GraphWrapperChainingDeltasTransactional> txnGraph = new ThreadLocal<>();
     private final AtomicBoolean delayedUpdateHasBeenScheduled = new AtomicBoolean(false);
 
+    int getNumberOfDeltasToApplyToStaleGraph() {
+        return deltasToApplyToStaleGraph.size();
+    }
+
+    int getActiveGraphLengthOfDeltaChain() {
+        return activeGraph.getLengthOfDeltaChain();
+    }
+
+    int getStaleGraphLengthOfDeltaChain() {
+        return staleGraph.getLengthOfDeltaChain();
+    }
+
     public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator) {
         this(transactionCoordinator, GraphMem2Fast::new);
     }
-
 
     public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator, final Supplier<Graph> graphFactory) {
         this(transactionCoordinator, graphFactory, ForkJoinPool.commonPool());
@@ -128,6 +139,7 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                     final var tmp = staleGraph;
                     staleGraph = activeGraph;
                     activeGraph = tmp;
+                    forkJoinPool.execute(this::updateStaleGraphIfPossible); // update the stale graph in the background
                 }
             } finally {
                 lockForUpdatingStaleGraph.unlock();
@@ -177,9 +189,10 @@ public class GraphWrapperTransactional implements Graph, Transactional {
         if (!staleGraph.hasOpenReadTransactions()) {
             lockForUpdatingStaleGraph.lock();
             try {
+                staleGraph.mergeDeltas();
                 while (!deltasToApplyToStaleGraph.isEmpty()) {
                     final var delta = deltasToApplyToStaleGraph.peek();
-                    staleGraph.mergeDeltasAndExecuteDirectlyOnWrappedGraph(stale -> {
+                    staleGraph.executeDirectlyOnWrappedGraph(stale -> {
                         delta.getDeletions().forEachRemaining(stale::delete);
                         delta.getAdditions().forEachRemaining(stale::add);
                     });

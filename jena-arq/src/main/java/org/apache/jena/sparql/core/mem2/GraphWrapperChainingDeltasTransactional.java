@@ -96,7 +96,7 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
 
     private static Graph mergeDeltas(Graph graph) {
         if (graph instanceof FastDeltaGraph delta) {
-            var base = mergeDeltas(delta);
+            var base = mergeDeltas(delta.getBase());
             delta.getDeletions().forEachRemaining(base::delete);
             delta.getAdditions().forEachRemaining(base::add);
             return base;
@@ -117,7 +117,7 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
         return lengthOfDeltaChain.get();
     }
 
-    public void mergeDeltasAndExecuteDirectlyOnWrappedGraph(Consumer<Graph> wrappedGraphConsumer) {
+    public void mergeDeltas() {
         if (isInTransaction()) {
             throw new JenaTransactionException("Cannot access wrapped graph while in a transaction.");
         }
@@ -131,8 +131,32 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
                 LOGGER.error("Failed to acquire write semaphore within " + timeoutMs + " ms.");
                 throw new JenaTransactionException("Failed to acquire write semaphore within " + timeoutMs + " ms.");
             }
-            wrappedGraph = mergeDeltas(wrappedGraph);
-            lengthOfDeltaChain.set(0);
+            try {
+                this.wrappedGraph = mergeDeltas(this.wrappedGraph);
+                lengthOfDeltaChain.set(0);
+            } finally {
+                writeSemaphore.release();
+            }
+        } catch (InterruptedException e) {
+            LOGGER.error("Failed to acquire write semaphore.", e);
+            new JenaTransactionException("Failed to acquire write semaphore.", e);
+        }
+    }
+
+    public void executeDirectlyOnWrappedGraph(Consumer<Graph> wrappedGraphConsumer) {
+        if (isInTransaction()) {
+            throw new JenaTransactionException("Cannot access wrapped graph while in a transaction.");
+        }
+        if (hasOpenReadTransactions()) {
+            throw new JenaTransactionException("Cannot access wrapped graph while there are open read transactions.");
+        }
+        try {
+            final var timeoutMs = transactionCoordinator.getTransactionTimeoutMs()
+                    + transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs();
+            if (!writeSemaphore.tryAcquire(timeoutMs, TimeUnit.MILLISECONDS)) {
+                LOGGER.error("Failed to acquire write semaphore within " + timeoutMs + " ms.");
+                throw new JenaTransactionException("Failed to acquire write semaphore within " + timeoutMs + " ms.");
+            }
             try {
                 wrappedGraphConsumer.accept(wrappedGraph);
             } finally {
