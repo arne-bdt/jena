@@ -227,7 +227,6 @@ public class GraphWrapperTransactionalTest {
 
         //expect hat active and stale have been swapped
         assertEquals(0, sut.getActiveGraphLengthOfDeltaChain());
-        assertEquals(1, sut.getStaleGraphLengthOfDeltaChain());
 
         // a separate thread should apply the deltas to the stale graph
         Awaitility

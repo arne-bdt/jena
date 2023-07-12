@@ -23,9 +23,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
 
+    private static final AtomicLong instanceCounter = new AtomicLong(0);
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionCoordinatorMRPlusSW.class);
     private final ConcurrentHashMap<Long, TheadTransactionInfo> activeThreadsByThreadId = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, TheadTransactionInfo> timedOutThreadsByThreadId = new ConcurrentHashMap<>();
@@ -33,13 +36,16 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
     private final int timeToKeepTransactionsAfterTimeoutMs;
     private final TransactionCoordinatorScheduler transactionCoordinatorScheduler;
 
+    private final long instanceId = instanceCounter.incrementAndGet();
+
+    private final ReentrantLock lock = new ReentrantLock();
+
     public TransactionCoordinatorMRPlusSW(int transactionTimeoutMs,
                                           int keepInfoAboutTransactionTimeoutForXTimesTheTimeout) {
         this.transactionTimeoutMs = transactionTimeoutMs;
         this.timeToKeepTransactionsAfterTimeoutMs
                 = transactionTimeoutMs * keepInfoAboutTransactionTimeoutForXTimesTheTimeout;
         this.transactionCoordinatorScheduler = TransactionCoordinatorScheduler.getInstance();
-        this.transactionCoordinatorScheduler.register(this);
     }
 
     public TransactionCoordinatorMRPlusSW() {
@@ -71,7 +77,15 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
     @Override
     public void registerCurrentThread(Runnable timedOutRunnable) {
         final var thread = Thread.currentThread();
-        activeThreadsByThreadId.put(thread.getId(), new TheadTransactionInfo(thread, timedOutRunnable));
+        try {
+            lock.lock();
+            if (activeThreadsByThreadId.isEmpty()) {
+                transactionCoordinatorScheduler.register(this);
+            }
+            activeThreadsByThreadId.put(thread.getId(), new TheadTransactionInfo(thread, timedOutRunnable));
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
@@ -98,16 +112,26 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
     @Override
     public void unregisterCurrentThread() {
         final var thread = Thread.currentThread();
-        var removedThreadInfo = activeThreadsByThreadId.remove(thread.getId());
-        if (removedThreadInfo == null) {
-            removedThreadInfo = timedOutThreadsByThreadId.remove(thread.getId());
+        try {
+            lock.lock();
+            var removedThreadInfo = activeThreadsByThreadId.remove(thread.getId());
             if (removedThreadInfo == null) {
-                LOGGER.error("Thread '{}' [{}] is not registered", thread.getName(), thread.getId());
-                throw new JenaTransactionException("Thread is not registered");
+                removedThreadInfo = timedOutThreadsByThreadId.remove(thread.getId());
+                if (removedThreadInfo == null) {
+                    LOGGER.error("Thread '{}' [{}] is not registered", thread.getName(), thread.getId());
+                    throw new JenaTransactionException("Thread is not registered");
+                } else {
+                    LOGGER.error("Thread '{}' [{}] has timed out", thread.getName(), thread.getId());
+                    throw new JenaTransactionException("Thread has timed out before it was unregistered.");
+                }
             } else {
-                LOGGER.error("Thread '{}' [{}] has timed out", thread.getName(), thread.getId());
-                throw new JenaTransactionException("Thread has timed out before it was unregistered.");
+                timedOutThreadsByThreadId.remove(thread.getId());
             }
+            if (activeThreadsByThreadId.isEmpty() && timedOutThreadsByThreadId.isEmpty()) {
+                transactionCoordinatorScheduler.unregister(this);
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -122,12 +146,6 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
     }
 
     @Override
-    protected void finalize() throws Throwable {
-        close();
-        super.finalize();
-    }
-
-    @Override
     public void close() throws Exception {
         this.transactionCoordinatorScheduler.unregister(this);
         this.activeThreadsByThreadId.values()
@@ -138,6 +156,21 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
                 });
         this.activeThreadsByThreadId.clear();
         this.timedOutThreadsByThreadId.clear();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        TransactionCoordinatorMRPlusSW that = (TransactionCoordinatorMRPlusSW) o;
+
+        return instanceId == that.instanceId;
+    }
+
+    @Override
+    public int hashCode() {
+        return (int) (instanceId ^ (instanceId >>> 32));
     }
 
     private class TheadTransactionInfo {
