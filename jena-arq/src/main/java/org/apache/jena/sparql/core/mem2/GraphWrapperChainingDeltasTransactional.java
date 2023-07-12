@@ -79,15 +79,6 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
         this.transactionCoordinator = new TransactionCoordinatorMRPlusSW();
     }
 
-    private Graph getGraphForCurrentTransaction() {
-        final var graph = this.txnGraph.get();
-        if (graph == null) {
-            throw new JenaTransactionException("Not in a transaction.");
-        }
-        transactionCoordinator.refreshTimeoutForCurrentThread();
-        return graph;
-    }
-
     private static Graph mergeDeltas(Graph graph) {
         if (graph instanceof FastDeltaGraph delta) {
             var base = mergeDeltas(delta.getBase());
@@ -97,6 +88,15 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
         } else {
             return graph;
         }
+    }
+
+    private Graph getGraphForCurrentTransaction() {
+        final var graph = this.txnGraph.get();
+        if (graph == null) {
+            throw new JenaTransactionException("Not in a transaction.");
+        }
+        transactionCoordinator.refreshTimeoutForCurrentThread();
+        return graph;
     }
 
     public boolean hasOpenReadTransactions() {
