@@ -29,6 +29,8 @@ import java.util.stream.Stream;
 
 public class GraphReadOnlyWrapper implements Graph {
 
+    private static final String ERROR_MSG_GRAPH_IS_READ_ONLY = "Graph is read-only";
+
     private final Graph wrappedGraph;
     private TransactionHandler transactionHandler = null;
     private Capabilities capabilities = null;
@@ -80,8 +82,6 @@ public class GraphReadOnlyWrapper implements Graph {
 
     /**
      * Read-only graphs do not have event managers.
-     *
-     * @return
      */
     @Override
     public GraphEventManager getEventManager() {
@@ -95,22 +95,22 @@ public class GraphReadOnlyWrapper implements Graph {
 
     @Override
     public void add(Triple t) throws AddDeniedException {
-        throw new AddDeniedException("Graph is read-only");
+        throw new AddDeniedException(ERROR_MSG_GRAPH_IS_READ_ONLY);
     }
 
     @Override
     public void add(Node s, Node p, Node o) throws AddDeniedException {
-        throw new AddDeniedException("Graph is read-only");
+        throw new AddDeniedException(ERROR_MSG_GRAPH_IS_READ_ONLY);
     }
 
     @Override
     public void delete(Triple t) throws DeleteDeniedException {
-        throw new DeleteDeniedException("Graph is read-only");
+        throw new DeleteDeniedException(ERROR_MSG_GRAPH_IS_READ_ONLY);
     }
 
     @Override
     public void delete(Node s, Node p, Node o) throws DeleteDeniedException {
-        throw new DeleteDeniedException("Graph is read-only");
+        throw new DeleteDeniedException(ERROR_MSG_GRAPH_IS_READ_ONLY);
     }
 
     @Override
@@ -155,12 +155,12 @@ public class GraphReadOnlyWrapper implements Graph {
 
     @Override
     public void clear() {
-        throw new UnsupportedOperationException("Graph is read-only");
+        throw new UnsupportedOperationException(ERROR_MSG_GRAPH_IS_READ_ONLY);
     }
 
     @Override
     public void remove(Node s, Node p, Node o) {
-        throw new UnsupportedOperationException("Graph is read-only");
+        throw new UnsupportedOperationException(ERROR_MSG_GRAPH_IS_READ_ONLY);
     }
 
     @Override

@@ -27,7 +27,7 @@ public interface TransactionCoordinator extends AutoCloseable {
 
     int DEFAULT_KEEP_INFO_ABOUT_TRANSACTION_TIMEOUT_FOR_X_TIMES_THE_TIMEOUT = 10;
 
-    int DEFAULT_STAlE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS = 5000;
+    int DEFAULT_STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS = 5000;
 
     void registerCurrentThread(Runnable timedOutRunnable);
 
@@ -36,7 +36,7 @@ public interface TransactionCoordinator extends AutoCloseable {
      * Throws an exception if the current thread is not registered.
      * Throws an exception if the current thread has timed out.
      *
-     * @throws JenaTransactionException
+     * @throws JenaTransactionException if the current thread is not registered or has timed out.
      */
     void refreshTimeoutForCurrentThread();
 
