@@ -227,48 +227,54 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
 
     @Override
     public void commit() {
-        if (isInTransaction()) {
-            transactionCoordinator.unregisterCurrentThread();
-            switch (transactionMode()) {
-                case READ:
-                    openReadTransactions.getAndDecrement();
-                    break;
-                case WRITE:
-                    final var delta = (FastDeltaGraph) wrappedGraph;
-                    if (delta.hasChanges()) {
-                        lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
-                        dataVersion.getAndIncrement();
-                        lengthOfDeltaChain.getAndIncrement();
-                        committedDeltasConsumer.accept(delta);
-                    } else {
-                        wrappedGraph = delta.getBase();
-                    }
-                    break;
-                default:
-                    endOnceByRemovingThreadLocalsAndUnlocking();
-                    throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
+        try {
+            if (isInTransaction()) {
+                transactionCoordinator.unregisterCurrentThread();
+                switch (transactionMode()) {
+                    case READ:
+                        openReadTransactions.getAndDecrement();
+                        break;
+                    case WRITE:
+                        final var delta = (FastDeltaGraph) wrappedGraph;
+                        if (delta.hasChanges()) {
+                            lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
+                            dataVersion.getAndIncrement();
+                            lengthOfDeltaChain.getAndIncrement();
+                            committedDeltasConsumer.accept(delta);
+                        } else {
+                            wrappedGraph = delta.getBase();
+                        }
+                        break;
+                    default:
+                        endOnceByRemovingThreadLocalsAndUnlocking();
+                        throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
+                }
             }
+        } finally {
+            endOnceByRemovingThreadLocalsAndUnlocking();
         }
-        endOnceByRemovingThreadLocalsAndUnlocking();
     }
 
     @Override
     public void abort() {
-        if (isInTransaction()) {
-            transactionCoordinator.unregisterCurrentThread();
-            switch (transactionMode()) {
-                case READ:
-                    openReadTransactions.getAndDecrement();
-                    break;
-                case WRITE:
-                    wrappedGraph = graphBeforeCurrentWriteTransaction;
-                    break;
-                default:
-                    endOnceByRemovingThreadLocalsAndUnlocking();
-                    throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
+        try {
+            if (isInTransaction()) {
+                transactionCoordinator.unregisterCurrentThread();
+                switch (transactionMode()) {
+                    case READ:
+                        openReadTransactions.getAndDecrement();
+                        break;
+                    case WRITE:
+                        wrappedGraph = graphBeforeCurrentWriteTransaction;
+                        break;
+                    default:
+                        endOnceByRemovingThreadLocalsAndUnlocking();
+                        throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
+                }
             }
+        } finally {
+            endOnceByRemovingThreadLocalsAndUnlocking();
         }
-        endOnceByRemovingThreadLocalsAndUnlocking();
     }
 
     @Override
