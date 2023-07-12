@@ -63,22 +63,20 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
     private GraphReadOnlyWrapper lastCommittedGraph;
 
     public GraphWrapperChainingDeltasTransactional(final Supplier<Graph> graphFactory,
-                                                   final TransactionCoordinator transactionCoordinator,
                                                    final Consumer<FastDeltaGraph> committedDeltasConsumer) {
         this.wrappedGraph = graphFactory.get();
         this.committedDeltasConsumer = committedDeltasConsumer;
         this.lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
-        this.transactionCoordinator = transactionCoordinator;
+        this.transactionCoordinator = new TransactionCoordinatorMRPlusSW();
     }
 
     public GraphWrapperChainingDeltasTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory,
-                                                   final TransactionCoordinator transactionCoordinator,
                                                    final Consumer<FastDeltaGraph> committedDeltasConsumer) {
         this.wrappedGraph = graphFactory.get();
         graphToWrap.find().forEachRemaining(this.wrappedGraph::add);
         this.committedDeltasConsumer = committedDeltasConsumer;
         this.lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
-        this.transactionCoordinator = transactionCoordinator;
+        this.transactionCoordinator = new TransactionCoordinatorMRPlusSW();
     }
 
     private Graph getGraphForCurrentTransaction() {

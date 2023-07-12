@@ -41,11 +41,10 @@ import java.util.stream.Stream;
 
 public class GraphWrapperTransactional implements Graph, Transactional {
 
+    private static final int TIMEOUT_FOR_RETRY_TO_APPLY_DELTAS_TO_STALE_GRAPH_MS = 1000;
     private static final int MAX_DELTA_CHAIN_LENGTH = 100;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphWrapperTransactional.class);
-
-    private final TransactionCoordinator transactionCoordinator;
     private final ConcurrentLinkedQueue<FastDeltaGraph> deltasToApplyToStaleGraph = new ConcurrentLinkedQueue<>();
     private final ReentrantLock lockForUpdatingStaleGraph = new java.util.concurrent.locks.ReentrantLock();
 
@@ -68,41 +67,31 @@ public class GraphWrapperTransactional implements Graph, Transactional {
         return staleGraph.getLengthOfDeltaChain();
     }
 
-    public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator) {
-        this(transactionCoordinator, GraphMem2Fast::new);
+    public GraphWrapperTransactional() {
+        this(GraphMem2Fast::new);
     }
 
-    public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator, final Supplier<Graph> graphFactory) {
-        this(transactionCoordinator, graphFactory, ForkJoinPool.commonPool());
+    public GraphWrapperTransactional(final Supplier<Graph> graphFactory) {
+        this(graphFactory, ForkJoinPool.commonPool());
     }
 
-    public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator, final Graph graphToWrap, final Supplier<Graph> graphFactory) {
-        this(transactionCoordinator, graphToWrap, graphFactory, ForkJoinPool.commonPool());
+    public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory) {
+        this(graphToWrap, graphFactory, ForkJoinPool.commonPool());
     }
 
-    public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator,
-                                     final Supplier<Graph> graphFactory, final ForkJoinPool forkJoinPool) {
-        this.transactionCoordinator = transactionCoordinator;
-        this.staleGraph = new GraphWrapperChainingDeltasTransactional(graphFactory, transactionCoordinator,
-                deltasToApplyToStaleGraph::add);
-        this.activeGraph = new GraphWrapperChainingDeltasTransactional(graphFactory, transactionCoordinator,
-                deltasToApplyToStaleGraph::add);
+    public GraphWrapperTransactional(final Supplier<Graph> graphFactory, final ForkJoinPool forkJoinPool) {
+        this.staleGraph = new GraphWrapperChainingDeltasTransactional(graphFactory, deltasToApplyToStaleGraph::add);
+        this.activeGraph = new GraphWrapperChainingDeltasTransactional(graphFactory, deltasToApplyToStaleGraph::add);
         this.forkJoinPool = forkJoinPool;
     }
 
-    public GraphWrapperTransactional(final TransactionCoordinator transactionCoordinator,
-                                     final Graph graphToWrap, final Supplier<Graph> graphFactory,
+    public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory,
                                      final ForkJoinPool forkJoinPool) {
-        this.transactionCoordinator = transactionCoordinator;
         this.staleGraph = new GraphWrapperChainingDeltasTransactional(graphToWrap, graphFactory,
-                transactionCoordinator, deltasToApplyToStaleGraph::add);
+                deltasToApplyToStaleGraph::add);
         this.activeGraph = new GraphWrapperChainingDeltasTransactional(graphToWrap, graphFactory,
-                transactionCoordinator, deltasToApplyToStaleGraph::add);
+                deltasToApplyToStaleGraph::add);
         this.forkJoinPool = forkJoinPool;
-    }
-
-    public TransactionCoordinator getTransactionCoordinator() {
-        return transactionCoordinator;
     }
 
     private GraphWrapperChainingDeltasTransactional getGraphForCurrentTransaction() {
@@ -211,7 +200,7 @@ public class GraphWrapperTransactional implements Graph, Transactional {
             // where we add deltas to the queue and that here is work to do.
             if (delayedUpdateHasBeenScheduled.compareAndSet(false, true)) {
                 CompletableFuture.delayedExecutor(
-                                transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs(),
+                                TIMEOUT_FOR_RETRY_TO_APPLY_DELTAS_TO_STALE_GRAPH_MS,
                                 java.util.concurrent.TimeUnit.MILLISECONDS, forkJoinPool)
                         .execute(this::delayedUpdateStaleGraphIfPossible);
             }

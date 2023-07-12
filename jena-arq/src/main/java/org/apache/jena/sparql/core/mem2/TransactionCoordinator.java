@@ -27,8 +27,6 @@ public interface TransactionCoordinator extends AutoCloseable {
 
     int DEFAULT_KEEP_INFO_ABOUT_TRANSACTION_TIMEOUT_FOR_X_TIMES_THE_TIMEOUT = 10;
 
-    int DEFAULT_STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS = 5000;
-
     void registerCurrentThread(Runnable timedOutRunnable);
 
     /**
@@ -48,5 +46,7 @@ public interface TransactionCoordinator extends AutoCloseable {
 
     int getTransactionTimeoutMs();
 
+    void checkForTimeouts();
 
+    void removeLongTimedOutTransactions();
 }

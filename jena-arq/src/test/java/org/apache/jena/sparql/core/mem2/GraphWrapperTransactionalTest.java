@@ -27,249 +27,216 @@ import java.time.Duration;
 import java.util.concurrent.Semaphore;
 
 import static org.apache.jena.testing_framework.GraphHelper.triple;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 public class GraphWrapperTransactionalTest {
 
     @Test
     public void testAddWithoutTransaction() {
-        try (final var transactionCoordinator = new TransactionCoordinatorMRPlusSW()) {
-            var sut = new GraphWrapperTransactional(transactionCoordinator);
-            var t = triple("s p o");
-            assertThrows(JenaTransactionException.class, () -> sut.add(t));
-            sut.close();
-        } catch (Exception e) {
-            fail(e.getMessage());
-        }
+        var sut = new GraphWrapperTransactional();
+        var t = triple("s p o");
+        assertThrows(JenaTransactionException.class, () -> sut.add(t));
+        sut.close();
     }
 
     @Test
     public void testAddAndCommit() {
-        try (final var transactionCoordinator = new TransactionCoordinatorMRPlusSW()) {
-            var sut = new GraphWrapperTransactional(transactionCoordinator);
-            sut.begin(ReadWrite.WRITE);
-            assertEquals(0, sut.size());
-            sut.add(triple("s p o"));
-            assertEquals(1, sut.size());
-            sut.commit();
-            sut.begin(ReadWrite.READ);
-            assertEquals(1, sut.size());
-            sut.end();
-        } catch (Exception e) {
-            fail(e.getMessage());
-        }
+        var sut = new GraphWrapperTransactional();
+        sut.begin(ReadWrite.WRITE);
+        assertEquals(0, sut.size());
+        sut.add(triple("s p o"));
+        assertEquals(1, sut.size());
+        sut.commit();
+        sut.begin(ReadWrite.READ);
+        assertEquals(1, sut.size());
+        sut.end();
     }
 
     @Test
     public void testAddAndAbort() {
-        try (final var transactionCoordinator = new TransactionCoordinatorMRPlusSW()) {
-            var sut = new GraphWrapperTransactional(transactionCoordinator);
-            sut.begin(ReadWrite.WRITE);
-            assertEquals(0, sut.size());
-            sut.add(triple("s p o"));
-            assertEquals(1, sut.size());
-            sut.abort();
-            sut.begin(ReadWrite.READ);
-            assertEquals(0, sut.size());
-            sut.end();
-        } catch (Exception e) {
-            fail(e.getMessage());
-        }
+        var sut = new GraphWrapperTransactional();
+        sut.begin(ReadWrite.WRITE);
+        assertEquals(0, sut.size());
+        sut.add(triple("s p o"));
+        assertEquals(1, sut.size());
+        sut.abort();
+        sut.begin(ReadWrite.READ);
+        assertEquals(0, sut.size());
+        sut.end();
     }
 
     @Test
     public void testAddAndEnd() {
-        try (final var transactionCoordinator = new TransactionCoordinatorMRPlusSW()) {
-            var sut = new GraphWrapperTransactional(transactionCoordinator);
-            sut.begin(ReadWrite.WRITE);
+        var sut = new GraphWrapperTransactional();
+        sut.begin(ReadWrite.WRITE);
+        assertEquals(0, sut.size());
+        sut.add(triple("s p o"));
+        assertEquals(1, sut.size());
+        assertThrows(JenaTransactionException.class, () -> sut.end());
+        sut.begin(ReadWrite.READ);
+        assertEquals(0, sut.size());
+        sut.end();
+    }
+
+    @Test
+    public void testReaderThatStartedTransactionBeforeWriteDoesNotSeeWrittenData() throws InterruptedException {
+        var sut = new GraphWrapperTransactional();
+        var threadHasStarted = new Semaphore(1);
+        var newDataWritten = new Semaphore(1);
+        threadHasStarted.acquire();
+        newDataWritten.acquire();
+
+        var readerThread = new Thread(() -> {
+            sut.begin(ReadWrite.READ);
             assertEquals(0, sut.size());
-            sut.add(triple("s p o"));
-            assertEquals(1, sut.size());
-            assertThrows(JenaTransactionException.class, () -> sut.end());
+            threadHasStarted.release();
+            try {
+                newDataWritten.acquire();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            assertEquals(0, sut.size());
+            sut.end();
+        });
+        readerThread.start();
+        threadHasStarted.acquire();
+        threadHasStarted.release();
+
+        sut.begin(ReadWrite.WRITE);
+        sut.add(triple("s p o"));
+        sut.commit();
+        newDataWritten.release();
+        sut.begin(ReadWrite.READ);
+        assertEquals(1, sut.size());
+        sut.end();
+
+        readerThread.join();
+    }
+
+    @Test
+    public void testReaderThatStartedAfterWriteSeesWrittenData() throws InterruptedException {
+        var sut = new GraphWrapperTransactional();
+        var threadHasStarted = new Semaphore(1);
+        var newDataWritten = new Semaphore(1);
+        threadHasStarted.acquire();
+        newDataWritten.acquire();
+
+        var readerThread = new Thread(() -> {
             sut.begin(ReadWrite.READ);
             assertEquals(0, sut.size());
             sut.end();
-        } catch (Exception e) {
-            fail(e.getMessage());
-        }
-    }
-
-    @Test
-    public void testReaderThatStartedTransactionBeforeWriteDoesNotSeeWrittenData() {
-        try (final var transactionCoordinator = new TransactionCoordinatorMRPlusSW()) {
-            var sut = new GraphWrapperTransactional(transactionCoordinator);
-            var threadHasStarted = new Semaphore(1);
-            var newDataWritten = new Semaphore(1);
-            threadHasStarted.acquire();
-            newDataWritten.acquire();
-
-            var readerThread = new Thread(() -> {
-                sut.begin(ReadWrite.READ);
-                assertEquals(0, sut.size());
-                threadHasStarted.release();
-                try {
-                    newDataWritten.acquire();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                assertEquals(0, sut.size());
-                sut.end();
-            });
-            readerThread.start();
-            threadHasStarted.acquire();
             threadHasStarted.release();
-
-            sut.begin(ReadWrite.WRITE);
-            sut.add(triple("s p o"));
-            sut.commit();
-            newDataWritten.release();
+            try {
+                newDataWritten.acquire();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             sut.begin(ReadWrite.READ);
             assertEquals(1, sut.size());
             sut.end();
+        });
 
-            readerThread.join();
-        } catch (Exception e) {
-            fail(e.getMessage());
-        }
+        readerThread.start();
+        threadHasStarted.acquire();
+        threadHasStarted.release();
+
+        sut.begin(ReadWrite.WRITE);
+        sut.add(triple("s p o"));
+        sut.commit();
+        newDataWritten.release();
+
+        readerThread.join();
     }
 
     @Test
-    public void testReaderThatStartedAfterWriteSeesWrittenData() {
-        try (final var transactionCoordinator = new TransactionCoordinatorMRPlusSW()) {
-            var sut = new GraphWrapperTransactional(transactionCoordinator);
-            var threadHasStarted = new Semaphore(1);
-            var newDataWritten = new Semaphore(1);
-            threadHasStarted.acquire();
-            newDataWritten.acquire();
+    public void testThatMultipleReaderSeeDifferentThingsWhenStartedAfterDifferentCommits() throws InterruptedException {
+        var sut = new GraphWrapperTransactional();
+        var threadHasStarted = new Semaphore(1);
+        var oneTripleWritten = new Semaphore(1);
+        var twoTriplesWritten = new Semaphore(1);
+        oneTripleWritten.acquire();
+        twoTriplesWritten.acquire();
 
-            var readerThread = new Thread(() -> {
-                sut.begin(ReadWrite.READ);
-                assertEquals(0, sut.size());
-                sut.end();
-                threadHasStarted.release();
-                try {
-                    newDataWritten.acquire();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                sut.begin(ReadWrite.READ);
-                assertEquals(1, sut.size());
-                sut.end();
-            });
-
-            readerThread.start();
-            threadHasStarted.acquire();
+        var readerThread1 = new Thread(() -> {
             threadHasStarted.release();
+            try {
+                oneTripleWritten.acquire();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            sut.begin(ReadWrite.READ);
+            assertEquals(1, sut.size());
+            sut.end();
+        });
+        threadHasStarted.acquire();
+        readerThread1.start();
+        threadHasStarted.release();
 
-            sut.begin(ReadWrite.WRITE);
-            sut.add(triple("s p o"));
-            sut.commit();
-            newDataWritten.release();
-
-            readerThread.join();
-        } catch (Exception e) {
-            fail(e.getMessage());
-        }
-    }
-
-    @Test
-    public void testThatMultipleReaderSeeDifferentThingsWhenStartedAfterDifferentCommits() {
-        try (final var transactionCoordinator = new TransactionCoordinatorMRPlusSW()) {
-            var sut = new GraphWrapperTransactional(transactionCoordinator);
-            var threadHasStarted = new Semaphore(1);
-            var oneTripleWritten = new Semaphore(1);
-            var twoTriplesWritten = new Semaphore(1);
-            oneTripleWritten.acquire();
-            twoTriplesWritten.acquire();
-
-            var readerThread1 = new Thread(() -> {
-                threadHasStarted.release();
-                try {
-                    oneTripleWritten.acquire();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                sut.begin(ReadWrite.READ);
-                assertEquals(1, sut.size());
-                sut.end();
-            });
-            threadHasStarted.acquire();
-            readerThread1.start();
+        var readerThread2 = new Thread(() -> {
             threadHasStarted.release();
+            try {
+                twoTriplesWritten.acquire();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            sut.begin(ReadWrite.READ);
+            assertEquals(2, sut.size());
+            sut.end();
+        });
+        threadHasStarted.acquire();
+        readerThread2.start();
+        threadHasStarted.release();
 
-            var readerThread2 = new Thread(() -> {
-                threadHasStarted.release();
-                try {
-                    twoTriplesWritten.acquire();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-                sut.begin(ReadWrite.READ);
-                assertEquals(2, sut.size());
-                sut.end();
-            });
-            threadHasStarted.acquire();
-            readerThread2.start();
-            threadHasStarted.release();
+        sut.begin(ReadWrite.WRITE);
+        sut.add(triple("s1 p1 o1"));
+        sut.commit();
+        oneTripleWritten.release();
 
-            sut.begin(ReadWrite.WRITE);
-            sut.add(triple("s1 p1 o1"));
-            sut.commit();
-            oneTripleWritten.release();
+        sut.begin(ReadWrite.WRITE);
+        sut.add(triple("s2 p2 o2"));
+        sut.commit();
+        twoTriplesWritten.release();
 
-            sut.begin(ReadWrite.WRITE);
-            sut.add(triple("s2 p2 o2"));
-            sut.commit();
-            twoTriplesWritten.release();
-
-            readerThread1.join();
-            readerThread2.join();
-        } catch (Exception e) {
-            fail(e.getMessage());
-        }
+        readerThread1.join();
+        readerThread2.join();
     }
 
     @Test
     public void testDeltasAreProcessed() {
-        try (final var transactionCoordinator = new TransactionCoordinatorMRPlusSW()) {
-            var sut = new GraphWrapperTransactional(transactionCoordinator);
-            sut.begin(ReadWrite.WRITE);
-            sut.add(triple("s p o"));
-            sut.commit();
+        var sut = new GraphWrapperTransactional();
+        sut.begin(ReadWrite.WRITE);
+        sut.add(triple("s p o"));
+        sut.commit();
 
-            // this asserts should be faster than the background thread that processes deltas
-            assertEquals(1, sut.getNumberOfDeltasToApplyToStaleGraph());
-            assertEquals(1, sut.getActiveGraphLengthOfDeltaChain());
-            assertEquals(0, sut.getStaleGraphLengthOfDeltaChain());
+        assertEquals(1, sut.getActiveGraphLengthOfDeltaChain());
+        assertEquals(0, sut.getStaleGraphLengthOfDeltaChain());
 
-            // a separate thread should apply the deltas to the stale graph
-            Awaitility
-                    .waitAtMost(Duration.ofMillis(200))
-                    .until(() -> sut.getNumberOfDeltasToApplyToStaleGraph() == 0);
+        // a separate thread should apply the deltas to the stale graph
+        Awaitility
+                .waitAtMost(Duration.ofMillis(200))
+                .until(() -> sut.getNumberOfDeltasToApplyToStaleGraph() == 0);
 
-            assertEquals(0, sut.getNumberOfDeltasToApplyToStaleGraph());
-            assertEquals(1, sut.getActiveGraphLengthOfDeltaChain());
-            assertEquals(0, sut.getStaleGraphLengthOfDeltaChain());
+        assertEquals(0, sut.getNumberOfDeltasToApplyToStaleGraph());
+        assertEquals(1, sut.getActiveGraphLengthOfDeltaChain());
+        assertEquals(0, sut.getStaleGraphLengthOfDeltaChain());
 
-            // next read should switch the graphs, as there are no deltas on the stale graph
-            sut.begin(ReadWrite.READ);
-            sut.end();
+        // next read should switch the graphs, as there are no deltas on the stale graph
+        sut.begin(ReadWrite.READ);
+        sut.end();
 
-            //expect hat active and stale have been swapped
-            assertEquals(0, sut.getActiveGraphLengthOfDeltaChain());
-            assertEquals(1, sut.getStaleGraphLengthOfDeltaChain());
+        //expect hat active and stale have been swapped
+        assertEquals(0, sut.getActiveGraphLengthOfDeltaChain());
+        assertEquals(1, sut.getStaleGraphLengthOfDeltaChain());
 
-            // a separate thread should apply the deltas to the stale graph
-            Awaitility
-                    .waitAtMost(Duration.ofMillis(200))
-                    .until(() -> sut.getStaleGraphLengthOfDeltaChain() == 0);
+        // a separate thread should apply the deltas to the stale graph
+        Awaitility
+                .waitAtMost(Duration.ofMillis(200))
+                .until(() -> sut.getStaleGraphLengthOfDeltaChain() == 0);
 
-            // all cleaned up
-            assertEquals(0, sut.getNumberOfDeltasToApplyToStaleGraph());
-            assertEquals(0, sut.getActiveGraphLengthOfDeltaChain());
-            assertEquals(0, sut.getStaleGraphLengthOfDeltaChain());
-        } catch (Exception e) {
-            fail(e.getMessage());
-        }
+        // all cleaned up
+        assertEquals(0, sut.getNumberOfDeltasToApplyToStaleGraph());
+        assertEquals(0, sut.getActiveGraphLengthOfDeltaChain());
+        assertEquals(0, sut.getStaleGraphLengthOfDeltaChain());
     }
 }
