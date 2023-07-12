@@ -23,46 +23,31 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TransactionCoordinatorMRPlusSW.class);
     private final ConcurrentHashMap<Long, TheadTransactionInfo> activeThreadsByThreadId = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, TheadTransactionInfo> timedOutThreadsByThreadId = new ConcurrentHashMap<>();
-    private final int staleTransactionRemovalTimerIntervalMs;
     private final int transactionTimeoutMs;
     private final int timeToKeepTransactionsAfterTimeoutMs;
-    private final ScheduledExecutorService scheduledExecutorService;
+    private final TransactionCoordinatorScheduler transactionCoordinatorScheduler;
 
-    public TransactionCoordinatorMRPlusSW(int transactionTimeoutMs, int staleTransactionRemovalTimerIntervalMs,
+    public TransactionCoordinatorMRPlusSW(int transactionTimeoutMs,
                                           int keepInfoAboutTransactionTimeoutForXTimesTheTimeout) {
         this.transactionTimeoutMs = transactionTimeoutMs;
-        this.staleTransactionRemovalTimerIntervalMs = staleTransactionRemovalTimerIntervalMs;
         this.timeToKeepTransactionsAfterTimeoutMs
                 = transactionTimeoutMs * keepInfoAboutTransactionTimeoutForXTimesTheTimeout;
-        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-        this.scheduledExecutorService
-                .scheduleWithFixedDelay(this::staleTransactionCleanup, staleTransactionRemovalTimerIntervalMs,
-                        staleTransactionRemovalTimerIntervalMs, TimeUnit.MILLISECONDS);
-
+        this.transactionCoordinatorScheduler = TransactionCoordinatorScheduler.getInstance();
+        this.transactionCoordinatorScheduler.register(this);
     }
 
     public TransactionCoordinatorMRPlusSW() {
         this(TransactionCoordinator.DEFAULT_TRANSACTION_TIMEOUT_MS,
-                TransactionCoordinator.DEFAULT_STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS,
                 TransactionCoordinator.DEFAULT_KEEP_INFO_ABOUT_TRANSACTION_TIMEOUT_FOR_X_TIMES_THE_TIMEOUT);
-
     }
 
-    private void staleTransactionCleanup() {
-        removeOldTransactions(); // do this fist, because the next method may add new transactions
-        checkTransactionsForTimeouts();
-    }
-
-    private void checkTransactionsForTimeouts() {
+    public void checkForTimeouts() {
         activeThreadsByThreadId.values().stream()
                 .filter(tInfo -> tInfo.isTimedOut() || !tInfo.getThread().isAlive())
                 .forEach(tInfo -> {
@@ -79,7 +64,7 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
                 });
     }
 
-    private void removeOldTransactions() {
+    public void removeLongTimedOutTransactions() {
         timedOutThreadsByThreadId.entrySet().removeIf(entry -> entry.getValue().isOldEnoughToBeRemoved());
     }
 
@@ -128,7 +113,7 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
 
     @Override
     public int getStaleTransactionRemovalTimerIntervalMs() {
-        return this.staleTransactionRemovalTimerIntervalMs;
+        return this.transactionCoordinatorScheduler.getStaleTransactionRemovalTimerIntervalMs();
     }
 
     @Override
@@ -137,8 +122,14 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
     }
 
     @Override
-    public void close() {
-        this.scheduledExecutorService.shutdownNow();
+    protected void finalize() throws Throwable {
+        close();
+        super.finalize();
+    }
+
+    @Override
+    public void close() throws Exception {
+        this.transactionCoordinatorScheduler.unregister(this);
         this.activeThreadsByThreadId.values()
                 .forEach(tInfo -> {
                     LOGGER.error("Thread '{}' [{}] time out runnable is called due to closing of transaction coordinator",
