@@ -18,9 +18,6 @@
 
 package org.apache.jena.sparql.core.mem2;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -29,23 +26,18 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class TransactionCoordinatorSchedulerImpl implements TransactionCoordinatorScheduler {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TransactionCoordinatorSchedulerImpl.class);
     private static final Object DUMMY = new Object();
     private static final int STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS = 5000;
-    private static TransactionCoordinatorSchedulerImpl instance = null;
+    private static final TransactionCoordinatorSchedulerImpl instance = new TransactionCoordinatorSchedulerImpl();
     private final ConcurrentHashMap<TransactionCoordinator, Object> transactionCoordinators = new ConcurrentHashMap<>();
-    private final ScheduledExecutorService scheduledExecutorService;
     private final ReentrantLock lock = new ReentrantLock();
+    private ScheduledExecutorService scheduledExecutorService;
     private boolean running = false;
 
     private TransactionCoordinatorSchedulerImpl() {
-        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     }
 
     public static TransactionCoordinatorScheduler getInstance() {
-        if (instance == null) {
-            instance = new TransactionCoordinatorSchedulerImpl();
-        }
         return instance;
     }
 
@@ -55,10 +47,12 @@ public class TransactionCoordinatorSchedulerImpl implements TransactionCoordinat
             lock.lock();
             transactionCoordinators.put(coordinator, DUMMY);
             if (!running) {
+                this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
                 this.scheduledExecutorService
                         .scheduleWithFixedDelay(this::staleTransactionCleanup,
                                 STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS,
                                 STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS, TimeUnit.MILLISECONDS);
+                running = true;
             }
         } finally {
             lock.unlock();
@@ -72,6 +66,7 @@ public class TransactionCoordinatorSchedulerImpl implements TransactionCoordinat
             transactionCoordinators.remove(coordinator);
             if (transactionCoordinators.isEmpty()) {
                 this.scheduledExecutorService.shutdown();
+                this.scheduledExecutorService = null;
                 running = false;
             }
         } finally {
@@ -86,31 +81,22 @@ public class TransactionCoordinatorSchedulerImpl implements TransactionCoordinat
 
     private void staleTransactionCleanup() {
         transactionCoordinators.keySet().forEach(tc -> {
-            try {
-                tc.removeLongTimedOutTransactions(); // do this fist, because the next method may add new transactions
-                tc.checkForTimeouts();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            tc.removeLongTimedOutTransactions(); // do this fist, because the next method may add new transactions
+            tc.checkForTimeouts();
         });
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        close();
-        super.finalize();
     }
 
     @Override
     public void close() throws Exception {
         try {
             lock.lock();
-            this.scheduledExecutorService.shutdown();
+            if (this.scheduledExecutorService != null) {
+                this.scheduledExecutorService.shutdown();
+            }
             this.transactionCoordinators.clear();
             running = false;
         } finally {
             lock.unlock();
         }
-        instance = null;
     }
 }
