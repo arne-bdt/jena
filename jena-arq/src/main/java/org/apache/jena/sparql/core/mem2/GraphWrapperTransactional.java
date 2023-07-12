@@ -51,8 +51,8 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     private final ReentrantLock lockForBeginTransaction = new java.util.concurrent.locks.ReentrantLock();
     private final ForkJoinPool forkJoinPool;
-    private volatile GraphWrapperChainingDeltasTransactional staleGraph;
-    private volatile GraphWrapperChainingDeltasTransactional activeGraph;
+    private GraphWrapperChainingDeltasTransactional staleGraph;
+    private GraphWrapperChainingDeltasTransactional activeGraph;
     private final ThreadLocal<GraphWrapperChainingDeltasTransactional> txnGraph = new ThreadLocal<>();
     private final AtomicBoolean delayedUpdateHasBeenScheduled = new AtomicBoolean(false);
 
@@ -106,11 +106,11 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     }
 
     private GraphWrapperChainingDeltasTransactional getGraphForCurrentTransaction() {
-        final var txnGraph = this.txnGraph.get();
-        if (txnGraph == null) {
+        final var graph = this.txnGraph.get();
+        if (graph == null) {
             throw new JenaTransactionException("Not in a transaction.");
         }
-        return txnGraph;
+        return graph;
     }
 
     @Override
@@ -134,6 +134,7 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                 // check again, because it could have changed in the meantime
                 if (this.deltasToApplyToStaleGraph.isEmpty() //check if all deltas have been applied to the stale graph
                         && activeGraph.getLengthOfDeltaChain() > 0
+                        && staleGraph.getLengthOfDeltaChain() == 0 // only if the stale graph has no deltas
                         && !staleGraph.hasOpenReadTransactions()
                         && !activeGraph.hasOpenWriteTransaction()) {
                     final var tmp = staleGraph;
@@ -198,8 +199,8 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                     });
                     deltasToApplyToStaleGraph.poll();
                 }
-            } catch (Throwable throwable) {
-                LOGGER.error("Error while updating stale graph.", throwable);
+            } catch (Exception exception) {
+                LOGGER.error("Error while updating stale graph.", exception);
             } finally {
                 lockForUpdatingStaleGraph.unlock();
             }

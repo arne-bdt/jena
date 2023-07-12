@@ -52,7 +52,7 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
 
     public TransactionCoordinatorMRPlusSW() {
         this(TransactionCoordinator.DEFAULT_TRANSACTION_TIMEOUT_MS,
-                TransactionCoordinator.DEFAULT_STAlE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS,
+                TransactionCoordinator.DEFAULT_STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS,
                 TransactionCoordinator.DEFAULT_KEEP_INFO_ABOUT_TRANSACTION_TIMEOUT_FOR_X_TIMES_THE_TIMEOUT);
 
     }
@@ -137,9 +137,9 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         this.scheduledExecutorService.shutdownNow();
-        this.activeThreadsByThreadId.values().stream()
+        this.activeThreadsByThreadId.values()
                 .forEach(tInfo -> {
                     LOGGER.error("Thread '{}' [{}] time out runnable is called due to closing of transaction coordinator",
                             tInfo.getThread().getName(), tInfo.getThread().getId());
@@ -167,11 +167,11 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
         public void callTimedOutRunnableAndCatchAll() {
             try {
                 timedOutRunnable.run();
-            } catch (Throwable t) {
+            } catch (Exception exception) {
                 LOGGER.error(String.format("Error while calling runnable for timed out thread '%s' [%s]",
                                 thread.getName(),
                                 thread.getId()),
-                        t);
+                        exception);
             }
         }
 

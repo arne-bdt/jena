@@ -169,7 +169,7 @@ public class DatasetGraphMem2Fast implements DatasetGraph {
 
     @Override
     public boolean supportsTransactionAbort() {
-        return DatasetGraph.super.supportsTransactionAbort();
+        return true;
     }
 
     @Override

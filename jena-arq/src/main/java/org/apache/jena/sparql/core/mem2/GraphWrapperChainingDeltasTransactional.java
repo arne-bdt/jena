@@ -27,8 +27,6 @@ import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sparql.JenaTransactionException;
 import org.apache.jena.sparql.core.Transactional;
 import org.apache.jena.util.iterator.ExtendedIterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -40,7 +38,7 @@ import java.util.stream.Stream;
 
 class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GraphWrapperChainingDeltasTransactional.class);
+    private static final String ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS = "Failed to acquire write semaphore within %s ms.";
 
     /**
      * This lock is used to ensure that only one thread can write to the graph at a time.
@@ -53,22 +51,20 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
     private final AtomicInteger lengthOfDeltaChain = new AtomicInteger(0);
 
     private final AtomicInteger openReadTransactions = new AtomicInteger(0);
-    private final Supplier<Graph> graphFactory;
     private final ThreadLocal<Boolean> txnInTransaction = ThreadLocal.withInitial(() -> Boolean.FALSE);
-    private final ThreadLocal<TxnType> txnType = new ThreadLocal();
-    private final ThreadLocal<ReadWrite> txnMode = new ThreadLocal();
+    private final ThreadLocal<TxnType> txnType = new ThreadLocal<>();
+    private final ThreadLocal<ReadWrite> txnMode = new ThreadLocal<>();
     private final ThreadLocal<Graph> txnGraph = new ThreadLocal<>();
     private final ThreadLocal<Long> txnReadTransactionVersion = new ThreadLocal<>();
     private final TransactionCoordinator transactionCoordinator;
     private final Consumer<FastDeltaGraph> committedDeltasConsumer;
-    private volatile Graph graphBeforeCurrentWriteTransaction;
-    private volatile Graph wrappedGraph;
-    private volatile GraphReadOnlyWrapper lastCommittedGraph;
+    private Graph graphBeforeCurrentWriteTransaction;
+    private Graph wrappedGraph;
+    private GraphReadOnlyWrapper lastCommittedGraph;
 
     public GraphWrapperChainingDeltasTransactional(final Supplier<Graph> graphFactory,
                                                    final TransactionCoordinator transactionCoordinator,
                                                    final Consumer<FastDeltaGraph> committedDeltasConsumer) {
-        this.graphFactory = graphFactory;
         this.wrappedGraph = graphFactory.get();
         this.committedDeltasConsumer = committedDeltasConsumer;
         this.lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
@@ -78,20 +74,20 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
     public GraphWrapperChainingDeltasTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory,
                                                    final TransactionCoordinator transactionCoordinator,
                                                    final Consumer<FastDeltaGraph> committedDeltasConsumer) {
-        this.graphFactory = graphFactory;
-        this.wrappedGraph = graphToWrap;
+        this.wrappedGraph = graphFactory.get();
+        graphToWrap.find().forEachRemaining(this.wrappedGraph::add);
         this.committedDeltasConsumer = committedDeltasConsumer;
         this.lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
         this.transactionCoordinator = transactionCoordinator;
     }
 
     private Graph getGraphForCurrentTransaction() {
-        final var txnGraph = this.txnGraph.get();
-        if (txnGraph == null) {
+        final var graph = this.txnGraph.get();
+        if (graph == null) {
             throw new JenaTransactionException("Not in a transaction.");
         }
         transactionCoordinator.refreshTimeoutForCurrentThread();
-        return txnGraph;
+        return graph;
     }
 
     private static Graph mergeDeltas(Graph graph) {
@@ -128,18 +124,19 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
             final var timeoutMs = transactionCoordinator.getTransactionTimeoutMs()
                     + transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs();
             if (!writeSemaphore.tryAcquire(timeoutMs, TimeUnit.MILLISECONDS)) {
-                LOGGER.error("Failed to acquire write semaphore within " + timeoutMs + " ms.");
-                throw new JenaTransactionException("Failed to acquire write semaphore within " + timeoutMs + " ms.");
+                throw new JenaTransactionException(String.format(ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS, timeoutMs));
             }
             try {
-                this.wrappedGraph = mergeDeltas(this.wrappedGraph);
-                lengthOfDeltaChain.set(0);
+                if (lengthOfDeltaChain.get() > 0) {
+                    this.wrappedGraph = mergeDeltas(this.wrappedGraph);
+                    lengthOfDeltaChain.set(0);
+                }
             } finally {
                 writeSemaphore.release();
             }
         } catch (InterruptedException e) {
-            LOGGER.error("Failed to acquire write semaphore.", e);
-            new JenaTransactionException("Failed to acquire write semaphore.", e);
+            endOnceByRemovingThreadLocalsAndUnlocking();
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -154,8 +151,7 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
             final var timeoutMs = transactionCoordinator.getTransactionTimeoutMs()
                     + transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs();
             if (!writeSemaphore.tryAcquire(timeoutMs, TimeUnit.MILLISECONDS)) {
-                LOGGER.error("Failed to acquire write semaphore within " + timeoutMs + " ms.");
-                throw new JenaTransactionException("Failed to acquire write semaphore within " + timeoutMs + " ms.");
+                throw new JenaTransactionException(String.format(ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS, timeoutMs));
             }
             try {
                 wrappedGraphConsumer.accept(wrappedGraph);
@@ -163,50 +159,48 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
                 writeSemaphore.release();
             }
         } catch (InterruptedException e) {
-            LOGGER.error("Failed to acquire write semaphore.", e);
-            new JenaTransactionException("Failed to acquire write semaphore.", e);
+            endOnceByRemovingThreadLocalsAndUnlocking();
+            Thread.currentThread().interrupt();
         }
     }
 
     @Override
     public void begin(TxnType txnType) {
         if (isInTransaction())
-            new JenaTransactionException("Already in a transaction.");
+            throw new JenaTransactionException("Already in a transaction.");
         ReadWrite readWrite = TxnType.convert(txnType);
         if (readWrite == ReadWrite.WRITE) {
             try {
                 final var timeoutMs = transactionCoordinator.getTransactionTimeoutMs()
                         + transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs();
                 if (!writeSemaphore.tryAcquire(timeoutMs, TimeUnit.MILLISECONDS)) {
-                    LOGGER.error("Failed to acquire write semaphore within " + timeoutMs + " ms.");
-                    throw new JenaTransactionException("Failed to acquire write semaphore within " + timeoutMs + " ms.");
+                    throw new JenaTransactionException(String.format(ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS, timeoutMs));
                 }
             } catch (InterruptedException e) {
-                LOGGER.error("Failed to acquire write semaphore.", e);
-                new JenaTransactionException("Failed to acquire write semaphore.", e);
+                endOnceByRemovingThreadLocalsAndUnlocking();
+                Thread.currentThread().interrupt();
             }
         }
         this.txnInTransaction.set(true);
         this.txnMode.set(readWrite);
         this.txnType.set(txnType);
         switch (readWrite) {
-            case READ:
+            case READ -> {
                 txnGraph.set(lastCommittedGraph);
                 txnReadTransactionVersion.set(dataVersion.get());
                 openReadTransactions.getAndIncrement();
-                transactionCoordinator.registerCurrentThread(() -> {
-                    openReadTransactions.getAndDecrement();
-                });
-                break;
-            case WRITE:
+                transactionCoordinator.registerCurrentThread(openReadTransactions::getAndDecrement);
+            }
+            case WRITE -> {
                 graphBeforeCurrentWriteTransaction = wrappedGraph;
                 wrappedGraph = new FastDeltaGraph(wrappedGraph);
                 txnGraph.set(wrappedGraph);
                 transactionCoordinator.registerCurrentThread(() -> {
-                    writeSemaphore.release();
                     wrappedGraph = graphBeforeCurrentWriteTransaction;
+                    writeSemaphore.release();
                 });
-                break;
+            }
+            default -> throw new IllegalStateException("Unexpected value: " + readWrite);
         }
     }
 
@@ -243,8 +237,8 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
         wrappedGraph = new FastDeltaGraph(wrappedGraph);
         txnGraph.set(wrappedGraph);
         transactionCoordinator.registerCurrentThread(() -> {
-            writeSemaphore.release();
             wrappedGraph = graphBeforeCurrentWriteTransaction;
+            writeSemaphore.release();
         });
         return true;
     }
@@ -255,10 +249,8 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
             if (isInTransaction()) {
                 transactionCoordinator.unregisterCurrentThread();
                 switch (transactionMode()) {
-                    case READ:
-                        openReadTransactions.getAndDecrement();
-                        break;
-                    case WRITE:
+                    case READ -> openReadTransactions.getAndDecrement();
+                    case WRITE -> {
                         final var delta = (FastDeltaGraph) wrappedGraph;
                         if (delta.hasChanges()) {
                             lastCommittedGraph = new GraphReadOnlyWrapper(wrappedGraph);
@@ -268,10 +260,11 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
                         } else {
                             wrappedGraph = delta.getBase();
                         }
-                        break;
-                    default:
+                    }
+                    default -> {
                         endOnceByRemovingThreadLocalsAndUnlocking();
                         throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
+                    }
                 }
             }
         } finally {
@@ -285,15 +278,12 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
             if (isInTransaction()) {
                 transactionCoordinator.unregisterCurrentThread();
                 switch (transactionMode()) {
-                    case READ:
-                        openReadTransactions.getAndDecrement();
-                        break;
-                    case WRITE:
-                        wrappedGraph = graphBeforeCurrentWriteTransaction;
-                        break;
-                    default:
+                    case READ -> openReadTransactions.getAndDecrement();
+                    case WRITE -> wrappedGraph = graphBeforeCurrentWriteTransaction;
+                    default -> {
                         endOnceByRemovingThreadLocalsAndUnlocking();
                         throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
+                    }
                 }
             }
         } finally {
@@ -305,13 +295,13 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
     public void end() {
         if (isTransactionMode(ReadWrite.WRITE)) {
             abort();
-            new JenaTransactionException("Write transaction - no commit or abort before end()");
+            throw new JenaTransactionException("Write transaction - no commit or abort before end()");
         } else {
             abort();
         }
     }
 
-    private boolean isTransactionMode(ReadWrite mode) {
+    private boolean isTransactionMode(final ReadWrite mode) {
         if (!isInTransaction())
             return false;
         return transactionMode() == mode;
@@ -427,9 +417,9 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
 
     @Override
     public void close() {
-        final var txnGraph = this.txnGraph.get();
-        if (txnGraph != null) {
-            txnGraph.close();
+        final var g = this.txnGraph.get();
+        if (g != null) {
+            g.close();
         }
         endOnceByRemovingThreadLocalsAndUnlocking();
     }
@@ -446,9 +436,9 @@ class GraphWrapperChainingDeltasTransactional implements Graph, Transactional {
 
     @Override
     public boolean isClosed() {
-        final var txnGraph = this.txnGraph.get();
-        if (txnGraph != null) {
-            return txnGraph.isClosed();
+        final var g = this.txnGraph.get();
+        if (g != null) {
+            return g.isClosed();
         }
         return true;
     }
