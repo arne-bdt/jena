@@ -73,7 +73,7 @@ public class GraphReadOnlyWrapper implements Graph {
 
                 @Override
                 public boolean handlesLiteralTyping() {
-                    return wrappedGraph.getCapabilities().sizeAccurate();
+                    return wrappedGraph.getCapabilities().handlesLiteralTyping();
                 }
             };
         }
