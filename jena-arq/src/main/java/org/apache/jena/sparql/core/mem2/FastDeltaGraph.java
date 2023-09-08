@@ -22,6 +22,7 @@ import org.apache.jena.graph.Capabilities;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.graph.impl.AllCapabilities;
 import org.apache.jena.graph.impl.GraphBase;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -139,29 +140,6 @@ public class FastDeltaGraph extends GraphBase {
 
     @Override
     public Capabilities getCapabilities() {
-        if (null == capabilities) {
-            capabilities = new Capabilities() {
-                @Override
-                public boolean sizeAccurate() {
-                    return true;
-                }
-
-                @Override
-                public boolean addAllowed() {
-                    return true;
-                }
-
-                @Override
-                public boolean deleteAllowed() {
-                    return true;
-                }
-
-                @Override
-                public boolean handlesLiteralTyping() {
-                    return false;
-                }
-            };
-        }
-        return capabilities;
+        return AllCapabilities.updateAllowed;
     }
 }

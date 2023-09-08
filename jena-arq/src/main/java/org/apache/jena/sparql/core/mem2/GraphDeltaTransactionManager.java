@@ -15,18 +15,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.jena.sparql.core.mem2;
 
-public interface TransactionCoordinatorScheduler extends AutoCloseable {
+import org.apache.jena.graph.Graph;
 
-    static TransactionCoordinatorScheduler getInstance() {
-        return TransactionCoordinatorSchedulerImpl.getInstance();
-    }
+import java.util.Queue;
 
-    void register(TransactionCoordinator coordinator);
+public interface GraphDeltaTransactionManager {
+    boolean isTransactionOpen();
 
-    void unregister(TransactionCoordinator coordinator);
+    boolean hasUnmergedDeltas();
 
-    int getStaleTransactionRemovalTimerIntervalMs();
+    boolean hasReader();
+
+    boolean isReadyToMerge();
+
+    boolean isReadyToApplyDeltas();
+
+    Graph getLastCommittedGraphToRead();
+
+    void releaseGraphFromRead(Graph graph);
+
+    FastDeltaGraph beginTransaction();
+
+    void commit();
+
+    void rollback();
+
+    int getDeltaChainLength();
+
+    void mergeDeltaChain();
+
+    void applyDeltas(Queue<FastDeltaGraph> deltas);
 }

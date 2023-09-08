@@ -215,9 +215,9 @@ public class GraphWrapperTransactionalTest {
         // a separate thread should apply the deltas to the stale graph
         Awaitility
                 .waitAtMost(Duration.ofMillis(200))
-                .until(() -> sut.getNumberOfDeltasToApplyToStaleGraph() == 0);
+                .until(() -> sut.getNumberOfDeltasToApplyToTail() == 0);
 
-        assertEquals(0, sut.getNumberOfDeltasToApplyToStaleGraph());
+        assertEquals(0, sut.getNumberOfDeltasToApplyToTail());
         assertEquals(1, sut.getActiveGraphLengthOfDeltaChain());
         assertEquals(0, sut.getStaleGraphLengthOfDeltaChain());
 
@@ -234,7 +234,7 @@ public class GraphWrapperTransactionalTest {
                 .until(() -> sut.getStaleGraphLengthOfDeltaChain() == 0);
 
         // all cleaned up
-        assertEquals(0, sut.getNumberOfDeltasToApplyToStaleGraph());
+        assertEquals(0, sut.getNumberOfDeltasToApplyToTail());
         assertEquals(0, sut.getActiveGraphLengthOfDeltaChain());
         assertEquals(0, sut.getStaleGraphLengthOfDeltaChain());
     }
