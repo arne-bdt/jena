@@ -19,6 +19,7 @@
 package org.apache.jena.sparql.core.mem2;
 
 import org.apache.jena.graph.*;
+import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.query.TxnType;
@@ -60,7 +61,7 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     private final ThreadLocal<ReadWrite> txnMode = new ThreadLocal<>();
     private final ThreadLocal<Graph> txnGraph = new ThreadLocal<>();
 
-    private final ThreadLocal<GraphDeltaTransactionManager> txnManager = new ThreadLocal<>();
+    private final ThreadLocal<GraphChain> txnManager = new ThreadLocal<>();
     private final ThreadLocal<Long> txnReadTransactionVersion = new ThreadLocal<>();
     private final AtomicBoolean delayedUpdateHasBeenScheduled = new AtomicBoolean(false);
 
@@ -68,8 +69,8 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     private final ForkJoinPool forkJoinPool;
     private final TransactionCoordinatorMRPlusSW transactionCoordinator;
-    private GraphDeltaTransactionManager active;
-    private GraphDeltaTransactionManager stale;
+    private GraphChain active;
+    private GraphChain stale;
 
     public GraphWrapperTransactional() {
         this(GraphMem2Fast::new);
@@ -84,16 +85,36 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     }
 
     public GraphWrapperTransactional(final Supplier<Graph> graphFactory, final ForkJoinPool forkJoinPool) {
-        this.active = new GraphDeltaTransactionManagerImpl(graphFactory);
-        this.stale = new GraphDeltaTransactionManagerImpl(graphFactory);
+        this.active = new GraphChainImpl(graphFactory.get());
+        this.stale = new GraphChainImpl(graphFactory.get());
         this.forkJoinPool = forkJoinPool;
         this.transactionCoordinator = new TransactionCoordinatorMRPlusSW();
     }
 
     public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory,
                                      final ForkJoinPool forkJoinPool) {
-        this.active = new GraphDeltaTransactionManagerImpl(graphFactory, graphToWrap);
-        this.stale = new GraphDeltaTransactionManagerImpl(graphFactory, graphToWrap);
+        final Graph graphToUse = graphFactory.get();
+        final Graph activeBase, staleBase;
+        if (graphToUse.getClass().equals(graphToWrap.getClass()) // graphToWrap has the same typ the factory produces
+                && graphToWrap instanceof GraphMem2 graphMem2) { // and the type is GraphMem2, thus it supports copy
+            // we copy the graph to wrap to avoid that the graph to wrap is modified
+            activeBase = graphMem2.copy();
+            staleBase = graphMem2.copy();
+        } else {
+            activeBase = graphToUse; /*otherwise use the supplied empty graph*/
+            if (activeBase instanceof GraphMem2 activeBaseAsMem2) { //if it supports copy
+                graphToWrap.find().forEachRemaining(activeBaseAsMem2::add); // only fill the activeBase
+                staleBase = activeBaseAsMem2.copy(); // copy activeBase to staleBase
+            } else {  // if copy is not supported, we have to fill both graphs
+                staleBase = graphFactory.get();
+                graphToWrap.find().forEachRemaining(t -> {
+                    activeBase.add(t);
+                    staleBase.add(t);
+                });
+            }
+        }
+        this.active = new GraphChainImpl(activeBase);
+        this.stale = new GraphChainImpl(staleBase);
         this.forkJoinPool = forkJoinPool;
         this.transactionCoordinator = new TransactionCoordinatorMRPlusSW();
     }
@@ -127,7 +148,7 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                 }
             } catch (InterruptedException e) {
                 endOnceByRemovingThreadLocalsAndUnlocking();
-                Thread.currentThread().interrupt();
+                throw new JenaTransactionException("Interrupted while waiting for write semaphore.", e);
             }
         }
         this.txnInTransaction.set(true);
@@ -137,17 +158,17 @@ public class GraphWrapperTransactional implements Graph, Transactional {
         this.txnManager.set(txHead);
         switch (readWrite) {
             case READ -> {
-                final var graphToRead = txHead.getLastCommittedGraphToRead();
+                final var graphToRead = txHead.getLastCommittedAndIncReaderCounter();
                 txnGraph.set(graphToRead);
                 txnReadTransactionVersion.set(dataVersion.get());
                 transactionCoordinator.registerCurrentThread(() -> {
-                    txHead.releaseGraphFromRead(graphToRead);
+                    txHead.decrementReaderCounter();
                 });
             }
             case WRITE -> {
-                txnGraph.set(txHead.beginTransaction());
+                txnGraph.set(txHead.prepareGraphForWriting());
                 transactionCoordinator.registerCurrentThread(() -> {
-                    txHead.rollback();
+                    txHead.discardGraphForWriting();
                     writeSemaphore.release();
                 });
             }
@@ -160,33 +181,33 @@ public class GraphWrapperTransactional implements Graph, Transactional {
             var manager = txnManager.get();
             if (transactionMode() == ReadWrite.WRITE) {
                 writeSemaphore.release();
-                if (manager != null && manager.isTransactionOpen()) {
-                    manager.rollback();
+                if (manager != null && manager.hasGraphForWriting()) {
+                    manager.discardGraphForWriting();
                 }
             } else {
                 if (manager != null) {
-                    manager.releaseGraphFromRead(txnGraph.get());
+                    manager.decrementReaderCounter();
                 }
             }
-            txnManager.remove();
-            txnGraph.remove();
-            txnMode.remove();
-            txnType.remove();
-            txnReadTransactionVersion.remove();
-            txnInTransaction.remove();
         }
+        txnManager.remove();
+        txnGraph.remove();
+        txnMode.remove();
+        txnType.remove();
+        txnReadTransactionVersion.remove();
+        txnInTransaction.remove();
     }
 
     private void switchStaleAndActiveIfNeededAndPossible() {
         if (active.getDeltaChainLength() > 0          // only if the active graph has at least one delta switching makes sense
-                && !active.isTransactionOpen()        // only if there is no open transaction on the active graph
+                && !active.hasGraphForWriting()        // only if there is no open transaction on the active graph
                 && !stale.hasReader()                // and there is no reader on the stale graph
-                && !stale.isTransactionOpen()) {     // and there is no open transaction on the stale graph
+                && !stale.hasGraphForWriting()) {     // and there is no open transaction on the stale graph
             try {
                 lockForUpdatingStaleGraph.lock();            // wait for the stale graph to be updated
                 // check again, because it could have changed in the meantime
                 if (this.deltasToApplyToTail.isEmpty()      //check if all deltas have been applied to the stale graph
-                        && !active.isTransactionOpen()        // only if there is no open transaction on the active graph
+                        && !active.hasGraphForWriting()        // only if there is no open transaction on the active graph
                         && stale.getDeltaChainLength() == 0) { // check if the stale graph has no deltas
                     final var tmp = stale;
                     stale = active;
@@ -227,12 +248,12 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                 return false;
             }
             final var manager = txnManager.get();
-            manager.releaseGraphFromRead(txnGraph.get());
+            manager.decrementReaderCounter();
             transactionCoordinator.unregisterCurrentThread();
             txnMode.set(ReadWrite.WRITE);
-            txnGraph.set(manager.beginTransaction());
+            txnGraph.set(manager.prepareGraphForWriting());
             transactionCoordinator.registerCurrentThread(() -> {
-                manager.rollback();
+                manager.discardGraphForWriting();
                 writeSemaphore.release();
             });
             return true;
@@ -249,11 +270,12 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                 transactionCoordinator.unregisterCurrentThread();
                 final var manager = txnManager.get();
                 switch (transactionMode()) {
-                    case READ -> manager.releaseGraphFromRead(txnGraph.get());
+                    case READ -> manager.decrementReaderCounter();
                     case WRITE -> {
                         final var delta = (FastDeltaGraph) txnGraph.get();
-                        manager.commit();
+                        manager.linkGraphForWritingToChain();
                         if (delta.hasChanges()) {
+                            dataVersion.incrementAndGet(); // increment the data version to signal that the data has changed
                             deltasToApplyToTail.add(delta);
                             if (manager.getDeltaChainLength() > MAX_DELTA_CHAIN_LENGTH) {
                                 // if there are many consecutive write transactions, they might always be faster than the async call
@@ -263,12 +285,13 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                             }
                             forkJoinPool.execute(this::updateTailIfPossible);
                         }
+                        writeSemaphore.release();
                     }
                     default -> {
-                        endOnceByRemovingThreadLocalsAndUnlocking();
                         throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
                     }
                 }
+                txnInTransaction.set(false);
             }
         } finally {
             endOnceByRemovingThreadLocalsAndUnlocking();
@@ -276,17 +299,22 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     }
 
     private void updateTailIfPossible() {
-        if (stale.isReadyToMerge()) {
-            lockForUpdatingStaleGraph.lock();
+        var isReadyToMerge = stale.isReadyToMerge();
+        if (isReadyToMerge) { /*test to avoid unnecessary locking*/
             try {
-                stale.mergeDeltaChain();
-                stale.applyDeltas(deltasToApplyToTail);
+                lockForUpdatingStaleGraph.lock();
+                isReadyToMerge = stale.isReadyToMerge(); /*test again with the lock in place*/
+                if (stale.isReadyToMerge()) {
+                    stale.mergeDeltaChain();
+                    stale.applyDeltas(deltasToApplyToTail);
+                }
             } catch (Exception exception) {
                 LOGGER.error("Error while updating stale graph.", exception);
             } finally {
                 lockForUpdatingStaleGraph.unlock();
             }
-        } else {
+        }
+        if (!isReadyToMerge) {
             // While there are still open read transactions, we wait a bit and try again.
             // There are no new read transactions possible, so we will eventually succeed.
             if (delayedUpdateHasBeenScheduled.compareAndSet(false, true)) {
@@ -310,13 +338,16 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                 transactionCoordinator.unregisterCurrentThread();
                 final var manager = txnManager.get();
                 switch (transactionMode()) {
-                    case READ -> manager.releaseGraphFromRead(txnGraph.get());
-                    case WRITE -> manager.rollback();
+                    case READ -> manager.decrementReaderCounter();
+                    case WRITE -> {
+                        manager.discardGraphForWriting();
+                        writeSemaphore.release();
+                    }
                     default -> {
-                        endOnceByRemovingThreadLocalsAndUnlocking();
                         throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
                     }
                 }
+                txnInTransaction.set(false);
             }
         } finally {
             endOnceByRemovingThreadLocalsAndUnlocking();

@@ -22,6 +22,8 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
+import org.apache.jena.query.TxnType;
+import org.apache.jena.sparql.core.Transactional;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -34,18 +36,29 @@ import java.util.List;
 public class TestGraphAdd {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
             "../testing/BSBM/bsbm-1m.nt.gz",
+            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-25m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
-            "GraphMem2Fast (current)",
-            "GraphMem2Legacy (current)",
-            "GraphMem2Roaring (current)",
-            "GraphMem (Jena 4.8.0)",
+//            "GraphMem (current)",
+//            "GraphMem2Fast (current)",
+//            "GraphMem2Legacy (current)",
+//            "GraphMem2Roaring (current)",
+//            "GraphMem (Jena 4.8.0)",
+            "GraphWrapperTransactional (current)",
+            "GraphTxn (current)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Object> graphAdd;
@@ -60,8 +73,17 @@ public class TestGraphAdd {
 
     private Object graphAddCurrent() {
         var sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
-        triplesCurrent.forEach(sutCurrent::add);
-        Assert.assertEquals(triplesCurrent.size(), sutCurrent.size());
+        if (sutCurrent instanceof Transactional transactional) {
+            transactional.begin(TxnType.WRITE);
+            triplesCurrent.forEach(sutCurrent::add);
+            transactional.commit();
+            transactional.begin(TxnType.READ);
+            Assert.assertEquals(triplesCurrent.size(), sutCurrent.size());
+            transactional.end();
+        } else {
+            triplesCurrent.forEach(sutCurrent::add);
+            Assert.assertEquals(triplesCurrent.size(), sutCurrent.size());
+        }
         return sutCurrent;
     }
 

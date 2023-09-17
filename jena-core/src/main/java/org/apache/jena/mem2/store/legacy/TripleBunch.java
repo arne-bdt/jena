@@ -35,4 +35,6 @@ public interface TripleBunch extends JenaSet<Triple>, Copyable<TripleBunch> {
      * @return true iff this bunch is implemented as an arrays
      */
     boolean isArray();
+
+    <T extends TripleBunch> T copy();
 }

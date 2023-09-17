@@ -49,4 +49,6 @@ public interface FastTripleBunch extends JenaSetHashOptimized<Triple>, Copyable<
      * @return true if any triple in the bunch matches the predicate
      */
     boolean anyMatchRandomOrder(Predicate<Triple> predicate);
+
+    <T extends FastTripleBunch> T copy();
 }

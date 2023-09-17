@@ -19,10 +19,13 @@
 package org.apache.jena.mem.graph;
 
 import org.apache.commons.lang3.time.StopWatch;
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
+import org.apache.jena.query.ReadWrite;
+import org.apache.jena.sparql.core.Transactional;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -35,18 +38,29 @@ import java.util.List;
 public class TestGraphMemoryConsumption {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+            "C:/temp/res_test/xxx_CGMES_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
             "../testing/BSBM/bsbm-1m.nt.gz",
+            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-25m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
+//            "GraphMem (current)",
+            "GraphWrapperTransactional (current)",
+            "GraphTxn (current)",
             "GraphMem2Fast (current)",
-            "GraphMem2Legacy (current)",
-            "GraphMem2Roaring (current)",
-            "GraphMem (Jena 4.8.0)",
+//            "GraphMem2Legacy (current)",
+//            "GraphMem2Roaring (current)",
+//            "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Object> graphFill;
@@ -75,14 +89,27 @@ public class TestGraphMemoryConsumption {
     private Object graphFillCurrent() {
         var memoryBefore = runGcAndGetUsedMemoryInMB();
         var stopwatch = StopWatch.createStarted();
-        var sut = Releases.current.createGraph(trialContext.getGraphClass());
-        allTriplesCurrent.forEach(sut::add);
+        Graph sut = null;
+        sut = Releases.current.createGraph(trialContext.getGraphClass());
+        if (sut instanceof Transactional transactional) {
+            transactional.begin(ReadWrite.WRITE);
+            allTriplesCurrent.forEach(sut::add);
+            transactional.commit();
+        } else {
+            allTriplesCurrent.forEach(sut::add);
+        }
         stopwatch.stop();
         var memoryAfter = runGcAndGetUsedMemoryInMB();
+        if (sut instanceof Transactional transactional) {
+            transactional.begin(ReadWrite.READ);
+        }
         System.out.printf("graphs: %d time to fill graphs: %s additional memory: %5.3f MB%n",
                 sut.size(),
                 stopwatch.formatTime(),
                 (memoryAfter - memoryBefore));
+        if (sut instanceof Transactional transactional) {
+            transactional.end();
+        }
         return sut;
     }
 

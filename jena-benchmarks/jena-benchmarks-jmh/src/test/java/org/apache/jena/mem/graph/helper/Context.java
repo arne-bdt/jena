@@ -49,6 +49,14 @@ public class Context {
                 this.graphClass = GraphClass.GraphMem;
                 this.jenaVersion = JenaVersion.JENA_4_8_0;
                 break;
+            case "GraphTxn (current)":
+                this.graphClass = GraphClass.GraphTxn;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphWrapperTransactional (current)":
+                this.graphClass = GraphClass.GraphWrapperTransactional;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
             default:
                 throw new IllegalArgumentException("Unknown graph implementation: " + graphImplementation);
         }
@@ -68,6 +76,8 @@ public class Context {
         GraphMem2Fast,
         GraphMem2Legacy,
         GraphMem2Roaring,
+        GraphTxn,
+        GraphWrapperTransactional
     }
 
 
