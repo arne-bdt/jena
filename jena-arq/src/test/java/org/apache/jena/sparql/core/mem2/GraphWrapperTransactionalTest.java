@@ -18,6 +18,7 @@
 
 package org.apache.jena.sparql.core.mem2;
 
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.sparql.JenaTransactionException;
 import org.awaitility.Awaitility;
@@ -51,6 +52,25 @@ public class GraphWrapperTransactionalTest {
         sut.begin(ReadWrite.READ);
         assertEquals(1, sut.size());
         sut.end();
+    }
+
+    @Test
+    public void testDeleteAndCommitDoesNotAffectWrappedGraph() {
+        var graphToWrap = new GraphMem2Fast();
+        graphToWrap.add(triple("s p o"));
+        assertEquals(1, graphToWrap.size());
+
+        var sut = new GraphWrapperTransactional(graphToWrap, () -> new GraphMem2Fast());
+        sut.begin(ReadWrite.WRITE);
+        assertEquals(1, sut.size());
+        sut.delete(triple("s p o"));
+        assertEquals(0, sut.size());
+        sut.commit();
+        sut.begin(ReadWrite.READ);
+        assertEquals(0, sut.size());
+        sut.end();
+
+        assertEquals(1, graphToWrap.size());
     }
 
     @Test
@@ -155,6 +175,7 @@ public class GraphWrapperTransactionalTest {
         var threadHasStarted = new Semaphore(1);
         var oneTripleWritten = new Semaphore(1);
         var twoTriplesWritten = new Semaphore(1);
+        var oneTripleRead = new Semaphore(1);
         oneTripleWritten.acquire();
         twoTriplesWritten.acquire();
 
@@ -168,6 +189,7 @@ public class GraphWrapperTransactionalTest {
             sut.begin(ReadWrite.READ);
             assertEquals(1, sut.size());
             sut.end();
+            oneTripleRead.release();
         });
         threadHasStarted.acquire();
         readerThread1.start();
@@ -189,12 +211,19 @@ public class GraphWrapperTransactionalTest {
         threadHasStarted.release();
 
         sut.begin(ReadWrite.WRITE);
+        assertEquals(0, sut.size());
         sut.add(triple("s1 p1 o1"));
+        assertEquals(1, sut.size());
         sut.commit();
+        oneTripleRead.acquire();
         oneTripleWritten.release();
+        oneTripleRead.acquire();
+        oneTripleRead.release();
 
         sut.begin(ReadWrite.WRITE);
+        assertEquals(1, sut.size());
         sut.add(triple("s2 p2 o2"));
+        assertEquals(2, sut.size());
         sut.commit();
         twoTriplesWritten.release();
 

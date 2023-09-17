@@ -17,12 +17,10 @@
  */
 package org.apache.jena.sparql.core.mem2;
 
-import org.apache.jena.graph.Graph;
-
 import java.util.Queue;
 
-public interface GraphDeltaTransactionManager {
-    boolean isTransactionOpen();
+public interface GraphChain {
+    boolean hasGraphForWriting();
 
     boolean hasUnmergedDeltas();
 
@@ -32,15 +30,15 @@ public interface GraphDeltaTransactionManager {
 
     boolean isReadyToApplyDeltas();
 
-    Graph getLastCommittedGraphToRead();
+    GraphReadOnlyWrapper getLastCommittedAndIncReaderCounter();
 
-    void releaseGraphFromRead(Graph graph);
+    void decrementReaderCounter();
 
-    FastDeltaGraph beginTransaction();
+    FastDeltaGraph prepareGraphForWriting();
 
-    void commit();
+    void linkGraphForWritingToChain();
 
-    void rollback();
+    void discardGraphForWriting();
 
     int getDeltaChainLength();
 

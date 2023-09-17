@@ -21,10 +21,9 @@ package org.apache.jena.sparql.core.mem2;
 import org.apache.jena.graph.Graph;
 
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.function.Supplier;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class GraphDeltaTransactionManagerImpl implements GraphDeltaTransactionManager {
+public class GraphChainImpl implements GraphChain {
 
     private Graph lastCommittedGraph;
 
@@ -32,15 +31,10 @@ public class GraphDeltaTransactionManagerImpl implements GraphDeltaTransactionMa
 
     private int deltaChainLength = 0;
 
-    private final ConcurrentLinkedQueue<Graph> readers = new ConcurrentLinkedQueue<>();
+    private final AtomicInteger readerCounter = new AtomicInteger(0);
 
-    public GraphDeltaTransactionManagerImpl(final Supplier<Graph> graphFactory) {
-        lastCommittedGraph = graphFactory.get();
-    }
-
-    public GraphDeltaTransactionManagerImpl(final Supplier<Graph> graphFactory, final Graph graphToWrap) {
-        lastCommittedGraph = graphFactory.get();
-        graphToWrap.find().forEachRemaining(lastCommittedGraph::add);
+    public GraphChainImpl(final Graph base) {
+        lastCommittedGraph = base;
     }
 
     private static Graph mergeDeltas(Graph graph) {
@@ -55,7 +49,7 @@ public class GraphDeltaTransactionManagerImpl implements GraphDeltaTransactionMa
     }
 
     @Override
-    public boolean isTransactionOpen() {
+    public boolean hasGraphForWriting() {
         return deltaGraphOfCurrentTransaction != null;
     }
 
@@ -66,41 +60,42 @@ public class GraphDeltaTransactionManagerImpl implements GraphDeltaTransactionMa
 
     @Override
     public boolean hasReader() {
-        return !readers.isEmpty();
+        return readerCounter.get() != 0;
     }
 
     @Override
     public boolean isReadyToMerge() {
-        return !hasReader() && !isTransactionOpen();
+        return !hasReader() && !hasGraphForWriting();
     }
 
     @Override
     public boolean isReadyToApplyDeltas() {
-        return !hasUnmergedDeltas() && !hasReader() && !isTransactionOpen();
+        return !hasUnmergedDeltas() && !hasReader() && !hasGraphForWriting();
     }
 
     @Override
-    public Graph getLastCommittedGraphToRead() {
-        readers.add(lastCommittedGraph);
-        return lastCommittedGraph;
+    public GraphReadOnlyWrapper getLastCommittedAndIncReaderCounter() {
+        readerCounter.incrementAndGet();
+        return new GraphReadOnlyWrapper(lastCommittedGraph);
     }
 
     @Override
-    public void releaseGraphFromRead(Graph graph) {
-        readers.remove(graph);
+    public void decrementReaderCounter() {
+        if (readerCounter.decrementAndGet() < 0)
+            throw new IllegalStateException("Reader counter is negative");
     }
 
     @Override
-    public FastDeltaGraph beginTransaction() {
-        if (isTransactionOpen())
+    public FastDeltaGraph prepareGraphForWriting() {
+        if (hasGraphForWriting())
             throw new IllegalStateException("There is already a transaction in progress");
         deltaGraphOfCurrentTransaction = new FastDeltaGraph(lastCommittedGraph);
         return deltaGraphOfCurrentTransaction;
     }
 
     @Override
-    public void commit() {
-        if (!isTransactionOpen())
+    public void linkGraphForWritingToChain() {
+        if (!hasGraphForWriting())
             throw new IllegalStateException("There is no transaction in progress");
         if (deltaGraphOfCurrentTransaction.hasChanges()) {
             lastCommittedGraph = deltaGraphOfCurrentTransaction;
@@ -110,8 +105,8 @@ public class GraphDeltaTransactionManagerImpl implements GraphDeltaTransactionMa
     }
 
     @Override
-    public void rollback() {
-        if (!isTransactionOpen())
+    public void discardGraphForWriting() {
+        if (!hasGraphForWriting())
             throw new IllegalStateException("There is no transaction in progress");
         deltaGraphOfCurrentTransaction = null;
     }
@@ -126,7 +121,7 @@ public class GraphDeltaTransactionManagerImpl implements GraphDeltaTransactionMa
         if (!this.isReadyToMerge())
             throw new IllegalStateException("Not ready to merge");
 
-        mergeDeltas(lastCommittedGraph);
+        lastCommittedGraph = mergeDeltas(lastCommittedGraph);
         deltaChainLength = 0;
     }
 

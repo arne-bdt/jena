@@ -25,6 +25,8 @@ import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.mem2.GraphMem2Legacy;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.sparql.core.mem2.GraphWrapperTransactional;
+import org.apache.jena.sparql.graph.GraphFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,6 +45,10 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
                 return new GraphMem2Legacy();
             case GraphMem2Roaring:
                 return new GraphMem2Roaring();
+            case GraphTxn:
+                return GraphFactory.createTxnGraph();
+            case GraphWrapperTransactional:
+                return new GraphWrapperTransactional();
             default:
                 throw new IllegalArgumentException("Unknown graph class: " + graphClass);
         }
