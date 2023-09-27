@@ -136,7 +136,6 @@ public class TestMEAS {
 
     @Test
     public void loadRDFSAndProfile() {
-        /*TODO: Create JMH-Benchmark out of this to prevent the JVM from taking shortcuts */
         final var g = new GraphMem2Fast();
 
         MEASData.fillGraphWithMEASData(g, numberOfAnalogValues, numberOfDiscreteValues);
