@@ -47,27 +47,30 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
 
     private static final ConcurrentMap<String, Map<URI, RDFDatatype>> typedPropertiesBySchemaUri = new ConcurrentHashMap<>();
 
-    private final static Query query = new ParameterizedSparqlString("PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\n" +
-            "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n" +
-            "PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>\n" +
-            "\n" +
-            "SELECT ?property ?primitiveType\n" +
-            "WHERE {\n" +
-            "\t ?property cims:dataType ?dataType.\n" +
-            "\t\t{\n" +
-            "\t\t\t?dataType cims:stereotype \"CIMDatatype\".\n" +
-            "\t\t\t[] rdfs:domain ?dataType;\n" +
-            "\t\t\t   cims:dataType/cims:stereotype \"Primitive\";\n" +
-            "\t\t\t   cims:dataType/rdfs:label ?primitiveType\n" +
-            "\t\t\t   FILTER (str(?primitiveType) != \"String\")\n" +
-            "\t\t}\n" +
-            "\t\tUNION\n" +
-            "\t\t{\n" +
-            "\t\t\t?dataType cims:stereotype \"Primitive\";\n" +
-            "\t\t\t\trdfs:label ?primitiveType.\n" +
-            "\t\t\t FILTER (str(?primitiveType) != \"String\")\n" +
-            "\t\t}\n" +
-            "}").asQuery();
+    private final static Query query = new ParameterizedSparqlString("""
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
+
+            SELECT ?property ?primitiveType
+            WHERE 
+            {
+                ?property cims:dataType ?dataType.
+                {
+                    ?dataType cims:stereotype "CIMDatatype".
+                    []  rdfs:domain ?dataType;
+                        cims:dataType/cims:stereotype "Primitive";
+                        cims:dataType/rdfs:label ?primitiveType.
+                    FILTER (str(?primitiveType) != "String")
+                }
+                UNION
+                {
+                    ?dataType   cims:stereotype "Primitive";
+                                rdfs:label ?primitiveType.
+                    FILTER (str(?primitiveType) != "String")
+                }
+            }
+            """).asQuery();
 
     private static String getRDFSchemaUri(String graphUri) {
         if (graphUri.endsWith("_EQ.xml")) {
