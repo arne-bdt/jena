@@ -19,9 +19,12 @@
 package org.apache.jena.mem.graph;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.datatypes.xsd.XSDDateTime;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem2.GraphMem2Fast;
@@ -35,11 +38,12 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
-import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,10 +62,12 @@ public class TestMEAS {
     @Param({"10000"})
     public String param2_numberOfDiscreteValues;
     private Graph sutGraph;
-    private DatasetGraph sutDatasetGraph;
     private Query sutAnalogQuery;
     private Query sutDiscreteQuery;
     private List<QuerySolution> sutQuerySolutions;
+    private List<MEASData.AnalogValue> sutAnalogValues;
+    private List<MEASData.DiscreteValue> sutDiscreteValues;
+
     private int numberOfAnalogValues;
     private int numberOfDiscreteValues;
 
@@ -80,11 +86,43 @@ public class TestMEAS {
         }
     }
 
+    private static void updateAnalogAndDiscreteValues(Graph g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues) {
+        for (final var analogValue : analogValues) {
+            final var subject = NodeFactory.createURI(analogValue.uuid());
+
+            final var tAnalogValueValue = g.find(subject, MEASData.AnalogValueValue.asNode(), Node.ANY).next();
+            g.delete(tAnalogValueValue);
+            g.add(Triple.create(subject, tAnalogValueValue.getPredicate(), NodeFactory.createLiteralByValue(analogValue.value(), XSDDatatype.XSDfloat)));
+
+            final var tMeasurementValueTimeStamp = g.find(subject, MEASData.MeasurementValueTimeStamp.asNode(), Node.ANY).next();
+            g.delete(tMeasurementValueTimeStamp);
+            g.add(Triple.create(subject, tMeasurementValueTimeStamp.getPredicate(), NodeFactory.createLiteral(DateTimeFormatter.ISO_INSTANT.format(analogValue.timeStamp()), XSDDatatype.XSDdateTimeStamp)));
+
+            final var tMeasurementValueStatus = g.find(subject, MEASData.MeasurementValueStatus.asNode(), Node.ANY).next();
+            g.delete(tMeasurementValueStatus);
+            g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(analogValue.status(), XSDDatatype.XSDinteger)));
+        }
+        for (final var discreteValue : discreteValues) {
+            final var subject = NodeFactory.createURI(discreteValue.uuid());
+
+            final var tDiscreteValueValue = g.find(subject, MEASData.DiscreteValueValue.asNode(), Node.ANY).next();
+            g.delete(tDiscreteValueValue);
+            g.add(Triple.create(subject, tDiscreteValueValue.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.value(), XSDDatatype.XSDinteger)));
+
+            final var tMeasurementValueTimeStamp = g.find(subject, MEASData.MeasurementValueTimeStamp.asNode(), Node.ANY).next();
+            g.delete(tMeasurementValueTimeStamp);
+            g.add(Triple.create(subject, tMeasurementValueTimeStamp.getPredicate(), NodeFactory.createLiteral(DateTimeFormatter.ISO_INSTANT.format(discreteValue.timeStamp()), XSDDatatype.XSDdateTimeStamp)));
+
+            final var tMeasurementValueStatus = g.find(subject, MEASData.MeasurementValueStatus.asNode(), Node.ANY).next();
+            g.delete(tMeasurementValueStatus);
+            g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.status(), XSDDatatype.XSDinteger)));
+        }
+    }
 
     private List<QuerySolution> queryAnalogAndDigitalValues(Graph graph) {
         var model = ModelFactory.createModelForGraph(graph);
 
-        var result = new ArrayList<QuerySolution>(100000);
+        var result = new ArrayList<QuerySolution>(numberOfAnalogValues + numberOfDiscreteValues);
         QueryExecutionFactory.create("""
                         PREFIX meas: <http://www.fancyTSO.org/OurCIMModel/MEASv1#>
                         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -110,7 +148,7 @@ public class TestMEAS {
 
     private List<QuerySolution> queryAnalogAndDigitalValuesWithPreparedQueries(DatasetGraph datasetGraph) {
 
-        var result = new ArrayList<QuerySolution>(100000);
+        var result = new ArrayList<QuerySolution>(numberOfAnalogValues + numberOfDiscreteValues);
 
         var queryExecutionAnalog = QueryExecutionFactory.create(sutAnalogQuery, datasetGraph);
         var queryExecutionDiscrete = QueryExecutionFactory.create(sutDiscreteQuery, datasetGraph);
@@ -121,48 +159,61 @@ public class TestMEAS {
         return result;
     }
 
-    private Pair<List<AnalogValue>, List<DiscreteValue>> fillQueryResultsIntoLists(List<QuerySolution> result) {
-        final var analogValues = new ArrayList<AnalogValue>(numberOfAnalogValues);
-        final var discreteValues = new ArrayList<DiscreteValue>(numberOfDiscreteValues);
+    private Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillQueryResultsIntoLists(List<QuerySolution> result) {
+        final var analogValues = new ArrayList<MEASData.AnalogValue>(numberOfAnalogValues);
+        final var discreteValues = new ArrayList<MEASData.DiscreteValue>(numberOfDiscreteValues);
         for (var querySolution : result) {
             if (querySolution.contains("analogValue")) {
-                analogValues.add(new AnalogValue((float) querySolution.getLiteral("analogValue").getValue(), ((XSDDateTime) querySolution.getLiteral("timeStamp").getValue()).asCalendar().toInstant(), (int) querySolution.getLiteral("status").getValue()));
+                analogValues.add(new MEASData.AnalogValue(querySolution.getResource("s").getURI(), (float) querySolution.getLiteral("analogValue").getValue(), ((XSDDateTime) querySolution.getLiteral("timeStamp").getValue()).asCalendar().toInstant(), (int) querySolution.getLiteral("status").getValue()));
             } else {
-                discreteValues.add(new DiscreteValue((int) querySolution.getLiteral("discreteValue").getValue(), ((XSDDateTime) querySolution.getLiteral("timeStamp").getValue()).asCalendar().toInstant(), (int) querySolution.getLiteral("status").getValue()));
+                discreteValues.add(new MEASData.DiscreteValue(querySolution.getResource("s").getURI(), (int) querySolution.getLiteral("discreteValue").getValue(), ((XSDDateTime) querySolution.getLiteral("timeStamp").getValue()).asCalendar().toInstant(), (int) querySolution.getLiteral("status").getValue()));
             }
         }
         return Pair.of(analogValues, discreteValues);
     }
 
     @Test
+    @Ignore("Only for debugging.")
     public void loadRDFSAndProfile() {
         final var g = new GraphMem2Fast();
 
-        MEASData.fillGraphWithMEASData(g, numberOfAnalogValues, numberOfDiscreteValues);
+        final var analogValues = MEASData.generateRandomAnalogValues(90000);
+        final var discreteValues = MEASData.generateRandomDiscreteValues(10000);
+
+        MEASData.addAnalogValuesToGraph(g, analogValues);
+        MEASData.addDiscreteValuesToGraph(g, discreteValues);
 
         var result = queryAnalogAndDigitalValues(g);
 
-        fillQueryResultsIntoLists(result);
+        var lists = fillQueryResultsIntoLists(result);
 
         //result = queryAnalogAndDigitalValuesWithPreparedQueries(DatasetGraphFactory.wrap(g));
 
         //fillQueryResultsIntoLists(result);
 
-        fillListsByGraph(g);
+        var lists2 = fillListsByGraph(g);
+
+        final var updatedAnalogValues = MEASData.getRandomlyUpdatedAnalogValues(analogValues);
+        final var updatedDiscreteValues = MEASData.getRandomlyUpdatedDiscreteValues(discreteValues);
+
+        updateAnalogAndDiscreteValues(g, updatedAnalogValues, updatedDiscreteValues);
+
+        var lists3 = fillListsByGraph(g);
 
         int i = 0;
     }
 
-//    @Benchmark
-//    public Graph createGraphAndFillWithMEASData() {
-//        final var g = createGraph();
-//        MEASData.fillGraphWithMEASData(g, numberOfAnalogValues, numberOfDiscreteValues);
-//        return g;
-//    }
+    @Benchmark
+    public Graph createGraphAndFillWithMEASData() {
+        final var g = createGraph();
+        MEASData.addAnalogValuesToGraph(g, sutAnalogValues);
+        MEASData.addDiscreteValuesToGraph(g, sutDiscreteValues);
+        return g;
+    }
 
     @Benchmark
     public List<QuerySolution> queryAnalogAndDigitalValuesWithPreparedQueries() {
-        return queryAnalogAndDigitalValuesWithPreparedQueries(sutDatasetGraph);
+        return queryAnalogAndDigitalValuesWithPreparedQueries(DatasetGraphFactory.wrap(this.sutGraph));
     }
 
     @Benchmark
@@ -171,50 +222,58 @@ public class TestMEAS {
     }
 
     @Benchmark
-    public Pair<List<AnalogValue>, List<DiscreteValue>> fillQueryResultsIntoLists() {
+    public Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillQueryResultsIntoLists() {
         return fillQueryResultsIntoLists(sutQuerySolutions);
     }
 
     @Benchmark
-    public Pair<List<AnalogValue>, List<DiscreteValue>> fillListsByGraph() {
+    public Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillListsByGraph() {
         return fillListsByGraph(sutGraph);
     }
 
-    private Pair<List<AnalogValue>, List<DiscreteValue>> fillListsByGraph(Graph g) {
-        final var analogValues = new ArrayList<AnalogValue>(numberOfAnalogValues);
-        final var discreteValues = new ArrayList<DiscreteValue>(numberOfDiscreteValues);
+    @Benchmark
+    public Graph updateAllValuesInGraph() {
+        updateAnalogAndDiscreteValues(sutGraph, sutAnalogValues, sutDiscreteValues);
+        return sutGraph;
+    }
+
+    private Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillListsByGraph(Graph g) {
+        final var analogValues = new ArrayList<MEASData.AnalogValue>(numberOfAnalogValues);
+        final var discreteValues = new ArrayList<MEASData.DiscreteValue>(numberOfDiscreteValues);
         g.stream(Node.ANY, MEASData.AnalogValueValue.asNode(), Node.ANY)
                 .forEach(triple -> {
                     final var s = triple.getSubject();
                     final var timeStamp = ((XSDDateTime) g.find(s, MEASData.MeasurementValueTimeStamp.asNode(), Node.ANY).next().getObject().getLiteralValue()).asCalendar().toInstant();
                     final var status = (int) g.find(s, MEASData.MeasurementValueStatus.asNode(), Node.ANY).next().getObject().getLiteralValue();
-                    analogValues.add(new AnalogValue((float) triple.getObject().getLiteralValue(), timeStamp, status));
+                    analogValues.add(new MEASData.AnalogValue(s.getURI(), (float) triple.getObject().getLiteralValue(), timeStamp, status));
                 });
         g.stream(Node.ANY, MEASData.DiscreteValueValue.asNode(), Node.ANY)
                 .forEach(triple -> {
                     final var s = triple.getSubject();
                     final var timeStamp = ((XSDDateTime) g.find(s, MEASData.MeasurementValueTimeStamp.asNode(), Node.ANY).next().getObject().getLiteralValue()).asCalendar().toInstant();
                     final var status = (int) g.find(s, MEASData.MeasurementValueStatus.asNode(), Node.ANY).next().getObject().getLiteralValue();
-                    discreteValues.add(new DiscreteValue((int) triple.getObject().getLiteralValue(), timeStamp, status));
+                    discreteValues.add(new MEASData.DiscreteValue(s.getURI(), (int) triple.getObject().getLiteralValue(), timeStamp, status));
                 });
         return Pair.of(analogValues, discreteValues);
     }
 
-
-
-    private record AnalogValue(float value, Instant timeStamp, int status) {
-    }
-
-    private record DiscreteValue(int value, Instant timeStamp, int status) {
+    @Setup(Level.Iteration)
+    public void setupIteration() {
+        this.sutAnalogValues = MEASData.getRandomlyUpdatedAnalogValues(sutAnalogValues);
+        this.sutDiscreteValues = MEASData.getRandomlyUpdatedDiscreteValues(sutDiscreteValues);
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         this.numberOfAnalogValues = Integer.parseInt(param1_numberOfAnalogValues);
         this.numberOfDiscreteValues = Integer.parseInt(param2_numberOfDiscreteValues);
         this.sutGraph = createGraph();
-        MEASData.fillGraphWithMEASData(this.sutGraph, numberOfAnalogValues, numberOfDiscreteValues);
-        this.sutDatasetGraph = DatasetGraphFactory.wrap(this.sutGraph);
+        this.sutAnalogValues = MEASData.generateRandomAnalogValues(numberOfAnalogValues);
+        this.sutDiscreteValues = MEASData.generateRandomDiscreteValues(numberOfDiscreteValues);
+
+        MEASData.addAnalogValuesToGraph(sutGraph, sutAnalogValues);
+        MEASData.addDiscreteValuesToGraph(sutGraph, sutDiscreteValues);
+
         this.sutAnalogQuery = QueryFactory.create("""
                 PREFIX meas: <http://www.fancyTSO.org/OurCIMModel/MEASv1#>
                 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -231,7 +290,7 @@ public class TestMEAS {
                            meas:MeasurementValue.timeStamp ?timeStamp;
                            meas:MeasurementValue.status ?status.}
                 """);
-        this.sutQuerySolutions = queryAnalogAndDigitalValuesWithPreparedQueries(this.sutDatasetGraph);
+        this.sutQuerySolutions = queryAnalogAndDigitalValuesWithPreparedQueries(DatasetGraphFactory.wrap(this.sutGraph));
     }
 
     @Test

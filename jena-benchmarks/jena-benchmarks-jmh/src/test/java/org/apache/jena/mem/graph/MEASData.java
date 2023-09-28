@@ -26,11 +26,79 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.vocabulary.RDF;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.format.DateTimeFormatter;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 public class MEASData {
+
+    public static List<AnalogValue> generateRandomAnalogValues(int numberOfAnalogValues) {
+        final var list = new ArrayList<AnalogValue>(numberOfAnalogValues);
+        final var random = new Random();
+        for (int i = 0; i < numberOfAnalogValues; i++) {
+            list.add(new AnalogValue("_" + UUID.randomUUID(), random.nextFloat(), Clock.systemUTC().instant(), random.nextInt()));
+        }
+        return list;
+    }
+
+    public static List<DiscreteValue> generateRandomDiscreteValues(int numberOfDiscreteValues) {
+        final var list = new ArrayList<DiscreteValue>(numberOfDiscreteValues);
+        final var random = new Random();
+        for (int i = 0; i < numberOfDiscreteValues; i++) {
+            list.add(new DiscreteValue("_" + UUID.randomUUID(), random.nextInt(), Clock.systemUTC().instant(), random.nextInt()));
+        }
+        return list;
+    }
+
+    public static List<AnalogValue> getRandomlyUpdatedAnalogValues(List<AnalogValue> analogValues) {
+        final var random = new Random();
+        final var newValues = new ArrayList<AnalogValue>(analogValues.size());
+        for (final var analogValue : analogValues) {
+            newValues.add(new AnalogValue(analogValue.uuid(), random.nextFloat(), Clock.systemUTC().instant(), random.nextInt()));
+        }
+        // Shuffle is important because the order might play a role. We want to test the performance of the
+        // contains method regardless of the order
+        Collections.shuffle(newValues, random);
+        return newValues;
+    }
+
+    public static List<DiscreteValue> getRandomlyUpdatedDiscreteValues(List<DiscreteValue> discreteValues) {
+        final var random = new Random(4711);
+        final var newValues = new ArrayList<DiscreteValue>(discreteValues.size());
+        for (final var discreteValue : discreteValues) {
+            newValues.add(new DiscreteValue(discreteValue.uuid(), random.nextInt(), Clock.systemUTC().instant(), random.nextInt()));
+        }
+        // Shuffle is important because the order might play a role. We want to test the performance of the
+        // contains method regardless of the order
+        Collections.shuffle(newValues, random);
+        return newValues;
+    }
+
+    public static void addAnalogValuesToGraph(final Graph graph, final List<AnalogValue> analogValues) {
+        final var model = ModelFactory.createModelForGraph(graph);
+
+        final var analogTypeProvider = new NextStringInArrayProvider(AnalogTypes);
+        for (final var analogValue : analogValues) {
+            model.createResource(analogValue.uuid())
+                    .addProperty(RDF.type, model.createResource(MEAS_NS + analogTypeProvider.next()))
+                    .addProperty(MeasurementValueTimeStamp, DateTimeFormatter.ISO_INSTANT.format(analogValue.timeStamp()), XSDDatatype.XSDdateTimeStamp)
+                    .addProperty(MeasurementValueStatus, Integer.toString(analogValue.status()), XSDDatatype.XSDinteger)
+                    .addProperty(AnalogValueValue, Float.toString(analogValue.value()), XSDDatatype.XSDfloat);
+        }
+    }
+
+    public static void addDiscreteValuesToGraph(final Graph graph, final List<DiscreteValue> discreteValues) {
+        final var model = ModelFactory.createModelForGraph(graph);
+
+        final var discreteTypeProvider = new NextStringInArrayProvider(DiscreteTypes);
+        for (final var discreteValue : discreteValues) {
+            model.createResource(discreteValue.uuid())
+                    .addProperty(RDF.type, model.createResource(MEAS_NS + discreteTypeProvider.next()))
+                    .addProperty(MeasurementValueTimeStamp, DateTimeFormatter.ISO_INSTANT.format(discreteValue.timeStamp()), XSDDatatype.XSDdateTimeStamp)
+                    .addProperty(MeasurementValueStatus, Integer.toString(discreteValue.status()), XSDDatatype.XSDinteger)
+                    .addProperty(DiscreteValueValue, Integer.toString(discreteValue.value()), XSDDatatype.XSDinteger);
+        }
+    }
 
     public static final String MEAS_NS = "http://www.fancyTSO.org/OurCIMModel/MEASv1#";
     private static final Model m = ModelFactory.createDefaultModel();
@@ -41,28 +109,34 @@ public class MEASData {
     private static final String[] AnalogTypes = {"SomeAnalog", "ActivePowerAnalog", "ReactivePowerAnalog", "VoltageAnalog", "PhaseAngleAnalog", "GlobalRadiationAnalog", "HumidityAnalog", "TemperatureAnalog", "WindSpeedAnalog", "WindDirectionAnalog", "FrequencyAnalog", "PowerFactorAnalog", "CurrentAnalog"};
     private static final String[] DiscreteTypes = {"PhaseChangerStep", "BreakerStatus", "SwitchStatus", "TapChangerStatus", "TapChangerStep", "TapChangerControlMode", "TapChangerNeutralStatus", "TapChangerKind", "TapChangerMode", "TapChangerControlKind"};
 
-    public static void fillGraphWithMEASData(final Graph graph, final int numberOfAnalogValues, final int numberOfDiscreteValues) {
-        final var model = ModelFactory.createModelForGraph(graph);
+//    public static void fillGraphWithMEASData(final Graph graph, final int numberOfAnalogValues, final int numberOfDiscreteValues) {
+//        final var model = ModelFactory.createModelForGraph(graph);
+//
+//        final var random = new Random(4711);
+//
+//        final var analogTypeProvider = new NextStringInArrayProvider(AnalogTypes);
+//        for (int i = 0; i < numberOfAnalogValues; i++) {
+//            model.createResource("_" + UUID.randomUUID())
+//                    .addProperty(RDF.type, model.createResource(MEAS_NS + analogTypeProvider.next()))
+//                    .addProperty(MeasurementValueTimeStamp, DateTimeFormatter.ISO_INSTANT.format(Clock.systemUTC().instant()), XSDDatatype.XSDdateTimeStamp)
+//                    .addProperty(MeasurementValueStatus, Integer.toString(random.nextInt()), XSDDatatype.XSDinteger)
+//                    .addProperty(AnalogValueValue, Float.toString(random.nextFloat()), XSDDatatype.XSDfloat);
+//        }
+//
+//        final var discreteTypeProvider = new NextStringInArrayProvider(DiscreteTypes);
+//        for (int i = 0; i < numberOfDiscreteValues; i++) {
+//            model.createResource("_" + UUID.randomUUID())
+//                    .addProperty(RDF.type, model.createResource(MEAS_NS + discreteTypeProvider.next()))
+//                    .addProperty(MeasurementValueTimeStamp, DateTimeFormatter.ISO_INSTANT.format(Clock.systemUTC().instant()), XSDDatatype.XSDdateTimeStamp)
+//                    .addProperty(MeasurementValueStatus, Integer.toString(random.nextInt()), XSDDatatype.XSDinteger)
+//                    .addProperty(DiscreteValueValue, Integer.toString(random.nextInt()), XSDDatatype.XSDinteger);
+//        }
+//    }
 
-        final var random = new Random(4711);
+    public record AnalogValue(String uuid, float value, Instant timeStamp, int status) {
+    }
 
-        final var analogTypeProvider = new NextStringInArrayProvider(AnalogTypes);
-        for (int i = 0; i < numberOfAnalogValues; i++) {
-            model.createResource("_" + UUID.randomUUID())
-                    .addProperty(RDF.type, model.createResource(MEAS_NS + analogTypeProvider.next()))
-                    .addProperty(MeasurementValueTimeStamp, DateTimeFormatter.ISO_INSTANT.format(Clock.systemUTC().instant()), XSDDatatype.XSDdateTimeStamp)
-                    .addProperty(MeasurementValueStatus, Integer.toString(random.nextInt()), XSDDatatype.XSDinteger)
-                    .addProperty(AnalogValueValue, Float.toString(random.nextFloat()), XSDDatatype.XSDfloat);
-        }
-
-        final var discreteTypeProvider = new NextStringInArrayProvider(DiscreteTypes);
-        for (int i = 0; i < numberOfDiscreteValues; i++) {
-            model.createResource("_" + UUID.randomUUID())
-                    .addProperty(RDF.type, model.createResource(MEAS_NS + discreteTypeProvider.next()))
-                    .addProperty(MeasurementValueTimeStamp, DateTimeFormatter.ISO_INSTANT.format(Clock.systemUTC().instant()), XSDDatatype.XSDdateTimeStamp)
-                    .addProperty(MeasurementValueStatus, Integer.toString(random.nextInt()), XSDDatatype.XSDinteger)
-                    .addProperty(DiscreteValueValue, Integer.toString(random.nextInt()), XSDDatatype.XSDinteger);
-        }
+    public record DiscreteValue(String uuid, int value, Instant timeStamp, int status) {
     }
 
     private static class NextStringInArrayProvider {
