@@ -208,7 +208,7 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                 // check again, because it could have changed in the meantime
                 if (this.deltasToApplyToTail.isEmpty()      //check if all deltas have been applied to the stale graph
                         && !active.hasGraphForWriting()        // only if there is no open transaction on the active graph
-                        && stale.getDeltaChainLength() == 0) { // check if the stale graph has no deltas
+                        && stale.isReadyToApplyDeltas()) {    // no reader, no writer and no unmerged deltas
                     final var tmp = stale;
                     stale = active;
                     active = tmp;
