@@ -74,6 +74,12 @@ public class MEASData {
         return newValues;
     }
 
+    public static final Property AnalogValueAnalog = m.createProperty(MEAS_NS + "AnalogValue.analog");
+    public static final Property DiscreteValueDiscrete = m.createProperty(MEAS_NS + "AnalogValue.discrete");
+
+    public static final String MEAS_NS = "http://www.fancyTSO.org/OurCIMModel/MEASv1#";
+    private static final Model m = ModelFactory.createDefaultModel();
+
     public static void addAnalogValuesToGraph(final Graph graph, final List<AnalogValue> analogValues) {
         final var model = ModelFactory.createModelForGraph(graph);
 
@@ -81,11 +87,13 @@ public class MEASData {
         for (final var analogValue : analogValues) {
             model.createResource(analogValue.uuid())
                     .addProperty(RDF.type, model.createResource(MEAS_NS + analogTypeProvider.next()))
+                    .addProperty(AnalogValueAnalog, model.createResource("_" + UUID.randomUUID()))
                     .addProperty(MeasurementValueTimeStamp, DateTimeFormatter.ISO_INSTANT.format(analogValue.timeStamp()), XSDDatatype.XSDdateTimeStamp)
                     .addProperty(MeasurementValueStatus, Integer.toString(analogValue.status()), XSDDatatype.XSDinteger)
                     .addProperty(AnalogValueValue, Float.toString(analogValue.value()), XSDDatatype.XSDfloat);
         }
     }
+    public static final Property AnalogValueValue = m.createProperty(MEAS_NS + "AnalogValue.value");
 
     public static void addDiscreteValuesToGraph(final Graph graph, final List<DiscreteValue> discreteValues) {
         final var model = ModelFactory.createModelForGraph(graph);
@@ -94,15 +102,12 @@ public class MEASData {
         for (final var discreteValue : discreteValues) {
             model.createResource(discreteValue.uuid())
                     .addProperty(RDF.type, model.createResource(MEAS_NS + discreteTypeProvider.next()))
+                    .addProperty(DiscreteValueDiscrete, model.createResource("_" + UUID.randomUUID()))
                     .addProperty(MeasurementValueTimeStamp, DateTimeFormatter.ISO_INSTANT.format(discreteValue.timeStamp()), XSDDatatype.XSDdateTimeStamp)
                     .addProperty(MeasurementValueStatus, Integer.toString(discreteValue.status()), XSDDatatype.XSDinteger)
                     .addProperty(DiscreteValueValue, Integer.toString(discreteValue.value()), XSDDatatype.XSDinteger);
         }
     }
-
-    public static final String MEAS_NS = "http://www.fancyTSO.org/OurCIMModel/MEASv1#";
-    private static final Model m = ModelFactory.createDefaultModel();
-    public static final Property AnalogValueValue = m.createProperty(MEAS_NS + "AnalogValue.value");
     public static final Property DiscreteValueValue = m.createProperty(MEAS_NS + "DiscreteValue.value");
     public static final Property MeasurementValueTimeStamp = m.createProperty(MEAS_NS + "MeasurementValue.timeStamp");
     public static final Property MeasurementValueStatus = m.createProperty(MEAS_NS + "MeasurementValue.status");
