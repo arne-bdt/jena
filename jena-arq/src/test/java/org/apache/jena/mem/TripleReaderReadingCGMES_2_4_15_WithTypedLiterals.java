@@ -154,7 +154,7 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
 
     private static RDFDatatype getDataType(String primitiveType) {
         switch (primitiveType) {
-            case "Vase64Binary":
+            case "Base64Binary":
                 return XSDDatatype.XSDbase64Binary;
             case "Boolean":
                 return XSDDatatype.XSDboolean;
