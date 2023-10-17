@@ -58,7 +58,7 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
     public List<Triple> readTriples(String graphUri) {
         var list = new ArrayList<Triple>();
         @SuppressWarnings("deprecation")
-        var g1 = new org.apache.jena.mem.GraphMem() {
+        var g1 = new org.apache.jena.mem2.GraphMem2Fast() {
             @Override
             public void add(Triple t) {
                 list.add(t);

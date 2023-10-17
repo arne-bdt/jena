@@ -97,6 +97,8 @@
     <ver.roaringbitmap>1.3.0</ver.roaringbitmap>
     <ver.opencsv>5.10</ver.opencsv>
 
+    <ver.lz4>1.8.0</ver.lz4>
+
     <!-- Testing -->
     <ver.junit4>4.13.2</ver.junit4>
     <ver.junit5>5.11.4</ver.junit5>
@@ -344,7 +346,7 @@
         <artifactId>commons-</artifactId>
         <version>${ver.commons-io}</version>
       </dependency>
-      
+
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-compress</artifactId>
@@ -697,6 +699,12 @@
         <groupId>org.roaringbitmap</groupId>
         <artifactId>RoaringBitmap</artifactId>
         <version>${ver.roaringbitmap}</version>
+      </dependency>
+
+      <dependency>
+          <groupId>org.lz4</groupId>
+          <artifactId>lz4-java</artifactId>
+          <version>${ver.lz4}</version>
       </dependency>
 
       <dependency>

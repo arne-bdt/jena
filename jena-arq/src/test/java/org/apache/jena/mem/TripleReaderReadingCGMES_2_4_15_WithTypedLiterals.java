@@ -37,11 +37,11 @@ import org.apache.jena.sparql.graph.GraphFactory;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 
 public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
 
@@ -77,8 +77,7 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
             return "C:/rd/CGMES/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/EquipmentProfileCoreRDFSAugmented-v2_4_15-4Jul2016.rdf";
         } else if (graphUri.endsWith("_SSH.xml")) {
             return "C:/rd/CGMES/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/SteadyStateHypothesisProfileRDFSAugmented-v2_4_15-16Feb2016.rdf";
-        }
-        if (graphUri.endsWith("_TP.xml")) {
+        } else if (graphUri.endsWith("_TP.xml")) {
             return "C:/rd/CGMES/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/TopologyProfileRDFSAugmented-v2_4_15-16Feb2016.rdf";
         } else if (graphUri.endsWith("_SV.xml")) {
             return "C:/rd/CGMES/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/StateVariablesProfileRDFSAugmented-v2_4_15-16Feb2016.rdf";
@@ -147,9 +146,15 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
         RDFDataMgr.read(g, rdfSchemaUri);
         var dataset = new DatasetGraphMapLink(g);
         var rowSet = QueryExecDataset.newBuilder().query(query).dataset(dataset).build().select();
-        return rowSet.stream().collect(Collectors.toMap(
-                vars -> URI.create(vars.get("property").getURI().replace("http://iec.ch/TC57/2013/CIM-schema-cim16#", "http://iec.ch/TC57/CIM100#")),
-                vars -> getDataType(vars.get("primitiveType").getLiteralLexicalForm())));
+        var map = new HashMap<URI, RDFDatatype>();
+        rowSet.forEach(vars -> {
+            map.put(URI.create(vars.get("property").getURI()),
+                    getDataType(vars.get("primitiveType").getLiteralLexicalForm()));
+            // add also the CIM100 version of the property
+            map.put(URI.create(vars.get("property").getURI().replace("http://iec.ch/TC57/2013/CIM-schema-cim16#", "http://iec.ch/TC57/CIM100#")),
+                    getDataType(vars.get("primitiveType").getLiteralLexicalForm()));
+        });
+        return map;
     }
 
     private static RDFDatatype getDataType(String primitiveType) {
