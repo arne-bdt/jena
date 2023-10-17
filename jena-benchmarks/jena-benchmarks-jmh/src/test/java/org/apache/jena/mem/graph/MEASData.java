@@ -32,6 +32,9 @@ import java.util.*;
 
 public class MEASData {
 
+    public static final Property AnalogValueAnalog = m.createProperty(MEAS_NS + "AnalogValue.analog");
+    public static final Property DiscreteValueDiscrete = m.createProperty(MEAS_NS + "AnalogValue.discrete");
+
     public static List<AnalogValue> generateRandomAnalogValues(int numberOfAnalogValues) {
         final var list = new ArrayList<AnalogValue>(numberOfAnalogValues);
         final var random = new Random();
@@ -74,8 +77,7 @@ public class MEASData {
         return newValues;
     }
 
-    public static final Property AnalogValueAnalog = m.createProperty(MEAS_NS + "AnalogValue.analog");
-    public static final Property DiscreteValueDiscrete = m.createProperty(MEAS_NS + "AnalogValue.discrete");
+
 
     public static final String MEAS_NS = "http://www.fancyTSO.org/OurCIMModel/MEASv1#";
     private static final Model m = ModelFactory.createDefaultModel();
@@ -108,6 +110,12 @@ public class MEASData {
                     .addProperty(DiscreteValueValue, Integer.toString(discreteValue.value()), XSDDatatype.XSDinteger);
         }
     }
+
+    public record AnalogValue(String uuid, float value, Instant timeStamp, int status) {
+    }
+
+    public record DiscreteValue(String uuid, int value, Instant timeStamp, int status) {
+    }
     public static final Property DiscreteValueValue = m.createProperty(MEAS_NS + "DiscreteValue.value");
     public static final Property MeasurementValueTimeStamp = m.createProperty(MEAS_NS + "MeasurementValue.timeStamp");
     public static final Property MeasurementValueStatus = m.createProperty(MEAS_NS + "MeasurementValue.status");
@@ -138,11 +146,6 @@ public class MEASData {
 //        }
 //    }
 
-    public record AnalogValue(String uuid, float value, Instant timeStamp, int status) {
-    }
-
-    public record DiscreteValue(String uuid, int value, Instant timeStamp, int status) {
-    }
 
     private static class NextStringInArrayProvider {
         private final String[] array;
