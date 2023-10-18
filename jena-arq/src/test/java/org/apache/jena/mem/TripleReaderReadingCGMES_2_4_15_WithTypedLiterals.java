@@ -24,6 +24,7 @@ import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.ParameterizedSparqlString;
 import org.apache.jena.query.Query;
 import org.apache.jena.riot.Lang;
@@ -101,7 +102,7 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
             return read(graphUri, rdfSchemaUri, Lang.RDFXML);
         } else {
             var triples = new ArrayList<Triple>();
-            var loadingGraph = new GraphMem() {
+            var loadingGraph = new GraphMem2Fast() {
                 @Override
                 public void performAdd(Triple t) {
                     triples.add(t);

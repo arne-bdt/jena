@@ -32,6 +32,10 @@ import java.util.*;
 
 public class MEASData {
 
+    public static final String MEAS_NS = "http://www.fancyTSO.org/OurCIMModel/MEASv1#";
+
+    private static final Model m = ModelFactory.createDefaultModel();
+
     public static final Property AnalogValueAnalog = m.createProperty(MEAS_NS + "AnalogValue.analog");
     public static final Property DiscreteValueDiscrete = m.createProperty(MEAS_NS + "AnalogValue.discrete");
 
@@ -76,11 +80,6 @@ public class MEASData {
         Collections.shuffle(newValues, random);
         return newValues;
     }
-
-
-
-    public static final String MEAS_NS = "http://www.fancyTSO.org/OurCIMModel/MEASv1#";
-    private static final Model m = ModelFactory.createDefaultModel();
 
     public static void addAnalogValuesToGraph(final Graph graph, final List<AnalogValue> analogValues) {
         final var model = ModelFactory.createModelForGraph(graph);
