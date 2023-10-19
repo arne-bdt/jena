@@ -87,9 +87,13 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
     }
 
     public static void read(String graphUri, Graph targetGraph) {
+        read(graphUri, targetGraph, true, false);
+    }
+
+    public static void read(String graphUri, Graph targetGraph, boolean checking, boolean canonicalValues) {
         var rdfSchemaUri = getRDFSchemaUri(graphUri);
         if (rdfSchemaUri != null) {
-            read(graphUri, rdfSchemaUri, Lang.RDFXML, targetGraph);
+            read(graphUri, rdfSchemaUri, Lang.RDFXML, targetGraph, checking, canonicalValues);
         } else {
             RDFDataMgr.read(targetGraph, graphUri);
         }
@@ -114,15 +118,23 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
     }
 
     public static List<Triple> read(String graphUri, String rdfSchemaUri, Lang lang) {
+        return read(graphUri, rdfSchemaUri, lang, true, false);
+    }
+
+    public static List<Triple> read(String graphUri, String rdfSchemaUri, Lang lang, boolean checking, boolean canonicalValues) {
         var triples = new ArrayList<Triple>();
         var streamSink = new StreamTypedTriplesToList(triples, getOrInitTypedProperties(rdfSchemaUri));
-        parseRDF(streamSink, graphUri, lang);
+        parseRDF(streamSink, graphUri, lang, checking, canonicalValues);
         return streamSink.getTriples();
     }
 
     public static void read(String graphUri, String rdfSchemaUri, Lang lang, Graph targetGraph) {
+        read(graphUri, rdfSchemaUri, lang, targetGraph, true, false);
+    }
+
+    public static void read(String graphUri, String rdfSchemaUri, Lang lang, Graph targetGraph, boolean checking, boolean canonicalValues) {
         var streamSink = new StreamTypedTriples(targetGraph, getOrInitTypedProperties(rdfSchemaUri));
-        parseRDF(streamSink, graphUri, lang);
+        parseRDF(streamSink, graphUri, lang, checking, canonicalValues);
     }
 
     private static Map<URI, RDFDatatype> getOrInitTypedProperties(String rdfSchemaUri) {
@@ -134,11 +146,13 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
         return typedProperties;
     }
 
-    private static void parseRDF(StreamRDF streamSink, String graphUri, Lang lang) {
+    private static void parseRDF(StreamRDF streamSink, String graphUri, Lang lang, boolean checking, boolean canonicalValues) {
         RDFParser.create()
                 .source(graphUri)
                 .base("x:")
-                .lang(lang)
+                .forceLang(lang)
+                .checking(checking)
+                .canonicalValues(canonicalValues)
                 .parse(streamSink);
     }
 
