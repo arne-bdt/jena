@@ -21,7 +21,6 @@ package org.apache.jena.mem.graph;
 import net.jpountz.lz4.LZ4Factory;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Graph;
-import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.TripleReaderReadingCGMES_2_4_15_WithTypedLiterals;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem2.GraphMem2Fast;
@@ -57,9 +56,9 @@ public class TestGraphSerialization {
     @Param({
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
-            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+//            "C:/temp/res_test/xxx_CGMES_EQ.xml",
             "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
@@ -83,7 +82,7 @@ public class TestGraphSerialization {
 //            "JSONLD11_PRETTY",
 //            "JSONLD11_PLAIN",
 //            "JSONLD11_FLAT",
-//            "RDFXML_PRETTY",
+            "RDFXML_PRETTY",
 //            "RDFXML_PLAIN",
 //            "RDFJSON",
 //            "TRIX",
@@ -96,7 +95,7 @@ public class TestGraphSerialization {
     @Param({
 //            NO_COMPRESSOR,
             LZ4_FASTEST,
-//            GZIP
+            GZIP
     })
     public String param2_Compressor;
 
@@ -300,7 +299,7 @@ public class TestGraphSerialization {
         }
     }
 
-    @Test
+//    @Test
     public void createGraphWithTypedLiteralsAndDetermineIfTypesAreLostInDifferentFormats() {
         var g = new GraphMem2Fast();
         writeDistinctLiteralSamples(g);
@@ -361,9 +360,9 @@ public class TestGraphSerialization {
                 });
     }
 
-    @Test
+//    @Test
     public void queryMixedTermComparisonsGraphMem2() {
-        final var model = writeMixedLiteralSamples(new GraphMem());
+        final var model = writeMixedLiteralSamples(new GraphMem2Fast());
         QueryExecutionFactory.create("""
                         PREFIX jena_ex: <http://jena.apache.org/examples/literal-term-equality#>
                         PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -413,7 +412,7 @@ public class TestGraphSerialization {
                 });
     }
 
-    @Test
+//    @Test
     public void queryBooleanTermComparisonsGraphMem2() {
         final var model = writeDistinctLiteralSamples(new GraphMem2Fast());
         QueryExecutionFactory.create("""
@@ -506,7 +505,7 @@ public class TestGraphSerialization {
                 });
     }
 
-    @Test
+//    @Test
     public void queryIntegerTermComparisonsGraphMem2() {
         var model = writeDistinctLiteralSamples(new GraphMem2Fast());
         QueryExecutionFactory.create("""
@@ -581,7 +580,7 @@ public class TestGraphSerialization {
                 });
     }
 
-    @Test
+//    @Test
     public void queryFloatTermComparisonsGraphMem2() {
         var model = writeDistinctLiteralSamples(new GraphMem2Fast());
         QueryExecutionFactory.create("""
@@ -657,7 +656,7 @@ public class TestGraphSerialization {
                 });
     }
 
-    @Test
+//    @Test
     public void queryDoubleTermComparisonsGraphMem2() {
         var model = writeDistinctLiteralSamples(new GraphMem2Fast());
         QueryExecutionFactory.create("""

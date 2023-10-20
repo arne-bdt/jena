@@ -38,11 +38,6 @@ public class DatasetGraphMem2Fast implements DatasetGraph {
     }
 
     @Override
-    public void setDefaultGraph(Graph g) {
-
-    }
-
-    @Override
     public Graph getGraph(Node graphNode) {
         return null;
     }
