@@ -499,4 +499,8 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     int getStaleGraphLengthOfDeltaChain() {
         return stale.getDeltaChainLength();
     }
+
+    public void printDeltaChainLengths() {
+        System.out.println("active: " + active.getDeltaChainLength() + " stale: " + stale.getDeltaChainLength());
+    }
 }

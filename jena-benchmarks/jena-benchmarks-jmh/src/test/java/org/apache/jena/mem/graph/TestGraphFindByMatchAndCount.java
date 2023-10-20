@@ -41,18 +41,19 @@ import static org.junit.Assert.assertNotNull;
 public class TestGraphFindByMatchAndCount {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
+            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
             "../testing/BSBM/bsbm-1m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
+//            "GraphMem (current)",
             "GraphMem2Fast (current)",
-            "GraphMem2Legacy (current)",
+//            "GraphMem2Legacy (current)",
             "GraphMem2Roaring (current)",
-            "GraphMem (Jena 4.8.0)",
+//            "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
 

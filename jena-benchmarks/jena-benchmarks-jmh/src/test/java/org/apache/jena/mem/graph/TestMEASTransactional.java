@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem.graph;
 
+import org.apache.commons.lang3.time.StopWatch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.datatypes.xsd.XSDDateTime;
@@ -40,6 +41,13 @@ import org.openjdk.jmh.runner.Runner;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @State(Scope.Benchmark)
 public class TestMEASTransactional {
@@ -64,8 +72,15 @@ public class TestMEASTransactional {
     private int numAnalogValuesToUpdate;
     private int numDiscreteValuesToUpdate;
 
+    private static void updateAnalogAndDiscreteValues(GraphWrapperTransactional g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues) {
+        updateAnalogAndDiscreteValues(g, analogValues, discreteValues, analogValues.size(), discreteValues.size());
+    }
+
     private static void updateAnalogAndDiscreteValues(GraphWrapperTransactional g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues, int numAnalogValuesToUpdate, int numDiscreteValuesToUpdate) {
-        g.begin(ReadWrite.WRITE);
+        boolean beginTransactionAndCommitIsNeeded = !g.isInTransaction();
+        if(beginTransactionAndCommitIsNeeded) {
+            g.begin(ReadWrite.WRITE);
+        }
         for (final var analogValue : analogValues.subList(0, numAnalogValuesToUpdate)) {
             final var subject = NodeFactory.createURI(analogValue.uuid());
 
@@ -96,7 +111,119 @@ public class TestMEASTransactional {
             g.delete(tMeasurementValueStatus);
             g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.status(), XSDDatatype.XSDinteger)));
         }
+        if(beginTransactionAndCommitIsNeeded) {
+            g.commit();
+        }
+    }
+
+    @Test
+    public void testOneThreadUpdatingWithSevealThreadsReading() throws InterruptedException {
+        final var bulkUpdateRateInSeconds = 3;
+        final var spontaneousUpdateRateInSeconds = 1;
+        final var queryRateInSeconds = 2;
+        final var numberOfSponataneousUpdateThreads = 4;
+        final var numberOfQueryThreads = 6;
+        final var numerOfSponataneousUpdatesPerSecond = 100;
+        final var g = createGraph();
+        final var version = new AtomicInteger(0);
+        final var versionTriple = Triple.create(NodeFactory.createURI("_" + UUID.randomUUID().toString()), NodeFactory.createLiteralByValue("jena.apache.org/jena-jmh-benchmarks#version"), NodeFactory.createLiteralByValue(version.intValue()));
+
+        final var analogValues = MEASData.generateRandomAnalogValues(100000);
+        final var discreteValues = MEASData.generateRandomDiscreteValues(25000);
+
+        g.begin(ReadWrite.WRITE);
+        g.add(versionTriple);
+        MEASData.addAnalogValuesToGraph(g, analogValues);
+        MEASData.addDiscreteValuesToGraph(g, discreteValues);
         g.commit();
+
+        final var updateScheduler = Executors.newSingleThreadScheduledExecutor();
+        var scheduledFutureForBulkUpdates = updateScheduler.scheduleAtFixedRate(() -> {
+            try {
+                final var stopwatch = StopWatch.createStarted();
+                final var updatedAnalogValues = MEASData.getRandomlyUpdatedAnalogValues(analogValues);
+                final var updatedDiscreteValues = MEASData.getRandomlyUpdatedDiscreteValues(discreteValues);
+                g.begin(ReadWrite.WRITE);
+                var verTriple = g.find(versionTriple.getSubject(), versionTriple.getPredicate(), Node.ANY).next();
+                final var ver = version.incrementAndGet();
+                g.delete(verTriple);
+                g.add(versionTriple.getSubject(), versionTriple.getPredicate(), NodeFactory.createLiteralByValue(ver));
+                updateAnalogAndDiscreteValues(g, updatedAnalogValues, updatedDiscreteValues);
+                g.commit();
+                stopwatch.stop();
+                //printf: Bulk-Updated from version X to Y in XX.XXXs
+                System.out.printf("Bulk-Update from version %d to %d in %s%n", verTriple.getObject().getLiteralValue(), ver, stopwatch);
+                g.printDeltaChainLengths();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }, 0, bulkUpdateRateInSeconds, TimeUnit.SECONDS);
+
+
+//        final var spontaneousUpdateScheduler = Executors.newScheduledThreadPool(numberOfSponataneousUpdateThreads);
+//        final var spontaneousUpdateFutures = new ArrayList<ScheduledFuture>(numerOfSponataneousUpdatesPerSecond);
+//
+//        for (int i = 0; i < numerOfSponataneousUpdatesPerSecond; i++) {
+//            final var threadNumber = Integer.toString(i);
+//            final var future = spontaneousUpdateScheduler.scheduleAtFixedRate(() -> {
+//                try {
+//                    final var stopwatch = StopWatch.createStarted();
+//                    final var updatedAnalogValues = MEASData.getRandomlyUpdatedAnalogValues(analogValues);
+//                    final var updatedDiscreteValues = MEASData.getRandomlyUpdatedDiscreteValues(discreteValues);
+//                    g.begin(ReadWrite.WRITE);
+//                    var verTriple = g.find(versionTriple.getSubject(), versionTriple.getPredicate(), Node.ANY).next();
+//                    final var ver = version.incrementAndGet();
+//                    g.delete(verTriple);
+//                    g.add(versionTriple.getSubject(), versionTriple.getPredicate(), NodeFactory.createLiteralByValue(ver));
+//                    updateAnalogAndDiscreteValues(g, updatedAnalogValues, updatedDiscreteValues, 80, 20);
+//                    g.commit();
+//                    stopwatch.stop();
+//                    //printf: Spontaneous-Update-Thread from version X to Y in XX.XXXs
+//                    System.out.printf("Spontaneous-Update-Thread %s from version %d to %d in %s%n", threadNumber, version.get(), ver, stopwatch);
+//                    g.printDeltaChainLengths();
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//            }, new Random().nextInt(0, spontaneousUpdateRateInSeconds*1000), spontaneousUpdateRateInSeconds*1000, TimeUnit.MILLISECONDS);
+//            spontaneousUpdateFutures.add(future);
+//        }
+
+        final var queryFutures = new ArrayList<ScheduledFuture>(numberOfQueryThreads);
+        final var queryScheduler = Executors.newScheduledThreadPool(numberOfQueryThreads);
+
+        for (int i = 0; i < numberOfQueryThreads; i++) {
+            final var threadNumber = Integer.toString(i);
+            final var queryFuture = queryScheduler.scheduleAtFixedRate(() -> {
+                try {
+                    final var stopwatch = StopWatch.createStarted();
+                    g.begin(ReadWrite.READ);
+                    final var verTriple = g.find(versionTriple.getSubject(), versionTriple.getPredicate(), Node.ANY).next();
+                    final var ver = (int) verTriple.getObject().getLiteralValue();
+                    final var result = queryAnalogAndDigitalValues(g);
+                    Assert.assertEquals(analogValues.size(), result.getLeft().size());
+                    Assert.assertEquals(discreteValues.size(), result.getRight().size());
+                    g.end();
+                    stopwatch.stop();
+                    //printf: Thread x reading version y in XX.XXXs
+                    System.out.printf("Thread %s reading version %d in %s%n", threadNumber, ver, stopwatch);
+                    g.printDeltaChainLengths();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }, new Random().nextInt(0, queryRateInSeconds*1000), queryRateInSeconds*1000, TimeUnit.MILLISECONDS);
+            queryFutures.add(queryFuture);
+        }
+
+        Thread.sleep(360000L);
+
+        scheduledFutureForBulkUpdates.cancel(true);
+        updateScheduler.shutdown();
+
+//        spontaneousUpdateFutures.forEach(future -> future.cancel(true));
+//        spontaneousUpdateScheduler.shutdown();
+
+        queryFutures.forEach(future -> future.cancel(true));
+        queryScheduler.shutdown();
     }
 
     @Test
@@ -104,8 +231,8 @@ public class TestMEASTransactional {
     public void loadRDFSAndProfile() {
         final var g = createGraph();
 
-        final var analogValues = MEASData.generateRandomAnalogValues(90000);
-        final var discreteValues = MEASData.generateRandomDiscreteValues(10000);
+        final var analogValues = MEASData.generateRandomAnalogValues(100000);
+        final var discreteValues = MEASData.generateRandomDiscreteValues(25000);
 
         g.begin(ReadWrite.WRITE);
         MEASData.addAnalogValuesToGraph(g, analogValues);
@@ -210,7 +337,10 @@ public class TestMEASTransactional {
     }
 
     private Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> queryAnalogAndDigitalValues(GraphWrapperTransactional graph) {
-        graph.begin(ReadWrite.READ);
+        boolean beginAndEndTransactionIsNeeded = !graph.isInTransaction();
+        if(beginAndEndTransactionIsNeeded) {
+            graph.begin(ReadWrite.READ);
+        }
         final var model = ModelFactory.createModelForGraph(graph);
         final var analogValues = new ArrayList<MEASData.AnalogValue>(totalAnalogValues);
         final var discreteValues = new ArrayList<MEASData.DiscreteValue>(totalDiscreteValues);
@@ -238,7 +368,9 @@ public class TestMEASTransactional {
                 .forEachRemaining(row -> {
                     discreteValues.add(new MEASData.DiscreteValue(row.getResource("s").getURI(), (int) row.getLiteral("discreteValue").getValue(), ((XSDDateTime) row.getLiteral("timeStamp").getValue()).asCalendar().toInstant(), (int) row.getLiteral("status").getValue()));
                 });
-        graph.end();
+        if(beginAndEndTransactionIsNeeded) {
+            graph.end();
+        }
         return Pair.of(analogValues, discreteValues);
     }
 
