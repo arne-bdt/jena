@@ -25,6 +25,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class GraphChainImpl implements GraphChain {
 
+    private static final AtomicInteger instanceCounter = new AtomicInteger(0);
+
     private Graph lastCommittedGraph;
 
     private FastDeltaGraph deltaGraphOfCurrentTransaction = null;
@@ -33,15 +35,24 @@ public class GraphChainImpl implements GraphChain {
 
     private final AtomicInteger readerCounter = new AtomicInteger(0);
 
+    public String getInstanceId() {
+        return instanceId;
+    }
+
+    private final String instanceId;
+
     public GraphChainImpl(final Graph base) {
         lastCommittedGraph = base;
+        this.instanceId = Integer.toString(instanceCounter.incrementAndGet());
     }
 
     private static Graph mergeDeltas(Graph graph) {
         if (graph instanceof FastDeltaGraph delta) {
             var base = mergeDeltas(delta.getBase());
-            delta.getDeletions().forEachRemaining(base::delete);
+            // first add, then delete --> this may use more memory but should be much faster, as it avoids unnecessary
+            // destruction and recreation of the internal data structures
             delta.getAdditions().forEachRemaining(base::add);
+            delta.getDeletions().forEachRemaining(base::delete);
             return base;
         } else {
             return graph;
@@ -97,10 +108,8 @@ public class GraphChainImpl implements GraphChain {
     public void linkGraphForWritingToChain() {
         if (!hasGraphForWriting())
             throw new IllegalStateException("There is no transaction in progress");
-        if (deltaGraphOfCurrentTransaction.hasChanges()) {
-            lastCommittedGraph = deltaGraphOfCurrentTransaction;
-            deltaChainLength++;
-        }
+        lastCommittedGraph = deltaGraphOfCurrentTransaction;
+        deltaChainLength++;
         deltaGraphOfCurrentTransaction = null;
     }
 
@@ -123,6 +132,8 @@ public class GraphChainImpl implements GraphChain {
 
         lastCommittedGraph = mergeDeltas(lastCommittedGraph);
         deltaChainLength = 0;
+//        //println: Instance #: Merged delta chain.
+//        System.out.println("Instance " + instanceId + ": Merged delta chain.");
     }
 
     @Override
@@ -130,10 +141,18 @@ public class GraphChainImpl implements GraphChain {
         if (!isReadyToApplyDeltas())
             throw new IllegalStateException("Not ready to apply deltas");
 
+        final var deltasSize = deltas.size();
         while (!deltas.isEmpty()) {
             var delta = deltas.poll();
-            delta.getDeletions().forEachRemaining(lastCommittedGraph::delete);
+            // first add, then delete --> this may use more memory but should be much faster, as it avoids unnecessary
+            // destruction and recreation of the internal data structures
             delta.getAdditions().forEachRemaining(lastCommittedGraph::add);
+            delta.getDeletions().forEachRemaining(lastCommittedGraph::delete);
         }
+//        if(deltasSize > 0) {
+//            //println: Instance #: Applied deltas.
+//            System.out.println("Instance " + instanceId + ": Applied " + deltasSize + " deltas.");
+//        }
+
     }
 }
