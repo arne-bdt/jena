@@ -43,7 +43,7 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     private static final String ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS = "Failed to acquire write semaphore within %s ms.";
 
-    private static final int TIMEOUT_FOR_RETRY_TO_APPLY_DELTAS_TO_STALE_GRAPH_MS = 1000;
+    private static final int TIMEOUT_FOR_RETRY_TO_APPLY_DELTAS_TO_STALE_GRAPH_MS = 50;
     private static final int MAX_DELTA_CHAIN_LENGTH = 100;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphWrapperTransactional.class);
@@ -144,7 +144,7 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                 final var timeoutMs = transactionCoordinator.getTransactionTimeoutMs()
                         + transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs();
                 if (!writeSemaphore.tryAcquire(timeoutMs, TimeUnit.MILLISECONDS)) {
-                    throw new JenaTransactionException(String.format(ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS, timeoutMs));
+                    throw new JenaTransactionException(String.format(ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS, (Integer)timeoutMs));
                 }
             } catch (InterruptedException e) {
                 endOnceByRemovingThreadLocalsAndUnlocking();
@@ -273,8 +273,8 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                     case READ -> manager.decrementReaderCounter();
                     case WRITE -> {
                         final var delta = (FastDeltaGraph) txnGraph.get();
-                        manager.linkGraphForWritingToChain();
                         if (delta.hasChanges()) {
+                            manager.linkGraphForWritingToChain();
                             dataVersion.incrementAndGet(); // increment the data version to signal that the data has changed
                             deltasToApplyToTail.add(delta);
                             if (manager.getDeltaChainLength() > MAX_DELTA_CHAIN_LENGTH) {
@@ -284,6 +284,8 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                                 this.updateTailIfPossible();
                             }
                             forkJoinPool.execute(this::updateTailIfPossible);
+                        } else {
+                            manager.discardGraphForWriting();
                         }
                         writeSemaphore.release();
                     }
@@ -316,7 +318,7 @@ public class GraphWrapperTransactional implements Graph, Transactional {
         }
         if (!isReadyToMerge) {
             // While there are still open read transactions, we wait a bit and try again.
-            // There are no new read transactions possible, so we will eventually succeed.
+            // When there are no new read transactions possible, so we will eventually succeed.
             if (delayedUpdateHasBeenScheduled.compareAndSet(false, true)) {
                 CompletableFuture.delayedExecutor(
                                 TIMEOUT_FOR_RETRY_TO_APPLY_DELTAS_TO_STALE_GRAPH_MS,
@@ -501,6 +503,8 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     }
 
     public void printDeltaChainLengths() {
-        System.out.println("active: " + active.getDeltaChainLength() + " stale: " + stale.getDeltaChainLength());
+        //printf: Active (instance #) has delta chain length of (length). Stale (instance #) has delta chain length of (length).
+        System.out.printf("Active (instance %s) has delta chain length of %s. Stale (instance %s) has delta chain length of %s.%n",
+                active.getInstanceId(), active.getDeltaChainLength(), stale.getInstanceId(), stale.getDeltaChainLength());
     }
 }

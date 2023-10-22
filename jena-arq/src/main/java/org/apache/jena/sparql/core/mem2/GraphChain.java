@@ -20,6 +20,9 @@ package org.apache.jena.sparql.core.mem2;
 import java.util.Queue;
 
 public interface GraphChain {
+
+    String getInstanceId();
+
     boolean hasGraphForWriting();
 
     boolean hasUnmergedDeltas();
