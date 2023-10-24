@@ -23,6 +23,7 @@ import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.mem.TripleReaderReadingCGMES_2_4_15_WithTypedLiterals;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
+import org.apache.jena.mem.graph.helper.Serialization;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
@@ -47,11 +48,6 @@ import java.util.zip.GZIPOutputStream;
 
 @State(Scope.Benchmark)
 public class TestGraphSerialization {
-
-    private static final String NO_COMPRESSOR = "none";
-    private static final String LZ4_FASTEST = "LZ4Fastest";
-
-    private final static String GZIP = "GZIP";
 
     @Param({
 //            "../testing/cheeses-0.1.ttl",
@@ -93,9 +89,9 @@ public class TestGraphSerialization {
     })
     public String param1_RDFFormat;
     @Param({
-//            NO_COMPRESSOR,
-            LZ4_FASTEST,
-            GZIP
+//            Serialization.NO_COMPRESSOR,
+            Serialization.LZ4_FASTEST,
+            Serialization.GZIP
     })
     public String param2_Compressor;
 
@@ -108,121 +104,10 @@ public class TestGraphSerialization {
     private boolean canonicalValues;
 
     private Graph graphToSerialize;
-    private SerializedData serializedGraph;
+    private Serialization.SerializedData serializedGraph;
     private RDFFormat rdfFormat;
 
-    private static Graph deserialize(SerializedData compressedGraph, boolean canonicalValues) {
-        var g1 = new GraphMem2Fast();
 
-        switch (compressedGraph.compressorName) {
-            case NO_COMPRESSOR -> {
-                final var inputStream = new ByteArrayInputStream(compressedGraph.bytes);
-                //RDFDataMgr.read(g1, inputStream, compressedGraph.rdfFormat.getLang());
-                RDFParser
-                        .source(inputStream)
-                        .forceLang(compressedGraph.rdfFormat.getLang())
-                        .checking(false)
-                        .canonicalValues(canonicalValues)
-                        .parse(g1);
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            case LZ4_FASTEST -> {
-                var uncompressedBytes = new byte[compressedGraph.uncompressedSize];
-                LZ4Factory.fastestInstance().fastDecompressor().decompress(compressedGraph.bytes, uncompressedBytes);
-                final var inputStream = new ByteArrayInputStream(uncompressedBytes);
-                //RDFDataMgr.read(g1, inputStream, compressedGraph.rdfFormat.getLang());
-                RDFParser
-                        .source(inputStream)
-                        .forceLang(compressedGraph.rdfFormat.getLang())
-                        .checking(false)
-                        .canonicalValues(canonicalValues)
-                        .parse(g1);
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            case GZIP -> {
-                final var inputStream = new ByteArrayInputStream(compressedGraph.bytes);
-                final GZIPInputStream inputStreamCompressed;
-                try {
-                    inputStreamCompressed = new java.util.zip.GZIPInputStream(inputStream);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                //RDFDataMgr.read(g1, inputStreamCompressed, compressedGraph.rdfFormat.getLang());
-                RDFParser
-                        .source(inputStreamCompressed)
-                        .forceLang(compressedGraph.rdfFormat.getLang())
-                        .checking(false)
-                        .canonicalValues(canonicalValues)
-                        .parse(g1);
-                try {
-                    inputStreamCompressed.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            default -> throw new IllegalArgumentException("Unknown compressor: " + compressedGraph.compressorName);
-        }
-        return g1;
-    }
-
-    private static SerializedData serialize(Graph graph, RDFFormat rdfFormat, String compressorName) {
-        switch (compressorName) {
-            case NO_COMPRESSOR -> {
-                final var outputStream = new ByteArrayOutputStream();
-                RDFWriter.source(graph).format(rdfFormat).output(outputStream);
-                try {
-                    outputStream.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                return new SerializedData(outputStream.toByteArray(), outputStream.size(), compressorName, rdfFormat);
-
-            }
-            case LZ4_FASTEST -> {
-                final var outputStream = new ByteArrayOutputStream();
-                RDFWriter.source(graph).format(rdfFormat).output(outputStream);
-                try {
-                    outputStream.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                final var outputStreamCompressed = LZ4Factory.fastestInstance().fastCompressor().compress(outputStream.toByteArray());
-                return new SerializedData(outputStreamCompressed, outputStream.size(), compressorName, rdfFormat);
-
-            }
-            case GZIP -> {
-                final var outputStream = new ByteArrayOutputStream();
-                final GZIPOutputStream outputStreamCompressed;
-                try {
-                    outputStreamCompressed = new GZIPOutputStream(outputStream);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                RDFWriter.source(graph).format(rdfFormat).output(outputStreamCompressed);
-                try {
-                    outputStreamCompressed.close();
-                    outputStream.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                return new SerializedData(outputStream.toByteArray(), -1, compressorName, rdfFormat);
-            }
-            default -> throw new IllegalArgumentException("Unknown compressor: " + compressorName);
-        }
-    }
 
     private static RDFFormat getRDFFormat(String rdfFormat) {
         switch (rdfFormat) {
@@ -279,11 +164,11 @@ public class TestGraphSerialization {
         final var g = new GraphMem2Fast();
         TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read("C:/temp/res_test/xxx_CGMES_SSH.xml", g);
         for (var rdfFormat : List.of(RDFFormat.TURTLE_PRETTY, RDFFormat.TURTLE_BLOCKS, RDFFormat.TURTLE_FLAT, RDFFormat.TURTLE_LONG, RDFFormat.NTRIPLES_UTF8, RDFFormat.NQUADS_UTF8, RDFFormat.TRIG_PRETTY, RDFFormat.TRIG_BLOCKS, RDFFormat.TRIG_FLAT, RDFFormat.TRIG_LONG, RDFFormat.JSONLD11_PRETTY, RDFFormat.JSONLD11_PLAIN, RDFFormat.JSONLD11_FLAT, RDFFormat.RDFXML_PRETTY, RDFFormat.RDFXML_PLAIN, RDFFormat.RDFJSON, RDFFormat.TRIX, RDFFormat.RDF_PROTO, RDFFormat.RDF_PROTO_VALUES, RDFFormat.RDF_THRIFT, RDFFormat.RDF_THRIFT_VALUES)) {
-            for (var compressor : List.of(NO_COMPRESSOR, LZ4_FASTEST, GZIP)) {
-                var compressedGraph = serialize(g, rdfFormat, compressor);
+            for (var compressor : List.of(Serialization.NO_COMPRESSOR, Serialization.LZ4_FASTEST, Serialization.GZIP)) {
+                var compressedGraph = Serialization.serialize(g, rdfFormat, compressor);
                 //print: "Size of output stream in format %rdfFormat% and with compressor %compressor% is xxx.xx MB.
-                System.out.printf("Size of output stream in format %20s and with compressor %12s is %6.2f MB.\n", rdfFormat.toString(), compressor, compressedGraph.bytes.length / 1024.0 / 1024.0);
-                var g2 = deserialize(compressedGraph, false);
+                System.out.printf("Size of output stream in format %20s and with compressor %12s is %6.2f MB.\n", rdfFormat.toString(), compressor, compressedGraph.bytes().length / 1024.0 / 1024.0);
+                var g2 = Serialization.deserialize(compressedGraph, false);
                 final var tripleWithBooleanObject = g.stream().filter(t -> t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDboolean).findFirst().orElseThrow();
                 final var tripleWithFloatObject = g.stream().filter(t -> t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat).findFirst().orElseThrow();
                 if (!g2.contains(tripleWithBooleanObject)) {
@@ -310,25 +195,25 @@ public class TestGraphSerialization {
         {
             //print: "Serialize as RDF_THRIFT and deserialize again (canonicalValues=false)"
             System.out.println("Serialize as RDF_THRIFT and deserialize again (canonicalValues=false)");
-            final var deserializedGraph = deserialize(serialize(g, RDFFormat.RDF_THRIFT, LZ4_FASTEST), false);
+            final var deserializedGraph = Serialization.deserialize(Serialization.serialize(g, RDFFormat.RDF_THRIFT, Serialization.LZ4_FASTEST), false);
             queryAndPrintDisinctLiteralSample(deserializedGraph);
         }
         {
             //print: "Serialize as RDF_THRIFT and deserialize again (canonicalValues=false)"
             System.out.println("Serialize as RDF_THRIFT and deserialize again (canonicalValues=true)");
-            final var deserializedGraph = deserialize(serialize(g, RDFFormat.RDF_THRIFT, LZ4_FASTEST), true);
+            final var deserializedGraph = Serialization.deserialize(Serialization.serialize(g, RDFFormat.RDF_THRIFT, Serialization.LZ4_FASTEST), true);
             queryAndPrintDisinctLiteralSample(deserializedGraph);
         }
         {
             //print: "Serialize as RDF_THRIFT and deserialize again (canonicalValues=false)"
             System.out.println("Serialize as RDF_THRIFT_VALUES and deserialize again (canonicalValues=false)");
-            final var deserializedGraph = deserialize(serialize(g, RDFFormat.RDF_THRIFT_VALUES, LZ4_FASTEST), false);
+            final var deserializedGraph = Serialization.deserialize(Serialization.serialize(g, RDFFormat.RDF_THRIFT_VALUES, Serialization.LZ4_FASTEST), false);
             queryAndPrintDisinctLiteralSample(deserializedGraph);
         }
         {
             //print: "Serialize as RDF_THRIFT and deserialize again (canonicalValues=false)"
             System.out.println("Serialize as RDF_THRIFT_VALUES and deserialize again (canonicalValues=true)");
-            final var deserializedGraph = deserialize(serialize(g, RDFFormat.RDF_THRIFT_VALUES, LZ4_FASTEST), true);
+            final var deserializedGraph = Serialization.deserialize(Serialization.serialize(g, RDFFormat.RDF_THRIFT_VALUES, Serialization.LZ4_FASTEST), true);
             queryAndPrintDisinctLiteralSample(deserializedGraph);
         }
     }
@@ -802,16 +687,16 @@ public class TestGraphSerialization {
     }
 
     @Benchmark
-    public SerializedData serialize() {
-        final var compressedData = serialize(graphToSerialize, rdfFormat, param2_Compressor);
+    public Serialization.SerializedData serialize() {
+        final var compressedData = Serialization.serialize(graphToSerialize, rdfFormat, param2_Compressor);
         //print: "Size of output stream in rdfFormat %rdfFormat% is xxx.xx MB.
-        System.out.printf("Size of output stream in rdfFormat %s is %.2f MB.\n", rdfFormat.toString(), compressedData.bytes.length / 1024.0 / 1024.0);
+        System.out.printf("Size of output stream in rdfFormat %s is %.2f MB.\n", rdfFormat.toString(), compressedData.bytes().length / 1024.0 / 1024.0);
         return compressedData;
     }
 
     @Benchmark
     public Graph deserialize() {
-        return deserialize(serializedGraph, canonicalValues);
+        return Serialization.deserialize(serializedGraph, canonicalValues);
     }
 
     @Setup(Level.Trial)
@@ -820,7 +705,7 @@ public class TestGraphSerialization {
         this.graphToSerialize = new GraphMem2Fast();
         TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read(param0_GraphUri, this.graphToSerialize, true, false);
         this.rdfFormat = getRDFFormat(param1_RDFFormat);
-        this.serializedGraph = serialize(graphToSerialize, rdfFormat, param2_Compressor);
+        this.serializedGraph = Serialization.serialize(graphToSerialize, rdfFormat, param2_Compressor);
     }
 
     @Test
@@ -832,8 +717,4 @@ public class TestGraphSerialization {
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);
     }
-
-    private record SerializedData(byte[] bytes, int uncompressedSize, String compressorName, RDFFormat rdfFormat) {
-    }
-
 }
