@@ -63,31 +63,39 @@ public class TestMEASTransactional2 {
             final var subject = NodeFactory.createURI(analogValue.uuid());
 
             final var tAnalogValueValue = g.find(subject, MEASData.AnalogValueValue.asNode(), Node.ANY).next();
-            g.delete(tAnalogValueValue);
             g.add(Triple.create(subject, tAnalogValueValue.getPredicate(), NodeFactory.createLiteralByValue(analogValue.value(), XSDDatatype.XSDfloat)));
+            g.delete(tAnalogValueValue);
+
 
             final var tMeasurementValueTimeStamp = g.find(subject, MEASData.MeasurementValueTimeStamp.asNode(), Node.ANY).next();
-            g.delete(tMeasurementValueTimeStamp);
-            g.add(Triple.create(subject, tMeasurementValueTimeStamp.getPredicate(), NodeFactory.createLiteral(DateTimeFormatter.ISO_INSTANT.format(analogValue.timeStamp()), XSDDatatype.XSDdateTimeStamp)));
+            final var newTimeStamp = NodeFactory.createLiteral(DateTimeFormatter.ISO_INSTANT.format(analogValue.timeStamp()), XSDDatatype.XSDdateTimeStamp);
+            if(!tMeasurementValueTimeStamp.getObject().equals(newTimeStamp)) {
+                g.add(Triple.create(subject, tMeasurementValueTimeStamp.getPredicate(), newTimeStamp));
+                g.delete(tMeasurementValueTimeStamp);
+            }
+
 
             final var tMeasurementValueStatus = g.find(subject, MEASData.MeasurementValueStatus.asNode(), Node.ANY).next();
-            g.delete(tMeasurementValueStatus);
             g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(analogValue.status(), XSDDatatype.XSDinteger)));
+            g.delete(tMeasurementValueStatus);
         }
         for (final var discreteValue : discreteValues.subList(0, numDiscreteValuesToUpdate)) {
             final var subject = NodeFactory.createURI(discreteValue.uuid());
 
             final var tDiscreteValueValue = g.find(subject, MEASData.DiscreteValueValue.asNode(), Node.ANY).next();
-            g.delete(tDiscreteValueValue);
             g.add(Triple.create(subject, tDiscreteValueValue.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.value(), XSDDatatype.XSDinteger)));
+            g.delete(tDiscreteValueValue);
 
             final var tMeasurementValueTimeStamp = g.find(subject, MEASData.MeasurementValueTimeStamp.asNode(), Node.ANY).next();
-            g.delete(tMeasurementValueTimeStamp);
-            g.add(Triple.create(subject, tMeasurementValueTimeStamp.getPredicate(), NodeFactory.createLiteral(DateTimeFormatter.ISO_INSTANT.format(discreteValue.timeStamp()), XSDDatatype.XSDdateTimeStamp)));
+            final var newTimeStamp = NodeFactory.createLiteral(DateTimeFormatter.ISO_INSTANT.format(discreteValue.timeStamp()), XSDDatatype.XSDdateTimeStamp);
+            if(!tMeasurementValueTimeStamp.getObject().equals(newTimeStamp)) {
+                g.add(Triple.create(subject, tMeasurementValueTimeStamp.getPredicate(), newTimeStamp));
+                g.delete(tMeasurementValueTimeStamp);
+            }
 
             final var tMeasurementValueStatus = g.find(subject, MEASData.MeasurementValueStatus.asNode(), Node.ANY).next();
-            g.delete(tMeasurementValueStatus);
             g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.status(), XSDDatatype.XSDinteger)));
+            g.delete(tMeasurementValueStatus);
         }
         if(beginTransactionAndCommitIsNeeded) {
             g.commit();
@@ -100,7 +108,7 @@ public class TestMEASTransactional2 {
         final var spontaneousUpdateRateInSeconds = 1;
         final var queryRateInSeconds = 2;
         final var numberOfSponataneousUpdateThreads = 2;
-        final var numberOfQueryThreads = 6;
+        final var numberOfQueryThreads = 4;
         final var numerOfSponataneousUpdatesPerSecond = 100;
 
         final var version = new AtomicInteger(0);

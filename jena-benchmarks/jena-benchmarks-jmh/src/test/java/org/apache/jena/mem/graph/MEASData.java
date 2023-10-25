@@ -39,9 +39,10 @@ public class MEASData {
     public static final Property AnalogValueAnalog = m.createProperty(MEAS_NS + "AnalogValue.analog");
     public static final Property DiscreteValueDiscrete = m.createProperty(MEAS_NS + "AnalogValue.discrete");
 
+    public static Random random = new Random();
+
     public static List<AnalogValue> generateRandomAnalogValues(int numberOfAnalogValues) {
         final var list = new ArrayList<AnalogValue>(numberOfAnalogValues);
-        final var random = new Random();
         for (int i = 0; i < numberOfAnalogValues; i++) {
             list.add(new AnalogValue("_" + UUID.randomUUID(), random.nextFloat(), Clock.systemUTC().instant(), random.nextInt()));
         }
@@ -50,18 +51,33 @@ public class MEASData {
 
     public static List<DiscreteValue> generateRandomDiscreteValues(int numberOfDiscreteValues) {
         final var list = new ArrayList<DiscreteValue>(numberOfDiscreteValues);
-        final var random = new Random();
         for (int i = 0; i < numberOfDiscreteValues; i++) {
             list.add(new DiscreteValue("_" + UUID.randomUUID(), random.nextInt(), Clock.systemUTC().instant(), random.nextInt()));
         }
         return list;
     }
 
+    public static float getRandomUnequalFloat(float value) {
+        float newValue;
+        do {
+            newValue = random.nextFloat();
+        } while (newValue == value);
+        return newValue;
+    }
+
+    public static int getRandomUnequalInt(int value) {
+        int newValue;
+        do {
+            newValue = random.nextInt();
+        } while (newValue == value);
+        return newValue;
+    }
+
     public static List<AnalogValue> getRandomlyUpdatedAnalogValues(List<AnalogValue> analogValues) {
         final var random = new Random();
         final var newValues = new ArrayList<AnalogValue>(analogValues.size());
         for (final var analogValue : analogValues) {
-            newValues.add(new AnalogValue(analogValue.uuid(), random.nextFloat(), Clock.systemUTC().instant(), random.nextInt()));
+            newValues.add(new AnalogValue(analogValue.uuid(), getRandomUnequalFloat(analogValue.value), Clock.systemUTC().instant(), getRandomUnequalInt(analogValue.status)));
         }
         // Shuffle is important because the order might play a role. We want to test the performance of the
         // contains method regardless of the order
@@ -70,10 +86,9 @@ public class MEASData {
     }
 
     public static List<DiscreteValue> getRandomlyUpdatedDiscreteValues(List<DiscreteValue> discreteValues) {
-        final var random = new Random(4711);
         final var newValues = new ArrayList<DiscreteValue>(discreteValues.size());
         for (final var discreteValue : discreteValues) {
-            newValues.add(new DiscreteValue(discreteValue.uuid(), random.nextInt(), Clock.systemUTC().instant(), random.nextInt()));
+            newValues.add(new DiscreteValue(discreteValue.uuid(), getRandomUnequalInt(discreteValue.value), Clock.systemUTC().instant(), getRandomUnequalInt(discreteValue.status)));
         }
         // Shuffle is important because the order might play a role. We want to test the performance of the
         // contains method regardless of the order
