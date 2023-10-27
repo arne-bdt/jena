@@ -20,18 +20,23 @@ package org.apache.jena.sparql.core.mem2;
 
 import org.apache.jena.graph.Graph;
 
-import java.util.Queue;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class GraphChainImpl implements GraphChain {
 
-    private static final AtomicInteger instanceCounter = new AtomicInteger(0);
+    private final ConcurrentLinkedQueue<FastDeltaGraph> deltasToApply = new ConcurrentLinkedQueue<>();
 
-    private Graph lastCommittedGraph;
+    public void queueDelta(FastDeltaGraph deltaGraph) {
+        deltasToApply.add(deltaGraph);
+    }
 
-    private FastDeltaGraph deltaGraphOfCurrentTransaction = null;
+    private volatile Graph lastCommittedGraph;
 
-    private int deltaChainLength = 0;
+    private volatile FastDeltaGraph deltaGraphOfCurrentTransaction = null;
+
+    private volatile int deltaChainLength = 0;
 
     private final AtomicInteger readerCounter = new AtomicInteger(0);
 
@@ -43,7 +48,7 @@ public class GraphChainImpl implements GraphChain {
 
     public GraphChainImpl(final Graph base) {
         lastCommittedGraph = base;
-        this.instanceId = Integer.toString(instanceCounter.incrementAndGet());
+        this.instanceId = UUID.randomUUID().toString();
     }
 
     private static Graph mergeDeltas(Graph graph) {
@@ -126,24 +131,31 @@ public class GraphChainImpl implements GraphChain {
     }
 
     @Override
+    public int getDeltaQueueLength() {
+        return deltasToApply.size();
+    }
+
+    @Override
     public void mergeDeltaChain() {
         if (!this.isReadyToMerge())
             throw new IllegalStateException("Not ready to merge");
 
-        lastCommittedGraph = mergeDeltas(lastCommittedGraph);
-        deltaChainLength = 0;
+        if(deltaChainLength > 0) {
+            lastCommittedGraph = mergeDeltas(lastCommittedGraph);
+            deltaChainLength = 0;
+        }
 //        //println: Instance #: Merged delta chain.
 //        System.out.println("Instance " + instanceId + ": Merged delta chain.");
     }
 
     @Override
-    public void applyDeltas(Queue<FastDeltaGraph> deltas) {
+    public void applyQueuedDeltas() {
         if (!isReadyToApplyDeltas())
             throw new IllegalStateException("Not ready to apply deltas");
 
-        final var deltasSize = deltas.size();
-        while (!deltas.isEmpty()) {
-            var delta = deltas.poll();
+        final var deltasSize = deltasToApply.size();
+        while (!deltasToApply.isEmpty()) {
+            var delta = deltasToApply.poll();
             // first add, then delete --> this may use more memory but should be much faster, as it avoids unnecessary
             // destruction and recreation of the internal data structures
             delta.getAdditions().forEachRemaining(lastCommittedGraph::add);
@@ -153,6 +165,5 @@ public class GraphChainImpl implements GraphChain {
 //            //println: Instance #: Applied deltas.
 //            System.out.println("Instance " + instanceId + ": Applied " + deltasSize + " deltas.");
 //        }
-
     }
 }

@@ -308,7 +308,7 @@ public class TestMEASTransactional {
     }
 
     public GraphWrapperTransactional createGraph() {
-        return new GraphWrapperTransactional(() -> new GraphMem2Fast(), new ForkJoinPool(1));
+        return new GraphWrapperTransactional();
     }
 
     private List<QuerySolution> queryAnalogAndDigitalValueSolutions(GraphWrapperTransactional graph) {
