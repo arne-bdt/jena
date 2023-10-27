@@ -232,7 +232,7 @@ public class GraphWrapperTransactionalTest {
     }
 
     @Test
-    public void testDeltasAreProcessed() {
+    public void testDeltasAreProcessed() throws InterruptedException {
         var sut = new GraphWrapperTransactional();
         sut.begin(ReadWrite.WRITE);
         sut.add(triple("s p o"));
@@ -244,27 +244,9 @@ public class GraphWrapperTransactionalTest {
         // a separate thread should apply the deltas to the stale graph
         Awaitility
                 .waitAtMost(Duration.ofMillis(200))
-                .until(() -> sut.getNumberOfDeltasToApplyToTail() == 0);
-
-        assertEquals(0, sut.getNumberOfDeltasToApplyToTail());
-        assertEquals(1, sut.getActiveGraphLengthOfDeltaChain());
-        assertEquals(0, sut.getStaleGraphLengthOfDeltaChain());
-
-        // next read should switch the graphs, as there are no deltas on the stale graph
-        sut.begin(ReadWrite.READ);
-        sut.end();
-
-        //expect hat active and stale have been swapped
-        assertEquals(0, sut.getActiveGraphLengthOfDeltaChain());
-
-        // a separate thread should apply the deltas to the stale graph
-        Awaitility
-                .waitAtMost(Duration.ofMillis(200))
-                .until(() -> sut.getStaleGraphLengthOfDeltaChain() == 0);
-
-        // all cleaned up
-        assertEquals(0, sut.getNumberOfDeltasToApplyToTail());
-        assertEquals(0, sut.getActiveGraphLengthOfDeltaChain());
-        assertEquals(0, sut.getStaleGraphLengthOfDeltaChain());
+                .until(() -> sut.getActiveGraphLengthOfDeltaQueue() == 0
+                        && sut.getStaleGraphLengthOfDeltaQueue() == 0
+                        && sut.getActiveGraphLengthOfDeltaChain() == 0
+                        && sut.getStaleGraphLengthOfDeltaChain() == 0);
     }
 }

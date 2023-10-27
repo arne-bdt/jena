@@ -17,8 +17,6 @@
  */
 package org.apache.jena.sparql.core.mem2;
 
-import java.util.Queue;
-
 public interface GraphChain {
 
     String getInstanceId();
@@ -45,7 +43,11 @@ public interface GraphChain {
 
     int getDeltaChainLength();
 
+    int getDeltaQueueLength();
+
     void mergeDeltaChain();
 
-    void applyDeltas(Queue<FastDeltaGraph> deltas);
+    void applyQueuedDeltas();
+
+    void queueDelta(FastDeltaGraph deltaGraph);
 }

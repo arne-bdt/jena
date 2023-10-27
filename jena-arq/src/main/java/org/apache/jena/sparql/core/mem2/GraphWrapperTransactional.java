@@ -44,10 +44,8 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     private static final String ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS = "Failed to acquire write semaphore within %s ms.";
 
     private static final int TIMEOUT_FOR_RETRY_TO_APPLY_DELTAS_TO_STALE_GRAPH_MS = 50;
-    private static final int MAX_DELTA_CHAIN_LENGTH = 100;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GraphWrapperTransactional.class);
-    private final ConcurrentLinkedQueue<FastDeltaGraph> deltasToApplyToTail = new ConcurrentLinkedQueue<>();
 
     /**
      * This lock is used to ensure that only one thread can write to the graph at a time.
@@ -67,32 +65,25 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     private final AtomicLong dataVersion = new AtomicLong(0);
 
-    private final ForkJoinPool forkJoinPool;
+    private final ExecutorService executorService;
     private final TransactionCoordinatorMRPlusSW transactionCoordinator;
-    private GraphChain active;
-    private GraphChain stale;
+    private volatile GraphChain active;
+    private volatile GraphChain stale;
+
+    private final Object syncSwitchingActiveAndStale = new Object();
 
     public GraphWrapperTransactional() {
         this(GraphMem2Fast::new);
     }
 
     public GraphWrapperTransactional(final Supplier<Graph> graphFactory) {
-        this(graphFactory, ForkJoinPool.commonPool());
-    }
-
-    public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory) {
-        this(graphToWrap, graphFactory, ForkJoinPool.commonPool());
-    }
-
-    public GraphWrapperTransactional(final Supplier<Graph> graphFactory, final ForkJoinPool forkJoinPool) {
         this.active = new GraphChainImpl(graphFactory.get());
         this.stale = new GraphChainImpl(graphFactory.get());
-        this.forkJoinPool = forkJoinPool;
+        this.executorService = Executors.newSingleThreadExecutor();
         this.transactionCoordinator = new TransactionCoordinatorMRPlusSW();
     }
 
-    public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory,
-                                     final ForkJoinPool forkJoinPool) {
+    public GraphWrapperTransactional(final Graph graphToWrap, final Supplier<Graph> graphFactory) {
         final Graph graphToUse = graphFactory.get();
         final Graph activeBase, staleBase;
         if (graphToUse.getClass().equals(graphToWrap.getClass()) // graphToWrap has the same typ the factory produces
@@ -115,12 +106,8 @@ public class GraphWrapperTransactional implements Graph, Transactional {
         }
         this.active = new GraphChainImpl(activeBase);
         this.stale = new GraphChainImpl(staleBase);
-        this.forkJoinPool = forkJoinPool;
+        this.executorService = Executors.newSingleThreadExecutor();
         this.transactionCoordinator = new TransactionCoordinatorMRPlusSW();
-    }
-
-    int getNumberOfDeltasToApplyToTail() {
-        return deltasToApplyToTail.size();
     }
 
     private Graph getGraphForCurrentTransaction() {
@@ -137,7 +124,6 @@ public class GraphWrapperTransactional implements Graph, Transactional {
     public void begin(TxnType txnType) {
         if (isInTransaction())
             throw new JenaTransactionException("Already in a transaction.");
-        switchStaleAndActiveIfNeededAndPossible();
         final ReadWrite readWrite = TxnType.convert(txnType);
         if (readWrite == ReadWrite.WRITE) {
             try {
@@ -150,11 +136,15 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                 endOnceByRemovingThreadLocalsAndUnlocking();
                 throw new JenaTransactionException("Interrupted while waiting for write semaphore.", e);
             }
+            trySwitchStaleAndActiveForNewWriteTransaction();
         }
         this.txnInTransaction.set(true);
         this.txnMode.set(readWrite);
         this.txnType.set(txnType);
-        final var txHead = active;
+        final GraphChain txHead;
+        synchronized (syncSwitchingActiveAndStale) {
+            txHead = active;
+        }
         this.txnManager.set(txHead);
         switch (readWrite) {
             case READ -> {
@@ -198,25 +188,90 @@ public class GraphWrapperTransactional implements Graph, Transactional {
         txnInTransaction.remove();
     }
 
-    private void switchStaleAndActiveIfNeededAndPossible() {
-        if (active.getDeltaChainLength() > 0          // only if the active graph has at least one delta switching makes sense
-                && !active.hasGraphForWriting()        // only if there is no open transaction on the active graph
-                && !stale.hasReader()                // and there is no reader on the stale graph
-                && !stale.hasGraphForWriting()) {     // and there is no open transaction on the stale graph
-            try {
-                lockForUpdatingStaleGraph.lock();            // wait for the stale graph to be updated
-                // check again, because it could have changed in the meantime
-                if (this.deltasToApplyToTail.isEmpty()      //check if all deltas have been applied to the stale graph
-                        && !active.hasGraphForWriting()        // only if there is no open transaction on the active graph
-                        && stale.isReadyToApplyDeltas()) {    // no reader, no writer and no unmerged deltas
-                    final var tmp = stale;
-                    stale = active;
-                    active = tmp;
-                    forkJoinPool.execute(this::updateTailIfPossible); // update the stale graph in the background
+    /***
+     * This method tries to switch the stale and the active graph.
+     * It must only be entered when the write semaphore is acquired.
+     * It only switches if the active graph has at least one delta and there is no reader on the stale graph.
+     * If the switch is successful, the stale graph is updated in the background.
+     */
+    private void trySwitchStaleAndActiveForNewWriteTransaction() {
+        if (active.getDeltaChainLength() == 0          // only if the active graph has no deltas
+                || stale.hasReader()) {                 // or there are still reader on the stale graph
+            return;
+        }
+        boolean sheduleNextUpdate = false;
+        try {
+            lockForUpdatingStaleGraph.lock();            // wait for the stale graph to be updated
+            if (active.getDeltaChainLength() > 0          // only if the active graph has at least one delta switching makes sense
+                    && !stale.hasReader()) {              // and there is no reader on the stale graph
+                stale.mergeDeltaChain();
+                stale.applyQueuedDeltas();
+                synchronized (syncSwitchingActiveAndStale) {
+                    final var tmp = active;
+                    active = stale;
+                    stale = tmp;
                 }
-            } finally {
-                lockForUpdatingStaleGraph.unlock();
+                sheduleNextUpdate = true;
             }
+        } finally {
+            lockForUpdatingStaleGraph.unlock();
+        }
+        if(sheduleNextUpdate) {
+            tryScheduleNextTailUpdate();
+        }
+    }
+
+
+    private void tryScheduleNextTailUpdate() {
+        // While there are still open read transactions, we wait a bit and try again.
+        // When there are no new read transactions possible, so we will eventually succeed.
+        if (delayedUpdateHasBeenScheduled.compareAndSet(false, true)) {
+            executorService.execute(this::parallelUpdateTailIfPossible);
+        }
+    }
+
+    private void parallelUpdateTailIfPossible() {
+        delayedUpdateHasBeenScheduled.set(false);
+        if (active.getDeltaChainLength() == 0) {          // only if the active graph has no deltas
+            if (stale.hasReader()) {                 // or there are still reader on the stale graph
+                tryScheduleNextTailUpdate();
+            }
+            return;
+        }
+        boolean doRetry = false;
+        try {
+            lockForUpdatingStaleGraph.lock();            // wait for the stale graph to be updated
+            if(stale.isReadyToMerge()) {
+                stale.mergeDeltaChain();
+                stale.applyQueuedDeltas();
+                if(writeSemaphore.tryAcquire()) {
+                    try {
+                        synchronized (syncSwitchingActiveAndStale) {
+                            final var tmp = active;
+                            active = stale;
+                            stale = tmp;
+                        }
+                        if (stale.isReadyToMerge()) {
+                            stale.mergeDeltaChain();
+                            stale.applyQueuedDeltas();
+                        } else {
+                            doRetry = true;
+                        }
+                    } finally {
+                        writeSemaphore.release();
+                    }
+                } else {
+                    doRetry = true;
+                }
+
+            } else {
+                doRetry = true;
+            }
+        } finally {
+            lockForUpdatingStaleGraph.unlock();
+        }
+        if(doRetry) {
+            tryScheduleNextTailUpdate();
         }
     }
 
@@ -273,21 +328,18 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                     case READ -> manager.decrementReaderCounter();
                     case WRITE -> {
                         final var delta = (FastDeltaGraph) txnGraph.get();
-                        if (delta.hasChanges()) {
+                        var hasChanges = delta.hasChanges();
+                        if (hasChanges) {
                             manager.linkGraphForWritingToChain();
                             dataVersion.incrementAndGet(); // increment the data version to signal that the data has changed
-                            deltasToApplyToTail.add(delta);
-                            if (manager.getDeltaChainLength() > MAX_DELTA_CHAIN_LENGTH) {
-                                // if there are many consecutive write transactions, they might always be faster than the async call
-                                // to update the stale graph. That way, they might block the update for a long time.
-                                // In this case, we call the update synchronously to avoid this problem.
-                                this.updateTailIfPossible();
-                            }
-                            forkJoinPool.execute(this::updateTailIfPossible);
+                            stale.queueDelta(delta);
                         } else {
                             manager.discardGraphForWriting();
                         }
                         writeSemaphore.release();
+                        if(hasChanges) {
+                            tryScheduleNextTailUpdate();
+                        }
                     }
                     default -> {
                         throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
@@ -295,42 +347,10 @@ public class GraphWrapperTransactional implements Graph, Transactional {
                 }
                 txnInTransaction.set(false);
             }
-        } finally {
+        }
+        finally {
             endOnceByRemovingThreadLocalsAndUnlocking();
         }
-    }
-
-    private void updateTailIfPossible() {
-        var isReadyToMerge = stale.isReadyToMerge();
-        if (isReadyToMerge) { /*test to avoid unnecessary locking*/
-            try {
-                lockForUpdatingStaleGraph.lock();
-                isReadyToMerge = stale.isReadyToMerge(); /*test again with the lock in place*/
-                if (stale.isReadyToMerge()) {
-                    stale.mergeDeltaChain();
-                    stale.applyDeltas(deltasToApplyToTail);
-                }
-            } catch (Exception exception) {
-                LOGGER.error("Error while updating stale graph.", exception);
-            } finally {
-                lockForUpdatingStaleGraph.unlock();
-            }
-        }
-        if (!isReadyToMerge) {
-            // While there are still open read transactions, we wait a bit and try again.
-            // When there are no new read transactions possible, so we will eventually succeed.
-            if (delayedUpdateHasBeenScheduled.compareAndSet(false, true)) {
-                CompletableFuture.delayedExecutor(
-                                TIMEOUT_FOR_RETRY_TO_APPLY_DELTAS_TO_STALE_GRAPH_MS,
-                                java.util.concurrent.TimeUnit.MILLISECONDS, forkJoinPool)
-                        .execute(this::delayedUpdateStaleGraphIfPossible);
-            }
-        }
-    }
-
-    private void delayedUpdateStaleGraphIfPossible() {
-        delayedUpdateHasBeenScheduled.set(false);
-        updateTailIfPossible();
     }
 
     @Override
@@ -471,6 +491,13 @@ public class GraphWrapperTransactional implements Graph, Transactional {
         final var g = this.txnGraph.get();
         if (g != null) {
             g.close();
+            executorService.shutdown();
+            try {
+                transactionCoordinator.close();
+            } catch (Exception e) {
+                endOnceByRemovingThreadLocalsAndUnlocking();
+                throw new RuntimeException(e);
+            }
         }
         endOnceByRemovingThreadLocalsAndUnlocking();
     }
@@ -500,6 +527,14 @@ public class GraphWrapperTransactional implements Graph, Transactional {
 
     int getStaleGraphLengthOfDeltaChain() {
         return stale.getDeltaChainLength();
+    }
+
+    int getActiveGraphLengthOfDeltaQueue() {
+        return active.getDeltaQueueLength();
+    }
+
+    int getStaleGraphLengthOfDeltaQueue() {
+        return stale.getDeltaQueueLength();
     }
 
     public void printDeltaChainLengths() {

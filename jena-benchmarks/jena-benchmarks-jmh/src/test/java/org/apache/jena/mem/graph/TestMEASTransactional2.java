@@ -63,8 +63,10 @@ public class TestMEASTransactional2 {
             final var subject = NodeFactory.createURI(analogValue.uuid());
 
             final var tAnalogValueValue = g.find(subject, MEASData.AnalogValueValue.asNode(), Node.ANY).next();
-            g.add(Triple.create(subject, tAnalogValueValue.getPredicate(), NodeFactory.createLiteralByValue(analogValue.value(), XSDDatatype.XSDfloat)));
-            g.delete(tAnalogValueValue);
+            if(analogValue.value() != (Float)tAnalogValueValue.getObject().getLiteralValue()) {
+                g.add(Triple.create(subject, tAnalogValueValue.getPredicate(), NodeFactory.createLiteralByValue(analogValue.value(), XSDDatatype.XSDfloat)));
+                g.delete(tAnalogValueValue);
+            }
 
 
             final var tMeasurementValueTimeStamp = g.find(subject, MEASData.MeasurementValueTimeStamp.asNode(), Node.ANY).next();
@@ -76,15 +78,19 @@ public class TestMEASTransactional2 {
 
 
             final var tMeasurementValueStatus = g.find(subject, MEASData.MeasurementValueStatus.asNode(), Node.ANY).next();
-            g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(analogValue.status(), XSDDatatype.XSDinteger)));
-            g.delete(tMeasurementValueStatus);
+            if(analogValue.status() != (Integer)tMeasurementValueStatus.getObject().getLiteralValue()) {
+                g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(analogValue.status(), XSDDatatype.XSDinteger)));
+                g.delete(tMeasurementValueStatus);
+            }
         }
         for (final var discreteValue : discreteValues.subList(0, numDiscreteValuesToUpdate)) {
             final var subject = NodeFactory.createURI(discreteValue.uuid());
 
             final var tDiscreteValueValue = g.find(subject, MEASData.DiscreteValueValue.asNode(), Node.ANY).next();
-            g.add(Triple.create(subject, tDiscreteValueValue.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.value(), XSDDatatype.XSDinteger)));
-            g.delete(tDiscreteValueValue);
+            if(discreteValue.value() != (Integer)tDiscreteValueValue.getObject().getLiteralValue()) {
+                g.add(Triple.create(subject, tDiscreteValueValue.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.value(), XSDDatatype.XSDinteger)));
+                g.delete(tDiscreteValueValue);
+            }
 
             final var tMeasurementValueTimeStamp = g.find(subject, MEASData.MeasurementValueTimeStamp.asNode(), Node.ANY).next();
             final var newTimeStamp = NodeFactory.createLiteral(DateTimeFormatter.ISO_INSTANT.format(discreteValue.timeStamp()), XSDDatatype.XSDdateTimeStamp);
@@ -94,21 +100,23 @@ public class TestMEASTransactional2 {
             }
 
             final var tMeasurementValueStatus = g.find(subject, MEASData.MeasurementValueStatus.asNode(), Node.ANY).next();
-            g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.status(), XSDDatatype.XSDinteger)));
-            g.delete(tMeasurementValueStatus);
+            if(discreteValue.status() != (Integer)tMeasurementValueStatus.getObject().getLiteralValue()) {
+                g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.status(), XSDDatatype.XSDinteger)));
+                g.delete(tMeasurementValueStatus);
+            }
         }
         if(beginTransactionAndCommitIsNeeded) {
             g.commit();
         }
     }
 
-    @Benchmark
-    public Graph testOneThreadUpdatingWithSevealThreadsReading() throws InterruptedException {
+    @Test
+    public void testOneThreadUpdatingWithSeveralThreadsReading() throws InterruptedException {
         final var bulkUpdateRateInSeconds = 3;
         final var spontaneousUpdateRateInSeconds = 1;
         final var queryRateInSeconds = 2;
         final var numberOfSponataneousUpdateThreads = 2;
-        final var numberOfQueryThreads = 4;
+        final var numberOfQueryThreads = 3;
         final var numerOfSponataneousUpdatesPerSecond = 100;
 
         final var version = new AtomicInteger(0);
@@ -124,29 +132,29 @@ public class TestMEASTransactional2 {
         MEASData.addDiscreteValuesToGraph(g, discreteValues);
         g.commit();
 
-        final var updateScheduler = Executors.newSingleThreadScheduledExecutor();
-        var scheduledFutureForBulkUpdates = updateScheduler.scheduleAtFixedRate(() -> {
-            try {
-                final var stopwatch = StopWatch.createStarted();
-                final var updatedAnalogValues = MEASData.getRandomlyUpdatedAnalogValues(analogValues);
-                final var updatedDiscreteValues = MEASData.getRandomlyUpdatedDiscreteValues(discreteValues);
-                g.begin(ReadWrite.WRITE);
-                var verTriple = g.find(versionTriple.getSubject(), versionTriple.getPredicate(), Node.ANY).next();
-                final var ver = (Integer)version.incrementAndGet();
-                g.add(versionTriple.getSubject(), versionTriple.getPredicate(), NodeFactory.createLiteralByValue(ver));
-                g.delete(verTriple);
-                updateAnalogAndDiscreteValues(g, updatedAnalogValues, updatedDiscreteValues);
-                g.commit();
-                stopwatch.stop();
-                //printf: Bulk-Updated from version X to Y in XX.XXXs
-                if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
-                    System.out.printf("Bulk-Update from version %d to %d in %s%n", verTriple.getObject().getLiteralValue(), ver, stopwatch);
-                    g.printDeltaChainLengths();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }, 0, bulkUpdateRateInSeconds, TimeUnit.SECONDS);
+//        final var updateScheduler = Executors.newSingleThreadScheduledExecutor();
+//        var scheduledFutureForBulkUpdates = updateScheduler.scheduleAtFixedRate(() -> {
+//            try {
+//                final var stopwatch = StopWatch.createStarted();
+//                final var updatedAnalogValues = MEASData.getRandomlyUpdatedAnalogValues(analogValues);
+//                final var updatedDiscreteValues = MEASData.getRandomlyUpdatedDiscreteValues(discreteValues);
+//                g.begin(ReadWrite.WRITE);
+//                var verTriple = g.find(versionTriple.getSubject(), versionTriple.getPredicate(), Node.ANY).next();
+//                final var ver = (Integer)version.incrementAndGet();
+//                g.add(versionTriple.getSubject(), versionTriple.getPredicate(), NodeFactory.createLiteralByValue(ver));
+//                g.delete(verTriple);
+//                updateAnalogAndDiscreteValues(g, updatedAnalogValues, updatedDiscreteValues);
+//                g.commit();
+//                stopwatch.stop();
+//                //printf: Bulk-Updated from version X to Y in XX.XXXs
+//                //if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
+//                    System.out.printf("Bulk-Update from version %d to %d in %s%n", verTriple.getObject().getLiteralValue(), ver, stopwatch);
+//                    g.printDeltaChainLengths();
+//                //}
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        }, 0, bulkUpdateRateInSeconds, TimeUnit.SECONDS);
 
 
         final var spontaneousUpdateScheduler = Executors.newScheduledThreadPool(numberOfSponataneousUpdateThreads);
@@ -203,14 +211,17 @@ public class TestMEASTransactional2 {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
+                finally {
+                    g.end();
+                }
             }, new Random().nextInt(0, queryRateInSeconds*1000), queryRateInSeconds*1000, TimeUnit.MILLISECONDS);
             queryFutures.add(queryFuture);
         }
 
         Thread.sleep(360000L);
 
-        scheduledFutureForBulkUpdates.cancel(true);
-        updateScheduler.shutdown();
+//        scheduledFutureForBulkUpdates.cancel(true);
+//        updateScheduler.shutdown();
 
         spontaneousUpdateFutures.forEach(future -> future.cancel(true));
         spontaneousUpdateScheduler.shutdown();
@@ -218,15 +229,17 @@ public class TestMEASTransactional2 {
         queryFutures.forEach(future -> future.cancel(true));
         queryScheduler.shutdown();
 
-        return g;
+        g.close();
+
+//        return g;
     }
 
 
     public GraphWrapperTransactional createGraph() {
-        return new GraphWrapperTransactional(() -> new GraphMem2Fast(), new ForkJoinPool(1));
+        return new GraphWrapperTransactional();
     }
 
-    private Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillListsByGraph(GraphWrapperTransactional g, int totalAnalogValues, int totalDiscreteValues) {
+    private static Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillListsByGraph(GraphWrapperTransactional g, int totalAnalogValues, int totalDiscreteValues) {
 
         final var analogValues = new ArrayList<MEASData.AnalogValue>(totalAnalogValues);
         final var discreteValues = new ArrayList<MEASData.DiscreteValue>(totalDiscreteValues);
