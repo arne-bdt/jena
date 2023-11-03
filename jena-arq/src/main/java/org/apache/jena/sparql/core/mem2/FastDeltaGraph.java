@@ -35,8 +35,8 @@ import java.util.stream.Stream;
 public class FastDeltaGraph extends GraphBase {
 
     private final Graph base;
-    private final Graph additions = new GraphMem2Fast();
-    private final Set<Triple> deletions = new HashSet<>();
+    private final Graph additions;
+    private final Set<Triple> deletions;
 
     public FastDeltaGraph(Graph base) {
         super();
@@ -47,6 +47,21 @@ public class FastDeltaGraph extends GraphBase {
         if (!base.getCapabilities().sizeAccurate())
             throw new IllegalArgumentException("base graph must be size accurate");
         this.base = base;
+        this.additions = new GraphMem2Fast();
+        this.deletions = new HashSet<>();
+    }
+
+    public FastDeltaGraph(Graph newBase, FastDeltaGraph deltaGraphToRebase) {
+        super();
+        if (newBase == null)
+            throw new IllegalArgumentException("base graph must not be null");
+        if (newBase.getCapabilities().handlesLiteralTyping())
+            throw new IllegalArgumentException("base graph must not handle literal typing");
+        if (!newBase.getCapabilities().sizeAccurate())
+            throw new IllegalArgumentException("base graph must be size accurate");
+        this.base = newBase;
+        this.additions = deltaGraphToRebase.additions;
+        this.deletions = deltaGraphToRebase.deletions;
     }
 
     public Iterator<Triple> getAdditions() {

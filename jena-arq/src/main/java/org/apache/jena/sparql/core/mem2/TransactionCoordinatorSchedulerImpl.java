@@ -65,8 +65,10 @@ public class TransactionCoordinatorSchedulerImpl implements TransactionCoordinat
             lock.lock();
             transactionCoordinators.remove(coordinator);
             if (transactionCoordinators.isEmpty()) {
-                this.scheduledExecutorService.shutdown();
-                this.scheduledExecutorService = null;
+                if(this.scheduledExecutorService != null) {
+                    this.scheduledExecutorService.shutdown();
+                    this.scheduledExecutorService = null;
+                }
                 running = false;
             }
         } finally {

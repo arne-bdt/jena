@@ -52,7 +52,8 @@ public class TestTimeSeriesData {
              "500000",
 //             "750000",
 //            "1000000",
-//            "2500000"
+//            "2500000",
+//            "5000000"
     })
     public String p1_NumberOfTimeSeries;
 
@@ -90,22 +91,22 @@ public class TestTimeSeriesData {
                 g.size(),
                 memoryAfter - memoryBefore);
         stopwatch.reset();
-        stopwatch.start();
-        final var serializedGraph = Serialization.serialize(g, RDFFormat.RDF_THRIFT, Serialization.LZ4_FASTEST);
-        stopwatch.stop();
-        //printf: Serializing graph with %d timeseries took %s, compressed size: %,.2f MB%n, uncompressed size: %,.2f MB%n
-        System.out.printf("Serializing graph with %d timeseries took %s, compressed size: %,.2f MB, uncompressed size: %,.2f MB%n",
-                numberOfTimeSeries,
-                stopwatch,
-                serializedGraph.bytes().length / 1024.0 / 1024.0,
-                serializedGraph.uncompressedSize() / 1024.0 / 1024.0);
-        stopwatch.reset();
-        stopwatch.start();
-        final var g1 = Serialization.deserialize(serializedGraph, false);
-        stopwatch.stop();
-        System.out.printf("Deserializing graph with %d timeseries took %s%n",
-                numberOfTimeSeries,
-                stopwatch);
+//        stopwatch.start();
+//        final var serializedGraph = Serialization.serialize(g, RDFFormat.RDF_THRIFT, Serialization.LZ4_FASTEST);
+//        stopwatch.stop();
+//        //printf: Serializing graph with %d timeseries took %s, compressed size: %,.2f MB%n, uncompressed size: %,.2f MB%n
+//        System.out.printf("Serializing graph with %d timeseries took %s, compressed size: %,.2f MB, uncompressed size: %,.2f MB%n",
+//                numberOfTimeSeries,
+//                stopwatch,
+//                serializedGraph.bytes().length / 1024.0 / 1024.0,
+//                serializedGraph.uncompressedSize() / 1024.0 / 1024.0);
+//        stopwatch.reset();
+//        stopwatch.start();
+//        final var g1 = Serialization.deserialize(serializedGraph, false);
+//        stopwatch.stop();
+//        System.out.printf("Deserializing graph with %d timeseries took %s%n",
+//                numberOfTimeSeries,
+//                stopwatch);
         return g;
     }
 
@@ -134,7 +135,7 @@ public class TestTimeSeriesData {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
                 .warmupIterations(5)
                 .measurementIterations(10)
-                .jvmArgs("-Xmx16G")
+                .jvmArgs("-Xmx24G")
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

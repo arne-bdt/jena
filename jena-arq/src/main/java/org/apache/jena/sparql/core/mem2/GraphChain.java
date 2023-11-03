@@ -27,6 +27,10 @@ public interface GraphChain {
 
     boolean hasReader();
 
+    default boolean hasNothingToMergeAndNoDeltasToApply() {
+        return !hasUnmergedDeltas() && getDeltaQueueLength() == 0;
+    }
+
     boolean isReadyToMerge();
 
     boolean isReadyToApplyDeltas();
@@ -39,6 +43,8 @@ public interface GraphChain {
 
     void linkGraphForWritingToChain();
 
+    void rebaseAndLinkDeltaForWritingToChain(FastDeltaGraph deltaGraph);
+
     void discardGraphForWriting();
 
     int getDeltaChainLength();
@@ -50,4 +56,9 @@ public interface GraphChain {
     void applyQueuedDeltas();
 
     void queueDelta(FastDeltaGraph deltaGraph);
+
+    default void mergeAndApplyDeltas() {
+        mergeDeltaChain();
+        applyQueuedDeltas();
+    }
 }
