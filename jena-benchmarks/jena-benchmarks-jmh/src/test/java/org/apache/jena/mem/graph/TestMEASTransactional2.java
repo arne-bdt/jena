@@ -30,6 +30,7 @@ import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.*;
 import org.apache.jena.sparql.core.mem2.GraphWrapperTransactional;
+import org.apache.jena.sparql.core.mem2.GraphWrapperTransactional2;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -50,11 +51,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class TestMEASTransactional2 {
 
 
-    private static void updateAnalogAndDiscreteValues(GraphWrapperTransactional g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues) {
+    private static void updateAnalogAndDiscreteValues(GraphWrapperTransactional2 g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues) {
         updateAnalogAndDiscreteValues(g, analogValues, discreteValues, analogValues.size(), discreteValues.size());
     }
 
-    private static void updateAnalogAndDiscreteValues(GraphWrapperTransactional g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues, int numAnalogValuesToUpdate, int numDiscreteValuesToUpdate) {
+    private static void updateAnalogAndDiscreteValues(GraphWrapperTransactional2 g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues, int numAnalogValuesToUpdate, int numDiscreteValuesToUpdate) {
         boolean beginTransactionAndCommitIsNeeded = !g.isInTransaction();
         if(beginTransactionAndCommitIsNeeded) {
             g.begin(ReadWrite.WRITE);
@@ -114,9 +115,9 @@ public class TestMEASTransactional2 {
     public void testOneThreadUpdatingWithSeveralThreadsReading() throws InterruptedException {
         final var bulkUpdateRateInSeconds = 3;
         final var spontaneousUpdateRateInSeconds = 1;
-        final var queryRateInSeconds = 2;
-        final var numberOfSponataneousUpdateThreads = 2;
-        final var numberOfQueryThreads = 3;
+        final var queryRateInSeconds = 1;
+        final var numberOfSponataneousUpdateThreads = 10;
+        final var numberOfQueryThreads = 8;
         final var numerOfSponataneousUpdatesPerSecond = 100;
 
         final var version = new AtomicInteger(0);
@@ -132,29 +133,29 @@ public class TestMEASTransactional2 {
         MEASData.addDiscreteValuesToGraph(g, discreteValues);
         g.commit();
 
-//        final var updateScheduler = Executors.newSingleThreadScheduledExecutor();
-//        var scheduledFutureForBulkUpdates = updateScheduler.scheduleAtFixedRate(() -> {
-//            try {
-//                final var stopwatch = StopWatch.createStarted();
-//                final var updatedAnalogValues = MEASData.getRandomlyUpdatedAnalogValues(analogValues);
-//                final var updatedDiscreteValues = MEASData.getRandomlyUpdatedDiscreteValues(discreteValues);
-//                g.begin(ReadWrite.WRITE);
-//                var verTriple = g.find(versionTriple.getSubject(), versionTriple.getPredicate(), Node.ANY).next();
-//                final var ver = (Integer)version.incrementAndGet();
-//                g.add(versionTriple.getSubject(), versionTriple.getPredicate(), NodeFactory.createLiteralByValue(ver));
-//                g.delete(verTriple);
-//                updateAnalogAndDiscreteValues(g, updatedAnalogValues, updatedDiscreteValues);
-//                g.commit();
-//                stopwatch.stop();
-//                //printf: Bulk-Updated from version X to Y in XX.XXXs
-//                //if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
-//                    System.out.printf("Bulk-Update from version %d to %d in %s%n", verTriple.getObject().getLiteralValue(), ver, stopwatch);
-//                    g.printDeltaChainLengths();
-//                //}
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        }, 0, bulkUpdateRateInSeconds, TimeUnit.SECONDS);
+        final var updateScheduler = Executors.newSingleThreadScheduledExecutor();
+        var scheduledFutureForBulkUpdates = updateScheduler.scheduleAtFixedRate(() -> {
+            try {
+                final var stopwatch = StopWatch.createStarted();
+                final var updatedAnalogValues = MEASData.getRandomlyUpdatedAnalogValues(analogValues);
+                final var updatedDiscreteValues = MEASData.getRandomlyUpdatedDiscreteValues(discreteValues);
+                g.begin(ReadWrite.WRITE);
+                var verTriple = g.find(versionTriple.getSubject(), versionTriple.getPredicate(), Node.ANY).next();
+                final var ver = (Integer)version.incrementAndGet();
+                g.add(versionTriple.getSubject(), versionTriple.getPredicate(), NodeFactory.createLiteralByValue(ver));
+                g.delete(verTriple);
+                updateAnalogAndDiscreteValues(g, updatedAnalogValues, updatedDiscreteValues);
+                g.commit();
+                stopwatch.stop();
+                //printf: Bulk-Updated from version X to Y in XX.XXXs
+                if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
+                    System.out.printf("Bulk-Update from version %d to %d in %s%n", verTriple.getObject().getLiteralValue(), ver, stopwatch);
+                    g.printDeltaChainLengths();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }, 0, bulkUpdateRateInSeconds, TimeUnit.SECONDS);
 
 
         final var spontaneousUpdateScheduler = Executors.newScheduledThreadPool(numberOfSponataneousUpdateThreads);
@@ -176,7 +177,7 @@ public class TestMEASTransactional2 {
                     g.commit();
                     stopwatch.stop();
                     //printf: Spontaneous-Update-Thread from version X to Y in XX.XXXs
-                    if(stopwatch.getTime(TimeUnit.MILLISECONDS) > spontaneousUpdateRateInSeconds*1000) {
+                    if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
                         System.out.printf("Spontaneous-Update-Thread %s from version %d to %d in %s%n", threadNumber, version.get(), ver, stopwatch);
                         g.printDeltaChainLengths();
                     }
@@ -209,10 +210,12 @@ public class TestMEASTransactional2 {
                         g.printDeltaChainLengths();
                     }
                 } catch (Exception e) {
+                    try{
+                        g.end();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
                     e.printStackTrace();
-                }
-                finally {
-                    g.end();
                 }
             }, new Random().nextInt(0, queryRateInSeconds*1000), queryRateInSeconds*1000, TimeUnit.MILLISECONDS);
             queryFutures.add(queryFuture);
@@ -220,8 +223,8 @@ public class TestMEASTransactional2 {
 
         Thread.sleep(360000L);
 
-//        scheduledFutureForBulkUpdates.cancel(true);
-//        updateScheduler.shutdown();
+        scheduledFutureForBulkUpdates.cancel(true);
+        updateScheduler.shutdown();
 
         spontaneousUpdateFutures.forEach(future -> future.cancel(true));
         spontaneousUpdateScheduler.shutdown();
@@ -235,11 +238,11 @@ public class TestMEASTransactional2 {
     }
 
 
-    public GraphWrapperTransactional createGraph() {
-        return new GraphWrapperTransactional();
+    public GraphWrapperTransactional2 createGraph() {
+        return new GraphWrapperTransactional2();
     }
 
-    private static Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillListsByGraph(GraphWrapperTransactional g, int totalAnalogValues, int totalDiscreteValues) {
+    private static Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillListsByGraph(GraphWrapperTransactional2 g, int totalAnalogValues, int totalDiscreteValues) {
 
         final var analogValues = new ArrayList<MEASData.AnalogValue>(totalAnalogValues);
         final var discreteValues = new ArrayList<MEASData.DiscreteValue>(totalDiscreteValues);

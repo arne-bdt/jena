@@ -119,9 +119,14 @@ public class GraphChainImpl implements GraphChain {
     }
 
     @Override
+    public void rebaseAndLinkDeltaForWritingToChain(FastDeltaGraph deltaGraph) {
+        lastCommittedGraph = new FastDeltaGraph(lastCommittedGraph, deltaGraph);
+        deltaChainLength++;
+        deltaGraphOfCurrentTransaction = null;
+    }
+
+    @Override
     public void discardGraphForWriting() {
-        if (!hasGraphForWriting())
-            throw new IllegalStateException("There is no transaction in progress");
         deltaGraphOfCurrentTransaction = null;
     }
 
