@@ -47,9 +47,9 @@ public class TestTimeSeriesData {
     })
     public String p0_GraphImplementation;
     @Param({
-//             "100000",
+             "100000",
 //             "250000",
-             "500000",
+//             "500000",
 //             "750000",
 //            "1000000",
 //            "2500000",
