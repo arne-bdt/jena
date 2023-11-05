@@ -102,11 +102,10 @@ public class FastDeltaGraph extends GraphBase {
     @Override
     protected boolean graphBaseContains(Triple t) {
         if (t.isConcrete()) {
-            if (deletions.contains(t)) {
-                return false;
-            } else {
-                return additions.contains(t) || base.contains(t);
+            if(base.contains(t)) {
+                return !deletions.contains(t);
             }
+            return additions.contains(t);
         } else {
             return graphBaseFind(t).hasNext();
         }
@@ -114,30 +113,30 @@ public class FastDeltaGraph extends GraphBase {
 
     @Override
     protected ExtendedIterator<Triple> graphBaseFind(Triple triplePattern) {
-        return additions.find(triplePattern)
-                .andThen(base.find(triplePattern)
-                        .filterDrop(deletions::contains));
+        return base.find(triplePattern)
+                .filterDrop(deletions::contains)
+                .andThen(additions.find(triplePattern));
     }
 
     @Override
     public ExtendedIterator<Triple> find() {
-        return additions.find()
-                .andThen(base.find()
-                        .filterDrop(deletions::contains));
+        return base.find()
+                .filterDrop(deletions::contains)
+                .andThen(additions.find());
     }
 
     @Override
     public Stream<Triple> stream() {
         return Stream.concat(
-                additions.stream(),
-                base.stream().filter(t -> !deletions.contains(t)));
+                base.stream().filter(t -> !deletions.contains(t)),
+                additions.stream());
     }
 
     @Override
     public Stream<Triple> stream(Node s, Node p, Node o) {
         return Stream.concat(
-                additions.stream(s, p, o),
-                base.stream(s, p, o).filter(t -> !deletions.contains(t)));
+                base.stream(s, p, o).filter(t -> !deletions.contains(t)),
+                additions.stream(s, p, o));
     }
 
     @Override
