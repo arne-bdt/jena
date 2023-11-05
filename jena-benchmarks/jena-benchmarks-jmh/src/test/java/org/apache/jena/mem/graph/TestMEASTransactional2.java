@@ -22,18 +22,16 @@ import org.apache.commons.lang3.time.StopWatch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.datatypes.xsd.XSDDateTime;
-import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
-import org.apache.jena.mem2.GraphMem2Fast;
-import org.apache.jena.query.*;
-import org.apache.jena.sparql.core.mem2.GraphWrapperTransactional;
+import org.apache.jena.query.ReadWrite;
 import org.apache.jena.sparql.core.mem2.GraphWrapperTransactional2;
 import org.junit.Assert;
 import org.junit.Test;
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.runner.Runner;
 
 import java.time.format.DateTimeFormatter;
@@ -42,7 +40,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -116,7 +113,7 @@ public class TestMEASTransactional2 {
         final var bulkUpdateRateInSeconds = 3;
         final var spontaneousUpdateRateInSeconds = 1;
         final var queryRateInSeconds = 1;
-        final var numberOfSponataneousUpdateThreads = 10;
+        final var numberOfSponataneousUpdateThreads = 12;
         final var numberOfQueryThreads = 8;
         final var numerOfSponataneousUpdatesPerSecond = 100;
 
@@ -133,6 +130,8 @@ public class TestMEASTransactional2 {
         MEASData.addDiscreteValuesToGraph(g, discreteValues);
         g.commit();
 
+        final var overallStopwatch = StopWatch.createStarted();
+
         final var updateScheduler = Executors.newSingleThreadScheduledExecutor();
         var scheduledFutureForBulkUpdates = updateScheduler.scheduleAtFixedRate(() -> {
             try {
@@ -148,10 +147,10 @@ public class TestMEASTransactional2 {
                 g.commit();
                 stopwatch.stop();
                 //printf: Bulk-Updated from version X to Y in XX.XXXs
-                if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
-                    System.out.printf("Bulk-Update from version %d to %d in %s%n", verTriple.getObject().getLiteralValue(), ver, stopwatch);
+                //if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
+                    System.out.printf("Bulk-Update from version %d to %d in %s (total time: %s)%n", verTriple.getObject().getLiteralValue(), ver, stopwatch, overallStopwatch);
                     g.printDeltaChainLengths();
-                }
+                //}
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -176,9 +175,8 @@ public class TestMEASTransactional2 {
                     updateAnalogAndDiscreteValues(g, updatedAnalogValues, updatedDiscreteValues, 80, 20);
                     g.commit();
                     stopwatch.stop();
-                    //printf: Spontaneous-Update-Thread from version X to Y in XX.XXXs
                     if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
-                        System.out.printf("Spontaneous-Update-Thread %s from version %d to %d in %s%n", threadNumber, version.get(), ver, stopwatch);
+                        System.out.printf("Spontaneous-Update-Thread %s from version %d to %d in %s (total time: %s)%n", threadNumber, version.get(), ver, stopwatch, overallStopwatch);
                         g.printDeltaChainLengths();
                     }
                 } catch (Exception e) {
@@ -205,7 +203,7 @@ public class TestMEASTransactional2 {
                     g.end();
                     stopwatch.stop();
                     //printf: Thread x reading version y in XX.XXXs
-                    if(stopwatch.getTime(TimeUnit.MILLISECONDS) > queryRateInSeconds*1000) {
+                    if(threadNumber.equals("0") || stopwatch.getTime(TimeUnit.MILLISECONDS) > queryRateInSeconds*1000) {
                         System.out.printf("Thread %s reading version %d in %s%n", threadNumber, ver, stopwatch);
                         g.printDeltaChainLengths();
                     }
@@ -239,7 +237,7 @@ public class TestMEASTransactional2 {
 
 
     public GraphWrapperTransactional2 createGraph() {
-        return new GraphWrapperTransactional2();
+        return new GraphWrapperTransactional2(8);
     }
 
     private static Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillListsByGraph(GraphWrapperTransactional2 g, int totalAnalogValues, int totalDiscreteValues) {
