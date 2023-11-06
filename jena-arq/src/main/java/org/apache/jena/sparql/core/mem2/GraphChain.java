@@ -19,6 +19,8 @@ package org.apache.jena.sparql.core.mem2;
 
 public interface GraphChain {
 
+    long getDataVersion();
+
     String getInstanceId();
 
     boolean hasGraphForWriting();
