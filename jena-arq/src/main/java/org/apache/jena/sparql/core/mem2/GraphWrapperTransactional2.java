@@ -65,7 +65,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
 
     private final Object syncActiveAndStaleSwitching = new Object();
 
-    private static final int DEFAULT_MAX_CHAIN_LENGTH = 25;
+    private static final int DEFAULT_MAX_CHAIN_LENGTH = 2;
 
     private final int maxChainLength;
 
@@ -315,7 +315,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                                 stale.queueDelta(delta);
                                 active.rebaseAndLinkDeltaForWritingToChain(delta);
                                 //printf: Rebased
-                                System.out.println("Rebased");
+//                                System.out.println("Rebased");
                             }
                             dataVersion.incrementAndGet(); // increment the data version to signal that the data has changed
                         }

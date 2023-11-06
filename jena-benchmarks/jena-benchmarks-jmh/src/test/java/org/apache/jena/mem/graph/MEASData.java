@@ -73,11 +73,47 @@ public class MEASData {
         return newValue;
     }
 
+    private static Set<Integer> getRandomIndices(Random random, int size, int numberOfIndices) {
+        final var indices = new HashSet<Integer>(numberOfIndices);
+        while (indices.size() < numberOfIndices) {
+            indices.add(random.nextInt(size));
+        }
+        return indices;
+    }
+
+    public static List<AnalogValue> getRandomlyUpdatedAnalogValues(List<AnalogValue> analogValues, final int numberOfUpdates) {
+        final var random = new Random();
+        final var newValues = new ArrayList<AnalogValue>(numberOfUpdates);
+        final var indices = getRandomIndices(random, analogValues.size(), numberOfUpdates);
+        for (final var index : indices) {
+            final var analogValue = analogValues.get(index);
+            newValues.add(new AnalogValue(analogValue.uuid(), getRandomUnequalFloat(analogValue.value), Clock.systemUTC().instant(), getRandomUnequalInt(analogValue.status)));
+        }
+        // Shuffle is important because the order might play a role. We want to test the performance of the
+        // contains method regardless of the order
+        Collections.shuffle(newValues, random);
+        return newValues;
+    }
+
     public static List<AnalogValue> getRandomlyUpdatedAnalogValues(List<AnalogValue> analogValues) {
         final var random = new Random();
         final var newValues = new ArrayList<AnalogValue>(analogValues.size());
         for (final var analogValue : analogValues) {
             newValues.add(new AnalogValue(analogValue.uuid(), getRandomUnequalFloat(analogValue.value), Clock.systemUTC().instant(), getRandomUnequalInt(analogValue.status)));
+        }
+        // Shuffle is important because the order might play a role. We want to test the performance of the
+        // contains method regardless of the order
+        Collections.shuffle(newValues, random);
+        return newValues;
+    }
+
+    public static List<DiscreteValue> getRandomlyUpdatedDiscreteValues(List<DiscreteValue> discreteValues, final int numberOfUpdates) {
+        final var random = new Random();
+        final var newValues = new ArrayList<DiscreteValue>(numberOfUpdates);
+        final var indices = getRandomIndices(random, discreteValues.size(), numberOfUpdates);
+        for (final var index : indices) {
+            final var discreteValue = discreteValues.get(index);
+            newValues.add(new DiscreteValue(discreteValue.uuid(), getRandomUnequalInt(discreteValue.value), Clock.systemUTC().instant(), getRandomUnequalInt(discreteValue.status)));
         }
         // Shuffle is important because the order might play a role. We want to test the performance of the
         // contains method regardless of the order
