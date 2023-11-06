@@ -147,10 +147,10 @@ public class TestMEASTransactional2 {
                 g.commit();
                 stopwatch.stop();
                 //printf: Bulk-Updated from version X to Y in XX.XXXs
-                //if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
+                if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
                     System.out.printf("Bulk-Update from version %d to %d in %s (total time: %s)%n", verTriple.getObject().getLiteralValue(), ver, stopwatch, overallStopwatch);
                     g.printDeltaChainLengths();
-                //}
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -203,7 +203,7 @@ public class TestMEASTransactional2 {
                     g.end();
                     stopwatch.stop();
                     //printf: Thread x reading version y in XX.XXXs
-                    if(threadNumber.equals("0") || stopwatch.getTime(TimeUnit.MILLISECONDS) > queryRateInSeconds*1000) {
+                    if(/* threadNumber.equals("0") || */ stopwatch.getTime(TimeUnit.MILLISECONDS) > queryRateInSeconds*1000) {
                         System.out.printf("Thread %s reading version %d in %s%n", threadNumber, ver, stopwatch);
                         g.printDeltaChainLengths();
                     }

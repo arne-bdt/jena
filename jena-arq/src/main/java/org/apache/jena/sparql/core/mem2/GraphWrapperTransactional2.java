@@ -307,6 +307,10 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                                 txnInfo.activeChain.linkGraphForWritingToChain();
                                 stale.queueDelta(delta);
                             } else { //if the active graph has changed, we have to rebase the delta
+                                if(stale.getDataVersion() != active.getDataVersion()) {
+                                    // this should never happen, because the active graph should not have changed
+                                    throw new JenaTransactionException("Rebase not possible: new active graph has already been changed by another transaction.");
+                                }
                                 stale.discardGraphForWriting();
                                 stale.queueDelta(delta);
                                 active.rebaseAndLinkDeltaForWritingToChain(delta);

@@ -23,6 +23,7 @@ import org.apache.jena.graph.Graph;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class GraphChainImpl implements GraphChain {
 
@@ -45,6 +46,12 @@ public class GraphChainImpl implements GraphChain {
     }
 
     private final String instanceId;
+
+    private final AtomicLong dataVersion = new AtomicLong(0);
+
+    public long getDataVersion() {
+        return dataVersion.get();
+    }
 
     public GraphChainImpl(final Graph base) {
         lastCommittedGraph = base;
@@ -116,6 +123,7 @@ public class GraphChainImpl implements GraphChain {
         lastCommittedGraph = deltaGraphOfCurrentTransaction;
         deltaChainLength++;
         deltaGraphOfCurrentTransaction = null;
+        dataVersion.getAndIncrement();
     }
 
     @Override
@@ -123,6 +131,7 @@ public class GraphChainImpl implements GraphChain {
         lastCommittedGraph = new FastDeltaGraph(lastCommittedGraph, deltaGraph);
         deltaChainLength++;
         deltaGraphOfCurrentTransaction = null;
+        dataVersion.getAndIncrement();
     }
 
     @Override
@@ -165,6 +174,7 @@ public class GraphChainImpl implements GraphChain {
             // destruction and recreation of the internal data structures
             delta.getAdditions().forEachRemaining(lastCommittedGraph::add);
             delta.getDeletions().forEachRemaining(lastCommittedGraph::delete);
+            dataVersion.getAndIncrement();
         }
 //        if(deltasSize > 0) {
 //            //println: Instance #: Applied deltas.
