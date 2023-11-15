@@ -26,7 +26,9 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
+import org.apache.jena.mem.graph.helper.Serialization;
 import org.apache.jena.query.ReadWrite;
+import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.sparql.core.mem2.GraphWrapperTransactional2;
 import org.junit.Assert;
 import org.junit.Test;
@@ -108,13 +110,55 @@ public class TestMEASTransactional2 {
     }
 
     @Test
+    public void testSerializeAndDeserializeMeasurements() throws InterruptedException {
+        final var analogValues = MEASData.generateRandomAnalogValues(100000);
+        final var discreteValues = MEASData.generateRandomDiscreteValues(25000);
+
+        final var g = createGraph();
+        g.begin(ReadWrite.WRITE);
+        MEASData.addAnalogValuesToGraph(g, analogValues);
+        MEASData.addDiscreteValuesToGraph(g, discreteValues);
+        g.commit();
+
+        var stopwatch = StopWatch.createStarted();
+        g.begin(ReadWrite.READ);
+        var serialized = Serialization.serialize(g, RDFFormat.RDF_THRIFT, Serialization.LZ4_FASTEST);
+        g.end();
+        g.close();
+        stopwatch.stop();
+        // print size of serialized graph
+        System.out.printf("Serialized graph with %d analog values and %d discrete values: %,.2f MB%n",
+                analogValues.size(),
+                discreteValues.size(),
+                serialized.bytes().length / 1024.0 / 1024.0);
+        //print time to serialize graph
+        System.out.printf("Serializing graph with %d analog values and %d discrete values took %s%n",
+                analogValues.size(),
+                discreteValues.size(),
+                stopwatch);
+
+        stopwatch.reset();
+        stopwatch.start();
+        var deserialized = Serialization.deserialize(serialized, false);
+        stopwatch.stop();
+        //print time to deserialize graph
+        System.out.printf("Deserializing graph with %d analog values and %d discrete values took %s%n",
+                analogValues.size(),
+                discreteValues.size(),
+                stopwatch);
+        Assert.assertEquals(analogValues.size(), deserialized.stream(Node.ANY, MEASData.AnalogValueValue.asNode(), Node.ANY).count());
+        Assert.assertEquals(discreteValues.size(), deserialized.stream(Node.ANY, MEASData.DiscreteValueValue.asNode(), Node.ANY).count());
+    }
+
+
+    @Test
     public void testMultipleThreadsUpdatingWithSeveralThreadsReading() throws InterruptedException {
         final var bulkUpdateRateInSeconds = 3;
         final var spontaneousUpdateRateInSeconds = 1;
         final var queryRateInSeconds = 1;
-        final var numberOfSponataneousUpdateThreads = 1;
-        final var numberOfQueryThreads = 8;
-        final var numerOfSponataneousUpdatesPerSecond = 100;
+        final var numberOfSpontaneousUpdateThreads = 4;
+        final var numberOfQueryThreads = 12;
+        final var numberOfSpontaneousUpdatesPerSecond = 100;
 
         final var version = new AtomicInteger(0);
         final var versionTriple = Triple.create(NodeFactory.createURI("_" + UUID.randomUUID().toString()), NodeFactory.createLiteralByValue("jena.apache.org/jena-jmh-benchmarks#version"), NodeFactory.createLiteralByValue(version.intValue()));
@@ -156,10 +200,10 @@ public class TestMEASTransactional2 {
         }, 0, bulkUpdateRateInSeconds, TimeUnit.SECONDS);
 
 
-        final var spontaneousUpdateScheduler = Executors.newScheduledThreadPool(numberOfSponataneousUpdateThreads);
-        final var spontaneousUpdateFutures = new ArrayList<ScheduledFuture>(numerOfSponataneousUpdatesPerSecond);
+        final var spontaneousUpdateScheduler = Executors.newScheduledThreadPool(numberOfSpontaneousUpdateThreads);
+        final var spontaneousUpdateFutures = new ArrayList<ScheduledFuture>(numberOfSpontaneousUpdatesPerSecond);
 
-        for (int i = 0; i < numerOfSponataneousUpdatesPerSecond; i++) {
+        for (int i = 0; i < numberOfSpontaneousUpdatesPerSecond; i++) {
             final var threadNumber = Integer.toString(i);
             final var future = spontaneousUpdateScheduler.scheduleAtFixedRate(() -> {
                 try {
@@ -241,9 +285,9 @@ public class TestMEASTransactional2 {
         final var bulkUpdateRateInSeconds = 3;
         final var spontaneousUpdateRateInSeconds = 1;
         final var queryRateInSeconds = 1;
-        final var numberOfSponataneousUpdateThreads = 4;
-        final var numberOfQueryThreads = 16;
-        final var numerOfSponataneousUpdatesPerSecond = 100;
+        final var numberOfSpontaneousUpdateThreads = 4;
+        final var numberOfQueryThreads = 12;
+        final var numberOfSpontaneousUpdatesPerSecond = 100;
 
         final var version = new AtomicInteger(0);
         final var versionTriple = Triple.create(NodeFactory.createURI("_" + UUID.randomUUID().toString()), NodeFactory.createLiteralByValue("jena.apache.org/jena-jmh-benchmarks#version"), NodeFactory.createLiteralByValue(version.intValue()));
@@ -298,10 +342,10 @@ public class TestMEASTransactional2 {
         }, 0, bulkUpdateRateInSeconds, TimeUnit.SECONDS);
 
 
-        final var spontaneousUpdateScheduler = Executors.newScheduledThreadPool(numberOfSponataneousUpdateThreads);
-        final var spontaneousUpdateFutures = new ArrayList<ScheduledFuture>(numerOfSponataneousUpdatesPerSecond);
+        final var spontaneousUpdateScheduler = Executors.newScheduledThreadPool(numberOfSpontaneousUpdateThreads);
+        final var spontaneousUpdateFutures = new ArrayList<ScheduledFuture>(numberOfSpontaneousUpdatesPerSecond);
 
-        for (int i = 0; i < numerOfSponataneousUpdatesPerSecond; i++) {
+        for (int i = 0; i < numberOfSpontaneousUpdatesPerSecond; i++) {
             final var future = spontaneousUpdateScheduler.scheduleAtFixedRate(() -> {
                 try {
                     updateQueue.add(

@@ -65,7 +65,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
 
     private final Object syncActiveAndStaleSwitching = new Object();
 
-    private static final int DEFAULT_MAX_CHAIN_LENGTH = 2;
+    private static final int DEFAULT_MAX_CHAIN_LENGTH = 3;
 
     private final int maxChainLength;
 
