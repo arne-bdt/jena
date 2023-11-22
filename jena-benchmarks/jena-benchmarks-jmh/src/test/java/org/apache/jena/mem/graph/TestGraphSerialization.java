@@ -18,7 +18,6 @@
 
 package org.apache.jena.mem.graph;
 
-import net.jpountz.lz4.LZ4Factory;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.mem.TripleReaderReadingCGMES_2_4_15_WithTypedLiterals;
@@ -28,8 +27,8 @@ import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFFormat;
-import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.RDFWriter;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.Assert;
@@ -37,13 +36,8 @@ import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 
 @State(Scope.Benchmark)
@@ -157,6 +151,15 @@ public class TestGraphSerialization {
                 throw new IllegalArgumentException("Unknown rdfFormat: " + rdfFormat);
         }
     }
+
+    @Test
+    public void writeGraphWithTypedLiterals() {
+        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read("c:/temp/DataWithUntypedLiterals.xml", "c:/temp/Schema.rdf", Lang.RDFXML);
+        var g = new GraphMem2Fast();
+        triples.forEach(g::add);
+        RDFWriter.source(g).format(RDFFormat.TURTLE_PRETTY).output("c:/temp/DataWithTypedLiterals.ttl");
+    }
+
 
     //@Test
     public void loadSerializeAndDeserialize() {
