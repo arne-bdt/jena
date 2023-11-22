@@ -36,6 +36,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.runner.Runner;
 
+import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -109,22 +110,46 @@ public class TestMEASTransactional2 {
         }
     }
 
+    /**
+     * This method is used to get the memory consumption of the current JVM.
+     *
+     * @return the memory consumption in MB
+     */
+    private static double runGcAndGetUsedMemoryInMB() {
+        System.runFinalization();
+        System.gc();
+        Runtime.getRuntime().runFinalization();
+        Runtime.getRuntime().gc();
+        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024L)).divide(BigDecimal.valueOf(1024L)).doubleValue();
+    }
+
     @Test
     public void testSerializeAndDeserializeMeasurements() throws InterruptedException {
         final var analogValues = MEASData.generateRandomAnalogValues(100000);
         final var discreteValues = MEASData.generateRandomDiscreteValues(25000);
 
-        final var g = createGraph();
-        g.begin(ReadWrite.WRITE);
-        MEASData.addAnalogValuesToGraph(g, analogValues);
-        MEASData.addDiscreteValuesToGraph(g, discreteValues);
-        g.commit();
+        final StopWatch stopwatch;
+        final Serialization.SerializedData serialized;
+        {
+            final var memoryBefore = runGcAndGetUsedMemoryInMB();
+            final var g = createGraph();
+            g.begin(ReadWrite.WRITE);
+            MEASData.addAnalogValuesToGraph(g, analogValues);
+            MEASData.addDiscreteValuesToGraph(g, discreteValues);
+            g.commit();
+            final var memoryAfter = runGcAndGetUsedMemoryInMB();
+            //print additional memory needed to fill graph
+            System.out.printf("Additional memory needed to fill graph with %d analog values and %d discrete values: %,.2f MB%n",
+                    analogValues.size(),
+                    discreteValues.size(),
+                    (memoryAfter - memoryBefore));
 
-        var stopwatch = StopWatch.createStarted();
-        g.begin(ReadWrite.READ);
-        var serialized = Serialization.serialize(g, RDFFormat.RDF_THRIFT, Serialization.LZ4_FASTEST);
-        g.end();
-        g.close();
+            stopwatch = StopWatch.createStarted();
+            g.begin(ReadWrite.READ);
+            serialized = Serialization.serialize(g, RDFFormat.RDF_THRIFT, Serialization.LZ4_FASTEST);
+            g.end();
+            g.close();
+        }
         stopwatch.stop();
         // print size of serialized graph
         System.out.printf("Serialized graph with %d analog values and %d discrete values: %,.2f MB%n",
@@ -138,14 +163,21 @@ public class TestMEASTransactional2 {
                 stopwatch);
 
         stopwatch.reset();
+        final var memoryBefore = runGcAndGetUsedMemoryInMB();
         stopwatch.start();
         var deserialized = Serialization.deserialize(serialized, false);
         stopwatch.stop();
+        final var memoryAfter = runGcAndGetUsedMemoryInMB();
         //print time to deserialize graph
         System.out.printf("Deserializing graph with %d analog values and %d discrete values took %s%n",
                 analogValues.size(),
                 discreteValues.size(),
                 stopwatch);
+        //print additional memory needed to deserialize graph
+        System.out.printf("Additional memory needed to deserialize graph with %d analog values and %d discrete values: %,.2f MB%n",
+                analogValues.size(),
+                discreteValues.size(),
+                (memoryAfter - memoryBefore));
         Assert.assertEquals(analogValues.size(), deserialized.stream(Node.ANY, MEASData.AnalogValueValue.asNode(), Node.ANY).count());
         Assert.assertEquals(discreteValues.size(), deserialized.stream(Node.ANY, MEASData.DiscreteValueValue.asNode(), Node.ANY).count());
     }
