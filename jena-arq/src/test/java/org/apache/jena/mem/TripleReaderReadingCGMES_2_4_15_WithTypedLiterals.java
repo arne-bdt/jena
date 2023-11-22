@@ -54,14 +54,17 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
             PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
 
             SELECT ?property ?primitiveType
-            WHERE 
+            WHERE
             {
                 ?property cims:dataType ?dataType.
                 {
                     ?dataType cims:stereotype "CIMDatatype".
                     []  rdfs:domain ?dataType;
+                        rdfs:label ?label;
+                        #rdfs:label "value";
                         cims:dataType/cims:stereotype "Primitive";
                         cims:dataType/rdfs:label ?primitiveType.
+                   FILTER (!bound(?label) ||  str(?label) = "value")      				
                     FILTER (str(?primitiveType) != "String")
                 }
                 UNION
@@ -165,9 +168,11 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
         rowSet.forEach(vars -> {
             map.put(URI.create(vars.get("property").getURI()),
                     getDataType(vars.get("primitiveType").getLiteralLexicalForm()));
-            // add also the CIM100 version of the property
-            map.put(URI.create(vars.get("property").getURI().replace("http://iec.ch/TC57/2013/CIM-schema-cim16#", "http://iec.ch/TC57/CIM100#")),
-                    getDataType(vars.get("primitiveType").getLiteralLexicalForm()));
+            if(vars.get("property").getURI().startsWith("http://iec.ch/TC57/2013/CIM-schema-cim16#")) {
+                // add also the CIM100 version of the property
+                map.put(URI.create(vars.get("property").getURI().replace("http://iec.ch/TC57/2013/CIM-schema-cim16#", "http://iec.ch/TC57/CIM100#")),
+                        getDataType(vars.get("primitiveType").getLiteralLexicalForm()));
+            }
         });
         return map;
     }
