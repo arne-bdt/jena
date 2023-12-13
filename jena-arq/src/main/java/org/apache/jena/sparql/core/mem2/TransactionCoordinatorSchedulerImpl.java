@@ -27,14 +27,22 @@ import java.util.concurrent.locks.ReentrantLock;
 public class TransactionCoordinatorSchedulerImpl implements TransactionCoordinatorScheduler {
 
     private static final Object DUMMY = new Object();
-    private static final int STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS = 5000;
+    private static final int DEFAULT_STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS = 5000;
     private static final TransactionCoordinatorSchedulerImpl instance = new TransactionCoordinatorSchedulerImpl();
     private final ConcurrentHashMap<TransactionCoordinator, Object> transactionCoordinators = new ConcurrentHashMap<>();
     private final ReentrantLock lock = new ReentrantLock();
+
+    final int staleTransactionRemovalTimerIntervalMs;
+
     private ScheduledExecutorService scheduledExecutorService;
     private boolean running = false;
 
-    private TransactionCoordinatorSchedulerImpl() {
+    /*package*/ TransactionCoordinatorSchedulerImpl() {
+        this(DEFAULT_STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS);
+    }
+
+    /*package*/ TransactionCoordinatorSchedulerImpl(final int staleTransactionRemovalTimerIntervalMs) {
+        this.staleTransactionRemovalTimerIntervalMs = staleTransactionRemovalTimerIntervalMs;
     }
 
     public static TransactionCoordinatorScheduler getInstance() {
@@ -50,8 +58,8 @@ public class TransactionCoordinatorSchedulerImpl implements TransactionCoordinat
                 this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
                 this.scheduledExecutorService
                         .scheduleWithFixedDelay(this::staleTransactionCleanup,
-                                STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS,
-                                STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS, TimeUnit.MILLISECONDS);
+                                staleTransactionRemovalTimerIntervalMs,
+                                staleTransactionRemovalTimerIntervalMs, TimeUnit.MILLISECONDS);
                 running = true;
             }
         } finally {
@@ -78,7 +86,7 @@ public class TransactionCoordinatorSchedulerImpl implements TransactionCoordinat
 
     @Override
     public int getStaleTransactionRemovalTimerIntervalMs() {
-        return STALE_TRANSACTION_REMOVAL_TIMER_INTERVAL_MS;
+        return staleTransactionRemovalTimerIntervalMs;
     }
 
     private void staleTransactionCleanup() {

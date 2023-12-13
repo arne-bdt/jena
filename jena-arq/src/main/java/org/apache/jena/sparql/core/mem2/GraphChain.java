@@ -17,6 +17,8 @@
  */
 package org.apache.jena.sparql.core.mem2;
 
+import java.util.UUID;
+
 public interface GraphChain {
 
     long getDataVersion();
@@ -37,9 +39,9 @@ public interface GraphChain {
 
     boolean isReadyToApplyDeltas();
 
-    GraphReadOnlyWrapper getLastCommittedAndIncReaderCounter();
+    GraphReadOnlyWrapper getLastCommittedAndAddReader(UUID readerId);
 
-    void decrementReaderCounter();
+    void removeReader(final UUID readerId);
 
     FastDeltaGraph prepareGraphForWriting();
 

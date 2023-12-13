@@ -26,10 +26,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
+public class TransactionCoordinatorImpl implements TransactionCoordinator {
 
     private static final AtomicLong instanceCounter = new AtomicLong(0);
-    private static final Logger LOGGER = LoggerFactory.getLogger(TransactionCoordinatorMRPlusSW.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(TransactionCoordinatorImpl.class);
     private final ConcurrentHashMap<Long, TheadTransactionInfo> activeThreadsByThreadId = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, TheadTransactionInfo> timedOutThreadsByThreadId = new ConcurrentHashMap<>();
     private final int transactionTimeoutMs;
@@ -40,24 +40,26 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    public TransactionCoordinatorMRPlusSW(int transactionTimeoutMs,
-                                          int keepInfoAboutTransactionTimeoutForXTimesTheTimeout) {
+    public TransactionCoordinatorImpl(final int transactionTimeoutMs,
+                                      final int keepInfoAboutTransactionTimeoutForXTimesTheTimeout,
+                                      final TransactionCoordinatorScheduler transactionCoordinatorScheduler) {
         this.transactionTimeoutMs = transactionTimeoutMs;
         this.timeToKeepTransactionsAfterTimeoutMs
                 = transactionTimeoutMs * keepInfoAboutTransactionTimeoutForXTimesTheTimeout;
-        this.transactionCoordinatorScheduler = TransactionCoordinatorScheduler.getInstance();
+        this.transactionCoordinatorScheduler = transactionCoordinatorScheduler;
     }
 
-    public TransactionCoordinatorMRPlusSW() {
+    public TransactionCoordinatorImpl() {
         this(TransactionCoordinator.DEFAULT_TRANSACTION_TIMEOUT_MS,
-                TransactionCoordinator.DEFAULT_KEEP_INFO_ABOUT_TRANSACTION_TIMEOUT_FOR_X_TIMES_THE_TIMEOUT);
+                TransactionCoordinator.DEFAULT_KEEP_INFO_ABOUT_TRANSACTION_TIMEOUT_FOR_X_TIMES_THE_TIMEOUT,
+                TransactionCoordinatorScheduler.getInstance());
     }
 
     public void checkForTimeouts() {
         activeThreadsByThreadId.values().stream()
                 .filter(tInfo -> tInfo.isTimedOut() || !tInfo.getThread().isAlive())
                 .forEach(tInfo -> {
-                    if (!tInfo.getThread().isAlive()) {
+                    if (tInfo.getThread().isAlive()) {
                         LOGGER.error("Thread '{}' [{}] has timed out. Calling runnable for timed out thread.",
                                 tInfo.getThread().getName(), tInfo.getThread().getId());
                     } else {
@@ -163,7 +165,7 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        TransactionCoordinatorMRPlusSW that = (TransactionCoordinatorMRPlusSW) o;
+        TransactionCoordinatorImpl that = (TransactionCoordinatorImpl) o;
 
         return instanceId == that.instanceId;
     }
@@ -204,11 +206,11 @@ public class TransactionCoordinatorMRPlusSW implements TransactionCoordinator {
         }
 
         public boolean isTimedOut() {
-            return System.currentTimeMillis() - lastRefreshedTime > timeToKeepTransactionsAfterTimeoutMs;
+            return (System.currentTimeMillis() - lastRefreshedTime) > transactionTimeoutMs;
         }
 
         public boolean isOldEnoughToBeRemoved() {
-            return System.currentTimeMillis() - lastRefreshedTime > timeToKeepTransactionsAfterTimeoutMs;
+            return (System.currentTimeMillis() - lastRefreshedTime) > timeToKeepTransactionsAfterTimeoutMs;
         }
     }
 }

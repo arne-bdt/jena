@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import java.time.Duration;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.assertEquals;
@@ -245,5 +246,104 @@ public class GraphWrapperTransactional2Test {
                         && sut.getStaleGraphLengthOfDeltaQueue() == 0
                         && sut.getActiveGraphLengthOfDeltaChain() == 0
                         && sut.getStaleGraphLengthOfDeltaChain() == 0);
+    }
+
+    @Test
+    public void testWriteTransactionTimeout() throws InterruptedException {
+        var semaphore = new Semaphore(1);
+        var scheduler = new TransactionCoordinatorSchedulerImpl(50);
+        var coordinator = new TransactionCoordinatorImpl(400, 10, scheduler);
+        var sut = new GraphWrapperTransactional2(GraphMem2Fast::new, 3, coordinator);
+
+        var t = new Thread(() -> {
+            sut.begin(ReadWrite.WRITE);
+            sut.add(triple("s p o"));
+            sut.commit();
+        });
+        t.start();
+        t.join();
+
+
+        sut.begin(ReadWrite.READ);
+        assertEquals(1, sut.size());
+        sut.end();
+
+        semaphore.acquire();
+
+        AtomicBoolean exceptionThrown = new AtomicBoolean(false);
+
+        t = new Thread(() -> {
+            sut.begin(ReadWrite.WRITE);
+            sut.add(triple("s1 p1 o1"));
+            assertEquals(2, sut.size());
+            try {
+                semaphore.acquire();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            try
+            {
+                sut.commit();
+            }
+            catch (JenaTransactionException e)
+            {
+                exceptionThrown.set(true);
+            }
+        });
+        t.start();
+
+        Thread.sleep(500);
+
+        semaphore.release();
+        t.join();
+
+        assertEquals(true, exceptionThrown.get());
+
+        sut.begin(ReadWrite.READ);
+        assertEquals(1, sut.size());
+        sut.end();
+    }
+
+    @Test
+    public void testReadTransactionTimeout() throws InterruptedException {
+        var semaphore = new Semaphore(1);
+        var scheduler = new TransactionCoordinatorSchedulerImpl(50);
+        var coordinator = new TransactionCoordinatorImpl(400, 10, scheduler);
+        var sut = new GraphWrapperTransactional2(GraphMem2Fast::new, 3, coordinator);
+
+        sut.begin(ReadWrite.WRITE);
+        sut.add(triple("s p o"));
+        sut.commit();
+
+        semaphore.acquire();
+
+        AtomicBoolean exceptionThrown = new AtomicBoolean(false);
+
+        var t = new Thread(() -> {
+            sut.begin(ReadWrite.READ);
+            assertEquals(1, sut.size());
+            try {
+                semaphore.acquire();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            try
+            {
+                sut.end();
+            }
+            catch (JenaTransactionException e)
+            {
+                exceptionThrown.set(true);
+            }
+
+        });
+        t.start();
+
+        Thread.sleep(500);
+
+        semaphore.release();
+        t.join();
+
+        assertEquals(true, exceptionThrown.get());
     }
 }

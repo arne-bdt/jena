@@ -32,8 +32,10 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -51,10 +53,10 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
      */
     private final Semaphore writeSemaphore = new Semaphore(1);
 
-    private record TransactionInfo(TxnType type, ReadWrite mode, Graph graph, GraphChain activeChain, long version) {}
+    private record TransactionInfo(UUID transactionID, AtomicBoolean isAlive, TxnType type, ReadWrite mode, Graph graph, GraphChain activeChain, long version) {}
     private final ThreadLocal<TransactionInfo> txnInfo = new ThreadLocal<>();
     private final AtomicLong dataVersion = new AtomicLong(0);
-    private final TransactionCoordinatorMRPlusSW transactionCoordinator;
+    private final TransactionCoordinator transactionCoordinator;
     private final Thread backgroundThread;
     private volatile GraphChain active;
     private volatile GraphChain stale;
@@ -70,7 +72,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     private final int maxChainLength;
 
     public GraphWrapperTransactional2(final int maxChainLength) {
-        this(GraphMem2Fast::new, maxChainLength);
+        this(GraphMem2Fast::new, maxChainLength, new TransactionCoordinatorImpl());
     }
 
     public GraphWrapperTransactional2() {
@@ -78,13 +80,13 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     }
 
     public GraphWrapperTransactional2(final Supplier<Graph> graphFactory) {
-        this(graphFactory, DEFAULT_MAX_CHAIN_LENGTH);
+        this(graphFactory, DEFAULT_MAX_CHAIN_LENGTH, new TransactionCoordinatorImpl());
     }
-    public GraphWrapperTransactional2(final Supplier<Graph> graphFactory, final int maxChainLength) {
+    public GraphWrapperTransactional2(final Supplier<Graph> graphFactory, final int maxChainLength, final TransactionCoordinator transactionCoordinator) {
         this.maxChainLength = maxChainLength;
         this.active = new GraphChainImpl(graphFactory.get());
         this.stale = new GraphChainImpl(graphFactory.get());
-        this.transactionCoordinator = new TransactionCoordinatorMRPlusSW();
+        this.transactionCoordinator = transactionCoordinator;
         this.backgroundThread = new Thread(() -> backgroundUpdateLoop());
         this.backgroundThread.start();
     }
@@ -116,13 +118,13 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
         }
         this.active = new GraphChainImpl(activeBase);
         this.stale = new GraphChainImpl(staleBase);
-        this.transactionCoordinator = new TransactionCoordinatorMRPlusSW();
-        this.backgroundThread = new Thread(() -> backgroundUpdateLoop());
+        this.transactionCoordinator = new TransactionCoordinatorImpl();
+        this.backgroundThread = new Thread(this::backgroundUpdateLoop);
         this.backgroundThread.start();
     }
 
     private Graph getGraphForCurrentTransaction() {
-        final var txnInfo = this.txnInfo.get();
+        final var txnInfo = this.getTransactionInfoOrNull();
         if (txnInfo == null) {
             throw new JenaTransactionException("Not in a transaction.");
         }
@@ -148,19 +150,25 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                 throw new JenaTransactionException("Interrupted while waiting for write semaphore.", e);
             }
         }
+        final var transactionId = UUID.randomUUID();
+        final TransactionInfo info;
         switch (readWrite) {
             case READ -> {
                 final GraphChain activeChain = this.active;
-                txnInfo.set(new TransactionInfo(txnType, readWrite, activeChain.getLastCommittedAndIncReaderCounter(), activeChain, dataVersion.get()));
+                info = new TransactionInfo(transactionId, new AtomicBoolean(true), txnType, readWrite, activeChain.getLastCommittedAndAddReader(transactionId), activeChain, dataVersion.get());
+                txnInfo.set(info);
                 transactionCoordinator.registerCurrentThread(() -> {
-                    activeChain.decrementReaderCounter();
+                    info.isAlive.set(false);
+                    activeChain.removeReader(transactionId);
                 });
             }
             case WRITE -> {
                 onBeginWriteTrySwitchActiveAndStale();
                 final GraphChain activeChain = this.active;
-                txnInfo.set(new TransactionInfo(txnType, readWrite, activeChain.prepareGraphForWriting(), activeChain, dataVersion.get()));
+                info = new TransactionInfo(transactionId, new AtomicBoolean(true), txnType, readWrite, activeChain.prepareGraphForWriting(), activeChain, dataVersion.get());
+                txnInfo.set(info);
                 transactionCoordinator.registerCurrentThread(() -> {
+                    info.isAlive.set(false);
                     activeChain.discardGraphForWriting();
                     writeSemaphore.release();
                 });
@@ -170,10 +178,10 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     }
 
     private void endOnceByRemovingThreadLocalsAndUnlocking() {
-        final var txnInfo = this.txnInfo.get();
+        final var txnInfo = this.getTransactionInfoOrNull();
         if (txnInfo != null) {
             switch (txnInfo.mode) {
-                case READ -> txnInfo.activeChain.decrementReaderCounter();
+                case READ -> txnInfo.activeChain.removeReader(txnInfo.transactionID);
                 case WRITE -> {
                     txnInfo.activeChain.discardGraphForWriting();
                     writeSemaphore.release();
@@ -234,7 +242,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
 
     @Override
     public ReadWrite transactionMode() {
-        final var txnInfo = this.txnInfo.get();
+        final var txnInfo = this.getTransactionInfoOrNull();
         if (txnInfo == null) {
             return null;
         }
@@ -243,16 +251,28 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
 
     @Override
     public TxnType transactionType() {
-        final var txnInfo = this.txnInfo.get();
+        final var txnInfo = this.getTransactionInfoOrNull();
         if (txnInfo == null) {
             return null;
         }
         return txnInfo.type;
     }
 
+    private TransactionInfo getTransactionInfoOrNull() {
+        final var txnInfo = this.txnInfo.get();
+        if (txnInfo == null)
+            return null;
+
+        if(!txnInfo.isAlive.get()) {
+            this.txnInfo.remove();
+            return null;
+        }
+        return txnInfo;
+    }
+
     @Override
     public boolean isInTransaction() {
-        return txnInfo.get() != null;
+        return getTransactionInfoOrNull() != null;
     }
 
     @Override
@@ -261,7 +281,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
             return false;
         }
         try {
-            final var txnInfo = this.txnInfo.get();
+            final var txnInfo = this.getTransactionInfoOrNull();
             // if we are promoting to isolated, we need to check that the data hasn't changed
             if (txnType == Promote.ISOLATED
                     && txnInfo.version != dataVersion.get()) {
@@ -269,10 +289,12 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                 return false;
             }
             transactionCoordinator.unregisterCurrentThread();
-            txnInfo.activeChain.decrementReaderCounter();
+            txnInfo.activeChain.removeReader(txnInfo.transactionID);
             final var activeChain = this.active;
-            this.txnInfo.set(new TransactionInfo(txnInfo.type, ReadWrite.WRITE, activeChain.prepareGraphForWriting(), activeChain, dataVersion.get()));
+            final var info = new TransactionInfo(txnInfo.transactionID, new AtomicBoolean(true), txnInfo.type, ReadWrite.WRITE, activeChain.prepareGraphForWriting(), activeChain, dataVersion.get());
+            this.txnInfo.set(info);
             transactionCoordinator.registerCurrentThread(() -> {
+                info.isAlive.set(false);
                 activeChain.discardGraphForWriting();
                 writeSemaphore.release();
             });
@@ -285,7 +307,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
 
     @Override
     public void commit() {
-        final var txnInfo = this.txnInfo.get();
+        final var txnInfo = this.getTransactionInfoOrNull();
         if (txnInfo == null) {
             throw new JenaTransactionException("Not in a transaction.");
         }
@@ -293,7 +315,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
             transactionCoordinator.unregisterCurrentThread();
             switch (transactionMode()) {
                 case READ -> {
-                    txnInfo.activeChain.decrementReaderCounter();
+                    txnInfo.activeChain.removeReader(txnInfo.transactionID);
                     synchronized (syncBackgroundUpdateLoop) {
                         syncBackgroundUpdateLoop.notifyAll();
                     }
@@ -335,12 +357,13 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
         }
         catch (Exception e) {
             endOnceByRemovingThreadLocalsAndUnlocking();
+            throw e;
         }
     }
 
     @Override
     public void abort() {
-        final var txnInfo = this.txnInfo.get();
+        final var txnInfo = this.getTransactionInfoOrNull();
         if (txnInfo == null) {
             throw new JenaTransactionException("Not in a transaction.");
         }
@@ -348,7 +371,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
             transactionCoordinator.unregisterCurrentThread();
             switch (transactionMode()) {
                 case READ -> {
-                    txnInfo.activeChain.decrementReaderCounter();
+                    txnInfo.activeChain.removeReader(txnInfo.transactionID);
                     synchronized (syncBackgroundUpdateLoop) {
                         syncBackgroundUpdateLoop.notifyAll();
                     }
@@ -483,7 +506,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     @Override
     public void close() {
         try {
-            final var txnInfo = this.txnInfo.get();
+            final var txnInfo = this.getTransactionInfoOrNull();
             if (txnInfo != null) {
                 try {
                     txnInfo.graph.close();
@@ -520,7 +543,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
 
     @Override
     public boolean isClosed() {
-        final var txnInfo = this.txnInfo.get();
+        final var txnInfo = this.getTransactionInfoOrNull();
         if (txnInfo != null) {
             return txnInfo.graph.isClosed();
         }

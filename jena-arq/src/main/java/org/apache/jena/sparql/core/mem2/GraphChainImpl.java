@@ -22,7 +22,7 @@ import org.apache.jena.graph.Graph;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class GraphChainImpl implements GraphChain {
@@ -39,7 +39,7 @@ public class GraphChainImpl implements GraphChain {
 
     private volatile int deltaChainLength = 0;
 
-    private final AtomicInteger readerCounter = new AtomicInteger(0);
+    private final ConcurrentSkipListSet<UUID> reader = new ConcurrentSkipListSet<>();
 
     public String getInstanceId() {
         return instanceId;
@@ -83,7 +83,7 @@ public class GraphChainImpl implements GraphChain {
 
     @Override
     public boolean hasReader() {
-        return readerCounter.get() != 0;
+        return !reader.isEmpty();
     }
 
     @Override
@@ -97,15 +97,15 @@ public class GraphChainImpl implements GraphChain {
     }
 
     @Override
-    public GraphReadOnlyWrapper getLastCommittedAndIncReaderCounter() {
-        readerCounter.incrementAndGet();
+    public GraphReadOnlyWrapper getLastCommittedAndAddReader(final UUID readerId) {
+        if(!reader.add(readerId))
+            throw new IllegalStateException("Reader already exists");
         return new GraphReadOnlyWrapper(lastCommittedGraph);
     }
 
     @Override
-    public void decrementReaderCounter() {
-        if (readerCounter.decrementAndGet() < 0)
-            throw new IllegalStateException("Reader counter is negative");
+    public void removeReader(final UUID readerId) {
+        reader.remove(readerId); /*this may occure more than once*/
     }
 
     @Override
