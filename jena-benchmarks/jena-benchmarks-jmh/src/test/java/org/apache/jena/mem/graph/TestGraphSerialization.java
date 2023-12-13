@@ -27,15 +27,17 @@ import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFFormat;
-import org.apache.jena.riot.RDFWriter;
+import org.apache.jena.riot.*;
+import org.apache.jena.shacl.ShaclValidator;
+import org.apache.jena.shacl.Shapes;
+import org.apache.jena.shacl.lib.ShLib;
 import org.apache.jena.vocabulary.RDF;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -158,6 +160,40 @@ public class TestGraphSerialization {
         var g = new GraphMem2Fast();
         triples.forEach(g::add);
         RDFWriter.source(g).format(RDFFormat.TURTLE_PRETTY).output("c:/temp/DataWithTypedLiterals.ttl");
+    }
+
+    @Test
+    public void testValidateSHACL() {
+        var dataGraph = RDFDataMgr.loadGraph("c:/temp/DataWithTypedLiterals.ttl");
+        final var query = """
+                PREFIX rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#>\s
+                PREFIX rdfs:    <http://www.w3.org/2000/01/rdf-schema#>
+                PREFIX xsd:     <http://www.w3.org/2001/XMLSchema#>
+                                
+                PREFIX sh:      <http://www.w3.org/ns/shacl#>
+                PREFIX shx:     <http://www.w3.org/ns/shacl-x#>
+                PREFIX amp: <http://amprion.net/CIM/AMP-schema-cim1#>
+                                
+                amp:myShape\s
+                  a sh:NodeShape ;
+                  sh:targetClass amp:ACLineSegment ;\s
+                  sh:property [
+                    sh:path amp:Wire.x ;
+                    sh:datatype xsd:float ; \s
+                  ] ;
+                  .
+                """;
+        var shapes = buildShapes(query);
+
+        var validationReport = ShaclValidator.get().validate(shapes, dataGraph);
+
+        ShLib.printReport(validationReport);
+    }
+
+    private Shapes buildShapes(String Query) {
+        final var g = new GraphMem2Fast();
+        RDFParser.create().source(new StringReader(Query)).lang(Lang.TTL).parse(g);
+        return Shapes.parse(g);
     }
 
 
