@@ -58,8 +58,8 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     private final AtomicLong dataVersion = new AtomicLong(0);
     private final TransactionCoordinator transactionCoordinator;
     private final Thread backgroundThread;
-    private volatile GraphChain active;
-    private volatile GraphChain stale;
+    private GraphChain active;
+    private GraphChain stale;
 
     private volatile boolean isClosed = false;
 
@@ -160,6 +160,9 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                 transactionCoordinator.registerCurrentThread(() -> {
                     info.isAlive.set(false);
                     activeChain.removeReader(transactionId);
+                    synchronized (syncBackgroundUpdateLoop) {
+                        syncBackgroundUpdateLoop.notifyAll();
+                    }
                 });
             }
             case WRITE -> {
@@ -169,8 +172,13 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                 txnInfo.set(info);
                 transactionCoordinator.registerCurrentThread(() -> {
                     info.isAlive.set(false);
-                    activeChain.discardGraphForWriting();
-                    writeSemaphore.release();
+                    synchronized (syncActiveAndStaleSwitching) {
+                        activeChain.discardGraphForWriting();
+                        writeSemaphore.release();
+                    }
+                    synchronized (syncBackgroundUpdateLoop) {
+                        syncBackgroundUpdateLoop.notifyAll();
+                    }
                 });
             }
             default -> throw new IllegalStateException("Unexpected value: " + readWrite);
