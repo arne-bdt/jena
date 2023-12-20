@@ -22,11 +22,12 @@ import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
-import org.apache.jena.mem.graph.helper.Serialization;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.mem2.GraphMem2Legacy;
 import org.apache.jena.mem2.GraphMem2Roaring;
-import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.QuerySolution;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -34,6 +35,7 @@ import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 
 
 @State(Scope.Benchmark)
@@ -74,6 +76,38 @@ public class TestTimeSeriesData {
                 stopwatch,
                 g.size(),
                 memoryAfter - memoryBefore);
+    }
+
+    @Ignore
+    @Test
+    public void testSPARQLSelect() {
+        final var g = new GraphMem2Fast();
+        final var model = ModelFactory.createModelForGraph(g);
+        TimeSeriesData.fillGraphWithTimeSeries(g, 804364);
+
+        var select = """
+                        PREFIX tsts: <http://www.fancyTSO.org/OurCIMModel/TSTSv1#>
+                        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                        SELECT ?zr ?TSTSIntervall ?name ?einheit ?defaultStatus ?defaultValue ?wertetype
+                        WHERE { ?zr rdf:type tsts:Zeitreihe;
+                                    tsts:Zeitreihe.TSTSIntervall ?TSTSIntervall;
+                                    tsts:Zeitreihe.name ?name;
+                                    tsts:Zeitreihe.Einheit ?einheit. 
+                                OPTIONAL { ?zr tsts:Zeitreihe.defaultStatus ?defaultStatus. }
+                                OPTIONAL { ?zr tsts:Zeitreihe.defaultValue ?defaultValue. }
+                                OPTIONAL { ?zr tsts:Zeitreihe.wertetype ?wertetype. } }
+                        """;
+
+        var resultRows = new ArrayList<QuerySolution>();
+        QueryExecutionFactory.create(select, model).execSelect().forEachRemaining(resultRows::add);
+
+        var stopwatch = StopWatch.createStarted();
+
+        resultRows = new ArrayList<QuerySolution>(resultRows.size());
+        QueryExecutionFactory.create(select, model).execSelect().forEachRemaining(resultRows::add);
+
+        stopwatch.stop();
+        System.out.printf("SPARQL SELECT took %s and found %d records %n", stopwatch, resultRows.size());
     }
 
     @Benchmark
