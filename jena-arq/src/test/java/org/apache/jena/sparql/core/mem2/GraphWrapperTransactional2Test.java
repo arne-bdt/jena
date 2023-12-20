@@ -26,9 +26,11 @@ import org.junit.Test;
 
 import java.time.Duration;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.jena.testing_framework.GraphHelper.triple;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
@@ -252,7 +254,16 @@ public class GraphWrapperTransactional2Test {
     public void testWriteTransactionTimeout() throws InterruptedException {
         var semaphore = new Semaphore(1);
         var scheduler = new TransactionCoordinatorSchedulerImpl(50);
-        var coordinator = new TransactionCoordinatorImpl(400, 10, scheduler);
+        var coordinator = new TransactionCoordinatorImpl(400, 10, scheduler) {
+            @Override
+            public void registerCurrentThread(Runnable timedOutRunnable) {
+                super.registerCurrentThread(() -> {
+                    timedOutRunnable.run();
+                    semaphore.release();
+                });
+            }
+        };
+
         var sut = new GraphWrapperTransactional2(GraphMem2Fast::new, 3, coordinator);
 
         var t = new Thread(() -> {
@@ -281,6 +292,7 @@ public class GraphWrapperTransactional2Test {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
+            semaphore.release();
             try
             {
                 sut.commit();
@@ -292,9 +304,8 @@ public class GraphWrapperTransactional2Test {
         });
         t.start();
 
-        Thread.sleep(500);
+        await().atMost(1000, TimeUnit.MILLISECONDS).until(() -> semaphore.availablePermits() == 1);
 
-        semaphore.release();
         t.join();
 
         assertEquals(true, exceptionThrown.get());
@@ -308,7 +319,15 @@ public class GraphWrapperTransactional2Test {
     public void testReadTransactionTimeout() throws InterruptedException {
         var semaphore = new Semaphore(1);
         var scheduler = new TransactionCoordinatorSchedulerImpl(50);
-        var coordinator = new TransactionCoordinatorImpl(400, 10, scheduler);
+        var coordinator = new TransactionCoordinatorImpl(400, 10, scheduler) {
+            @Override
+            public void registerCurrentThread(Runnable timedOutRunnable) {
+                super.registerCurrentThread(() -> {
+                    timedOutRunnable.run();
+                    semaphore.release();
+                });
+            }
+        };
         var sut = new GraphWrapperTransactional2(GraphMem2Fast::new, 3, coordinator);
 
         sut.begin(ReadWrite.WRITE);
@@ -327,6 +346,7 @@ public class GraphWrapperTransactional2Test {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
+            semaphore.release();
             try
             {
                 sut.end();
@@ -339,9 +359,8 @@ public class GraphWrapperTransactional2Test {
         });
         t.start();
 
-        Thread.sleep(500);
+        await().atMost(1000, TimeUnit.MILLISECONDS).until(() -> semaphore.availablePermits() == 1);
 
-        semaphore.release();
         t.join();
 
         assertEquals(true, exceptionThrown.get());
