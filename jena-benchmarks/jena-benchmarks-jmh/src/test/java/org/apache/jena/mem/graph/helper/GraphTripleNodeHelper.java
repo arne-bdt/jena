@@ -18,6 +18,7 @@
 package org.apache.jena.mem.graph.helper;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Helper interface to create graphs, read the triples from files and clone triples and nodes.
@@ -34,7 +35,11 @@ public interface GraphTripleNodeHelper<G, T, N> {
      * @param graphClass the graph type
      * @return the created graph
      */
-    G createGraph(Context.GraphClass graphClass);
+    default G createGraph(Context.GraphClass graphClass) {
+        return graphSupplier(graphClass).get();
+    }
+
+    Supplier<G> graphSupplier(Context.GraphClass graphClass);
 
     /**
      * Reads the triples from the given file.
