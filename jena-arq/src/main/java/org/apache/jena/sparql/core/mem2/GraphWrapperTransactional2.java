@@ -43,10 +43,9 @@ import java.util.stream.Stream;
 /**
  * A {@link Graph} that allows for concurrent read and write transactions.
  * <p>
- * This class is a wrapper around a {@link Graph} that manages the concurrency between transactions.
- * </p>
- * <p>
  * Read transactions can be executed concurrently, but write transactions are executed exclusively.
+ * Read transactions are executed on a snapshot of last committed graph. They do not have to wait for other read
+ * or write transactions to finish.
  * </p>
  * <p>
  * Read transactions are executed immediately, but a new write transactions waits until the previous write transaction
@@ -57,8 +56,8 @@ import java.util.stream.Stream;
  * one write transaction is executed at a time is not fair, for performance reasons.
  * </p>
  * <p>
- * When a write transaction is committed, the changes are immediately visible to all new read transactions. The changes
- * are not visible to read transactions that were started before the write transaction was committed.
+ * When a write transaction is committed, the changes are visible to all new transactions. The changes are not visible
+ * to read transactions that were started before the write transaction was committed.
  * </p>
  * <p>
  * There are two types of graph-chains that are used to manage the concurrency between transactions:
