@@ -27,13 +27,14 @@ import org.apache.shadedJena480.riot.RDFDataMgr;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public class GraphTripleNodeHelper480 implements GraphTripleNodeHelper<Graph, Triple, Node> {
 
     @Override
-    public Graph createGraph(Context.GraphClass graphClass) {
+    public Supplier<Graph> graphSupplier(Context.GraphClass graphClass) {
         if (Objects.requireNonNull(graphClass) == Context.GraphClass.GraphMem) {
-            return new GraphMem();
+            return GraphMem::new;
         }
         throw new IllegalArgumentException("Unknown graph class: " + graphClass);
     }

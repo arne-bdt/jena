@@ -30,25 +30,26 @@ import org.apache.jena.sparql.graph.GraphFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph, Triple, Node> {
 
     @SuppressWarnings("deprecation")
     @Override
-    public Graph createGraph(Context.GraphClass graphClass) {
+    public Supplier<Graph> graphSupplier(Context.GraphClass graphClass) {
         switch (graphClass) {
             case GraphMem:
-                return new org.apache.jena.mem.GraphMem();
+                return org.apache.jena.mem.GraphMem::new;
             case GraphMem2Fast:
-                return new GraphMem2Fast();
+                return GraphMem2Fast::new;
             case GraphMem2Legacy:
-                return new GraphMem2Legacy();
+                return GraphMem2Legacy::new;
             case GraphMem2Roaring:
-                return new GraphMem2Roaring();
+                return GraphMem2Roaring::new;
             case GraphTxn:
-                return GraphFactory.createTxnGraph();
+                return GraphFactory::createTxnGraph;
             case GraphWrapperTransactional:
-                return new GraphWrapperTransactional2();
+                return GraphWrapperTransactional2::new;
             default:
                 throw new IllegalArgumentException("Unknown graph class: " + graphClass);
         }
