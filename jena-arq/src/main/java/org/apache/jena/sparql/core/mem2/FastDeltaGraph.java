@@ -22,6 +22,7 @@ import org.apache.jena.graph.Capabilities;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.graph.compose.Delta;
 import org.apache.jena.graph.impl.AllCapabilities;
 import org.apache.jena.graph.impl.GraphBase;
 import org.apache.jena.mem2.GraphMem2Fast;
@@ -32,6 +33,10 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Stream;
 
+/**
+ * Faster alternative to {@link Delta} that uses a {@link GraphMem2Fast} for the additions
+ * and a {@link HashSet} for the deletions.
+ */
 public class FastDeltaGraph extends GraphBase {
 
     private final Graph base;
@@ -51,7 +56,15 @@ public class FastDeltaGraph extends GraphBase {
         this.deletions = new HashSet<>();
     }
 
-    public FastDeltaGraph(Graph newBase, FastDeltaGraph deltaGraphToRebase) {
+    /**
+     * Creates a new {@link FastDeltaGraph} that is based on the given {@code newBase} graph.
+     * This is used to rebase a {@link FastDeltaGraph} on a new base graph.
+     * There are no checks performed to ensure that the new base graph is compatible with the
+     * previous base graph.
+     * @param newBase
+     * @param deltaGraphToRebase
+     */
+    /*package*/ FastDeltaGraph(Graph newBase, FastDeltaGraph deltaGraphToRebase) {
         super();
         if (newBase == null)
             throw new IllegalArgumentException("base graph must not be null");
