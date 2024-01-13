@@ -21,6 +21,11 @@ package org.apache.jena.sparql.core.mem2;
 
 import org.apache.jena.sparql.JenaTransactionException;
 
+/**
+ * This class is responsible for keeping track of the threads that are currently running transactions.
+ * It is also responsible for checking if a thread has timed out and calling the runnable that was passed to the
+ * {@link #registerCurrentThread(Runnable)} method.
+ */
 public interface TransactionCoordinator extends AutoCloseable {
 
     int DEFAULT_TRANSACTION_TIMEOUT_MS = 30000;

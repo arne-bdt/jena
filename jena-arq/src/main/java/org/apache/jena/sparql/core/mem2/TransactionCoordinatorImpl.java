@@ -26,6 +26,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * This class is responsible for keeping track of the threads that are currently running transactions.
+ * It is also responsible for checking if a thread has timed out and calling the runnable that was passed to the
+ * {@link #registerCurrentThread(Runnable)} method.
+ */
 public class TransactionCoordinatorImpl implements TransactionCoordinator {
 
     private static final AtomicLong instanceCounter = new AtomicLong(0);

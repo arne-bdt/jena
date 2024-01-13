@@ -24,6 +24,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * A singleton scheduler for {@link TransactionCoordinator}s.
+ * <p>
+ * This scheduler is responsible for periodically checking for stale transactions and for
+ * periodically checking for transactions that have timed out.
+ * </p>
+ */
 public class TransactionCoordinatorSchedulerImpl implements TransactionCoordinatorScheduler {
 
     private static final Object DUMMY = new Object();

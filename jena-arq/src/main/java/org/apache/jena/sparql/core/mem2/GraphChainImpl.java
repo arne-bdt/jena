@@ -19,25 +19,46 @@
 package org.apache.jena.sparql.core.mem2;
 
 import org.apache.jena.graph.Graph;
+import org.apache.jena.sparql.graph.GraphReadOnly;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * This class is used to manage a chain of graphs.
+ * It has a last committed graph, which can itself be a delta graph.
+ * <p>
+ * New write transactions are based on the last committed graph
+ * and are not linked to the chain until they are committed.
+ * The graph for writing is the delta graph of the write transaction.
+ * </p>
+ * <p>
+ * New deltas are queued and later actively applied to the last committed graph.
+ * </p>
+ * <p>
+ * Merging of the delta chain is done by recursively merging all deltas into the base graph of the last committed graph.
+ * </p>
+ */
 public class GraphChainImpl implements GraphChain {
 
     private final ConcurrentLinkedQueue<FastDeltaGraph> deltasToApply = new ConcurrentLinkedQueue<>();
 
+    /**
+     * Queues a delta to be applied to the last committed graph.
+     * @param deltaGraph the delta to apply
+     */
     public void queueDelta(FastDeltaGraph deltaGraph) {
         deltasToApply.add(deltaGraph);
     }
 
-    private volatile Graph lastCommittedGraph;
+    private Graph lastCommittedGraph;
 
-    private volatile FastDeltaGraph deltaGraphOfCurrentTransaction = null;
+    private FastDeltaGraph deltaGraphOfWriteTransaction = null;
 
-    private volatile int deltaChainLength = 0;
+    private final AtomicInteger deltaChainLength = new AtomicInteger(0);
 
     private final ConcurrentSkipListSet<UUID> reader = new ConcurrentSkipListSet<>();
 
@@ -73,12 +94,12 @@ public class GraphChainImpl implements GraphChain {
 
     @Override
     public boolean hasGraphForWriting() {
-        return deltaGraphOfCurrentTransaction != null;
+        return deltaGraphOfWriteTransaction != null;
     }
 
     @Override
     public boolean hasUnmergedDeltas() {
-        return deltaChainLength != 0;
+        return deltaChainLength.get() != 0;
     }
 
     @Override
@@ -97,51 +118,60 @@ public class GraphChainImpl implements GraphChain {
     }
 
     @Override
-    public GraphReadOnlyWrapper getLastCommittedAndAddReader(final UUID readerId) {
+    public GraphReadOnly getLastCommittedAndAddReader(final UUID readerId) {
         if(!reader.add(readerId))
             throw new IllegalStateException("Reader already exists");
-        return new GraphReadOnlyWrapper(lastCommittedGraph);
+        return new GraphReadOnly(lastCommittedGraph);
     }
 
     @Override
     public void removeReader(final UUID readerId) {
-        reader.remove(readerId); /*this may occure more than once*/
+        reader.remove(readerId); /*this may occur more than once*/
     }
 
+    /**
+     * Creates a new delta graph for writing.
+     * The last committed graph is used as base graph.
+     * The delta graph is not linked to the chain.
+     * @return the delta graph
+     */
     @Override
     public FastDeltaGraph prepareGraphForWriting() {
         if (hasGraphForWriting())
             throw new IllegalStateException("There is already a transaction in progress");
-        deltaGraphOfCurrentTransaction = new FastDeltaGraph(lastCommittedGraph);
-        return deltaGraphOfCurrentTransaction;
+        deltaGraphOfWriteTransaction = new FastDeltaGraph(lastCommittedGraph);
+        return deltaGraphOfWriteTransaction;
     }
 
+    /**
+     * Links the delta graph for writing to the chain.
+     */
     @Override
     public void linkGraphForWritingToChain() {
         if (!hasGraphForWriting())
             throw new IllegalStateException("There is no transaction in progress");
-        lastCommittedGraph = deltaGraphOfCurrentTransaction;
-        deltaChainLength++;
-        deltaGraphOfCurrentTransaction = null;
+        lastCommittedGraph = deltaGraphOfWriteTransaction;
+        deltaChainLength.incrementAndGet();
+        deltaGraphOfWriteTransaction = null;
         dataVersion.getAndIncrement();
     }
 
     @Override
     public void rebaseAndLinkDeltaForWritingToChain(FastDeltaGraph deltaGraph) {
         lastCommittedGraph = new FastDeltaGraph(lastCommittedGraph, deltaGraph);
-        deltaChainLength++;
-        deltaGraphOfCurrentTransaction = null;
+        deltaChainLength.incrementAndGet();
+        deltaGraphOfWriteTransaction = null;
         dataVersion.getAndIncrement();
     }
 
     @Override
     public void discardGraphForWriting() {
-        deltaGraphOfCurrentTransaction = null;
+        deltaGraphOfWriteTransaction = null;
     }
 
     @Override
     public int getDeltaChainLength() {
-        return deltaChainLength;
+        return deltaChainLength.get();
     }
 
     @Override
@@ -149,25 +179,32 @@ public class GraphChainImpl implements GraphChain {
         return deltasToApply.size();
     }
 
+    /**
+     * If the last committed graph is a delta graph, this method will merge all deltas into the base graph.
+     */
     @Override
     public void mergeDeltaChain() {
         if (!this.isReadyToMerge())
             throw new IllegalStateException("Not ready to merge");
 
-        if(deltaChainLength > 0) {
+        if(deltaChainLength.get() > 0) {
             lastCommittedGraph = mergeDeltas(lastCommittedGraph);
-            deltaChainLength = 0;
+            deltaChainLength.set(0);
         }
 //        //println: Instance #: Merged delta chain.
 //        System.out.println("Instance " + instanceId + ": Merged delta chain.");
     }
 
+    /**
+     * Applies all queued deltas to the last committed graph.
+     * The additions and deletions are executed as Graph#add and Graph#delete on the last committed graph.
+     */
     @Override
     public void applyQueuedDeltas() {
         if (!isReadyToApplyDeltas())
             throw new IllegalStateException("Not ready to apply deltas");
 
-        final var deltasSize = deltasToApply.size();
+        //final var deltasSize = deltasToApply.size();
         while (!deltasToApply.isEmpty()) {
             var delta = deltasToApply.poll();
             // first add, then delete --> this may use more memory but should be much faster, as it avoids unnecessary

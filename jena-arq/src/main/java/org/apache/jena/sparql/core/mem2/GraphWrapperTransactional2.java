@@ -40,6 +40,49 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+/**
+ * A {@link Graph} that allows for concurrent read and write transactions.
+ * <p>
+ * This class is a wrapper around a {@link Graph} that manages the concurrency between transactions.
+ * </p>
+ * <p>
+ * Read transactions can be executed concurrently, but write transactions are executed exclusively.
+ * </p>
+ * <p>
+ * Read transactions are executed immediately, but a new write transactions waits until the previous write transaction
+ * has finished.
+ * </p>
+ * <p>
+ * Write transactions may not be executed in the order they were started. The semaphore that is used to ensure that only
+ * one write transaction is executed at a time is not fair, for performance reasons.
+ * </p>
+ * <p>
+ * When a write transaction is committed, the changes are immediately visible to all new read transactions. The changes
+ * are not visible to read transactions that were started before the write transaction was committed.
+ * </p>
+ * <p>
+ * There are two types of graph-chains that are used to manage the concurrency between transactions:
+ * </p>
+ * <ul>
+ *     <li>
+ *         The <i>active graph-chain</i> is the graph-chain that is currently used for new read and write transactions.
+ *     </li>
+ *     <li>
+ *         The <i>stale graph-chain</i> is the graph-chain that is used to let older read transactions finish.
+ *         New commits are applied to the stale graph-chain.
+ *         When the stale graph-chain has no more readers, all outstanding deltas are merged, and then it is switched
+ *         with the active graph-chain.
+ *     </li>
+ * </ul>
+ * <p>
+ * A background thread is used to merge the deltas of the stale graph-chain and to switch the stale and active
+ * graph-chains.
+ * </p>
+ * <p>
+ * A transaction coordinator is used to keep track of the threads that are currently running transactions.
+ * It is also responsible for checking if a thread has timed out and calling the runnable that was passed to the
+ * {@link TransactionCoordinator#registerCurrentThread(Runnable)} method.
+ */
 public class GraphWrapperTransactional2 implements Graph, Transactional {
 
     private static final String ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS = "Failed to acquire write semaphore within %s ms.";

@@ -189,7 +189,7 @@ public class TestMEASTransactional2 {
         final var spontaneousUpdateRateInSeconds = 1;
         final var queryRateInSeconds = 1;
         final var numberOfSpontaneousUpdateThreads = 4;
-        final var numberOfQueryThreads = 12;
+        final var numberOfQueryThreads = 8;
         final var numberOfSpontaneousUpdatesPerSecond = 100;
 
         final var version = new AtomicInteger(0);

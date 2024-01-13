@@ -18,6 +18,13 @@
 
 package org.apache.jena.sparql.core.mem2;
 
+/**
+ * A singleton scheduler for {@link TransactionCoordinator}s.
+ * <p>
+ * This scheduler is responsible for periodically checking for stale transactions and for
+ * periodically checking for transactions that have timed out.
+ * </p>
+ */
 public interface TransactionCoordinatorScheduler extends AutoCloseable {
 
     static TransactionCoordinatorScheduler getInstance() {

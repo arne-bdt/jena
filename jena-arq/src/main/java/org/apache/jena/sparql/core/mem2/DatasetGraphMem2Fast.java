@@ -31,6 +31,9 @@ import org.apache.jena.sparql.util.Context;
 import java.util.Iterator;
 import java.util.stream.Stream;
 
+/**
+ * Not yet implemented. Not yet used.
+ */
 public class DatasetGraphMem2Fast implements DatasetGraph {
     @Override
     public Graph getDefaultGraph() {
