@@ -93,7 +93,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
      * A Semaphore is used instead of a ReentrantLock because it allows the lock to be released
      * in a different thread than the one that acquired it.
      */
-    private final Semaphore writeSemaphore = new Semaphore(1);
+    private final Semaphore writeSemaphore = new Semaphore(1, true);
 
     private record TransactionInfo(UUID transactionID, AtomicBoolean isAlive, TxnType type, ReadWrite mode, Graph graph, GraphChain activeChain, long version) {}
     private final ThreadLocal<TransactionInfo> txnInfo = new ThreadLocal<>();
@@ -126,8 +126,8 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     }
     public GraphWrapperTransactional2(final Supplier<Graph> graphFactory, final int maxChainLength, final TransactionCoordinator transactionCoordinator) {
         this.maxChainLength = maxChainLength;
-        this.active = new GraphChainImpl(graphFactory.get());
-        this.stale = new GraphChainImpl(graphFactory.get());
+        this.active = new GraphChainImpl(graphFactory);
+        this.stale = new GraphChainImpl(graphFactory);
         this.transactionCoordinator = transactionCoordinator;
         this.backgroundThread = new Thread(() -> backgroundUpdateLoop());
         this.backgroundThread.start();
@@ -158,8 +158,8 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                 });
             }
         }
-        this.active = new GraphChainImpl(activeBase);
-        this.stale = new GraphChainImpl(staleBase);
+        this.active = new GraphChainImpl(activeBase, graphFactory);
+        this.stale = new GraphChainImpl(staleBase, graphFactory);
         this.transactionCoordinator = new TransactionCoordinatorImpl();
         this.backgroundThread = new Thread(this::backgroundUpdateLoop);
         this.backgroundThread.start();
@@ -196,8 +196,11 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
         final TransactionInfo info;
         switch (readWrite) {
             case READ -> {
-                final GraphChain activeChain = this.active;
-                info = new TransactionInfo(transactionId, new AtomicBoolean(true), txnType, readWrite, activeChain.getLastCommittedAndAddReader(transactionId), activeChain, dataVersion.get());
+                final GraphChain activeChain;
+                synchronized (syncActiveAndStaleSwitching) {
+                    activeChain = this.active;
+                    info = new TransactionInfo(transactionId, new AtomicBoolean(true), txnType, readWrite, activeChain.getLastCommittedAndAddReader(transactionId), activeChain, dataVersion.get());
+                }
                 txnInfo.set(info);
                 transactionCoordinator.registerCurrentThread(() -> {
                     info.isAlive.set(false);
@@ -263,6 +266,8 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     private void backgroundUpdateLoop() {
         while (!isClosed) {
             try {
+                final GraphChain activeChain;
+                final GraphChain staleChain;
                 synchronized (syncActiveAndStaleSwitching) {
                     if (!active.hasNothingToMergeAndNoDeltasToApply() && !stale.hasReader()) {
                         if (!stale.hasNothingToMergeAndNoDeltasToApply()) {
@@ -275,9 +280,9 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                     if(!stale.hasReader() && !stale.hasNothingToMergeAndNoDeltasToApply()) {
                         stale.mergeAndApplyDeltas();
                     }
+                    activeChain = this.active;
+                    staleChain = this.stale;
                 }
-                final var activeChain = this.active;
-                final var staleChain = this.stale;
                 synchronized (syncBackgroundUpdateLoop) {
                     if(activeChain.hasNothingToMergeAndNoDeltasToApply()
                             && staleChain.hasNothingToMergeAndNoDeltasToApply()) {
@@ -372,8 +377,7 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                 }
                 case WRITE -> {
                     final var delta = (FastDeltaGraph) txnInfo.graph;
-                    var hasChanges = delta.hasChanges();
-                    if (hasChanges) {
+                    if (delta.hasChanges()) {
                         synchronized (syncActiveAndStaleSwitching) {
                             if(active == txnInfo.activeChain) {
                                 txnInfo.activeChain.linkGraphForWritingToChain();

@@ -19,13 +19,13 @@
 package org.apache.jena.sparql.core.mem2;
 
 import org.apache.jena.graph.Graph;
-import org.apache.jena.sparql.graph.GraphReadOnly;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 /**
  * This class is used to manage a chain of graphs.
@@ -70,18 +70,25 @@ public class GraphChainImpl implements GraphChain {
 
     private final AtomicLong dataVersion = new AtomicLong(0);
 
+    private final Supplier<Graph> graphFactory;
+
     public long getDataVersion() {
         return dataVersion.get();
     }
 
-    public GraphChainImpl(final Graph base) {
+    public GraphChainImpl(final Graph base, final Supplier<Graph> graphFactory) {
         lastCommittedGraph = base;
+        this.graphFactory = graphFactory;
         this.instanceId = UUID.randomUUID().toString();
+    }
+
+    public GraphChainImpl(final Supplier<Graph> graphFactory) {
+        this(graphFactory.get(), graphFactory);
     }
 
     private static Graph mergeDeltas(Graph graph) {
         if (graph instanceof FastDeltaGraph delta) {
-            var base = mergeDeltas(delta.getBase());
+            final var base = mergeDeltas(delta.getBase());
             // first add, then delete --> this may use more memory but should be much faster, as it avoids unnecessary
             // destruction and recreation of the internal data structures
             delta.getAdditions().forEachRemaining(base::add);
@@ -118,10 +125,10 @@ public class GraphChainImpl implements GraphChain {
     }
 
     @Override
-    public GraphReadOnly getLastCommittedAndAddReader(final UUID readerId) {
+    public GraphReadOnlyWrapper getLastCommittedAndAddReader(final UUID readerId) {
         if(!reader.add(readerId))
             throw new IllegalStateException("Reader already exists");
-        return new GraphReadOnly(lastCommittedGraph);
+        return new GraphReadOnlyWrapper(lastCommittedGraph);
     }
 
     @Override
@@ -139,7 +146,7 @@ public class GraphChainImpl implements GraphChain {
     public FastDeltaGraph prepareGraphForWriting() {
         if (hasGraphForWriting())
             throw new IllegalStateException("There is already a transaction in progress");
-        deltaGraphOfWriteTransaction = new FastDeltaGraph(lastCommittedGraph);
+        deltaGraphOfWriteTransaction = new FastDeltaGraph(lastCommittedGraph, graphFactory);
         return deltaGraphOfWriteTransaction;
     }
 
