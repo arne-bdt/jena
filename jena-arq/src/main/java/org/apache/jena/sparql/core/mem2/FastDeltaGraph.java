@@ -31,6 +31,7 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
@@ -43,7 +44,7 @@ public class FastDeltaGraph extends GraphBase {
     private final Graph additions;
     private final Set<Triple> deletions;
 
-    public FastDeltaGraph(Graph base) {
+    public FastDeltaGraph(Graph base, Supplier<Graph> graphFactory) {
         super();
         if (base == null)
             throw new IllegalArgumentException("base graph must not be null");
@@ -52,8 +53,12 @@ public class FastDeltaGraph extends GraphBase {
         if (!base.getCapabilities().sizeAccurate())
             throw new IllegalArgumentException("base graph must be size accurate");
         this.base = base;
-        this.additions = new GraphMem2Fast();
+        this.additions = graphFactory.get();
         this.deletions = new HashSet<>();
+    }
+
+    public FastDeltaGraph(Graph base) {
+        this(base, GraphMem2Fast::new);
     }
 
     /**

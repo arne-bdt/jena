@@ -449,7 +449,7 @@ public class TestMEASTransactional2 {
 
 
     public GraphWrapperTransactional2 createGraph() {
-        return new GraphWrapperTransactional2(3);
+        return new GraphWrapperTransactional2();
     }
 
     private static Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillListsByGraph(GraphWrapperTransactional2 g, int totalAnalogValues, int totalDiscreteValues) {

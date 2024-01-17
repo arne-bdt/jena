@@ -17,12 +17,22 @@
  */
 package org.apache.jena.sparql.core.mem2;
 
-import org.apache.jena.sparql.graph.GraphReadOnly;
-
 import java.util.UUID;
 
 /**
- *
+ * This interface is used to manage a chain of graphs.
+ * It has a last committed graph, which can itself be a delta graph.
+ * <p>
+*  New write transactions are based on the last committed graph
+ * and are not linked to the chain until they are committed.
+ * The graph for writing is the delta graph of the write transaction.
+ * </p>
+ * <p>
+ * New deltas are queued and later actively applied to the last committed graph.
+ * </p>
+ * <p>
+ * Merging of the delta chain is done by recursively merging all deltas into the base graph of the last committed graph.
+ * </p>
  */
 public interface GraphChain {
 
@@ -44,7 +54,7 @@ public interface GraphChain {
 
     boolean isReadyToApplyDeltas();
 
-    GraphReadOnly getLastCommittedAndAddReader(UUID readerId);
+    GraphReadOnlyWrapper getLastCommittedAndAddReader(UUID readerId);
 
     void removeReader(final UUID readerId);
 
