@@ -42,6 +42,8 @@ public class Binding2Thrift2 implements AutoCloseable {
     private final OutputStream out ;
     private final TProtocol protocol ;
 
+    private final StringDictionaryWriter writerDict = new StringDictionaryWriter() ;
+
     public Binding2Thrift2(OutputStream out, Collection<Var> vars) {
         this.out = out ;
         this.vars = vars ;
@@ -53,12 +55,13 @@ public class Binding2Thrift2 implements AutoCloseable {
     }
 
     private void varsRow() {
-        RDF_VarTuple vrow = new RDF_VarTuple(new ArrayList<>(vars.size())) ;
+        RDF_VarTuple vrow = new RDF_VarTuple(new ArrayList<>(vars.size()), null) ;
         for ( Var v : vars ) {
             RDF_VAR rv = new RDF_VAR() ;
-            rv.setName(v.getName()) ;
+            rv.setName(writerDict.getIndex(v.getName())) ;
             vrow.addToVars(rv) ;
         }
+        vrow.setStrings(writerDict.flush()) ;
         try { vrow.write(protocol) ; }
         catch (TException e) { T2RDF.exception(e) ; }
     }
@@ -76,9 +79,10 @@ public class Binding2Thrift2 implements AutoCloseable {
             vIter = binding.vars() ;
         vIter.forEachRemaining(v -> {
             Node n = binding.get(v) ;
-            RDF_Term rt = ( n == null ) ? T2RDF.tUNDEF : Thrift2Convert.convert(n) ;
+            RDF_Term rt = ( n == null ) ? T2RDF.tUNDEF : Thrift2Convert.convert(n, writerDict) ;
             row.addToRow(rt) ;
         }) ;
+        row.setStrings(writerDict.flush()) ;
         try { row.write(protocol) ; }
         catch (TException e) { T2RDF.exception(e) ; }
         row.clear() ;

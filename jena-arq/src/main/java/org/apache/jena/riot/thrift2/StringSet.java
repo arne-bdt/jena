@@ -18,13 +18,18 @@
 
 package org.apache.jena.riot.thrift2;
 
-import org.apache.jena.riot.thrift2.wire.RDF_PrefixDecl;
-import org.apache.jena.riot.thrift2.wire.RDF_Quad;
-import org.apache.jena.riot.thrift2.wire.RDF_Triple;
+import org.apache.jena.mem2.collection.FastHashSet;
 
-/** Visitor for RDF_StreamRow */
-public interface VisitorStreamRowT2RDF {
-    public void visit(RDF_Triple triple, StringDictionaryReader readerDict) ;
-    public void visit(RDF_Quad quad, StringDictionaryReader readerDict) ;
-    public void visit(RDF_PrefixDecl prefix, StringDictionaryReader readerDict) ;
+import java.util.Arrays;
+import java.util.List;
+
+public class StringSet extends FastHashSet<String> {
+    @Override
+    protected String[] newKeysArray(int size) {
+        return new String[size];
+    }
+
+    public List<String> subList(int fromIndex, int toIndex) {
+        return Arrays.asList(keys).subList(fromIndex, toIndex);
+    }
 }

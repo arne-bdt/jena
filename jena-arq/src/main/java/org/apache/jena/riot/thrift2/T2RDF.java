@@ -129,13 +129,15 @@ public class T2RDF {
 
     static { tUNDEF.setUndefined(new RDF_UNDEF()) ; }
 
-    public static void visit(RDF_StreamRow row, VisitorStreamRowT2RDF visitor) {
-        if ( row.isSetTriple() ) {
-            visitor.visit(row.getTriple()) ;
-        } else if ( row.isSetQuad() ) {
-            visitor.visit(row.getQuad()) ;
-        } else if ( row.isSetPrefixDecl() ) {
-            visitor.visit(row.getPrefixDecl()) ;
+    public static void visit(RDF_StreamRow row, VisitorStreamRowT2RDF visitor, StringDictionaryReader readerDict) {
+        readerDict.addAll(row.getStrings());
+        final var r = row.getRow();
+        if ( r.isSetTriple() ) {
+            visitor.visit(r.getTriple(), readerDict) ;
+        } else if ( r.isSetQuad() ) {
+            visitor.visit(r.getQuad(),readerDict) ;
+        } else if ( r.isSetPrefixDecl() ) {
+            visitor.visit(r.getPrefixDecl(), readerDict) ;
         } else {
             Log.warn(Thrift2Convert.class, "visit: Unrecognized: "+row) ;
         }

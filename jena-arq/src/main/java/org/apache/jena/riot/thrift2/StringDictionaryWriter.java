@@ -18,13 +18,37 @@
 
 package org.apache.jena.riot.thrift2;
 
-import org.apache.jena.riot.thrift2.wire.RDF_PrefixDecl;
-import org.apache.jena.riot.thrift2.wire.RDF_Quad;
-import org.apache.jena.riot.thrift2.wire.RDF_Triple;
+import java.util.List;
 
-/** Visitor for RDF_StreamRow */
-public interface VisitorStreamRowT2RDF {
-    public void visit(RDF_Triple triple, StringDictionaryReader readerDict) ;
-    public void visit(RDF_Quad quad, StringDictionaryReader readerDict) ;
-    public void visit(RDF_PrefixDecl prefix, StringDictionaryReader readerDict) ;
+public class StringDictionaryWriter {
+    private final StringSet stringSet = new StringSet();
+
+    private static final List<String> EMPTY_LIST = List.of();
+
+    private int flushStartIndex = 0;
+
+    public int getIndex(String string) {
+        if(string == null) {
+            return -1;
+        }
+        var index = stringSet.addAndGetIndex(string);
+        if(index < 0) {
+            return ~index;
+        }
+        return index;
+    }
+
+    public List<String> flush() {
+        if(flushStartIndex == stringSet.size()) {
+            return EMPTY_LIST;
+        }
+        final var result = stringSet.subList(flushStartIndex, stringSet.size());
+        flushStartIndex = stringSet.size();
+        return result;
+    }
+
+    public void clear() {
+        stringSet.clear();
+        flushStartIndex = 0;
+    }
 }

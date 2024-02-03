@@ -48,21 +48,21 @@ public class Thrift2StreamRDF implements VisitorStreamRowT2RDF {
     }
 
     @Override
-    public void visit(RDF_Triple rt) {
-        Triple t = Thrift2Convert.convert(uriCache, rt, pmap);
+    public void visit(RDF_Triple rt, StringDictionaryReader readerDict) {
+        Triple t = Thrift2Convert.convert(uriCache, rt, pmap, readerDict);
         dest.triple(t);
     }
 
     @Override
-    public void visit(RDF_Quad rq) {
-        Quad q = Thrift2Convert.convert(uriCache, rq, pmap);
+    public void visit(RDF_Quad rq, StringDictionaryReader readerDict) {
+        Quad q = Thrift2Convert.convert(uriCache, rq, pmap, readerDict);
         dest.quad(q);
     }
 
     @Override
-    public void visit(RDF_PrefixDecl prefixDecl) {
-        String prefix = prefixDecl.getPrefix();
-        String iriStr = prefixDecl.getUri();
+    public void visit(RDF_PrefixDecl prefixDecl, StringDictionaryReader readerDict) {
+        String prefix = readerDict.get(prefixDecl.getPrefix());
+        String iriStr = readerDict.get(prefixDecl.getUri());
         pmap.add(prefix, iriStr);
         dest.prefix(prefix, iriStr);
     }

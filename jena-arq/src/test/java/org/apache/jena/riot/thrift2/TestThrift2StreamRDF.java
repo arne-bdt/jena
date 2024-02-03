@@ -140,7 +140,7 @@ public class TestThrift2StreamRDF {
     @Test public void dataset_02() {
         DatasetGraph dsg1 = datasetGraph ;
         ByteArrayOutputStream out = new ByteArrayOutputStream() ;
-        StreamRDFWriter.write(out, dsg1, Lang.RDFTHRIFT) ;
+        StreamRDFWriter.write(out, dsg1, Lang.RDFTHRIFT2) ;
         
         byte[] bytes = out.toByteArray() ;
         ByteArrayInputStream in = new ByteArrayInputStream(bytes) ;

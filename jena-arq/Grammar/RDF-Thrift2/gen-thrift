@@ -16,7 +16,7 @@ rm -f "$PKG"/*.java
 ##                      undated: suppress the date at @Generated annotations
 ##                      suppress: suppress @Generated annotations entirely
 
-thrift -r -out ../../src/main/java -gen 'java:generated_annotations=suppress' "$@"
+./thrift.exe -r -out ../../src/main/java -gen 'java:generated_annotations=suppress' "$@"
 
 for f in "$PKG"/*.java
 do
@@ -24,10 +24,3 @@ do
     rm -f $f.bak
 done
 
-## PatchTxn.java
-F="$PKG/PatchTxn.java"
-if [ -e "$F" ]
-then
-    sed -e 's/public int getValue/@Override public int getValue/' < $F > F 
-    mv F $F
-fi

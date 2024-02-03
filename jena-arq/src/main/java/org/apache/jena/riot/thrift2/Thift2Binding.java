@@ -46,6 +46,7 @@ public class Thift2Binding extends IteratorSlotted<Binding> implements Iterator<
     private InputStream in ;
     private TProtocol protocol ;
     private BindingBuilder b = Binding.builder() ;
+    private final StringDictionaryReader readerDict = new StringDictionaryReader();
 
     public Thift2Binding(InputStream in) {
         this.in = in ;
@@ -66,11 +67,12 @@ public class Thift2Binding extends IteratorSlotted<Binding> implements Iterator<
         RDF_VarTuple vrow = new RDF_VarTuple() ;
         try { vrow.read(protocol) ; }
         catch (TException e) { T2RDF.exception(e) ; }
+        readerDict.addAll(vrow.getStrings());
         if ( vrow.getVars() != null ) {
             // It can be null if there are no variables and both the encoder
             // and the allocation above used RDF_VarTuple().
             for ( RDF_VAR rv : vrow.getVars() ) {
-                String vn = rv.getName() ;
+                String vn = readerDict.get(rv.getName()) ;
                 varNames.add(vn) ;
             }
         }
@@ -91,13 +93,15 @@ public class Thift2Binding extends IteratorSlotted<Binding> implements Iterator<
         if ( row.getRowSize() != vars.size() )
             throw new RiotThrift2Exception(String.format("Vars %d : Row length : %d", vars.size(), row.getRowSize())) ;
 
+        readerDict.addAll(row.getStrings());
+
         for ( int i = 0 ;  i < vars.size() ; i++ ) {
             // Old school
             Var v = vars.get(i) ;
             RDF_Term rt = row.getRow().get(i) ;
             if ( rt.isSetUndefined() )
                 continue ;
-            Node n = Thrift2Convert.convert(rt) ;
+            Node n = Thrift2Convert.convert(rt, readerDict) ;
             b.add(v, n) ;
         }
         row.clear() ;

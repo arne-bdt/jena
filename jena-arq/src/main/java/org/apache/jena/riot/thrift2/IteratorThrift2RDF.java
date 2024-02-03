@@ -38,6 +38,8 @@ public class IteratorThrift2RDF extends IteratorStreamRowRDF {
     private StreamRDFCollectOne slot ;
     private boolean finished = false ;
 
+    final StringDictionaryReader readerDict = new StringDictionaryReader();
+
     public IteratorThrift2RDF(TProtocol protocol) {
         this.protocol = protocol ;
     }
@@ -60,11 +62,10 @@ public class IteratorThrift2RDF extends IteratorStreamRowRDF {
         }
         catch (TException ex) { T2RDF.exception(ex) ; }
         
-        T2RDF.visit(row, converter);
+        T2RDF.visit(row, converter, readerDict);
         
         row.clear() ;
         return collector.getRow() ;
     }
-
 }
 

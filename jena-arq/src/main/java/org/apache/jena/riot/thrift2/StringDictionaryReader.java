@@ -18,13 +18,17 @@
 
 package org.apache.jena.riot.thrift2;
 
-import org.apache.jena.riot.thrift2.wire.RDF_PrefixDecl;
-import org.apache.jena.riot.thrift2.wire.RDF_Quad;
-import org.apache.jena.riot.thrift2.wire.RDF_Triple;
+import java.util.ArrayList;
 
-/** Visitor for RDF_StreamRow */
-public interface VisitorStreamRowT2RDF {
-    public void visit(RDF_Triple triple, StringDictionaryReader readerDict) ;
-    public void visit(RDF_Quad quad, StringDictionaryReader readerDict) ;
-    public void visit(RDF_PrefixDecl prefix, StringDictionaryReader readerDict) ;
+public class StringDictionaryReader extends ArrayList<String> {
+
+    public StringDictionaryReader() {
+        super();
+    }
+
+    public String get(int index) {
+        if (index < 0)
+            return null;
+        return super.get(index);
+    }
 }

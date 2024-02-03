@@ -44,6 +44,8 @@ public class StreamRDF2Thrift2 implements StreamRDF, AutoCloseable
     private final TProtocol protocol;
     private PrefixMap pmap = PrefixMapFactory.create();
 
+    private final StringDictionaryWriter writerDict = new StringDictionaryWriter();
+
     public StreamRDF2Thrift2(OutputStream out) {
         this(TRDF.protocol(out));
     }
@@ -57,7 +59,9 @@ public class StreamRDF2Thrift2 implements StreamRDF, AutoCloseable
     @Override
     public void start() { }
 
+    private final RDF_PrefixDecl tprefix = new RDF_PrefixDecl();
     private final RDF_StreamRow tStreamRow   = new RDF_StreamRow();
+    private final RDF_StreamUnion tStreamUnion = new RDF_StreamUnion();
 
     private final RDF_Triple ttriple    = new RDF_Triple();
     private final RDF_Quad tquad      = new RDF_Quad();
@@ -73,18 +77,21 @@ public class StreamRDF2Thrift2 implements StreamRDF, AutoCloseable
     }
 
     private void doTriple(Node subject, Node predicate, Node object) {
-        Thrift2Convert.toThrift(subject, pmap, tsubject);
-        Thrift2Convert.toThrift(predicate, pmap, tpredicate);
-        Thrift2Convert.toThrift(object, pmap, tobject);
+        Thrift2Convert.toThrift(subject, pmap, tsubject, writerDict);
+        Thrift2Convert.toThrift(predicate, pmap, tpredicate, writerDict);
+        Thrift2Convert.toThrift(object, pmap, tobject, writerDict);
         ttriple.setS(tsubject);
         ttriple.setP(tpredicate);
         ttriple.setO(tobject);
 
-        tStreamRow.setTriple(ttriple);
+        tStreamUnion.setTriple(ttriple);
+        tStreamRow.setRow(tStreamUnion);
+        tStreamRow.setStrings(writerDict.flush());
         try { tStreamRow.write(protocol); }
         catch (TException e) { T2RDF.exception(e); }
         finally {
             tStreamRow.clear();
+            tStreamUnion.clear();
             ttriple.clear();
             tsubject.clear();
             tpredicate.clear();
@@ -99,21 +106,24 @@ public class StreamRDF2Thrift2 implements StreamRDF, AutoCloseable
             return;
         }
 
-        Thrift2Convert.toThrift(quad.getGraph(), pmap, tgraph);
-        Thrift2Convert.toThrift(quad.getSubject(), pmap, tsubject);
-        Thrift2Convert.toThrift(quad.getPredicate(), pmap, tpredicate);
-        Thrift2Convert.toThrift(quad.getObject(), pmap, tobject);
+        Thrift2Convert.toThrift(quad.getGraph(), pmap, tgraph, writerDict);
+        Thrift2Convert.toThrift(quad.getSubject(), pmap, tsubject, writerDict);
+        Thrift2Convert.toThrift(quad.getPredicate(), pmap, tpredicate, writerDict);
+        Thrift2Convert.toThrift(quad.getObject(), pmap, tobject, writerDict);
 
         tquad.setG(tgraph);
         tquad.setS(tsubject);
         tquad.setP(tpredicate);
         tquad.setO(tobject);
-        tStreamRow.setQuad(tquad);
+        tStreamUnion.setQuad(tquad);
+        tStreamRow.setRow(tStreamUnion);
+        tStreamRow.setStrings(writerDict.flush());
 
         try { tStreamRow.write(protocol); }
         catch (TException e) { T2RDF.exception(e); }
         finally {
             tStreamRow.clear();
+            tStreamUnion.clear();
             tquad.clear();
             tgraph.clear();
             tsubject.clear();
@@ -133,11 +143,18 @@ public class StreamRDF2Thrift2 implements StreamRDF, AutoCloseable
         catch ( RiotException ex) {
             Log.warn(this, "Prefix mapping error", ex);
         }
-        RDF_PrefixDecl tprefix = new RDF_PrefixDecl(prefix, iri);
-        tStreamRow.setPrefixDecl(tprefix);
+        tprefix.setPrefix(writerDict.getIndex(prefix));
+        tprefix.setUri(writerDict.getIndex(iri));
+        tStreamUnion.setPrefixDecl(tprefix);
+        tStreamRow.setRow(tStreamUnion);
+        tStreamRow.setStrings(writerDict.flush());
         try { tStreamRow.write(protocol); }
         catch (TException e) { T2RDF.exception(e); }
-        tStreamRow.clear();
+        finally {
+            tStreamRow.clear();
+            tStreamUnion.clear();
+            tprefix.clear();
+        }
     }
 
     @Override
@@ -148,5 +165,6 @@ public class StreamRDF2Thrift2 implements StreamRDF, AutoCloseable
     @Override
     public void finish() {
         T2RDF.flush(protocol);
+        writerDict.clear();
     }
 }
