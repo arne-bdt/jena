@@ -18,18 +18,19 @@
 
 package org.apache.jena.riot.system;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFLanguages;
+import org.apache.jena.riot.RDFParserRegistry;
+import org.apache.jena.riot.RDFWriterRegistry;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
 
-import java.util.ArrayList ;
-import java.util.List ;
+import java.util.ArrayList;
+import java.util.List;
 
-import org.apache.jena.riot.* ;
-import org.junit.Test ;
-import org.junit.runner.RunWith ;
-import org.junit.runners.Parameterized ;
-import org.junit.runners.Parameterized.Parameters ;
+import static org.junit.Assert.*;
 
 
 @RunWith(Parameterized.class)
@@ -53,6 +54,7 @@ public class TestLangRegistration
         add("TRIX",     x, Lang.TRIX,       true, true) ;
         add("PB RDF",   x, Lang.RDFPROTO,   true, true) ;
         add("TRDF",     x, Lang.RDFTHRIFT,  true, true) ;
+        add("T2RDF",    x, Lang.RDFTHRIFT2, true, true) ;
         return x ;
     }
 

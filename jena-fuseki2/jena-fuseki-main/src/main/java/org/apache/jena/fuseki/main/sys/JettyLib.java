@@ -18,9 +18,6 @@
 
 package org.apache.jena.fuseki.main.sys;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.jena.riot.WebContent;
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
 import org.eclipse.jetty.http.MimeTypes;
@@ -29,6 +26,9 @@ import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.util.resource.Resource;
 import org.eclipse.jetty.util.resource.ResourceFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Helpers for working with Jetty.
  * <h3>SecurityHandler</h3>
@@ -68,7 +68,9 @@ public class JettyLib {
         mimeTypes.addMimeMapping("jsonld",  WebContent.contentTypeJSONLD);
         mimeTypes.addMimeMapping("rj",      WebContent.contentTypeRDFJSON);
         mimeTypes.addMimeMapping("rt",      WebContent.contentTypeRDFThrift);
+        mimeTypes.addMimeMapping("rt2",      WebContent.contentTypeRDFThrift2);
         mimeTypes.addMimeMapping("trdf",    WebContent.contentTypeRDFThrift);
+        mimeTypes.addMimeMapping("t2rdf",    WebContent.contentTypeRDFThrift2);
 
         // SPARQL syntax
         mimeTypes.addMimeMapping("rq",      WebContent.contentTypeSPARQLQuery);
@@ -79,6 +81,7 @@ public class JettyLib {
         mimeTypes.addMimeMapping("rsx",     WebContent.contentTypeResultsXML);
         mimeTypes.addMimeMapping("srt",     WebContent.contentTypeResultsThrift);
         mimeTypes.addMimeMapping("srt",     WebContent.contentTypeResultsProtobuf);
+        mimeTypes.addMimeMapping("srt2",    WebContent.contentTypeResultsThrift2);
 
         // Other
         mimeTypes.addMimeMapping("txt",     WebContent.contentTypeTextPlain);

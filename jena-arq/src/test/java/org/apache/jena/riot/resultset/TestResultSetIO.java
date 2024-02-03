@@ -18,29 +18,29 @@
 
 package org.apache.jena.riot.resultset;
 
-import static org.apache.jena.riot.resultset.ResultSetLang.* ;
-import static org.junit.Assert.assertTrue;
-
-import java.io.ByteArrayInputStream ;
-import java.io.ByteArrayOutputStream ;
-import java.util.ArrayList ;
-import java.util.Collection ;
-import java.util.List ;
-
-import org.apache.jena.atlas.lib.StrUtils ;
-import org.apache.jena.query.ResultSet ;
-import org.apache.jena.query.ResultSetFactory ;
-import org.apache.jena.query.ResultSetRewindable ;
-import org.apache.jena.riot.Lang ;
-import org.apache.jena.riot.ResultSetMgr ;
-import org.apache.jena.sparql.resultset.ResultSetCompare ;
-import org.apache.jena.sparql.sse.SSE ;
+import org.apache.jena.atlas.lib.StrUtils;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.query.ResultSetFactory;
+import org.apache.jena.query.ResultSetRewindable;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.ResultSetMgr;
+import org.apache.jena.sparql.resultset.ResultSetCompare;
+import org.apache.jena.sparql.sse.SSE;
 import org.apache.jena.sparql.sse.builders.BuilderRowSet;
-import org.junit.Before ;
-import org.junit.Test ;
-import org.junit.runner.RunWith ;
-import org.junit.runners.Parameterized ;
-import org.junit.runners.Parameterized.Parameters ;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import static org.apache.jena.riot.resultset.ResultSetLang.*;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(Parameterized.class)
 public class TestResultSetIO {
@@ -51,6 +51,7 @@ public class TestResultSetIO {
                        , RS_CSV
                        , RS_TSV
                        , RS_Thrift
+                       , RS_Thrift2
                        , RS_Protobuf
         } ;
 

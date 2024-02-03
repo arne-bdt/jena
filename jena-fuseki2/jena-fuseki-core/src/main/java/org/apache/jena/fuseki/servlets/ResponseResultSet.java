@@ -18,18 +18,7 @@
 
 package org.apache.jena.fuseki.servlets;
 
-import static java.lang.String.format;
-import static org.apache.jena.riot.WebContent.*;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-
 import jakarta.servlet.http.HttpServletRequest;
-
 import org.apache.jena.atlas.lib.StrUtils;
 import org.apache.jena.atlas.web.AcceptList;
 import org.apache.jena.atlas.web.MediaType;
@@ -50,6 +39,16 @@ import org.apache.jena.web.HttpSC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
+import static java.lang.String.format;
+import static org.apache.jena.riot.WebContent.*;
+
 /** This is the content negotiation for each kind of SPARQL query result */
 public class ResponseResultSet
 {
@@ -63,6 +62,7 @@ public class ResponseResultSet
     private static final String contentOutputCSV           = "csv";
     private static final String contentOutputTSV           = "tsv";
     private static final String contentOutputThrift        = "thrift";
+    private static final String contentOutputThrift2       = "thrift2";
 
     public static Map<String,String> shortNamesResultSet = new HashMap<>();
     static {
@@ -74,6 +74,7 @@ public class ResponseResultSet
         ResponseOps.put(shortNamesResultSet, contentOutputCSV,    contentTypeTextCSV);
         ResponseOps.put(shortNamesResultSet, contentOutputTSV,    contentTypeTextTSV);
         ResponseOps.put(shortNamesResultSet, contentOutputThrift, contentTypeResultsThrift);
+        ResponseOps.put(shortNamesResultSet, contentOutputThrift2,contentTypeResultsThrift2);
     }
 
     interface OutputContent { void output(OutputStream out) throws IOException; }
@@ -170,6 +171,11 @@ public class ResponseResultSet
         if (Objects.equals(serializationType, WebContent.contentTypeResultsThrift) ) {
             if ( booleanResult != null )
                 ServletOps.errorBadRequest("Can't write a boolean result in thrift");
+            charset = null;
+        }
+        if (Objects.equals(serializationType, WebContent.contentTypeResultsThrift2) ) {
+            if ( booleanResult != null )
+                ServletOps.errorBadRequest("Can't write a boolean result in thrift2");
             charset = null;
         }
         if (Objects.equals(serializationType, WebContent.contentTypeResultsProtobuf) ) {

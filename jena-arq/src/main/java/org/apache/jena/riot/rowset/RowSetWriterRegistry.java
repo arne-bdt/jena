@@ -18,14 +18,14 @@
 
 package org.apache.jena.riot.rowset;
 
-import static org.apache.jena.riot.resultset.ResultSetLang.*;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.rowset.rw.*;
 
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.rowset.rw.*;
+import static org.apache.jena.riot.resultset.ResultSetLang.*;
 
 /** Registry for RowSetWriter factories. */
 public class RowSetWriterRegistry {
@@ -63,6 +63,7 @@ public class RowSetWriterRegistry {
         register(RS_TSV,        RowSetWriterTSV.factory);
 
         register(RS_Thrift,     RowSetWriterThrift.factory);
+        register(RS_Thrift2,    RowSetWriterThrift2.factory);
         register(RS_Protobuf,   RowSetWriterProtobuf.factory);
 
         register(RS_Text,       RowSetWriterText.factory);

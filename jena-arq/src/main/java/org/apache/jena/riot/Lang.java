@@ -18,11 +18,11 @@
 
 package org.apache.jena.riot;
 
-import java.util.ArrayList ;
-import java.util.Collections ;
-import java.util.List ;
+import org.apache.jena.atlas.web.ContentType;
 
-import org.apache.jena.atlas.web.ContentType ;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /** A "language" (syntax).
  *  A language has a name, some alternative names,
@@ -87,6 +87,9 @@ public class Lang
 
     /** The RDF syntax <a href="https://jena.apache.org/documentation/io/rdf-binary.html">RDF Thrift</a> */
     public static Lang RDFTHRIFT ;
+
+    /** Variant of RDFTHRIFT, which uses a set of Strings to avoid repeated string values */
+    public static Lang RDFTHRIFT2 ;
 
     /** <a href="https://w3c.github.io/shacl/shacl-compact-syntax/">SHACL Compact Syntax</a> (2020-07-01) */
     public static Lang SHACLC;

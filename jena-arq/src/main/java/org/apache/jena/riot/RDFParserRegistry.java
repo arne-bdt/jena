@@ -18,14 +18,16 @@
 
 package org.apache.jena.riot;
 
-import static org.apache.jena.riot.Lang.*;
-
-import java.util.*;
-
-import org.apache.jena.riot.lang.*;
+import org.apache.jena.riot.lang.ReaderRDFNULL;
+import org.apache.jena.riot.lang.ReaderTriX;
+import org.apache.jena.riot.lang.RiotParsers;
 import org.apache.jena.riot.lang.extra.TurtleJCC;
 import org.apache.jena.riot.lang.rdfxml.RRX;
 import org.apache.jena.riot.lang.rdfxml.rrx.ReaderRDFXML_SAX;
+
+import java.util.*;
+
+import static org.apache.jena.riot.Lang.*;
 
 /** The registry of languages and parsers.
  * To register a new parser:
@@ -70,6 +72,7 @@ public class RDFParserRegistry
         registerLangTriples(RDFXML,     ReaderRDFXML_SAX.factory);
         registerLangTriples(RDFPROTO,   RiotParsers.factoryRDFProtobuf);
         registerLangTriples(RDFTHRIFT,  RiotParsers.factoryRDFThrift);
+        registerLangTriples(RDFTHRIFT2, RiotParsers.factoryRDFThrift2);
 
         registerLangTriples(TRIX,       ReaderTriX.factory);
         registerLangTriples(RDFNULL,    ReaderRDFNULL.factory);
@@ -82,6 +85,7 @@ public class RDFParserRegistry
         registerLangQuads(TRIG,         RiotParsers.factoryTRIG);
         registerLangQuads(RDFPROTO,     RiotParsers.factoryRDFProtobuf);
         registerLangQuads(RDFTHRIFT,    RiotParsers.factoryRDFThrift);
+        registerLangQuads(RDFTHRIFT2,   RiotParsers.factoryRDFThrift2);
         registerLangQuads(TRIX,         ReaderTriX.factory);
         registerLangQuads(RDFNULL,      ReaderRDFNULL.factory);
 

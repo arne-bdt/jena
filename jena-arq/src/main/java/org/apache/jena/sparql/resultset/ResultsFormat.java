@@ -18,21 +18,21 @@
 
 package org.apache.jena.sparql.resultset;
 
-import static org.apache.jena.riot.WebContent.* ;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.query.ResultSetFormatter;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.resultset.ResultSetLang;
+import org.apache.jena.sparql.core.Prologue;
+import org.apache.jena.sparql.util.QueryExecUtils;
+import org.apache.jena.sparql.util.Symbol;
+import org.apache.jena.sparql.util.TranslationTable;
 
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.HashMap ;
-import java.util.Map ;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.apache.jena.query.ResultSet;
-import org.apache.jena.query.ResultSetFormatter;
-import org.apache.jena.riot.Lang ;
-import org.apache.jena.riot.resultset.ResultSetLang ;
-import org.apache.jena.sparql.core.Prologue;
-import org.apache.jena.sparql.util.QueryExecUtils;
-import org.apache.jena.sparql.util.Symbol ;
-import org.apache.jena.sparql.util.TranslationTable ;
+import static org.apache.jena.riot.WebContent.*;
 
 // Better ....
 //public enum ResultFormat
@@ -55,6 +55,7 @@ public class ResultsFormat extends Symbol
     static public ResultsFormat FMT_RS_JSON      = new ResultsFormat(contentTypeResultsJSON) ;
 
     static public ResultsFormat FMT_RS_THRIFT    = new ResultsFormat(contentTypeResultsThrift) ;
+    static public ResultsFormat FMT_RS_THRIFT2    = new ResultsFormat(contentTypeResultsThrift2) ;
     static public ResultsFormat FMT_RS_PROTOBUF  = new ResultsFormat(contentTypeResultsProtobuf) ;
 
     static public ResultsFormat FMT_RS_CSV       = new ResultsFormat(contentTypeTextCSV) ;
@@ -213,6 +214,7 @@ public class ResultsFormat extends Symbol
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_XML,      ResultSetLang.RS_XML) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_JSON,     ResultSetLang.RS_JSON) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_THRIFT,   ResultSetLang.RS_Thrift) ;
+        mapResultsFormatToLang.put(ResultsFormat.FMT_RS_THRIFT2,  ResultSetLang.RS_Thrift2) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_PROTOBUF, ResultSetLang.RS_Protobuf) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_TEXT,        ResultSetLang.RS_Text);
     }

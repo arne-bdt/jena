@@ -18,17 +18,19 @@
 
 package org.apache.jena.riot;
 
-import java.util.* ;
-
-import org.apache.jena.atlas.lib.CharSpace ;
+import org.apache.jena.atlas.lib.CharSpace;
 import org.apache.jena.riot.protobuf.WriterDatasetProtobuf;
 import org.apache.jena.riot.protobuf.WriterGraphProtobuf;
-import org.apache.jena.riot.system.RiotLib ;
+import org.apache.jena.riot.system.RiotLib;
 import org.apache.jena.riot.system.StreamRDFWriter;
-import org.apache.jena.riot.thrift.WriterDatasetThrift ;
-import org.apache.jena.riot.thrift.WriterGraphThrift ;
-import org.apache.jena.riot.writer.* ;
-import org.apache.jena.sys.JenaSystem ;
+import org.apache.jena.riot.thrift.WriterDatasetThrift;
+import org.apache.jena.riot.thrift.WriterGraphThrift;
+import org.apache.jena.riot.thrift2.WriterDatasetThrift2;
+import org.apache.jena.riot.thrift2.WriterGraphThrift2;
+import org.apache.jena.riot.writer.*;
+import org.apache.jena.sys.JenaSystem;
+
+import java.util.*;
 
 /**
  * Writer registry. This is for writers presenting the functionality to write graphs and datasets, not streams.
@@ -124,7 +126,9 @@ public class RDFWriterRegistry
         WriterGraphRIOTFactory wgProtoFactory       = syntaxForm -> new WriterGraphProtobuf(syntaxForm);
         WriterDatasetRIOTFactory wdsProtoFactory    = syntaxForm -> new WriterDatasetProtobuf(syntaxForm);
         WriterGraphRIOTFactory wgThriftFactory      = syntaxForm -> new WriterGraphThrift(syntaxForm);
+        WriterGraphRIOTFactory wgThrift2Factory     = syntaxForm -> new WriterGraphThrift2();
         WriterDatasetRIOTFactory wdsThriftFactory   = syntaxForm -> new WriterDatasetThrift(syntaxForm);
+        WriterDatasetRIOTFactory wdsThrift2Factory  = syntaxForm -> new WriterDatasetThrift2();
         WriterGraphRIOTFactory wgTriXFactory        = syntaxForm -> new WriterTriX();
         WriterDatasetRIOTFactory wdsTriXFactory     = syntaxForm -> new WriterTriX() ;
 
@@ -152,6 +156,7 @@ public class RDFWriterRegistry
         register(Lang.RDFNULL,     RDFFormat.RDFNULL) ;
         register(Lang.RDFPROTO,    RDFFormat.RDF_PROTO) ;
         register(Lang.RDFTHRIFT,   RDFFormat.RDF_THRIFT) ;
+        register(Lang.RDFTHRIFT2,  RDFFormat.RDF_THRIFT2) ;
 
         register(Lang.TRIX,        RDFFormat.TRIX) ;
 
@@ -206,6 +211,7 @@ public class RDFWriterRegistry
         register(RDFFormat.RDF_PROTO_VALUES,    wgProtoFactory) ;
         register(RDFFormat.RDF_THRIFT,          wgThriftFactory) ;
         register(RDFFormat.RDF_THRIFT_VALUES,   wgThriftFactory) ;
+        register(RDFFormat.RDF_THRIFT2,         wgThrift2Factory) ;
 
         register(RDFFormat.TRIX, wgTriXFactory) ;
 
@@ -223,6 +229,8 @@ public class RDFWriterRegistry
         register(RDFFormat.RDF_PROTO_VALUES,    wdsProtoFactory) ;
         register(RDFFormat.RDF_THRIFT,          wdsThriftFactory) ;
         register(RDFFormat.RDF_THRIFT_VALUES,   wdsThriftFactory) ;
+
+        register(RDFFormat.RDF_THRIFT2,         wdsThrift2Factory) ;
 
         register(RDFFormat.TRIX, wdsTriXFactory) ;
     }

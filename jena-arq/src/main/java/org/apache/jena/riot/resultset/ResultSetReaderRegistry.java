@@ -18,21 +18,21 @@
 
 package org.apache.jena.riot.resultset;
 
-import static org.apache.jena.riot.resultset.ResultSetLang.*;
-
-import java.io.InputStream ;
-import java.io.Reader ;
-import java.util.*;
-
-import org.apache.jena.query.ResultSet ;
-import org.apache.jena.riot.Lang ;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.rowset.RowSetReader;
 import org.apache.jena.riot.rowset.RowSetReaderFactory;
 import org.apache.jena.riot.rowset.RowSetReaderRegistry;
 import org.apache.jena.sparql.exec.QueryExecResult;
 import org.apache.jena.sparql.exec.RowSet;
 import org.apache.jena.sparql.resultset.SPARQLResult;
-import org.apache.jena.sparql.util.Context ;
+import org.apache.jena.sparql.util.Context;
+
+import java.io.InputStream;
+import java.io.Reader;
+import java.util.*;
+
+import static org.apache.jena.riot.resultset.ResultSetLang.*;
 
 public class ResultSetReaderRegistry {
 
@@ -73,6 +73,7 @@ public class ResultSetReaderRegistry {
         register(RS_TSV,      factory) ;
         register(RS_None,     factory) ;
         register(RS_Thrift,   factory) ;
+        register(RS_Thrift2,   factory) ;
         register(RS_Protobuf, factory) ;
     }
     

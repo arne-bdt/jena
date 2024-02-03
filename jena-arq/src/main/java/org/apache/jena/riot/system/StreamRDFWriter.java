@@ -18,25 +18,26 @@
 
 package org.apache.jena.riot.system;
 
-import java.io.OutputStream ;
-import java.util.Collection ;
-import java.util.Collections ;
-import java.util.HashMap ;
-import java.util.Map ;
-
-import org.apache.jena.atlas.io.AWriter ;
-import org.apache.jena.atlas.io.IO ;
-import org.apache.jena.atlas.lib.CharSpace ;
-import org.apache.jena.graph.Graph ;
-import org.apache.jena.riot.* ;
+import org.apache.jena.atlas.io.AWriter;
+import org.apache.jena.atlas.io.IO;
+import org.apache.jena.atlas.lib.CharSpace;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.riot.*;
 import org.apache.jena.riot.protobuf.ProtobufRDF;
 import org.apache.jena.riot.thrift.ThriftRDF;
-import org.apache.jena.riot.writer.StreamWriterTriX ;
-import org.apache.jena.riot.writer.WriterStreamRDFBlocks ;
-import org.apache.jena.riot.writer.WriterStreamRDFFlat ;
-import org.apache.jena.riot.writer.WriterStreamRDFPlain ;
-import org.apache.jena.sparql.core.DatasetGraph ;
+import org.apache.jena.riot.thrift2.Thrift2RDF;
+import org.apache.jena.riot.writer.StreamWriterTriX;
+import org.apache.jena.riot.writer.WriterStreamRDFBlocks;
+import org.apache.jena.riot.writer.WriterStreamRDFFlat;
+import org.apache.jena.riot.writer.WriterStreamRDFPlain;
+import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.util.Context;
+
+import java.io.OutputStream;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /** Write RDF in a streaming fashion.
  *  {@link RDFDataMgr} operations do not provide this guarantee.
@@ -95,6 +96,13 @@ public class StreamRDFWriter {
         }
     } ;
 
+    private static StreamRDFWriterFactory streamWriterFactoryThrift2 = new StreamRDFWriterFactory() {
+        @Override
+        public StreamRDF create(OutputStream output, RDFFormat format, Context context) {
+            return Thrift2RDF.streamToOutputStream(output) ;
+        }
+    } ;
+
     private static StreamRDFWriterFactory streamWriterFactoryTriX = new StreamRDFWriterFactory() {
         @Override
         public StreamRDF create(OutputStream output, RDFFormat format, Context context) {
@@ -143,6 +151,7 @@ public class StreamRDFWriter {
         register(Lang.NQUADS,       RDFFormat.NQUADS) ;
         register(Lang.RDFPROTO,     RDFFormat.RDF_PROTO) ;
         register(Lang.RDFTHRIFT,    RDFFormat.RDF_THRIFT) ;
+        register(Lang.RDFTHRIFT2,   RDFFormat.RDF_THRIFT2) ;
         register(Lang.TRIX,         RDFFormat.TRIX) ;
         register(Lang.RDFNULL,      RDFFormat.RDFNULL) ;
         register(Lang.RDFRAW,       RDFFormat.RDFRAW) ;
@@ -165,6 +174,8 @@ public class StreamRDFWriter {
 
         register(RDFFormat.RDF_THRIFT,          streamWriterFactoryThrift) ;
         register(RDFFormat.RDF_THRIFT_VALUES,   streamWriterFactoryThrift) ;
+
+        register(RDFFormat.RDF_THRIFT2,          streamWriterFactoryThrift2) ;
 
         register(RDFFormat.TRIX,            streamWriterFactoryTriX) ;
         register(RDFFormat.RDFNULL,         streamWriterFactoryNull) ;

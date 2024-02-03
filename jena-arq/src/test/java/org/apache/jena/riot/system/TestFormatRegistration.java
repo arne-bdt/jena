@@ -19,19 +19,18 @@
 
 package org.apache.jena.riot.system;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
-import java.util.ArrayList ;
-import java.util.List ;
-
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.RDFWriterRegistry;
-import org.junit.Test ;
-// Test system integration / registration
-import org.junit.runner.RunWith ;
-import org.junit.runners.Parameterized ;
-import org.junit.runners.Parameterized.Parameters ;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 
 @RunWith(Parameterized.class)
@@ -62,6 +61,8 @@ public class TestFormatRegistration
 
         add("TRDF",     x, RDFFormat.RDF_THRIFT, true, true) ;
         add("TRDF",     x, RDFFormat.RDF_THRIFT_VALUES, true, true) ;
+
+        add("T2RDF",     x, RDFFormat.RDF_THRIFT2, true, true) ;
         return x ;
     }
 

@@ -55,6 +55,8 @@ public class FormatParameter implements IStringConverter<RDFFormat>, IParameterV
                 return RDFFormat.RDFXML;
             case "thrift":
                 return RDFFormat.RDF_THRIFT;
+            case "thrift2":
+                return RDFFormat.RDF_THRIFT2;
             case "trig":
                 return RDFFormat.TRIG;
             case "trix":
@@ -64,7 +66,7 @@ public class FormatParameter implements IStringConverter<RDFFormat>, IParameterV
         }
     }
 
-    private static final List<String> PERMITTED_FORMATS = Arrays.asList("json-ld", "nt", "nq", "json-rdf", "xml-plain", "xml-pretty", "xml", "thrift", "trig", "trix", "ttl", "ttl-pretty");
+    private static final List<String> PERMITTED_FORMATS = Arrays.asList("json-ld", "nt", "nq", "json-rdf", "xml-plain", "xml-pretty", "xml", "thrift","thrift2", "trig", "trix", "ttl", "ttl-pretty");
 
     @Override
     public void validate(String name, String value) throws ParameterException {
@@ -98,6 +100,8 @@ public class FormatParameter implements IStringConverter<RDFFormat>, IParameterV
                 return ".rdf";
             case "thrift":
                 return ".trdf";
+            case "thrift2":
+                return ".t2rdf";
             case "trig":
                 return ".trig";
             case "trix":

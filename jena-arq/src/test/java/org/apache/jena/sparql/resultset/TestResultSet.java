@@ -18,17 +18,6 @@
 
 package org.apache.jena.sparql.resultset;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NoSuchElementException;
-
 import org.apache.jena.atlas.lib.StrUtils;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -51,6 +40,15 @@ import org.apache.jena.sys.JenaSystem;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.NoSuchElementException;
+
+import static org.junit.Assert.*;
 
 public class TestResultSet
 {
@@ -573,6 +571,11 @@ public class TestResultSet
     @Test public void preserve_bnodes_3() {
         preserve_bnodes(ResultSetLang.RS_Thrift, cxt, true);
         preserve_bnodes(ResultSetLang.RS_Thrift, ARQ.getContext(), true);
+    }
+
+    @Test public void preserve_bnodes_4() {
+        preserve_bnodes(ResultSetLang.RS_Thrift2, cxt, true);
+        preserve_bnodes(ResultSetLang.RS_Thrift2, ARQ.getContext(), true);
     }
 
     private static void preserve_bnodes(Lang sparqlresultlang, Context cxt, boolean same) {

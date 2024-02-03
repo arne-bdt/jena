@@ -18,21 +18,22 @@
 
 package org.apache.jena.riot;
 
-import org.apache.jena.riot.adapters.TS_RIOTAdapters ;
-import org.apache.jena.riot.lang.TS_Lang ;
-import org.apache.jena.riot.out.TS_Out ;
-import org.apache.jena.riot.process.TS_Process ;
+import org.apache.jena.riot.adapters.TS_RIOTAdapters;
+import org.apache.jena.riot.lang.TS_Lang;
+import org.apache.jena.riot.out.TS_Out;
+import org.apache.jena.riot.process.TS_Process;
 import org.apache.jena.riot.protobuf.TS_RDFProtobuf;
-import org.apache.jena.riot.resultset.TS_ResultSetRIOT ;
+import org.apache.jena.riot.resultset.TS_ResultSetRIOT;
 import org.apache.jena.riot.rowset.TS_RowSetRIOT;
-import org.apache.jena.riot.stream.TS_IO2 ;
-import org.apache.jena.riot.system.TS_RiotSystem ;
-import org.apache.jena.riot.thrift.TS_RDFThrift ;
-import org.apache.jena.riot.tokens.TS_Tokens ;
-import org.apache.jena.riot.web.TS_RiotWeb ;
-import org.apache.jena.riot.writer.TS_RiotWriter ;
-import org.junit.runner.RunWith ;
-import org.junit.runners.Suite ;
+import org.apache.jena.riot.stream.TS_IO2;
+import org.apache.jena.riot.system.TS_RiotSystem;
+import org.apache.jena.riot.thrift.TS_RDFThrift;
+import org.apache.jena.riot.thrift2.TS_RDFThrift2;
+import org.apache.jena.riot.tokens.TS_Tokens;
+import org.apache.jena.riot.web.TS_RiotWeb;
+import org.apache.jena.riot.writer.TS_RiotWriter;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses( {
@@ -49,6 +50,7 @@ import org.junit.runners.Suite ;
     , TS_ResultSetRIOT.class
     , TS_RDFProtobuf.class
     , TS_RDFThrift.class
+    , TS_RDFThrift2.class
     , TS_RowSetRIOT.class
     // Scripted tests in ARQTestSuite.
 })

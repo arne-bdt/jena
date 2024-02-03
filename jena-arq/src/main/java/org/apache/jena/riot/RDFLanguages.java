@@ -18,18 +18,18 @@
 
 package org.apache.jena.riot;
 
-import static org.apache.jena.atlas.lib.Lib.lowercase;
-import static org.apache.jena.riot.WebContent.*;
+import org.apache.jena.atlas.io.IO;
+import org.apache.jena.atlas.web.ContentType;
+import org.apache.jena.atlas.web.MediaType;
+import org.apache.jena.util.FileUtils;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.jena.atlas.io.IO;
-import org.apache.jena.atlas.web.ContentType;
-import org.apache.jena.atlas.web.MediaType;
-import org.apache.jena.util.FileUtils;
+import static org.apache.jena.atlas.lib.Lib.lowercase;
+import static org.apache.jena.riot.WebContent.*;
 
 /**
  * Central registry of RDF languages and syntaxes.
@@ -52,6 +52,7 @@ public class RDFLanguages
     public static final String strLangTriX       = "TriX";
     public static final String strLangRDFPROTO   = "RDF-PROTO";
     public static final String strLangRDFTHRIFT  = "RDF-THRIFT";
+    public static final String strLangRDFTHRIFT2 = "RDF-THRIFT2";
 
     /* ".owl" is not a formally registered file extension for OWL using RDF/XML. It
      * was mentioned in OWL1 (when there was formally only one syntax for publishing
@@ -148,6 +149,13 @@ public class RDFLanguages
                                                      .addAltNames("RDF_THRIFT", "RDFTHRIFT", "RDF/THRIFT", "TRDF")
                                                      .addFileExtensions("rt", "trdf")
                                                      .build();
+
+    /** The RDF syntax RDFThrift2, which is like RDFTHRIFT but uses a single set of strings to reduce data */
+    public static final Lang RDFTHRIFT2  = LangBuilder.create(strLangRDFTHRIFT2, contentTypeRDFThrift2)
+            .addAltNames("RDF_THRIFT2", "RDFTHRIFT2", "RDF/THRIFT2", "T2RDF")
+            .addFileExtensions("rt2", "t2rdf")
+            .build();
+
     /** Text */
     public static final Lang TEXT       = LangBuilder.create("text", contentTypeTextPlain)
                                                      .addAltNames("TEXT")
@@ -217,6 +225,7 @@ public class RDFLanguages
         Lang.TRIG       = RDFLanguages.TRIG;
         Lang.RDFPROTO   = RDFLanguages.RDFPROTO;
         Lang.RDFTHRIFT  = RDFLanguages.RDFTHRIFT;
+        Lang.RDFTHRIFT2 = RDFLanguages.RDFTHRIFT2;
         Lang.TRIX       = RDFLanguages.TRIX;
         Lang.RDFNULL    = RDFLanguages.RDFNULL;
         Lang.RDFRAW     = RDFLanguages.RDFRAW;
@@ -247,6 +256,7 @@ public class RDFLanguages
         register(NQUADS);
         register(RDFPROTO);
         register(RDFTHRIFT);
+        register(RDFTHRIFT2);
         register(TRIX);
         register(RDFNULL);
         register(RDFRAW);

@@ -18,13 +18,12 @@
 
 package org.apache.jena.rdflink;
 
-import java.net.http.HttpClient;
-
-import org.apache.jena.rdflink.RDFLinkFuseki;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.resultset.ResultSetLang;
 import org.apache.jena.sparql.core.Transactional;
+
+import java.net.http.HttpClient;
 
 /**
  * Implementation of the {@link RDFLink} interface for connecting to an Apache Jena Fuseki.
@@ -58,8 +57,11 @@ public class RDFLinkFuseki extends RDFLinkHTTP {
         String ctRDFThrift = Lang.RDFTHRIFT.getHeaderString();
         String acceptHeaderSPARQL = String.join(","
                             , ResultSetLang.RS_Thrift.getHeaderString()
+                            , ResultSetLang.RS_Thrift2.getHeaderString()
                             , ResultSetLang.RS_JSON.getHeaderString()+";q=0.9"
-                            , Lang.RDFTHRIFT.getHeaderString());
+                            , Lang.RDFTHRIFT.getHeaderString()
+                            , Lang.RDFTHRIFT2.getHeaderString());
+
         return builder
             .quadsFormat(RDFFormat.RDF_THRIFT)
             .triplesFormat(RDFFormat.RDF_THRIFT)

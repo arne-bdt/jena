@@ -47,6 +47,11 @@ public class ResultSetLang {
                      .addFileExtensions("srt")
                      .build();
 
+    public static final Lang RS_Thrift2 = LangBuilder.create("SPARQL-Results-Thrift2", WebContent.contentTypeResultsThrift)
+            .addAltNames("SRT2")
+            .addFileExtensions("srt2")
+            .build();
+
     public static final Lang RS_Protobuf = LangBuilder.create("SPARQL-Results-Protobuf", WebContent.contentTypeResultsProtobuf)
                      .addAltNames("SRP")
                      .addFileExtensions("srp")
@@ -68,6 +73,7 @@ public class ResultSetLang {
         RDFLanguages.register(RS_CSV);
         RDFLanguages.register(RS_TSV);
         RDFLanguages.register(RS_Thrift);
+        RDFLanguages.register(RS_Thrift2);
         // Not output-only text.
         RDFLanguages.register(RS_None);
 

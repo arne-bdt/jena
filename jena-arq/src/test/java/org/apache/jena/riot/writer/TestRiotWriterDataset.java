@@ -18,13 +18,6 @@
 
 package org.apache.jena.riot.writer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.util.Arrays;
-
 import org.apache.jena.atlas.lib.StrUtils;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
@@ -34,6 +27,13 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(Parameterized.class)
 public class TestRiotWriterDataset extends AbstractWriterTest
@@ -56,6 +56,7 @@ public class TestRiotWriterDataset extends AbstractWriterTest
             , { RDFFormat.RDF_PROTO_VALUES }
             , { RDFFormat.RDF_THRIFT }
             , { RDFFormat.RDF_THRIFT_VALUES }
+            , { RDFFormat.RDF_THRIFT2 }
             , { RDFFormat.TRIX }
         });
     }

@@ -20,6 +20,7 @@ package org.apache.jena.fuseki;
 
 import org.apache.jena.atlas.web.AcceptList;
 import org.apache.jena.atlas.web.MediaType;
+
 import static org.apache.jena.riot.WebContent.*;
 
 public class DEF
@@ -42,6 +43,7 @@ public class DEF
                                                                           contentTypeJSONLD,
                                                                           contentTypeRDFJSON,
                                                                           contentTypeRDFThrift,
+                                                                          contentTypeRDFThrift2,
 
                                                                           contentTypeTriG,
                                                                           contentTypeTriGAlt1,
@@ -58,7 +60,8 @@ public class DEF
                                                                           contentTypeTriXxml,
                                                                           contentTypeJSONLD,
                                                                           contentTypeRDFJSON,
-                                                                          contentTypeRDFThrift
+                                                                          contentTypeRDFThrift,
+                                                                          contentTypeRDFThrift2
                                                                           );
 
     public static final AcceptList quadsOffer         = AcceptList.create(contentTypeTriG,
@@ -79,6 +82,7 @@ public class DEF
                                                                           contentTypeResultsXML,
                                                                           contentTypeXML,
                                                                           contentTypeResultsThrift,
+                                                                          contentTypeResultsThrift2,
                                                                           contentTypeTextPlain
                                                                           );
 
