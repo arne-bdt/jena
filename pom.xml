@@ -92,6 +92,7 @@
 
     <ver.dexxcollection>0.7</ver.dexxcollection>
     <ver.micrometer>1.12.2</ver.micrometer>
+    <ver.lz4>1.8.0</ver.lz4>
     <ver.roaringbitmap>1.0.1</ver.roaringbitmap>
 
     <!-- Testing -->
@@ -612,6 +613,12 @@
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-rdf-api</artifactId>
         <version>${ver.commons-rdf}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>org.lz4</groupId>
+        <artifactId>lz4-java</artifactId>
+        <version>${ver.lz4}</version>
       </dependency>
 
       <dependency>

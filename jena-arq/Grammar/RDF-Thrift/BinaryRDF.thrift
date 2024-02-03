@@ -84,16 +84,16 @@ union RDF_Term {
 // === Stream RDF items 
 
 struct RDF_Triple {
-1: required RDF_Term S
-2: required RDF_Term P
-3: required RDF_Term O
+1: required     RDF_Term S
+2: required     RDF_Term P
+3: required     RDF_Term O
 }
 
 struct RDF_Quad {
-1: required RDF_Term S
-2: required RDF_Term P
-3: required RDF_Term O
-4: optional RDF_Term G
+1: required     RDF_Term S
+2: required     RDF_Term P
+3: required     RDF_Term O
+4: optional     RDF_Term G
 }
 
 # Prefix declaration
