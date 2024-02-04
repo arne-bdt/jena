@@ -21,9 +21,7 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.GraphMem2Fast;
-import org.apache.jena.mem2.GraphMem2Legacy;
-import org.apache.jena.mem2.GraphMem2Roaring;
+import org.apache.jena.mem2.*;
 import org.apache.jena.riot.RDFDataMgr;
 
 import java.util.ArrayList;
@@ -43,6 +41,10 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
                 return new GraphMem2Legacy();
             case GraphMem2Roaring:
                 return new GraphMem2Roaring();
+            case GraphMem2KDTree:
+                return new GraphMem2KDTree();
+            case GraphMem2PHTree:
+                return new GraphMem2PHTree();
             default:
                 throw new IllegalArgumentException("Unknown graph class: " + graphClass);
         }

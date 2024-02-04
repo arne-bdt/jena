@@ -92,6 +92,7 @@
 
     <ver.dexxcollection>0.7</ver.dexxcollection>
     <ver.micrometer>1.12.2</ver.micrometer>
+    <ver.phtree>2.8.0</ver.phtree>
     <ver.roaringbitmap>1.0.1</ver.roaringbitmap>
 
     <!-- Testing -->
@@ -612,6 +613,12 @@
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-rdf-api</artifactId>
         <version>${ver.commons-rdf}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>ch.ethz.globis.phtree</groupId>
+        <artifactId>phtree</artifactId>
+        <version>${ver.phtree}</version>
       </dependency>
 
       <dependency>
