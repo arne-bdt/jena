@@ -19,11 +19,11 @@
 package org.apache.jena.mem.graph.helper;
 
 import net.jpountz.lz4.LZ4Factory;
-import org.apache.jena.graph.Graph;
-import org.apache.jena.mem2.GraphMem2Fast;
-import org.apache.jena.riot.RDFFormat;
-import org.apache.jena.riot.RDFParser;
-import org.apache.jena.riot.RDFWriter;
+import org.apache.shadedJena480.graph.Graph;
+import org.apache.shadedJena480.mem.GraphMem;
+import org.apache.shadedJena480.riot.RDFFormat;
+import org.apache.shadedJena480.riot.RDFParser;
+import org.apache.shadedJena480.riot.RDFWriter;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -32,7 +32,7 @@ import java.util.function.Supplier;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class Serialization {
+public class Serialization480 {
 
     public static final String NO_COMPRESSOR = "none";
     public static final String LZ4_FASTEST = "LZ4Fastest";
@@ -89,7 +89,7 @@ public class Serialization {
     }
 
     public static Graph deserialize(SerializedData compressedGraph, boolean canonicalValues) {
-        return deserialize(compressedGraph, canonicalValues, GraphMem2Fast::new);
+        return deserialize(compressedGraph, canonicalValues, GraphMem::new);
     }
 
     public static Graph deserialize(SerializedData compressedGraph, boolean canonicalValues, Supplier<Graph> graphSupplier) {
@@ -132,7 +132,7 @@ public class Serialization {
                 final var inputStream = new ByteArrayInputStream(compressedGraph.bytes);
                 final GZIPInputStream inputStreamCompressed;
                 try {
-                    inputStreamCompressed = new java.util.zip.GZIPInputStream(inputStream);
+                    inputStreamCompressed = new GZIPInputStream(inputStream);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
