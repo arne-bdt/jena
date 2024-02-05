@@ -64,6 +64,11 @@
       </dependency>
 
       <dependency>
+        <groupId>ch.ethz.globis.phtree</groupId>
+        <artifactId>phtree</artifactId>
+      </dependency>
+
+      <dependency>
           <groupId>org.roaringbitmap</groupId>
           <artifactId>RoaringBitmap</artifactId>
       </dependency>
