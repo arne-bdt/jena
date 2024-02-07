@@ -62,6 +62,7 @@ public class TestFormatRegistration
         add("TRDF",     x, RDFFormat.RDF_THRIFT, true, true) ;
         add("TRDF",     x, RDFFormat.RDF_THRIFT_VALUES, true, true) ;
 
+        add("PB2 RDF",  x, RDFFormat.RDF_PROTO, true, true) ;
         add("T2RDF",     x, RDFFormat.RDF_THRIFT2, true, true) ;
         return x ;
     }

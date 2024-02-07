@@ -19,7 +19,7 @@
 package org.apache.jena.riot.rowset.rw;
 
 import org.apache.jena.atlas.lib.NotImplemented;
-import org.apache.jena.riot.protobuf.ProtobufRDF;
+import org.apache.jena.riot.protobuf2.Protobuf2RDF;
 import org.apache.jena.riot.resultset.ResultSetLang;
 import org.apache.jena.riot.rowset.RowSetReader;
 import org.apache.jena.riot.rowset.RowSetReaderFactory;
@@ -32,19 +32,19 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.util.Objects;
 
-public class RowSetReaderProtobuf implements RowSetReader {
+public class RowSetReaderProtobuf2 implements RowSetReader {
 
     public static RowSetReaderFactory factory = lang->{
-        if (!Objects.equals(lang, ResultSetLang.RS_Protobuf ) )
-            throw new ResultSetException("RowSetReaderProtobuf for Protobuf asked for a "+lang);
-        return new RowSetReaderProtobuf();
+        if (!Objects.equals(lang, ResultSetLang.RS_Protobuf2 ) )
+            throw new ResultSetException("RowSetReaderProtobuf2 for Protobuf asked for a "+lang);
+        return new RowSetReaderProtobuf2();
     };
 
-    private RowSetReaderProtobuf() {}
+    private RowSetReaderProtobuf2() {}
 
     @Override
     public RowSet read(InputStream in, Context context) {
-        return ProtobufRDF.readRowSet(in);
+        return Protobuf2RDF.readRowSet(in);
     }
 
     @Override

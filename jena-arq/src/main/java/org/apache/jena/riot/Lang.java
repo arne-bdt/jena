@@ -85,6 +85,9 @@ public class Lang
     /** The RDF syntax <a href="https://jena.apache.org/documentation/io/rdf-binary.html">RDF Thrift</a> */
     public static Lang RDFPROTO ;
 
+    /** Variant of RDFPROTO, which uses a set of Strings to avoid repeated string values */
+    public static Lang RDFPROTO2 ;
+
     /** The RDF syntax <a href="https://jena.apache.org/documentation/io/rdf-binary.html">RDF Thrift</a> */
     public static Lang RDFTHRIFT ;
 

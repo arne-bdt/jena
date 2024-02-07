@@ -47,7 +47,7 @@ public class ResultSetLang {
                      .addFileExtensions("srt")
                      .build();
 
-    public static final Lang RS_Thrift2 = LangBuilder.create("SPARQL-Results-Thrift2", WebContent.contentTypeResultsThrift)
+    public static final Lang RS_Thrift2 = LangBuilder.create("SPARQL-Results-Thrift2", WebContent.contentTypeResultsThrift2)
             .addAltNames("SRT2")
             .addFileExtensions("srt2")
             .build();
@@ -56,6 +56,11 @@ public class ResultSetLang {
                      .addAltNames("SRP")
                      .addFileExtensions("srp")
                      .build();
+
+    public static final Lang RS_Protobuf2 = LangBuilder.create("SPARQL-Results-Protobuf2", WebContent.contentTypeResultsProtobuf2)
+            .addAltNames("SRP2")
+            .addFileExtensions("srp2")
+            .build();
 
     public static final Lang RS_Text = LangBuilder.create("SPARQL-Results-Text", WebContent.contentTypeTextPlain)
                      .addFileExtensions("txt")

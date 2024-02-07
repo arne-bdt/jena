@@ -73,8 +73,9 @@ public class ResultSetReaderRegistry {
         register(RS_TSV,      factory) ;
         register(RS_None,     factory) ;
         register(RS_Thrift,   factory) ;
-        register(RS_Thrift2,   factory) ;
+        register(RS_Thrift2,  factory) ;
         register(RS_Protobuf, factory) ;
+        register(RS_Protobuf2,factory) ;
     }
     
     /** Return registered result set languages. */

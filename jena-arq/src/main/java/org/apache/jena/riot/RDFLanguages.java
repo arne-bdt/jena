@@ -51,6 +51,7 @@ public class RDFLanguages
     public static final String strLangTSV        = "TSV";
     public static final String strLangTriX       = "TriX";
     public static final String strLangRDFPROTO   = "RDF-PROTO";
+    public static final String strLangRDFPROTO2  = "RDF-PROTO2";
     public static final String strLangRDFTHRIFT  = "RDF-THRIFT";
     public static final String strLangRDFTHRIFT2 = "RDF-THRIFT2";
 
@@ -144,6 +145,12 @@ public class RDFLanguages
                                                      .addFileExtensions("rpb", "pbrdf")
                                                      .build();
 
+    /** The RDF syntax RDFProto2, which is like RDFPROTO but uses a single set of strings to reduce data */
+    public static final  Lang RDFPROTO2  = LangBuilder.create(strLangRDFPROTO2, contentTypeRDFProto2)
+            .addAltNames("RDF_PB2", "RDFPB2", "RDF/PB2", "PB2RDF")
+            .addFileExtensions("rpb2", "pb2rdf")
+            .build();
+
     /** The RDF syntax <a href="https://jena.apache.org/documentation/io/rdf-binary.html">RDF Thrift</a> */
     public static final Lang RDFTHRIFT  = LangBuilder.create(strLangRDFTHRIFT, contentTypeRDFThrift)
                                                      .addAltNames("RDF_THRIFT", "RDFTHRIFT", "RDF/THRIFT", "TRDF")
@@ -224,6 +231,7 @@ public class RDFLanguages
         Lang.NQ         = RDFLanguages.NQ;
         Lang.TRIG       = RDFLanguages.TRIG;
         Lang.RDFPROTO   = RDFLanguages.RDFPROTO;
+        Lang.RDFPROTO2  = RDFLanguages.RDFPROTO2;
         Lang.RDFTHRIFT  = RDFLanguages.RDFTHRIFT;
         Lang.RDFTHRIFT2 = RDFLanguages.RDFTHRIFT2;
         Lang.TRIX       = RDFLanguages.TRIX;
@@ -255,6 +263,7 @@ public class RDFLanguages
         register(TRIG);
         register(NQUADS);
         register(RDFPROTO);
+        register(RDFPROTO2);
         register(RDFTHRIFT);
         register(RDFTHRIFT2);
         register(TRIX);

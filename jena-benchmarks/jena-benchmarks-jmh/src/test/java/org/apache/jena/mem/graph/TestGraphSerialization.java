@@ -40,9 +40,9 @@ public class TestGraphSerialization {
     @Param({
 //            "cheeses-0.1.ttl",
 //            "pizza.owl.rdf",
-            "xxx_CGMES_EQ.xml",
+//            "xxx_CGMES_EQ.xml",
 //            "xxx_CGMES_SSH.xml",
-//            "xxx_CGMES_TP.xml",
+            "xxx_CGMES_TP.xml",
 //            "RealGrid_EQ.xml",
 //            "RealGrid_SSH.xml",
 //            "RealGrid_TP.xml",
@@ -85,27 +85,28 @@ public class TestGraphSerialization {
     }
 
     @Param({
-            "TURTLE_PRETTY",
-            "TURTLE_BLOCKS",
-            "TURTLE_FLAT",
-            "TURTLE_LONG",
-            "NTRIPLES_UTF8",
-            "NQUADS_UTF8",
-            "TRIG_PRETTY",
-            "TRIG_BLOCKS",
-            "TRIG_FLAT",
-            "TRIG_LONG",
+//            "TURTLE_PRETTY",
+//            "TURTLE_BLOCKS",
+//            "TURTLE_FLAT",
+//            "TURTLE_LONG",
+//            "NTRIPLES_UTF8",
+//            "NQUADS_UTF8",
+//            "TRIG_PRETTY",
+//            "TRIG_BLOCKS",
+//            "TRIG_FLAT",
+//            "TRIG_LONG",
 //            "JSONLD11_PRETTY", --> seems to be broken
-            "JSONLD11_PLAIN",
-            "JSONLD11_FLAT",
-            "RDFXML_PRETTY",
-            "RDFXML_PLAIN",
-            "RDFJSON",
-            "TRIX",
+//            "JSONLD11_PLAIN",
+//            "JSONLD11_FLAT",
+//            "RDFXML_PRETTY",
+//            "RDFXML_PLAIN",
+//            "RDFJSON",
+//            "TRIX",
             "RDF_PROTO",
-            "RDF_PROTO_VALUES",
+            "RDF_PROTO2",
+//            "RDF_PROTO_VALUES",
             "RDF_THRIFT",
-            "RDF_THRIFT_VALUES",
+//            "RDF_THRIFT_VALUES",
             "RDF_THRIFT2",
     })
     public String param1_RDFFormat;
@@ -163,6 +164,8 @@ public class TestGraphSerialization {
                 return RDFFormat.RDF_PROTO;
             case "RDF_PROTO_VALUES":
                 return RDFFormat.RDF_PROTO_VALUES;
+            case "RDF_PROTO2":
+                return RDFFormat.RDF_PROTO2;
             case "RDF_THRIFT":
                 return RDFFormat.RDF_THRIFT;
             case "RDF_THRIFT_VALUES":
@@ -200,9 +203,10 @@ public class TestGraphSerialization {
                     RDFFormat.RDFXML_PRETTY, RDFFormat.RDFXML_PLAIN, RDFFormat.RDFJSON,
                     RDFFormat.TRIX,
                     RDFFormat.RDF_PROTO, RDFFormat.RDF_PROTO_VALUES,
+                    RDFFormat.RDF_PROTO2,
                     RDFFormat.RDF_THRIFT, RDFFormat.RDF_THRIFT_VALUES,
                     RDFFormat.RDF_THRIFT2)) {
-                for (var compressor : List.of(GraphSerialization.NO_COMPRESSOR, /*Serialization.LZ4_FASTEST,*/ GraphSerialization.GZIP)) {
+                for (var compressor : List.of(GraphSerialization.NO_COMPRESSOR, GraphSerialization.LZ4_FASTEST, GraphSerialization.GZIP)) {
                     final var compressedGraph = GraphSerialization.serialize(g, rdfFormat, compressor);
                     //print: "Size of output stream in format %resultSetLang% and with compressor %compressor% is xxx.xx MB.
                     System.out.printf("Size of %-20s in format %-20s and with compressor %-12s is %7.2f MB.\n", fileName, rdfFormat.toString(), compressor, compressedGraph.bytes().length / 1024.0 / 1024.0);

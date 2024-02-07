@@ -53,6 +53,7 @@ public class TestResultSetIO {
                        , RS_Thrift
                        , RS_Thrift2
                        , RS_Protobuf
+                       , RS_Protobuf2
         } ;
 
         List<Object[]> x = new ArrayList<>() ;

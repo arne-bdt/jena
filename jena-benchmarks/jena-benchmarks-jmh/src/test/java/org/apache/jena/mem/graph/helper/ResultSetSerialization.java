@@ -95,7 +95,7 @@ public class ResultSetSerialization {
         switch (serializedResultSet.compressorName) {
             case NO_COMPRESSOR -> {
                 final var inputStream = new ByteArrayInputStream(serializedResultSet.bytes);
-                resultSet = resultSetReader.read(inputStream, null);
+                resultSet = resultSetReader.read(inputStream, null).materialise();
                 try {
                     inputStream.close();
                 } catch (IOException e) {
@@ -106,7 +106,7 @@ public class ResultSetSerialization {
                 var uncompressedBytes = new byte[serializedResultSet.uncompressedSize];
                 LZ4Factory.fastestInstance().fastDecompressor().decompress(serializedResultSet.bytes, uncompressedBytes);
                 final var inputStream = new ByteArrayInputStream(uncompressedBytes);
-                resultSet =  resultSetReader.read(inputStream, null);
+                resultSet =  resultSetReader.read(inputStream, null).materialise();
                 try {
                     inputStream.close();
                 } catch (IOException e) {
@@ -121,7 +121,7 @@ public class ResultSetSerialization {
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
-                resultSet =  resultSetReader.read(inputStreamCompressed, null);
+                resultSet =  resultSetReader.read(inputStreamCompressed, null).materialise();
                 try {
                     inputStreamCompressed.close();
                 } catch (IOException e) {

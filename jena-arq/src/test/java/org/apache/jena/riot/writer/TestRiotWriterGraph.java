@@ -75,6 +75,7 @@ public class TestRiotWriterGraph extends AbstractWriterTest
 
             , { RDFFormat.RDF_PROTO }
             , { RDFFormat.RDF_PROTO_VALUES }
+            , { RDFFormat.RDF_PROTO2 }
             , { RDFFormat.RDF_THRIFT }
             , { RDFFormat.RDF_THRIFT_VALUES }
             , { RDFFormat.RDF_THRIFT2 }

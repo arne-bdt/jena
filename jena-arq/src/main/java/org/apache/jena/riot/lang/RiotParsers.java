@@ -26,6 +26,8 @@ import org.apache.jena.atlas.web.ContentType;
 import org.apache.jena.riot.*;
 import org.apache.jena.riot.protobuf.ProtobufRDF;
 import org.apache.jena.riot.protobuf.RiotProtobufException;
+import org.apache.jena.riot.protobuf2.Protobuf2RDF;
+import org.apache.jena.riot.protobuf2.RiotProtobuf2Exception;
 import org.apache.jena.riot.system.ErrorHandlerFactory;
 import org.apache.jena.riot.system.ParserProfile;
 import org.apache.jena.riot.system.StreamRDF;
@@ -72,6 +74,9 @@ public class RiotParsers {
 
     public static ReaderRIOTFactory factoryRDFProtobuf =
             (Lang language, ParserProfile profile) -> new ReaderRDFProtobuf(profile);
+
+    public static ReaderRIOTFactory factoryRDFProtobuf2 =
+            (Lang language, ParserProfile profile) -> new ReaderRDFProtobuf2(profile);
 
     public static ReaderRIOTFactory factoryJSONLD =
             (Lang language, ParserProfile profile) -> new LangJSONLD11(language, profile, profile.getErrorHandler());
@@ -247,6 +252,32 @@ public class RiotParsers {
         }
     }
 
+    private static class ReaderRDFProtobuf2 implements ReaderRIOT {
+        private final ParserProfile profile;
+
+        public ReaderRDFProtobuf2(ParserProfile profile) {
+            this.profile = profile;
+        }
+
+        @Override
+        public void read(InputStream in, String baseURI, ContentType ct, StreamRDF output, Context context) {
+            try {
+                Protobuf2RDF.inputStreamToStreamRDF(in, output);
+            } catch (RiotProtobuf2Exception ex) {
+                if ( profile != null && profile.getErrorHandler() != null )
+                    profile.getErrorHandler().error(ex.getMessage(), -1, -1);
+                else
+                    ErrorHandlerFactory.errorHandlerStd.error(ex.getMessage(), -1, -1);
+                throw ex;
+            }
+        }
+
+        @Override
+        public void read(Reader reader, String baseURI, ContentType ct, StreamRDF output, Context context) {
+            throw new RiotException("RDF Protobuf2 : Reading binary data from a java.io.reader is not supported. Please use an InputStream");
+        }
+    }
+
     private static class ReaderRDFThrift implements ReaderRIOT {
         private final ParserProfile profile;
         public ReaderRDFThrift(ParserProfile profile) { this.profile = profile; }
@@ -289,7 +320,7 @@ public class RiotParsers {
 
         @Override
         public void read(Reader reader, String baseURI, ContentType ct, StreamRDF output, Context context) {
-            throw new RiotException("RDF Thrift : Reading binary data from a java.io.reader is not supported. Please use an InputStream");
+            throw new RiotException("RDF Thrift2 : Reading binary data from a java.io.reader is not supported. Please use an InputStream");
         }
     }
 }

@@ -58,6 +58,8 @@ public class ResultsFormat extends Symbol
     static public ResultsFormat FMT_RS_THRIFT2    = new ResultsFormat(contentTypeResultsThrift2) ;
     static public ResultsFormat FMT_RS_PROTOBUF  = new ResultsFormat(contentTypeResultsProtobuf) ;
 
+    static public ResultsFormat FMT_RS_PROTOBUF2  = new ResultsFormat(contentTypeResultsProtobuf2) ;
+
     static public ResultsFormat FMT_RS_CSV       = new ResultsFormat(contentTypeTextCSV) ;
     static public ResultsFormat FMT_RS_TSV       = new ResultsFormat(contentTypeTextTSV) ;
     static public ResultsFormat FMT_RS_SSE       = new ResultsFormat(contentTypeSSE) ;
@@ -88,7 +90,9 @@ public class ResultsFormat extends Symbol
         names.put("srj",         FMT_RS_JSON) ;
 
         names.put("srt",         FMT_RS_THRIFT) ;
+        names.put("srt2",        FMT_RS_THRIFT2) ;
         names.put("srp",         FMT_RS_PROTOBUF) ;
+        names.put("srp2",        FMT_RS_PROTOBUF2) ;
 
         names.put("sse",         FMT_RS_SSE) ;
         names.put("csv",         FMT_RS_CSV) ;
@@ -167,9 +171,15 @@ public class ResultsFormat extends Symbol
         // -- Thrift
         if ( url.endsWith(".srt") )
             return FMT_RS_THRIFT;
-        // -- Thrift
+        // -- Thrift2
+        if ( url.endsWith(".srt2") )
+            return FMT_RS_THRIFT2;
+        // -- Protbuf
         if ( url.endsWith(".srp") )
             return FMT_RS_PROTOBUF;
+        // -- Protbuf2
+        if ( url.endsWith(".srp2") )
+            return FMT_RS_PROTOBUF2;
 
         // -- SSE : http://jena.apache.org/documentation/notes/sse.html
         if ( url.endsWith(".sse") )
@@ -216,6 +226,7 @@ public class ResultsFormat extends Symbol
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_THRIFT,   ResultSetLang.RS_Thrift) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_THRIFT2,  ResultSetLang.RS_Thrift2) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_PROTOBUF, ResultSetLang.RS_Protobuf) ;
+        mapResultsFormatToLang.put(ResultsFormat.FMT_RS_PROTOBUF2,ResultSetLang.RS_Protobuf2) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_TEXT,        ResultSetLang.RS_Text);
     }
 

@@ -19,41 +19,36 @@
 package org.apache.jena.riot.rowset.rw;
 
 import org.apache.jena.atlas.lib.NotImplemented;
-import org.apache.jena.riot.protobuf.ProtobufRDF;
+import org.apache.jena.riot.protobuf2.Protobuf2RDF;
 import org.apache.jena.riot.resultset.ResultSetLang;
-import org.apache.jena.riot.rowset.RowSetReader;
-import org.apache.jena.riot.rowset.RowSetReaderFactory;
-import org.apache.jena.sparql.exec.QueryExecResult;
+import org.apache.jena.riot.rowset.RowSetWriter;
+import org.apache.jena.riot.rowset.RowSetWriterFactory;
 import org.apache.jena.sparql.exec.RowSet;
 import org.apache.jena.sparql.resultset.ResultSetException;
 import org.apache.jena.sparql.util.Context;
 
-import java.io.InputStream;
-import java.io.Reader;
+import java.io.OutputStream;
+import java.io.Writer;
 import java.util.Objects;
 
-public class RowSetReaderProtobuf implements RowSetReader {
+public class RowSetWriterProtobuf2 implements RowSetWriter {
 
-    public static RowSetReaderFactory factory = lang->{
-        if (!Objects.equals(lang, ResultSetLang.RS_Protobuf ) )
-            throw new ResultSetException("RowSetReaderProtobuf for Protobuf asked for a "+lang);
-        return new RowSetReaderProtobuf();
+    public static RowSetWriterFactory factory = lang -> {
+        if (!Objects.equals(lang, ResultSetLang.RS_Protobuf2) )
+            throw new ResultSetException("RowSetWriter for RDF/Protobuf2 asked for a "+lang);
+        return new RowSetWriterProtobuf2();
     };
 
-    private RowSetReaderProtobuf() {}
+    @Override
+    public void write(OutputStream out, RowSet rowSet, Context context)
+    { Protobuf2RDF.writeRowSet(out, rowSet) ; }
 
     @Override
-    public RowSet read(InputStream in, Context context) {
-        return ProtobufRDF.readRowSet(in);
+    public void write(Writer out, RowSet resultSet, Context context) {
+        throw new NotImplemented("Writing binary data to a java.io.Writer is not possible") ;
     }
 
     @Override
-    public RowSet read(Reader in, Context context) {
-        throw new NotImplemented("Reading binary data from a java.io.Reader is not possible");
-    }
-
-    @Override
-    public QueryExecResult readAny(InputStream in, Context context) {
-        return new QueryExecResult(read(in, context));
-    }
+    public void write(OutputStream out, boolean result, Context context)
+    { throw new NotImplemented("No Protobuf RDF encoding defined for boolean results"); }
 }

@@ -24,6 +24,7 @@ import org.apache.jena.atlas.lib.CharSpace;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.riot.*;
 import org.apache.jena.riot.protobuf.ProtobufRDF;
+import org.apache.jena.riot.protobuf2.Protobuf2RDF;
 import org.apache.jena.riot.thrift.ThriftRDF;
 import org.apache.jena.riot.thrift2.Thrift2RDF;
 import org.apache.jena.riot.writer.StreamWriterTriX;
@@ -85,6 +86,13 @@ public class StreamRDFWriter {
         public StreamRDF create(OutputStream output, RDFFormat format, Context context) {
             boolean withValues = RDFFormat.RDF_PROTO_VALUES.equals(format) ;
             return ProtobufRDF.streamToOutputStream(output, withValues) ;
+        }
+    } ;
+
+    private static StreamRDFWriterFactory streamWriterFactoryProtobuf2 = new StreamRDFWriterFactory() {
+        @Override
+        public StreamRDF create(OutputStream output, RDFFormat format, Context context) {
+            return Protobuf2RDF.streamToOutputStream(output) ;
         }
     } ;
 
@@ -150,6 +158,7 @@ public class StreamRDFWriter {
         register(Lang.NTRIPLES,     RDFFormat.NTRIPLES) ;
         register(Lang.NQUADS,       RDFFormat.NQUADS) ;
         register(Lang.RDFPROTO,     RDFFormat.RDF_PROTO) ;
+        register(Lang.RDFPROTO2,    RDFFormat.RDF_PROTO2) ;
         register(Lang.RDFTHRIFT,    RDFFormat.RDF_THRIFT) ;
         register(Lang.RDFTHRIFT2,   RDFFormat.RDF_THRIFT2) ;
         register(Lang.TRIX,         RDFFormat.TRIX) ;
@@ -172,10 +181,12 @@ public class StreamRDFWriter {
         register(RDFFormat.RDF_PROTO,           streamWriterFactoryProtobuf) ;
         register(RDFFormat.RDF_PROTO_VALUES,    streamWriterFactoryProtobuf) ;
 
+        register(RDFFormat.RDF_PROTO2,          streamWriterFactoryProtobuf2) ;
+
         register(RDFFormat.RDF_THRIFT,          streamWriterFactoryThrift) ;
         register(RDFFormat.RDF_THRIFT_VALUES,   streamWriterFactoryThrift) ;
 
-        register(RDFFormat.RDF_THRIFT2,          streamWriterFactoryThrift2) ;
+        register(RDFFormat.RDF_THRIFT2,         streamWriterFactoryThrift2) ;
 
         register(RDFFormat.TRIX,            streamWriterFactoryTriX) ;
         register(RDFFormat.RDFNULL,         streamWriterFactoryNull) ;

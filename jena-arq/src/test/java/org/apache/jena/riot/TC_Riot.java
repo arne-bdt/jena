@@ -23,6 +23,7 @@ import org.apache.jena.riot.lang.TS_Lang;
 import org.apache.jena.riot.out.TS_Out;
 import org.apache.jena.riot.process.TS_Process;
 import org.apache.jena.riot.protobuf.TS_RDFProtobuf;
+import org.apache.jena.riot.protobuf2.TS_RDFProtobuf2;
 import org.apache.jena.riot.resultset.TS_ResultSetRIOT;
 import org.apache.jena.riot.rowset.TS_RowSetRIOT;
 import org.apache.jena.riot.stream.TS_IO2;
@@ -49,6 +50,7 @@ import org.junit.runners.Suite;
     , TS_RiotWeb.class
     , TS_ResultSetRIOT.class
     , TS_RDFProtobuf.class
+    , TS_RDFProtobuf2.class
     , TS_RDFThrift.class
     , TS_RDFThrift2.class
     , TS_RowSetRIOT.class

@@ -189,6 +189,16 @@ public class RDFFormat {
     public static final RDFFormat RDF_PROTO_VALUES     = new RDFFormat(Lang.RDFPROTO, RDFFormat.ValueEncoding) ;
 
     /**
+     * RDF Protobuf2 output. This format is faithful representation of RDF written
+     * and it is suitable for database dumps. It does not encode numeric
+     * literals as values (see {@link #RDF_PROTO_VALUES}).
+     *
+     * @see #RDF_PROTO_VALUES
+     */
+
+    public static final RDFFormat RDF_PROTO2            = new RDFFormat(Lang.RDFPROTO2) ;
+
+    /**
      * RDF Thrift output. This format is faithful representation of RDF written
      * and it is suitable for database dumps. It does not encode numeric
      * literals as values (see {@link #RDF_THRIFT_VALUES}).

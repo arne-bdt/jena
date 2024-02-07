@@ -72,7 +72,9 @@ public class WebContent {
 
     // Unofficial
     public static final String      contentTypeRDFProto          = "application/rdf+protobuf" ;
+    public static final String      contentTypeRDFProto2          = "application/rdf+protobuf2" ;
     public static final ContentType ctRDFProto                   = ContentType.create(contentTypeRDFProto) ;
+
 
     // Name no longer supported - Jena 4.0.0.
 // public static final String contentTypeTriGAlt2 = "application/x-trig" ;
@@ -130,6 +132,8 @@ public class WebContent {
     // Unofficial
     public static final String      contentTypeResultsProtobuf   = "application/sparql-results+protobuf" ;
     public static final ContentType ctResultsProtobuf            = ContentType.create(contentTypeResultsProtobuf) ;
+
+    public static final String      contentTypeResultsProtobuf2   = "application/sparql-results+protobuf2" ;
 
     // Unofficial
     public static final String      contentTypeResultsThrift     = "application/sparql-results+thrift" ;

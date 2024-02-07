@@ -66,6 +66,7 @@ public class RowSetReaderRegistry {
         register(RS_Thrift,     RowSetReaderThrift.factory);
         register(RS_Thrift2,    RowSetReaderThrift2.factory);
         register(RS_Protobuf,   RowSetReaderProtobuf.factory);
+        register(RS_Protobuf2,  RowSetReaderProtobuf2.factory);
 
         register(RS_None,       RowSetReaderNone.factory);
     };
