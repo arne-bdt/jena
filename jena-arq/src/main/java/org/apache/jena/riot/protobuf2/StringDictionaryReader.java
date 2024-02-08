@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.thrift2;
+package org.apache.jena.riot.protobuf2;
 
 import java.util.ArrayList;
 import java.util.List;

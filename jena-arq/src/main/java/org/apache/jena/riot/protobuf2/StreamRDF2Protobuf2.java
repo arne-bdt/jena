@@ -43,6 +43,8 @@ public class StreamRDF2Protobuf2 implements StreamRDF, AutoCloseable
     private final Consumer<RDF_StreamRow> rowHandler;
     private final Runnable andFinally;
 
+    private final StringDictionaryWriter writerDict = new StringDictionaryWriter();
+
     public static StreamRDF createDelimited(OutputStream outputStream) {
         Consumer<RDF_StreamRow> output = sr->PBuf2RDF.writeDelimitedTo(sr, outputStream);
         return new StreamRDF2Protobuf2(output, ()->IO.flush(outputStream));
@@ -50,7 +52,7 @@ public class StreamRDF2Protobuf2 implements StreamRDF, AutoCloseable
 
     public static void writeBlk(OutputStream outputStream, Consumer<StreamRDF> stream) {
         RDF_Stream.Builder builder = RDF_Stream.newBuilder();
-        Consumer<RDF_StreamRow> output = sr->builder.addRow(sr);
+        Consumer<RDF_StreamRow> output = builder::addRow;
         StreamRDF2Protobuf2 processor = new StreamRDF2Protobuf2(output, ()->IO.flush(outputStream));
         stream.accept(processor);
         RDF_Stream pbStream = builder.build();
@@ -91,8 +93,11 @@ public class StreamRDF2Protobuf2 implements StreamRDF, AutoCloseable
     public void base(String base) {
         streamRowBuilder.clear();
         baseBuilder.clear();
-        baseBuilder.setIri(base);
+        baseBuilder.setIri(writerDict.getIndex(base));
         streamRowBuilder.setBase(baseBuilder.build());
+        if(writerDict.hasStringsToFlush()) {
+            streamRowBuilder.addAllStrings(writerDict.flush());
+        }
         rowHandler.accept(streamRowBuilder.build());
     }
 
@@ -100,25 +105,34 @@ public class StreamRDF2Protobuf2 implements StreamRDF, AutoCloseable
     public void prefix(String prefix, String iri) {
         streamRowBuilder.clear();
         prefixBuilder.clear();
-        prefixBuilder.setPrefix(prefix);
-        prefixBuilder.setUri(iri);
+        prefixBuilder.setPrefix(writerDict.getIndex(prefix));
+        prefixBuilder.setUri(writerDict.getIndex(iri));
         streamRowBuilder.setPrefixDecl(prefixBuilder.build());
+        if(writerDict.hasStringsToFlush()) {
+            streamRowBuilder.addAllStrings(writerDict.flush());
+        }
         rowHandler.accept(streamRowBuilder.build());
     }
 
     @Override
     public void triple(Triple triple) {
         streamRowBuilder.clear();
-        RDF_Triple triplePB = PBuf2RDF.rdfTriple(triple, tripleBuilder, termBuilder);
+        RDF_Triple triplePB = PBuf2RDF.rdfTriple(triple, tripleBuilder, termBuilder, writerDict);
         streamRowBuilder.setTriple(triplePB);
+        if(writerDict.hasStringsToFlush()) {
+            streamRowBuilder.addAllStrings(writerDict.flush());
+        }
         rowHandler.accept(streamRowBuilder.build());
     }
 
     @Override
     public void quad(Quad quad) {
         streamRowBuilder.clear();
-        RDF_Quad quadPB = PBuf2RDF.rdfQuad(quad, quadBuilder, termBuilder);
+        RDF_Quad quadPB = PBuf2RDF.rdfQuad(quad, quadBuilder, termBuilder, writerDict);
         streamRowBuilder.setQuad(quadPB);
+        if(writerDict.hasStringsToFlush()) {
+            streamRowBuilder.addAllStrings(writerDict.flush());
+        }
         rowHandler.accept(streamRowBuilder.build());
     }
 }

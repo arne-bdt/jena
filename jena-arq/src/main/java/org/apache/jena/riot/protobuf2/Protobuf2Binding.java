@@ -42,6 +42,8 @@ public class Protobuf2Binding extends IteratorSlotted<Binding> implements Iterat
     private InputStream input ;
     private BindingBuilder b = Binding.builder() ;
 
+    private final StringDictionaryReader readerDict = new StringDictionaryReader() ;
+
     public Protobuf2Binding(InputStream input) {
         this.input = input ;
         readVars() ;
@@ -50,8 +52,10 @@ public class Protobuf2Binding extends IteratorSlotted<Binding> implements Iterat
     private void readVars() {
         try {
             RDF_VarTuple vrow = RDF_VarTuple.parseDelimitedFrom(input);
-            if ( vrow != null )
-                vrow.getVarsList().forEach(rv->varNames.add(rv.getName()));
+            if ( vrow != null ) {
+                readerDict.addAll(vrow.getStringsList());
+                vrow.getVarsList().forEach(rv -> varNames.add(readerDict.get(rv.getName())));
+            }
             vars = Var.varList(varNames) ;
         } catch (IOException ex) { IO.exception(ex); }
     }
@@ -67,6 +71,7 @@ public class Protobuf2Binding extends IteratorSlotted<Binding> implements Iterat
             RDF_DataTuple dataTuple = RDF_DataTuple.parseDelimitedFrom(input);
             if ( dataTuple == null )
                 return null;
+            readerDict.addAll(dataTuple.getStringsList());
             List<RDF_Term> row = dataTuple.getRowList();
             if ( row.size() != vars.size() )
                 throw new RiotProtobuf2Exception(String.format("Vars %d : Row length : %d", vars.size(), row.size())) ;
@@ -76,7 +81,7 @@ public class Protobuf2Binding extends IteratorSlotted<Binding> implements Iterat
                 RDF_Term rt = row.get(i) ;
                 if ( rt.hasUndefined() )
                     continue ;
-                Node n = Protobuf2Convert.convert(rt) ;
+                Node n = Protobuf2Convert.convert(rt, readerDict) ;
                 b.add(v, n) ;
             }
         } catch (IOException ex) { IO.exception(ex); }

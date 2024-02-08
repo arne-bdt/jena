@@ -37,6 +37,8 @@ public class Binding2Protobuf2 implements AutoCloseable {
     private final Collection<Var> vars ;
     private final OutputStream out ;
 
+    private final StringDictionaryWriter writerDict = new StringDictionaryWriter() ;
+
     public Binding2Protobuf2(OutputStream out, Collection<Var> vars) {
         this.out = out ;
         this.vars = vars ;
@@ -48,9 +50,12 @@ public class Binding2Protobuf2 implements AutoCloseable {
         RDF_Var.Builder var = RDF_Var.newBuilder();
         vars.forEach(v->{
             var.clear();
-            var.setName(v.getVarName());
+            var.setName(writerDict.getIndex(v.getVarName()));
             vrow.addVars(var);
         });
+        if(writerDict.hasStringsToFlush()) {
+            vrow.addAllStrings(writerDict.flush());
+        }
         PBuf2RDF.writeDelimitedTo(vrow.build(), out);
     }
 
@@ -62,9 +67,12 @@ public class Binding2Protobuf2 implements AutoCloseable {
         vIter.forEachRemaining(v -> {
             term.clear();
             Node n = binding.get(v) ;
-            RDF_Term rt = Protobuf2Convert.toProtobuf(n, term);
+            RDF_Term rt = Protobuf2Convert.toProtobuf(n, term, writerDict);
             row.addRow(rt);
         }) ;
+        if(writerDict.hasStringsToFlush()) {
+            row.addAllStrings(writerDict.flush());
+        }
         PBuf2RDF.writeDelimitedTo(row.build(), out);
     }
 

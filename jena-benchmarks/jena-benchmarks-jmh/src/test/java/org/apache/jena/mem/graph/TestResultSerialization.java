@@ -44,8 +44,8 @@ public class TestResultSerialization {
     @Param({
 //            "cheeses-0.1.ttl",
 //            "pizza.owl.rdf",
-//            "xxx_CGMES_EQ.xml",
-//            "xxx_CGMES_SSH.xml",
+            "xxx_CGMES_EQ.xml",
+            "xxx_CGMES_SSH.xml",
             "xxx_CGMES_TP.xml",
 //            "RealGrid_EQ.xml",
 //            "RealGrid_SSH.xml",
@@ -94,8 +94,8 @@ public class TestResultSerialization {
 //            "RS_CSV",
 //            "RS_TSV",
 //            "RS_Text",
-//            "RS_Thrift",
-//            "RS_Thrift2",
+            "RS_Thrift",
+            "RS_Thrift2",
             "RS_Protobuf",
             "RS_Protobuf2"
     })
@@ -103,7 +103,7 @@ public class TestResultSerialization {
     @Param({
             ResultSetSerialization.NO_COMPRESSOR,
             ResultSetSerialization.LZ4_FASTEST,
-            ResultSetSerialization.GZIP
+//            ResultSetSerialization.GZIP
     })
     public String param2_Compressor;
 
@@ -146,14 +146,14 @@ public class TestResultSerialization {
         for(var file : List.of(
 //                "../testing/cheeses-0.1.ttl",
 //                "../testing/pizza.owl.rdf",
-//                "C:/temp/res_test/xxx_CGMES_EQ.xml",
-//                "C:/temp/res_test/xxx_CGMES_SSH.xml",
-//                "C:/temp/res_test/xxx_CGMES_TP.xml",
+                "C:/temp/res_test/xxx_CGMES_EQ.xml",
+                "C:/temp/res_test/xxx_CGMES_SSH.xml",
+                "C:/temp/res_test/xxx_CGMES_TP.xml"
 //                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
 //                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
 //                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
 //                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-                "../testing/BSBM/bsbm-1m.nt.gz"
+//                "../testing/BSBM/bsbm-1m.nt.gz"
             )) {
             final var g = new GraphMem2Fast();
             final var fileName = new File(file).getName();
@@ -161,10 +161,10 @@ public class TestResultSerialization {
             final var resultSet = QueryExecutionFactory.create("SELECT * WHERE { ?s ?p ?o }", ModelFactory.createModelForGraph(g))
                     .execSelect().materialise().rewindable();
             for (var resultSetLang : List.of(
-                    ResultSetLang.RS_XML,
-                    ResultSetLang.RS_JSON,
-                    ResultSetLang.RS_CSV,
-                    ResultSetLang.RS_TSV,
+//                    ResultSetLang.RS_XML,
+//                    ResultSetLang.RS_JSON,
+//                    ResultSetLang.RS_CSV,
+//                    ResultSetLang.RS_TSV,
 //                    ResultSetLang.RS_Text,
                     ResultSetLang.RS_Thrift,
                     ResultSetLang.RS_Thrift2,

@@ -16,7 +16,9 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.thrift2;
+package org.apache.jena.riot.protobuf2;
+
+import org.apache.jena.riot.thrift2.StringSet;
 
 import java.util.List;
 
@@ -31,6 +33,10 @@ public class StringDictionaryWriter {
             return ~index;
         }
         return index;
+    }
+
+    public String getString(int index) {
+        return stringSet.getKeyAt(index);
     }
 
     public boolean hasStringsToFlush() {

@@ -30,10 +30,14 @@ public class StreamRowT2RDFPrinter implements VisitorStreamRowT2RDF
     private static final boolean ONELINE = false ;
     private final IndentedWriter out ;
 
-    public StreamRowT2RDFPrinter(IndentedWriter out) { this.out = out ; }
+    private final StringDictionaryReader readerDict;
+
+    public StreamRowT2RDFPrinter(IndentedWriter out, StringDictionaryReader readerDict) { this.out = out ;
+        this.readerDict = readerDict;
+    }
     
     @Override
-    public void visit(RDF_Triple triple, StringDictionaryReader readerDict) {
+    public void visit(RDF_Triple triple) {
         out.print("RDF_Triple") ;
         out.incIndent(); 
         gap() ;
@@ -47,7 +51,7 @@ public class StreamRowT2RDFPrinter implements VisitorStreamRowT2RDF
     }
 
     @Override
-    public void visit(RDF_Quad quad, StringDictionaryReader readerDict) {
+    public void visit(RDF_Quad quad) {
         out.print("RDF_Quad") ;
         out.incIndent(); 
         gap() ;
@@ -65,7 +69,7 @@ public class StreamRowT2RDFPrinter implements VisitorStreamRowT2RDF
     }
 
     @Override
-    public void visit(RDF_PrefixDecl prefix, StringDictionaryReader readerDict) {
+    public void visit(RDF_PrefixDecl prefix) {
         out.printf("RDF_PrefixDecl (%s: %s)\n", prefix.getPrefix(), prefix.getUri()) ;
     }
     

@@ -35,6 +35,7 @@ import org.junit.Test;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.junit.Assert.*;
 
@@ -51,100 +52,109 @@ public class TestProtobuf2Term {
 
     // Terms
     @Test public void term_uri_01() {
-        testTerm("<http://hostname/>") ;
+        testTerm("<http://hostname/>", new StringDictionaryWriter()) ;
     }
 
     @Test public void term_uri_02()  {
-        RDF_Term rt = testTerm("<http://example/>") ;
-        assertTrue(rt.hasPrefixName()) ;
-        assertEquals(rt.getPrefixName().getPrefix(), "") ;
-        assertEquals(rt.getPrefixName().getLocalName(),  "") ;
+        final var writerDict = new StringDictionaryWriter();
+        RDF_Term rt = testTerm("<http://example/>", writerDict) ;
+        assertEquals("", writerDict.getString(rt.getPrefixName().getPrefix())) ;
+        assertEquals("", writerDict.getString(rt.getPrefixName().getLocalName())) ;
     }
 
     @Test public void term_uri_03()  {
-        RDF_Term rt = testTerm("<http://namespace/ns#foobar>") ;
+        final var writerDict = new StringDictionaryWriter();
+        RDF_Term rt = testTerm("<http://namespace/ns#foobar>", writerDict) ;
         assertTrue(rt.hasPrefixName()) ;
-        assertEquals(rt.getPrefixName().getPrefix(), "ns") ;
-        assertEquals(rt.getPrefixName().getLocalName(),  "foobar") ;
+        assertEquals("ns", writerDict.getString(rt.getPrefixName().getPrefix())) ;
+        assertEquals("foobar", writerDict.getString(rt.getPrefixName().getLocalName())) ;
     }
 
     @Test public void term_uri_04()  {
-        RDF_Term rt = testTerm("rdf:type") ;
+        final var writerDict = new StringDictionaryWriter();
+        RDF_Term rt = testTerm("rdf:type", writerDict) ;
         assertTrue(rt.hasPrefixName()) ;
-        assertEquals(rt.getPrefixName().getPrefix(), "rdf") ;
-        assertEquals(rt.getPrefixName().getLocalName(),  "type") ;
+        assertEquals("rdf", writerDict.getString(rt.getPrefixName().getPrefix())) ;
+        assertEquals("type", writerDict.getString(rt.getPrefixName().getLocalName())) ;
     }
 
     @Test public void term_literal_01() {
-        RDF_Term rt = testTerm("'foo'") ;
+        final var writerDict = new StringDictionaryWriter();
+        RDF_Term rt = testTerm("'foo'", writerDict) ;
         assertTrue(rt.hasLiteral());
         RDF_Literal lit = rt.getLiteral();
         assertTrue(lit.getSimple());
     }
 
     @Test public void term_literal_02() {
-        RDF_Term rt = testTerm("'foo'@en") ;
+        final var writerDict = new StringDictionaryWriter();
+        RDF_Term rt = testTerm("'foo'@en", writerDict) ;
         assertFalse(rt.getLiteral().getSimple());
 
         assertTrue(rt.hasLiteral());
         RDF_Literal lit = rt.getLiteral();
         assertTrue(lit.getLiteralKindCase()==LiteralKindCase.LANGTAG);
-        assertEquals("en", lit.getLangtag());
+        assertEquals("en", writerDict.getString(lit.getLangtag()));
     }
 
     @Test public void term_literal_03() {
-        RDF_Term rt = testTerm("123") ;
+        final var writerDict = new StringDictionaryWriter();
+        RDF_Term rt = testTerm("123", writerDict) ;
         assertTrue(rt.getLiteral().hasDtPrefix());
         assertTrue(rt.getLiteral().getLiteralKindCase()==LiteralKindCase.DTPREFIX);
-        assertEquals(rt.getLiteral().getDtPrefix().getPrefix(), "xsd") ;
-        assertEquals(rt.getLiteral().getDtPrefix().getLocalName(), "integer") ;
+        assertEquals("xsd", writerDict.getString(rt.getLiteral().getDtPrefix().getPrefix()));
+        assertEquals("integer", writerDict.getString(rt.getLiteral().getDtPrefix().getLocalName()));
     }
 
     @Test public void term_literal_04() {
-        RDF_Term rt = testTerm("'foo'^^<http://dataype/>") ;
+        final var writerDict = new StringDictionaryWriter();
+        RDF_Term rt = testTerm("'foo'^^<http://dataype/>", writerDict) ;
         assertFalse(rt.getLiteral().getSimple());
         RDF_Literal lit = rt.getLiteral();
-        assertEquals("http://dataype/", lit.getDatatype());
+        assertEquals("http://dataype/", writerDict.getString(lit.getDatatype()));
     }
 
     @Test public void term_literal_05() {
-        RDF_Term rt = testTerm("'foo'^^<http://example/>") ;
+        final var writerDict = new StringDictionaryWriter();
+        RDF_Term rt = testTerm("'foo'^^<http://example/>", writerDict) ;
         assertFalse(rt.getLiteral().getSimple());
         RDF_Literal lit = rt.getLiteral();
-        assertEquals("", lit.getDtPrefix().getPrefix());
-        assertEquals("", lit.getDtPrefix().getLocalName());
+        assertEquals("", writerDict.getString(lit.getDtPrefix().getPrefix()));
+        assertEquals("", writerDict.getString(lit.getDtPrefix().getLocalName()));
     }
 
     @Test public void term_var_01() {
-        testTerm("?var") ;
+        testTerm("?var", new StringDictionaryWriter()) ;
     }
 
     @Test public void term_bnode_01() {
+        final var writerDict = new StringDictionaryWriter();
         Node n = SSE.parseNode("_:blanknode") ;
-        RDF_Term rt = testTerm(n) ;
-        assertEquals(rt.getBnode().getLabel(), n.getBlankNodeLabel()) ;
+        RDF_Term rt = testTerm(n, writerDict) ;
+        assertEquals(n.getBlankNodeLabel(), writerDict.getString(rt.getBnode().getLabel())) ;
     }
 
     @Test public void term_bnode_02() {
+        final var writerDict = new StringDictionaryWriter();
         String label = "abcdefghijklmn" ;
         Node n = NodeFactory.createBlankNode("abcdefghijklmn") ;
-        RDF_Term rt = testTerm(n) ;
+        RDF_Term rt = testTerm(n, writerDict) ;
         assertTrue(rt.hasBnode()) ;
-        assertEquals("abcdefghijklmn", rt.getBnode().getLabel()) ;
+        assertEquals("abcdefghijklmn", writerDict.getString(rt.getBnode().getLabel())) ;
     }
 
     @Test public void term_any_1() {
-        RDF_Term rt = testTerm(Node.ANY) ;
+        RDF_Term rt = testTerm(Node.ANY, new StringDictionaryWriter()) ;
         assertTrue(rt.hasAny()) ;
     }
 
-    private RDF_Term testTerm(String str) {
-        RDF_Term rt = testTerm(SSE.parseNode(str), prefixMap) ;
+    private RDF_Term testTerm(String str, StringDictionaryWriter writerDict) {
+        RDF_Term rt = testTerm(SSE.parseNode(str), prefixMap, writerDict) ;
         return rt ;
     }
 
-    private RDF_Term testTerm(Node node) {
-        return testTerm(node, null) ;
+    private RDF_Term testTerm(Node node, StringDictionaryWriter writerDict) {
+        return testTerm(node, null, writerDict) ;
     }
 
     private static void assertNullPB(String obj) {
@@ -172,8 +182,9 @@ public class TestProtobuf2Term {
     }
 
     // Encode a node, see if the RDF_Term is correct.
-    private RDF_Term testTerm(Node node, PrefixMap pmap) {
-        RDF_Term rt = Protobuf2Convert.convert(node, pmap) ;
+    private RDF_Term testTerm(Node node, PrefixMap pmap, StringDictionaryWriter writerDict) {
+        writerDict.getIndex(UUID.randomUUID().toString()); // force the entry 0 to be taken
+        RDF_Term rt = Protobuf2Convert.convert(node, pmap, writerDict) ;
 
         if ( node == null) {
             assertTrue(rt.hasUndefined());
@@ -201,55 +212,54 @@ public class TestProtobuf2Term {
 //              }
             case IRI : {
                 RDF_IRI iri = rt.getIri() ;
-                assertEquals(node.getURI(), iri.getIri()) ;
+                assertEquals(node.getURI(), writerDict.getString(iri.getIri())) ;
                 break;
             }
             case BNODE : {
                 RDF_BNode bnode = rt.getBnode() ;
-                assertEquals(node.getBlankNodeLabel(), bnode.getLabel()) ;
+                assertEquals(node.getBlankNodeLabel(), writerDict.getString(bnode.getLabel())) ;
                 break;
             }
             case LITERAL : {
                 RDF_Literal lit = rt.getLiteral() ;
-                assertEquals(node.getLiteralLexicalForm(), lit.getLex()) ;
+                assertEquals(node.getLiteralLexicalForm(), writerDict.getString(lit.getLex())) ;
 
                 // RDF 1.1
                 if ( Util.isSimpleString(node) ) {
                     assertTrue(lit.getSimple());
                     // Protobuf default is ""
-                    assertNullPB(lit.getDatatype()) ;
+                    assertEquals(0, lit.getDatatype()); ;
                     assertEquals(RDF_PrefixName.getDefaultInstance(), lit.getDtPrefix());
-                    assertNullPB(lit.getLangtag()) ;
+                    assertEquals(0, lit.getLangtag()) ;
                 } else if ( Util.isLangString(node) ) {
                     assertFalse(lit.getSimple());
-                    assertNullPB(lit.getDatatype()) ;
+                    assertEquals(0, lit.getDatatype()) ;
                     assertEquals(RDF_PrefixName.getDefaultInstance(), lit.getDtPrefix());
-                    assertNotSame("", lit.getLangtag()) ;
+                    assertNotSame("", writerDict.getString(lit.getLangtag())) ;
                 }
                 else {
                     assertFalse(lit.getSimple());
                     // Regular typed literal.
-                    assertTrue(lit.getDatatype() != null || lit.getDtPrefix() != null );
-                    assertNullPB(lit.getLangtag()) ;
+                    assertEquals(0, lit.getLangtag()) ;
                 }
                 break;
             }
             case PREFIXNAME : {
-                assertNotNull(rt.getPrefixName().getPrefix()) ;
-                assertNotNull(rt.getPrefixName().getLocalName()) ;
-                String x = pmap.expand(rt.getPrefixName().getPrefix(), rt.getPrefixName().getLocalName());
+                assertTrue(rt.getPrefixName().getPrefix() > 0) ;
+                assertTrue(rt.getPrefixName().getLocalName() > 0) ;
+                String x = pmap.expand(writerDict.getString(rt.getPrefixName().getPrefix()), writerDict.getString(rt.getPrefixName().getLocalName()));
                 assertEquals(node.getURI(),x);
                 break;
             }
             case VARIABLE :
-                assertEquals(node.getName(), rt.getVariable().getName());
+                assertEquals(node.getName(), writerDict.getString(rt.getVariable().getName()));
                 break;
             case TRIPLETERM : {
                 RDF_Triple encTriple = rt.getTripleTerm();
                 Triple t = node.getTriple();
-                RDF_Term rt_s = testTerm(t.getSubject(), pmap);
-                RDF_Term rt_p = testTerm(t.getPredicate(), pmap);
-                RDF_Term rt_o = testTerm(t.getObject(), pmap);
+                RDF_Term rt_s = testTerm(t.getSubject(), pmap, writerDict);
+                RDF_Term rt_p = testTerm(t.getPredicate(), pmap, writerDict);
+                RDF_Term rt_o = testTerm(t.getObject(), pmap, writerDict);
                 assertEquals(encTriple.getS(), rt_s);
                 assertEquals(encTriple.getP(), rt_p);
                 assertEquals(encTriple.getO(), rt_o);
@@ -267,7 +277,9 @@ public class TestProtobuf2Term {
         }
 
         // And reverse
-        Node n2 = Protobuf2Convert.convert(rt, pmap);
+        var readerDict = new StringDictionaryReader();
+        readerDict.addAll(writerDict.flush());
+        Node n2 = Protobuf2Convert.convert(rt, pmap, readerDict);
         assertEquals(node, n2) ;
 
         return rt;

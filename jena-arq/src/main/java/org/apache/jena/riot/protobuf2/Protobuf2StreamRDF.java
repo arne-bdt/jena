@@ -31,6 +31,8 @@ import org.apache.jena.riot.system.PrefixMap;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.sparql.core.Quad;
 
+import java.util.List;
+
 /** Protobuf RDF (wire format items) to StreamRDF terms (Jena java objects)
  *
  * @see StreamRDF2Protobuf2 for the reverse process.
@@ -43,6 +45,8 @@ public class Protobuf2StreamRDF implements VisitorStreamRowProto2RDF {
     private final Cache<String, Node> uriCache =
             CacheFactory.createSimpleCache(FactoryRDFCaching.DftNodeCacheSize);
 
+    private final StringDictionaryReader readerDict = new StringDictionaryReader();
+
     public Protobuf2StreamRDF(PrefixMap pmap, StreamRDF stream) {
         this.pmap = pmap;
         this.dest = stream;
@@ -50,27 +54,32 @@ public class Protobuf2StreamRDF implements VisitorStreamRowProto2RDF {
 
     @Override
     public void visit(RDF_Triple rt) {
-        Triple t = Protobuf2Convert.convert(uriCache, rt, pmap);
+        Triple t = Protobuf2Convert.convert(uriCache, rt, pmap, readerDict);
         dest.triple(t);
     }
 
     @Override
     public void visit(RDF_Quad rq) {
-        Quad q = Protobuf2Convert.convert(uriCache, rq, pmap);
+        Quad q = Protobuf2Convert.convert(uriCache, rq, pmap, readerDict);
         dest.quad(q);
     }
 
     @Override
     public void visit(RDF_PrefixDecl prefixDecl) {
-        String prefix = prefixDecl.getPrefix();
-        String iriStr = prefixDecl.getUri();
+        String prefix = readerDict.get(prefixDecl.getPrefix());
+        String iriStr = readerDict.get(prefixDecl.getUri());
         pmap.add(prefix, iriStr);
         dest.prefix(prefix, iriStr);
     }
 
     @Override
+    public void visit(List<String> stringList) {
+        this.readerDict.addAll(stringList);
+    }
+
+    @Override
     public void visit(RDF_IRI baseDecl) {
-        String iriStr = baseDecl.getIri();
+        String iriStr = readerDict.get(baseDecl.getIri());
         dest.base(iriStr);
     }
 }

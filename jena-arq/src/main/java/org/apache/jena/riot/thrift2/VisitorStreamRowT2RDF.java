@@ -24,7 +24,7 @@ import org.apache.jena.riot.thrift2.wire.RDF_Triple;
 
 /** Visitor for RDF_StreamRow */
 public interface VisitorStreamRowT2RDF {
-    public void visit(RDF_Triple triple, StringDictionaryReader readerDict) ;
-    public void visit(RDF_Quad quad, StringDictionaryReader readerDict) ;
-    public void visit(RDF_PrefixDecl prefix, StringDictionaryReader readerDict) ;
+    public void visit(RDF_Triple triple) ;
+    public void visit(RDF_Quad quad) ;
+    public void visit(RDF_PrefixDecl prefix) ;
 }

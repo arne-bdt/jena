@@ -1,4 +1,4 @@
-#!bash
+##!bash
 ## Licensed under the terms of http://www.apache.org/licenses/LICENSE-2.0
 
 ## Must run in the RDF-Protobuf directory within the Jena codebase.

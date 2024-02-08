@@ -24,7 +24,6 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
-import org.apache.jena.riot.protobuf.ProtobufRDF_Blk;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.riot.system.StreamRDFLib;
 import org.apache.jena.riot.system.StreamRDFOps;
@@ -84,7 +83,7 @@ public class TestProtobuf2StreamRDF {
             StreamRDF stream = Protobuf2RDF.streamToOutputStream(out);// , true) ; // With values.
             StreamRDFOps.graphToStream(graph, stream) ;
         } else {
-            ProtobufRDF_Blk.streamToOutputStreamBlk(out, s -> StreamRDFOps.graphToStream(graph, s));// , true) ; // With values.
+            Protobuf2RDF_Blk.streamToOutputStreamBlk(out, s -> StreamRDFOps.graphToStream(graph, s));// , true) ; // With values.
         }
 
         byte[] bytes = out.toByteArray() ;

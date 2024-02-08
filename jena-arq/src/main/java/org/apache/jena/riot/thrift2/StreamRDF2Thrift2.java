@@ -86,7 +86,9 @@ public class StreamRDF2Thrift2 implements StreamRDF, AutoCloseable
 
         tStreamUnion.setTriple(ttriple);
         tStreamRow.setRow(tStreamUnion);
-        tStreamRow.setStrings(writerDict.flush());
+        if ( writerDict.hasStringsToFlush()) {
+            tStreamRow.setStrings(writerDict.flush());
+        }
         try { tStreamRow.write(protocol); }
         catch (TException e) { T2RDF.exception(e); }
         finally {
@@ -117,7 +119,9 @@ public class StreamRDF2Thrift2 implements StreamRDF, AutoCloseable
         tquad.setO(tobject);
         tStreamUnion.setQuad(tquad);
         tStreamRow.setRow(tStreamUnion);
-        tStreamRow.setStrings(writerDict.flush());
+        if ( writerDict.hasStringsToFlush()) {
+            tStreamRow.setStrings(writerDict.flush());
+        }
 
         try { tStreamRow.write(protocol); }
         catch (TException e) { T2RDF.exception(e); }
@@ -147,7 +151,9 @@ public class StreamRDF2Thrift2 implements StreamRDF, AutoCloseable
         tprefix.setUri(writerDict.getIndex(iri));
         tStreamUnion.setPrefixDecl(tprefix);
         tStreamRow.setRow(tStreamUnion);
-        tStreamRow.setStrings(writerDict.flush());
+        if(writerDict.hasStringsToFlush()) {
+            tStreamRow.setStrings(writerDict.flush());
+        }
         try { tStreamRow.write(protocol); }
         catch (TException e) { T2RDF.exception(e); }
         finally {

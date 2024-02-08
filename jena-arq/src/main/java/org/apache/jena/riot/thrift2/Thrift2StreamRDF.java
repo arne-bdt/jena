@@ -42,25 +42,28 @@ public class Thrift2StreamRDF implements VisitorStreamRowT2RDF {
     private final Cache<String, Node> uriCache =
             CacheFactory.createSimpleCache(FactoryRDFCaching.DftNodeCacheSize);
 
-    public Thrift2StreamRDF(PrefixMap pmap, StreamRDF stream) {
+    private final StringDictionaryReader readerDict;
+
+    public Thrift2StreamRDF(PrefixMap pmap, StreamRDF stream, StringDictionaryReader readerDict) {
         this.pmap = pmap;
         this.dest = stream;
+        this.readerDict = readerDict;
     }
 
     @Override
-    public void visit(RDF_Triple rt, StringDictionaryReader readerDict) {
+    public void visit(RDF_Triple rt) {
         Triple t = Thrift2Convert.convert(uriCache, rt, pmap, readerDict);
         dest.triple(t);
     }
 
     @Override
-    public void visit(RDF_Quad rq, StringDictionaryReader readerDict) {
+    public void visit(RDF_Quad rq) {
         Quad q = Thrift2Convert.convert(uriCache, rq, pmap, readerDict);
         dest.quad(q);
     }
 
     @Override
-    public void visit(RDF_PrefixDecl prefixDecl, StringDictionaryReader readerDict) {
+    public void visit(RDF_PrefixDecl prefixDecl) {
         String prefix = readerDict.get(prefixDecl.getPrefix());
         String iriStr = readerDict.get(prefixDecl.getUri());
         pmap.add(prefix, iriStr);

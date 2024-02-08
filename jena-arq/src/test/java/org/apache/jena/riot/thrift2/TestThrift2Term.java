@@ -153,7 +153,9 @@ public class TestThrift2Term {
 
     private RDF_Term testTerm(Node node, PrefixMap pmap, StringDictionaryWriter writerDict, StringDictionaryReader readerDict) {
         RDF_Term rt = Thrift2Convert.convert(node, pmap, writerDict) ;
-        readerDict.addAll(writerDict.flush()) ;
+        if(writerDict.hasStringsToFlush()) {
+            readerDict.addAll(writerDict.flush());
+        }
         assertTrue(rt.isSet()) ;
 
         if ( node == null) {
@@ -249,7 +251,9 @@ public class TestThrift2Term {
         final var writerDict = new StringDictionaryWriter();
         final var readerDict = new StringDictionaryReader();
         RDF_Term rt = Thrift2Convert.convert(node, writerDict);
-        readerDict.addAll(writerDict.flush());
+        if(writerDict.hasStringsToFlush()) {
+            readerDict.addAll(writerDict.flush());
+        }
         byte[] b = Thrift2Convert.termToBytes(rt);
         RDF_Term rt2 = Thrift2Convert.termFromBytes(b);
         Node node2 = Thrift2Convert.convert(rt2, readerDict);

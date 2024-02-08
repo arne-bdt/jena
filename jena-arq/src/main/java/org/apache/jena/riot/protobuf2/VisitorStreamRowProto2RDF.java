@@ -23,6 +23,8 @@ import org.apache.jena.riot.protobuf2.wire.PB2_RDF.RDF_PrefixDecl;
 import org.apache.jena.riot.protobuf2.wire.PB2_RDF.RDF_Quad;
 import org.apache.jena.riot.protobuf2.wire.PB2_RDF.RDF_Triple;
 
+import java.util.List;
+
 /** Visitor for RDF_StreamRow */
 public interface VisitorStreamRowProto2RDF {
     public void visit(RDF_Triple triple);
@@ -32,4 +34,6 @@ public interface VisitorStreamRowProto2RDF {
     public void visit(RDF_IRI base);
 
     public void visit(RDF_PrefixDecl prefix);
+
+    public void visit(List<String> stringList);
 }

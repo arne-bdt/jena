@@ -61,7 +61,9 @@ public class Binding2Thrift2 implements AutoCloseable {
             rv.setName(writerDict.getIndex(v.getName())) ;
             vrow.addToVars(rv) ;
         }
-        vrow.setStrings(writerDict.flush()) ;
+        if(writerDict.hasStringsToFlush()) {
+            vrow.setStrings(writerDict.flush());
+        }
         try { vrow.write(protocol) ; }
         catch (TException e) { T2RDF.exception(e) ; }
     }
@@ -82,7 +84,9 @@ public class Binding2Thrift2 implements AutoCloseable {
             RDF_Term rt = ( n == null ) ? T2RDF.tUNDEF : Thrift2Convert.convert(n, writerDict) ;
             row.addToRow(rt) ;
         }) ;
-        row.setStrings(writerDict.flush()) ;
+        if(writerDict.hasStringsToFlush()) {
+            row.setStrings(writerDict.flush()) ;
+        }
         try { row.write(protocol) ; }
         catch (TException e) { T2RDF.exception(e) ; }
         row.clear() ;

@@ -34,17 +34,17 @@ option optimize_for = SPEED ;
 // ==== RDF Term Definitions 
 
 message RDF_IRI {
-  string iri = 1 ;
+  int32  iri = 1 ;
 } 
  
 // A prefix name (abbrev for an IRI)
 message RDF_PrefixName {
-  string prefix = 1 ;
-  string localName = 2 ;
+  int32 prefix = 1 ;
+  int32 localName = 2 ;
 } 
 
 message RDF_BNode {
-  string label = 1 ;
+  int32 label = 1 ;
   // 2 * fixed64
 } 
 
@@ -52,17 +52,17 @@ message RDF_BNode {
 // union with additional values. 
 
 message RDF_Literal {
-  string lex = 1 ;
+  int32 lex = 1 ;
   oneof literalKind {
     bool simple = 9 ;
-    string langtag = 2 ;
-    string datatype = 3 ;
+    int32 langtag = 2 ;
+    int32 datatype = 3 ;
     RDF_PrefixName dtPrefix = 4 ;
   }
 }
 
 message RDF_Var {
-  string name = 1 ;
+  int32 name = 1 ;
 }
 
 message RDF_ANY { }
@@ -102,17 +102,18 @@ message RDF_Quad {
 
 // Prefix declaration
 message RDF_PrefixDecl {
-  string prefix = 1;
-  string uri    = 2 ;
+  int32 prefix = 1;
+  int32 uri    = 2 ;
 }
 
 // StreamRDF
 message RDF_StreamRow {
+  repeated string strings = 1 ;
   oneof row {
-    RDF_PrefixDecl   prefixDecl  = 1 ;
-    RDF_Triple       triple      = 2 ;
-    RDF_Quad         quad        = 3 ;
-    RDF_IRI          base        = 4 ;
+    RDF_PrefixDecl   prefixDecl  = 2 ;
+    RDF_Triple       triple      = 3 ;
+    RDF_Quad         quad        = 4 ;
+    RDF_IRI          base        = 5 ;
   }
 }
 
@@ -123,11 +124,13 @@ message RDF_Stream {
 // ==== SPARQL Result Sets
 
 message RDF_VarTuple {
-  repeated RDF_Var vars = 1 ;
+  repeated string strings = 1 ;
+  repeated RDF_Var vars = 2 ;
 }
 
 message RDF_DataTuple {
-  repeated RDF_Term row = 1 ;
+  repeated string strings = 1 ;
+  repeated RDF_Term row = 2 ;
 }
 
 // ==== RDF Graph

@@ -31,14 +31,12 @@ public class IteratorThrift2RDF extends IteratorStreamRowRDF {
 
     private final PrefixMap pmap = PrefixMapFactory.create() ;
     private final StreamRDFCollectOne collector = new StreamRDFCollectOne(pmap) ;
-    private final Thrift2StreamRDF converter = new Thrift2StreamRDF(pmap, collector) ;
+    private final StringDictionaryReader readerDict = new StringDictionaryReader();
+    private final Thrift2StreamRDF converter = new Thrift2StreamRDF(pmap, collector, readerDict) ;
     
     private final RDF_StreamRow row = new RDF_StreamRow() ;
     private final TProtocol protocol ;
-    private StreamRDFCollectOne slot ;
-    private boolean finished = false ;
 
-    final StringDictionaryReader readerDict = new StringDictionaryReader();
 
     public IteratorThrift2RDF(TProtocol protocol) {
         this.protocol = protocol ;

@@ -40,8 +40,8 @@ public class TestGraphSerialization {
     @Param({
 //            "cheeses-0.1.ttl",
 //            "pizza.owl.rdf",
-//            "xxx_CGMES_EQ.xml",
-//            "xxx_CGMES_SSH.xml",
+            "xxx_CGMES_EQ.xml",
+            "xxx_CGMES_SSH.xml",
             "xxx_CGMES_TP.xml",
 //            "RealGrid_EQ.xml",
 //            "RealGrid_SSH.xml",
@@ -181,30 +181,30 @@ public class TestGraphSerialization {
     @Ignore
     public void loadSerializeAndDeserialize() {
         for(var file : List.of(
-                "../testing/cheeses-0.1.ttl",
-                "../testing/pizza.owl.rdf",
+//                "../testing/cheeses-0.1.ttl",
+//                "../testing/pizza.owl.rdf",
                 "C:/temp/res_test/xxx_CGMES_EQ.xml",
                 "C:/temp/res_test/xxx_CGMES_SSH.xml",
-                "C:/temp/res_test/xxx_CGMES_TP.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-                "../testing/BSBM/bsbm-1m.nt.gz"
+                "C:/temp/res_test/xxx_CGMES_TP.xml"
+//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+//                "../testing/BSBM/bsbm-1m.nt.gz"
             )) {
             final var fileName = new File(file).getName();
             final var g = new GraphMem2Fast();
             RDFDataMgr.read(g, file);
             for (var rdfFormat : List.of(
-                    RDFFormat.TURTLE_PRETTY, RDFFormat.TURTLE_BLOCKS, RDFFormat.TURTLE_FLAT, RDFFormat.TURTLE_LONG,
-                    RDFFormat.NTRIPLES_UTF8, RDFFormat.NQUADS_UTF8,
-                    RDFFormat.TRIG_PRETTY, RDFFormat.TRIG_BLOCKS, RDFFormat.TRIG_FLAT, RDFFormat.TRIG_LONG,
-                    /*RDFFormat.JSONLD11_PRETTY, --> seem to be broken*/ RDFFormat.JSONLD11_PLAIN, RDFFormat.JSONLD11_FLAT,
-                    RDFFormat.RDFXML_PRETTY, RDFFormat.RDFXML_PLAIN, RDFFormat.RDFJSON,
-                    RDFFormat.TRIX,
-                    RDFFormat.RDF_PROTO, RDFFormat.RDF_PROTO_VALUES,
+//                    RDFFormat.TURTLE_PRETTY, RDFFormat.TURTLE_BLOCKS, RDFFormat.TURTLE_FLAT, RDFFormat.TURTLE_LONG,
+//                    RDFFormat.NTRIPLES_UTF8, RDFFormat.NQUADS_UTF8,
+//                    RDFFormat.TRIG_PRETTY, RDFFormat.TRIG_BLOCKS, RDFFormat.TRIG_FLAT, RDFFormat.TRIG_LONG,
+//                    /*RDFFormat.JSONLD11_PRETTY, --> seem to be broken*/ RDFFormat.JSONLD11_PLAIN, RDFFormat.JSONLD11_FLAT,
+//                    RDFFormat.RDFXML_PRETTY, RDFFormat.RDFXML_PLAIN, RDFFormat.RDFJSON,
+//                    RDFFormat.TRIX,
+                    RDFFormat.RDF_PROTO, //RDFFormat.RDF_PROTO_VALUES,
                     RDFFormat.RDF_PROTO2,
-                    RDFFormat.RDF_THRIFT, RDFFormat.RDF_THRIFT_VALUES,
+                    RDFFormat.RDF_THRIFT, //RDFFormat.RDF_THRIFT_VALUES,
                     RDFFormat.RDF_THRIFT2)) {
                 for (var compressor : List.of(GraphSerialization.NO_COMPRESSOR, GraphSerialization.LZ4_FASTEST, GraphSerialization.GZIP)) {
                     final var compressedGraph = GraphSerialization.serialize(g, rdfFormat, compressor);

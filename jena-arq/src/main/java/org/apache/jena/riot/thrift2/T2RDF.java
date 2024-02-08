@@ -133,11 +133,11 @@ public class T2RDF {
         readerDict.addAll(row.getStrings());
         final var r = row.getRow();
         if ( r.isSetTriple() ) {
-            visitor.visit(r.getTriple(), readerDict) ;
+            visitor.visit(r.getTriple()) ;
         } else if ( r.isSetQuad() ) {
-            visitor.visit(r.getQuad(),readerDict) ;
+            visitor.visit(r.getQuad()) ;
         } else if ( r.isSetPrefixDecl() ) {
-            visitor.visit(r.getPrefixDecl(), readerDict) ;
+            visitor.visit(r.getPrefixDecl()) ;
         } else {
             Log.warn(Thrift2Convert.class, "visit: Unrecognized: "+row) ;
         }

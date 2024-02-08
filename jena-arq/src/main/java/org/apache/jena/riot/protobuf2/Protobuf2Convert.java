@@ -34,8 +34,6 @@ import org.apache.jena.riot.system.RiotLib;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.core.Var;
 
-import java.math.BigInteger;
-
 /** Convert to and from Protobuf wire objects.
  * <p>
  * See {@link StreamRDF2Protobuf2} and {@link Protobuf2StreamRDF}
@@ -50,9 +48,6 @@ import java.math.BigInteger;
  */
 public class Protobuf2Convert
 {
-    static final BigInteger MAX_I = BigInteger.valueOf(Long.MAX_VALUE) ;
-    static final BigInteger MIN_I = BigInteger.valueOf(Long.MIN_VALUE) ;
-
     private static RDF_UNDEF rdfUNDEF = RDF_UNDEF.newBuilder().build();
     private static RDF_Term UNDEF = RDF_Term.newBuilder().setUndefined(rdfUNDEF).build();
 
@@ -66,13 +61,13 @@ public class Protobuf2Convert
     // ---- From Protobuf
 
     /** Build a {@link Node} from an {@link RDF_Term}. */
-    public static Node convert(RDF_Term term) {
-        return convert(null, term) ;
+    public static Node convert(RDF_Term term, StringDictionaryReader readerDict) {
+        return convert(null, term, readerDict) ;
     }
 
     /** Build a {@link Node} from an {@link RDF_Term}. */
-    public static Node convert(Cache<String, Node> uriCache, RDF_Term term) {
-        return convert(uriCache, term, null) ;
+    public static Node convert(Cache<String, Node> uriCache, RDF_Term term, StringDictionaryReader readerDict) {
+        return convert(uriCache, term, null, readerDict) ;
     }
 
     // Create URI, using a cached copy if possible.
@@ -87,38 +82,39 @@ public class Protobuf2Convert
      * Build a {@link Node} from an {@link RDF_Term} using a prefix map which must agree
      * with the map used to create the {@code RDF_Term} in the first place.
      */
-    public static Node convert(RDF_Term term, PrefixMap pmap) {
-        return convert(null, term, pmap);
+    public static Node convert(RDF_Term term, PrefixMap pmap, StringDictionaryReader readerDict) {
+        return convert(null, term, pmap, readerDict);
     }
 
     /**
      * Build a {@link Node} from an {@link RDF_Term} using a prefix map which must agree
      * with the map used to create the {@code RDF_Term} in the first place.
      */
-    public static Node convert(Cache<String, Node> uriCache, RDF_Term term, PrefixMap pmap) {
+    public static Node convert(Cache<String, Node> uriCache, RDF_Term term, PrefixMap pmap,
+                               StringDictionaryReader readerDict) {
         switch (term.getTermCase()) {
             case IRI :
-                return uri(uriCache, term.getIri().getIri()) ;
+                return uri(uriCache, readerDict.get(term.getIri().getIri())) ;
             case BNODE :
-                return NodeFactory.createBlankNode(term.getBnode().getLabel()) ;
+                return NodeFactory.createBlankNode(readerDict.get(term.getBnode().getLabel())) ;
             case LITERAL : {
                 if ( term.hasLiteral() ) {
                     RDF_Literal lit = term.getLiteral() ;
-                    String lex = lit.getLex() ;
+                    String lex = readerDict.get(lit.getLex()) ;
                     switch ( lit.getLiteralKindCase() ) {
                         case SIMPLE :
                             return NodeFactory.createLiteralString(lex) ;
                         case LANGTAG : {
-                            String lang = lit.getLangtag();
+                            String lang = readerDict.get(lit.getLangtag());
                             return NodeFactory.createLiteralLang(lex, lang) ;
                         }
                         case DATATYPE : {
-                            String dtString = lit.getDatatype();
+                            String dtString = readerDict.get(lit.getDatatype());
                             RDFDatatype dt = NodeFactory.getType(dtString) ;
                             return NodeFactory.createLiteral(lex, dt) ;
                         }
                         case DTPREFIX : {
-                            String x = expand(lit.getDtPrefix(), pmap);
+                            String x = expand(lit.getDtPrefix(), pmap, readerDict);
                             if ( x == null )
                                 throw new RiotProtobuf2Exception("Failed to expand datatype prefix name: "+lit.getDtPrefix()) ;
                             RDFDatatype dt = NodeFactory.getType(x) ;
@@ -130,16 +126,16 @@ public class Protobuf2Convert
                 }
             }
             case PREFIXNAME : {
-                String x = expand(term.getPrefixName(), pmap) ;
+                String x = expand(term.getPrefixName(), pmap, readerDict) ;
                 if ( x != null )
                     return uri(uriCache, x) ;
                 throw new RiotProtobuf2Exception("Failed to expand "+term) ;
             }
             case VARIABLE :
-                return Var.alloc(term.getVariable().getName()) ;
+                return Var.alloc(readerDict.get(term.getVariable().getName())) ;
             case TRIPLETERM : {
                 RDF_Triple rt = term.getTripleTerm();
-                Triple t = convert(rt, pmap);
+                Triple t = convert(rt, pmap, readerDict);
                 return NodeFactory.createTripleNode(t);
             }
             case ANY :
@@ -155,34 +151,36 @@ public class Protobuf2Convert
         }
     }
 
-    public static Triple convert(RDF_Triple triple) {
-        return convert(null, triple, null) ;
+    public static Triple convert(RDF_Triple triple, StringDictionaryReader readerDict) {
+        return convert(null, triple, null, readerDict);
     }
 
-    public static Triple convert(Cache<String, Node> uriCache, RDF_Triple triple) {
-        return convert(uriCache, triple, null) ;
+    public static Triple convert(Cache<String, Node> uriCache, RDF_Triple triple, StringDictionaryReader readerDict) {
+        return convert(uriCache, triple, null, readerDict) ;
     }
 
-    public static Triple convert(RDF_Triple rt, PrefixMap pmap) {
-        return convert(null, rt, pmap);
+    public static Triple convert(RDF_Triple rt, PrefixMap pmap, StringDictionaryReader readerDict) {
+        return convert(null, rt, pmap, readerDict);
     }
 
-    public static Triple convert(Cache<String, Node> uriCache, RDF_Triple rt, PrefixMap pmap) {
-        Node s = convert(uriCache, rt.getS(), pmap) ;
-        Node p = convert(uriCache, rt.getP(), pmap) ;
-        Node o = convert(uriCache, rt.getO(), pmap) ;
+    public static Triple convert(Cache<String, Node> uriCache, RDF_Triple rt, PrefixMap pmap,
+                                 StringDictionaryReader readerDict) {
+        Node s = convert(uriCache, rt.getS(), pmap, readerDict) ;
+        Node p = convert(uriCache, rt.getP(), pmap, readerDict) ;
+        Node o = convert(uriCache, rt.getO(), pmap, readerDict) ;
         return Triple.create(s, p, o) ;
     }
 
-    public static Quad convert(RDF_Quad rq, PrefixMap pmap) {
-        return convert(null, rq, pmap);
+    public static Quad convert(RDF_Quad rq, PrefixMap pmap, StringDictionaryReader readerDict) {
+        return convert(null, rq, pmap, readerDict);
     }
 
-    public static Quad convert(Cache<String, Node> uriCache, RDF_Quad rq, PrefixMap pmap) {
-        Node g = (rq.hasG() ? convert(uriCache,rq.getG(), pmap) : null ) ;
-        Node s = convert(uriCache,rq.getS(), pmap) ;
-        Node p = convert(uriCache,rq.getP(), pmap) ;
-        Node o = convert(uriCache,rq.getO(), pmap) ;
+    public static Quad convert(Cache<String, Node> uriCache, RDF_Quad rq, PrefixMap pmap,
+                               StringDictionaryReader readerDict) {
+        Node g = (rq.hasG() ? convert(uriCache,rq.getG(), pmap, readerDict) : null ) ;
+        Node s = convert(uriCache,rq.getS(), pmap, readerDict) ;
+        Node p = convert(uriCache,rq.getP(), pmap, readerDict) ;
+        Node o = convert(uriCache,rq.getO(), pmap, readerDict) ;
         return Quad.create(g, s, p, o) ;
     }
 
@@ -190,34 +188,39 @@ public class Protobuf2Convert
      * Encode a {@link Node} into an {@link RDF_Term},
      * using values (integer, decimal, double) if possible.
      */
-    public static RDF_Term toProtobuf(Node node, RDF_Term.Builder term) {
-        return toProtobuf(node, emptyPrefixMap, term);
+    public static RDF_Term toProtobuf(Node node, RDF_Term.Builder term, StringDictionaryWriter writerDict) {
+        return toProtobuf(node, emptyPrefixMap, term, writerDict);
     }
 
     /** Encode a {@link Node} into an {@link RDF_Term} */
-    public static RDF_Term toProtobuf(Node node, PrefixMap pmap, RDF_Term.Builder termBuilder) {
+    public static RDF_Term toProtobuf(Node node, PrefixMap pmap, RDF_Term.Builder termBuilder,
+                                      StringDictionaryWriter writerDict) {
         if ( node == null)
             return UNDEF;
 
         if ( node.isURI() ) {
-            RDF_PrefixName prefixName = abbrev(node.getURI(), pmap) ;
+            RDF_PrefixName prefixName = abbrev(node.getURI(), pmap, writerDict) ;
             if ( prefixName != null ) {
                 termBuilder.setPrefixName(prefixName) ;
                 return termBuilder.build();
             }
-            RDF_IRI iri = RDF_IRI.newBuilder().setIri(node.getURI()).build() ;
+            RDF_IRI iri = RDF_IRI.newBuilder()
+                    .setIri(writerDict.getIndex(node.getURI()))
+                    .build() ;
             return termBuilder.setIri(iri).build();
         }
 
         if ( node.isBlank() ) {
-            RDF_BNode b = RDF_BNode.newBuilder().setLabel(node.getBlankNodeLabel()).build();
+            RDF_BNode b = RDF_BNode.newBuilder()
+                    .setLabel(writerDict.getIndex(node.getBlankNodeLabel()))
+                    .build();
             return termBuilder.setBnode(b).build();
         }
 
         if ( node.isLiteral() ) {
             RDF_Literal.Builder literal = RDF_Literal.newBuilder();
             String lex = node.getLiteralLexicalForm() ;
-            literal.setLex(lex);
+            literal.setLex(writerDict.getIndex(lex));
 
             // Protobuf default string is ""
 
@@ -235,35 +238,37 @@ public class Protobuf2Convert
             if ( dt == null && lang == null ) {
                 literal.setSimple(true);
             } else if ( dt != null ) {
-                RDF_PrefixName dtPrefixName = abbrev(dt, pmap) ;
+                RDF_PrefixName dtPrefixName = abbrev(dt, pmap, writerDict) ;
                 if ( dtPrefixName != null )
                     literal.setDtPrefix(dtPrefixName) ;
                 else {
-                    literal.setDatatype(dt) ;
+                    literal.setDatatype(writerDict.getIndex(dt)) ;
                 }
             } else {
                 //if ( lang != null && ! lang.isEmpty() )
-                literal.setLangtag(lang);
+                literal.setLangtag(writerDict.getIndex(lang));
             }
             termBuilder.setLiteral(literal) ;
             return termBuilder.build();
         }
 
         if ( node.isVariable() ) {
-            RDF_Var var = RDF_Var.newBuilder().setName(node.getName()).build();
+            RDF_Var var = RDF_Var.newBuilder()
+                    .setName(writerDict.getIndex(node.getName()))
+                    .build();
             return termBuilder.setVariable(var).build();
         }
 
         if ( node.isNodeTriple() ) {
             Triple triple = node.getTriple();
 
-            RDF_Term sTerm = toProtobuf(triple.getSubject(), pmap, termBuilder);
+            RDF_Term sTerm = toProtobuf(triple.getSubject(), pmap, termBuilder, writerDict);
             termBuilder.clear();
 
-            RDF_Term pTerm = toProtobuf(triple.getPredicate(), pmap, termBuilder);
+            RDF_Term pTerm = toProtobuf(triple.getPredicate(), pmap, termBuilder, writerDict);
             termBuilder.clear();
 
-            RDF_Term oTerm = toProtobuf(triple.getObject(), pmap, termBuilder);
+            RDF_Term oTerm = toProtobuf(triple.getObject(), pmap, termBuilder, writerDict);
             termBuilder.clear();
 
             RDF_Triple tripleTerm = RDF_Triple.newBuilder().setS(sTerm).setP(pTerm).setO(oTerm).build();
@@ -277,12 +282,12 @@ public class Protobuf2Convert
         throw new RiotProtobuf2Exception("Node conversion not supported: "+node) ;
     }
 
-    private static String expand(RDF_PrefixName prefixName, PrefixMap pmap) {
+    private static String expand(RDF_PrefixName prefixName, PrefixMap pmap, StringDictionaryReader readerDict) {
         if ( pmap == null )
             return null ;
 
-        String prefix = prefixName.getPrefix() ;
-        String localname  = prefixName.getLocalName() ;
+        String prefix = readerDict.get(prefixName.getPrefix()) ;
+        String localname  = readerDict.get(prefixName.getLocalName()) ;
         String x = pmap.expand(prefix, localname) ;
         if ( x == null )
             throw new RiotProtobuf2Exception("Failed to expand "+prefixName) ;
@@ -290,56 +295,60 @@ public class Protobuf2Convert
     }
 
 
-    public static RDF_Term convert(Node node) {
-        return convert(node, null) ;
+    public static RDF_Term convert(Node node, StringDictionaryWriter writerDict) {
+        return convert(node, null, writerDict) ;
     }
 
-    public static RDF_Term convert(Node node, PrefixMap pmap) {
+    public static RDF_Term convert(Node node, PrefixMap pmap, StringDictionaryWriter writerDict) {
         RDF_Term.Builder n = RDF_Term.newBuilder();
-        return toProtobuf(node, pmap, n) ;
+        return toProtobuf(node, pmap, n, writerDict) ;
     }
 
     /** Produce a {@link RDF_PrefixName} is possible. */
-    private static RDF_PrefixName abbrev(String uriStr, PrefixMap pmap) {
+    private static RDF_PrefixName abbrev(String uriStr, PrefixMap pmap, StringDictionaryWriter writerDict) {
         if ( pmap == null )
             return null ;
         Pair<String, String> p = pmap.abbrev(uriStr) ;
         if ( p == null )
             return null ;
-        return RDF_PrefixName.newBuilder().setPrefix(p.getLeft()).setLocalName(p.getRight()).build();
+        return RDF_PrefixName.newBuilder()
+                .setPrefix(writerDict.getIndex(p.getLeft()))
+                .setLocalName(writerDict.getIndex(p.getRight()))
+                .build();
     }
 
-    public static RDF_Triple convert(Triple triple) {
-        return convert(triple, null) ;
+    public static RDF_Triple convert(Triple triple, StringDictionaryWriter writerDict) {
+        return convert(triple, null, writerDict) ;
     }
 
-    public static RDF_Triple convert(Triple triple, PrefixMap pmap) {
+    public static RDF_Triple convert(Triple triple, PrefixMap pmap, StringDictionaryWriter writerDict) {
         RDF_Triple.Builder t = RDF_Triple.newBuilder();
-        RDF_Term s = convert(triple.getSubject(), pmap) ;
-        RDF_Term p = convert(triple.getPredicate(), pmap) ;
-        RDF_Term o = convert(triple.getObject(), pmap) ;
+        RDF_Term s = convert(triple.getSubject(), pmap, writerDict) ;
+        RDF_Term p = convert(triple.getPredicate(), pmap, writerDict) ;
+        RDF_Term o = convert(triple.getObject(), pmap, writerDict) ;
         t.setS(s) ;
         t.setP(p) ;
         t.setO(o) ;
         return t.build() ;
     }
 
-    public static Quad convert(RDF_Quad quad) {
-        return convert(quad, null) ;
+    public static Quad convert(RDF_Quad quad, StringDictionaryReader readerDict) {
+        return convert(quad, null, readerDict) ;
     }
 
-    public static RDF_Quad convert(Quad quad) {
-        return convert(quad, null) ;
+    public static RDF_Quad convert(Quad quad, StringDictionaryWriter writerDict) {
+
+        return convert(quad, null, writerDict) ;
     }
 
-    public static RDF_Quad convert(Quad quad, PrefixMap pmap) {
+    public static RDF_Quad convert(Quad quad, PrefixMap pmap, StringDictionaryWriter writerDict) {
         RDF_Quad.Builder q = RDF_Quad.newBuilder();
         RDF_Term g = null ;
         if ( quad.getGraph() != null )
-            g = convert(quad.getGraph(), pmap) ;
-        RDF_Term s = convert(quad.getSubject(), pmap) ;
-        RDF_Term p = convert(quad.getPredicate(), pmap) ;
-        RDF_Term o = convert(quad.getObject(), pmap) ;
+            g = convert(quad.getGraph(), pmap, writerDict) ;
+        RDF_Term s = convert(quad.getSubject(), pmap, writerDict) ;
+        RDF_Term p = convert(quad.getPredicate(), pmap, writerDict) ;
+        RDF_Term o = convert(quad.getObject(), pmap, writerDict) ;
         if ( g != null )
             q.setG(g) ;
         q.setS(s) ;

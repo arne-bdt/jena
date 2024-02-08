@@ -45,27 +45,29 @@ class PBuf2RDF {
         } catch (IOException e) { IO.exception(e); }
     }
 
-    public static RDF_Triple rdfTriple(Triple triple, RDF_Triple.Builder tripleBuilder, RDF_Term.Builder termBuilder) {
+    public static RDF_Triple rdfTriple(Triple triple, RDF_Triple.Builder tripleBuilder, RDF_Term.Builder termBuilder,
+                                       StringDictionaryWriter writerDict) {
         tripleBuilder.clear();
-        tripleBuilder.setS(rdfTerm(triple.getSubject(), termBuilder));
-        tripleBuilder.setP(rdfTerm(triple.getPredicate(), termBuilder));
-        tripleBuilder.setO(rdfTerm(triple.getObject(), termBuilder));
+        tripleBuilder.setS(rdfTerm(triple.getSubject(), termBuilder, writerDict));
+        tripleBuilder.setP(rdfTerm(triple.getPredicate(), termBuilder, writerDict));
+        tripleBuilder.setO(rdfTerm(triple.getObject(), termBuilder, writerDict));
         return tripleBuilder.build();
     }
 
-    public static RDF_Quad rdfQuad(Quad quad, RDF_Quad.Builder quadBuilder, RDF_Term.Builder termBuilder) {
+    public static RDF_Quad rdfQuad(Quad quad, RDF_Quad.Builder quadBuilder, RDF_Term.Builder termBuilder,
+                                   StringDictionaryWriter writerDict) {
         quadBuilder.clear();
         if ( quad.getGraph() != null )
-            quadBuilder.setG(rdfTerm(quad.getGraph(), termBuilder));
-        quadBuilder.setS(rdfTerm(quad.getSubject(), termBuilder));
-        quadBuilder.setP(rdfTerm(quad.getPredicate(), termBuilder));
-        quadBuilder.setO(rdfTerm(quad.getObject(), termBuilder));
+            quadBuilder.setG(rdfTerm(quad.getGraph(), termBuilder, writerDict));
+        quadBuilder.setS(rdfTerm(quad.getSubject(), termBuilder, writerDict));
+        quadBuilder.setP(rdfTerm(quad.getPredicate(), termBuilder, writerDict));
+        quadBuilder.setO(rdfTerm(quad.getObject(), termBuilder, writerDict));
         return quadBuilder.build();
     }
 
-    static RDF_Term rdfTerm(Node node, RDF_Term.Builder termBuilder) {
+    static RDF_Term rdfTerm(Node node, RDF_Term.Builder termBuilder, StringDictionaryWriter writerDict) {
         termBuilder.clear();
-        return Protobuf2Convert.toProtobuf(node, PMAP0, termBuilder);
+        return Protobuf2Convert.toProtobuf(node, PMAP0, termBuilder, writerDict);
     }
 
 
@@ -73,6 +75,7 @@ class PBuf2RDF {
     static boolean visit(RDF_StreamRow x, VisitorStreamRowProto2RDF visitor) {
         if ( x == null )
             return false;
+        visitor.visit(x.getStringsList());
         switch(x.getRowCase()) {
             case BASE :
                 visitor.visit(x.getBase());

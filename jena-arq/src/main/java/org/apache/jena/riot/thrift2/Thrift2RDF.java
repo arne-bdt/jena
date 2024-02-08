@@ -46,7 +46,6 @@ import java.util.function.Consumer;
  */
 public class Thrift2RDF {
 
-    private static int BUFSIZE_IN   = 128*1024 ;
     private static int BUFSIZE_OUT  = 128*1024 ;
 
     /**
@@ -116,9 +115,10 @@ public class Thrift2RDF {
      * @param dest Sink
      */
     public static void protocolToStream(TProtocol protocol, StreamRDF dest) {
-        PrefixMap pmap = PrefixMapFactory.create() ;
-        final Thrift2StreamRDF s = new Thrift2StreamRDF(pmap, dest) ;
+        final PrefixMap pmap = PrefixMapFactory.create() ;
         final var readerDict = new StringDictionaryReader();
+        final Thrift2StreamRDF s = new Thrift2StreamRDF(pmap, dest, readerDict) ;
+
         dest.start() ;
         apply(protocol, z -> T2RDF.visit(z, s, readerDict)) ;
         // Includes flushing the protocol.
@@ -154,8 +154,8 @@ public class Thrift2RDF {
      */
     public static void dump(OutputStream out, InputStream in) {
         IndentedWriter iOut = new IndentedWriter(out) ;
-        StreamRowT2RDFPrinter printer = new StreamRowT2RDFPrinter(iOut) ;
         final var readerDict = new StringDictionaryReader();
+        StreamRowT2RDFPrinter printer = new StreamRowT2RDFPrinter(iOut, readerDict) ;
         TProtocol protocol = T2RDF.protocol(in) ;
         apply(protocol, z -> T2RDF.visit(z, printer, readerDict));
         iOut.flush() ;
