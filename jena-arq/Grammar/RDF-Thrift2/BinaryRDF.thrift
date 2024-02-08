@@ -24,34 +24,34 @@ namespace java org.apache.jena.riot.thrift2.wire
 // ==== RDF Term Definitions 
 
 struct RDF_IRI {
-1: required i32 iri = -1
+1: required i32 iri
 }
 
 # A prefix name (abbrev for an IRI)
 struct RDF_PrefixName {
-1: required i32 prefix = -1;
-2: required i32 localName = -1;
+1: required i32 prefix;
+2: required i32 localName;
 }
 
 struct RDF_BNode {
   // Maybe support (or even insist) on a global unique identifier e.g. UUID
   // long mostSig
   // long leastSig
-1: required i32 label = -1
+1: required i32 label
 }
 
 // Common abbreviated for datatypes and other URIs?
 // union with additional values. 
 
 struct RDF_Literal {
-1: required i32  lex  = -1;
-2: optional i32  langtag  = -1;
-3: optional i32  datatype  = -1;          // Either 3 or 4 but UNION is heavy.
+1: required i32  lex;
+2: optional i32  langtag;
+3: optional i32  datatype;          // Either 3 or 4 but UNION is heavy.
 4: optional RDF_PrefixName dtPrefix ;   // datatype as prefix name
 }
 
 struct RDF_VAR {
-1: required i32 name = -1;
+1: required i32 name;
 }
 
 struct RDF_ANY { }
@@ -89,8 +89,8 @@ struct RDF_Quad {
 
 # Prefix declaration
 struct RDF_PrefixDecl {
-1: required i32 prefix = -1;
-2: required i32 uri  = -1;
+1: required i32 prefix;
+2: required i32 uri;
 }
 
 union RDF_StreamUnion {
@@ -102,19 +102,19 @@ union RDF_StreamUnion {
 
 struct RDF_StreamRow {
 1: RDF_StreamUnion row
-2: list<string>    strings
+2: optional list<string>    strings
 }
 
 // ==== SPARQL Result Sets
 
 struct RDF_VarTuple {
 1: list<RDF_VAR> vars
-2: list<string> strings
+2: optional list<string> strings
 }
 
 struct RDF_DataTuple {
 1: list<RDF_Term> row
-2: list<string> strings
+2: optional list<string> strings
 }
 
 // ==== RDF Patch
@@ -123,17 +123,17 @@ enum PatchTxn { TX, TC, TA , Segment }
 
 struct Patch_Prefix_Add {
 1: optional RDF_Term graphNode;
-2: required i32 prefix = -1;
-3: required i32 iriStr = -1;
+2: required i32 prefix;
+3: required i32 iriStr;
 }
 
 struct Patch_Prefix_Del {
 1: optional RDF_Term graphNode;
-2: required i32 prefix = -1;
+2: required i32 prefix;
 }
 
 struct Patch_Header {
-1: required i32 name = -1;
+1: required i32 name;
 2: required RDF_Term value;
 }
 
@@ -162,7 +162,7 @@ union RDF_Patch_Union {
 
 struct RDF_Patch_Row {
 1: RDF_Patch_Union    row;
-2: list<string>       strings;
+2: optional list<string>       strings;
 }
 
 // Local Variables:

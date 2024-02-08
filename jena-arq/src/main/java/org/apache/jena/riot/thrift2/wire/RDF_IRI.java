@@ -92,8 +92,6 @@ public class RDF_IRI implements org.apache.thrift.TBase<RDF_IRI, RDF_IRI._Fields
   }
 
   public RDF_IRI() {
-    this.iri = -1;
-
   }
 
   public RDF_IRI(
@@ -119,8 +117,8 @@ public class RDF_IRI implements org.apache.thrift.TBase<RDF_IRI, RDF_IRI._Fields
 
   @Override
   public void clear() {
-    this.iri = -1;
-
+    setIriIsSet(false);
+    this.iri = 0;
   }
 
   public int getIri() {

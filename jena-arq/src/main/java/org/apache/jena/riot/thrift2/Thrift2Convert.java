@@ -197,7 +197,7 @@ public class Thrift2Convert
             }
             RDFDatatype dt = NodeFactory.getType(dtString);
 
-            String lang = dict.get(lit.getLangtag());
+            String lang = lit.isSetLangtag() ? dict.get(lit.getLangtag()) : null;
             return NodeFactory.createLiteral(lex, lang, dt);
         }
 

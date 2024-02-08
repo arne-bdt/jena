@@ -55,7 +55,7 @@ public class Binding2Thrift2 implements AutoCloseable {
     }
 
     private void varsRow() {
-        RDF_VarTuple vrow = new RDF_VarTuple(new ArrayList<>(vars.size()), null) ;
+        RDF_VarTuple vrow = new RDF_VarTuple(new ArrayList<>(vars.size())) ;
         for ( Var v : vars ) {
             RDF_VAR rv = new RDF_VAR() ;
             rv.setName(writerDict.getIndex(v.getName())) ;

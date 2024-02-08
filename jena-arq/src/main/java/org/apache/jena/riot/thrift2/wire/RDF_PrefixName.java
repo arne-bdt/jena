@@ -100,10 +100,6 @@ public class RDF_PrefixName implements org.apache.thrift.TBase<RDF_PrefixName, R
   }
 
   public RDF_PrefixName() {
-    this.prefix = -1;
-
-    this.localName = -1;
-
   }
 
   public RDF_PrefixName(
@@ -133,10 +129,10 @@ public class RDF_PrefixName implements org.apache.thrift.TBase<RDF_PrefixName, R
 
   @Override
   public void clear() {
-    this.prefix = -1;
-
-    this.localName = -1;
-
+    setPrefixIsSet(false);
+    this.prefix = 0;
+    setLocalNameIsSet(false);
+    this.localName = 0;
   }
 
   public int getPrefix() {

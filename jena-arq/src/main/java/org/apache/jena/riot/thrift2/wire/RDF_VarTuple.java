@@ -17,7 +17,7 @@ public class RDF_VarTuple implements org.apache.thrift.TBase<RDF_VarTuple, RDF_V
   private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new RDF_VarTupleTupleSchemeFactory();
 
   public @org.apache.thrift.annotation.Nullable java.util.List<RDF_VAR> vars; // required
-  public @org.apache.thrift.annotation.Nullable java.util.List<java.lang.String> strings; // required
+  public @org.apache.thrift.annotation.Nullable java.util.List<java.lang.String> strings; // optional
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
@@ -85,13 +85,14 @@ public class RDF_VarTuple implements org.apache.thrift.TBase<RDF_VarTuple, RDF_V
   }
 
   // isset id assignments
+  private static final _Fields optionals[] = {_Fields.STRINGS};
   public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
   static {
     java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
     tmpMap.put(_Fields.VARS, new org.apache.thrift.meta_data.FieldMetaData("vars", org.apache.thrift.TFieldRequirementType.DEFAULT, 
         new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
             new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, RDF_VAR.class))));
-    tmpMap.put(_Fields.STRINGS, new org.apache.thrift.meta_data.FieldMetaData("strings", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+    tmpMap.put(_Fields.STRINGS, new org.apache.thrift.meta_data.FieldMetaData("strings", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
         new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
             new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING))));
     metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
@@ -102,12 +103,10 @@ public class RDF_VarTuple implements org.apache.thrift.TBase<RDF_VarTuple, RDF_V
   }
 
   public RDF_VarTuple(
-    java.util.List<RDF_VAR> vars,
-    java.util.List<java.lang.String> strings)
+    java.util.List<RDF_VAR> vars)
   {
     this();
     this.vars = vars;
-    this.strings = strings;
   }
 
   /**
@@ -380,14 +379,16 @@ public class RDF_VarTuple implements org.apache.thrift.TBase<RDF_VarTuple, RDF_V
       sb.append(this.vars);
     }
     first = false;
-    if (!first) sb.append(", ");
-    sb.append("strings:");
-    if (this.strings == null) {
-      sb.append("null");
-    } else {
-      sb.append(this.strings);
+    if (isSetStrings()) {
+      if (!first) sb.append(", ");
+      sb.append("strings:");
+      if (this.strings == null) {
+        sb.append("null");
+      } else {
+        sb.append(this.strings);
+      }
+      first = false;
     }
-    first = false;
     sb.append(")");
     return sb.toString();
   }
@@ -499,16 +500,18 @@ public class RDF_VarTuple implements org.apache.thrift.TBase<RDF_VarTuple, RDF_V
         oprot.writeFieldEnd();
       }
       if (struct.strings != null) {
-        oprot.writeFieldBegin(STRINGS_FIELD_DESC);
-        {
-          oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRING, struct.strings.size()));
-          for (java.lang.String _iter15 : struct.strings)
+        if (struct.isSetStrings()) {
+          oprot.writeFieldBegin(STRINGS_FIELD_DESC);
           {
-            oprot.writeString(_iter15);
+            oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRING, struct.strings.size()));
+            for (java.lang.String _iter15 : struct.strings)
+            {
+              oprot.writeString(_iter15);
+            }
+            oprot.writeListEnd();
           }
-          oprot.writeListEnd();
+          oprot.writeFieldEnd();
         }
-        oprot.writeFieldEnd();
       }
       oprot.writeFieldStop();
       oprot.writeStructEnd();

@@ -17,7 +17,7 @@ public class RDF_StreamRow implements org.apache.thrift.TBase<RDF_StreamRow, RDF
   private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new RDF_StreamRowTupleSchemeFactory();
 
   public @org.apache.thrift.annotation.Nullable RDF_StreamUnion row; // required
-  public @org.apache.thrift.annotation.Nullable java.util.List<java.lang.String> strings; // required
+  public @org.apache.thrift.annotation.Nullable java.util.List<java.lang.String> strings; // optional
 
   /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
   public enum _Fields implements org.apache.thrift.TFieldIdEnum {
@@ -85,12 +85,13 @@ public class RDF_StreamRow implements org.apache.thrift.TBase<RDF_StreamRow, RDF
   }
 
   // isset id assignments
+  private static final _Fields optionals[] = {_Fields.STRINGS};
   public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
   static {
     java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
     tmpMap.put(_Fields.ROW, new org.apache.thrift.meta_data.FieldMetaData("row", org.apache.thrift.TFieldRequirementType.DEFAULT, 
         new org.apache.thrift.meta_data.StructMetaData(org.apache.thrift.protocol.TType.STRUCT, RDF_StreamUnion.class)));
-    tmpMap.put(_Fields.STRINGS, new org.apache.thrift.meta_data.FieldMetaData("strings", org.apache.thrift.TFieldRequirementType.DEFAULT, 
+    tmpMap.put(_Fields.STRINGS, new org.apache.thrift.meta_data.FieldMetaData("strings", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
         new org.apache.thrift.meta_data.ListMetaData(org.apache.thrift.protocol.TType.LIST, 
             new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING))));
     metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
@@ -101,12 +102,10 @@ public class RDF_StreamRow implements org.apache.thrift.TBase<RDF_StreamRow, RDF
   }
 
   public RDF_StreamRow(
-    RDF_StreamUnion row,
-    java.util.List<java.lang.String> strings)
+    RDF_StreamUnion row)
   {
     this();
     this.row = row;
-    this.strings = strings;
   }
 
   /**
@@ -359,14 +358,16 @@ public class RDF_StreamRow implements org.apache.thrift.TBase<RDF_StreamRow, RDF
       sb.append(this.row);
     }
     first = false;
-    if (!first) sb.append(", ");
-    sb.append("strings:");
-    if (this.strings == null) {
-      sb.append("null");
-    } else {
-      sb.append(this.strings);
+    if (isSetStrings()) {
+      if (!first) sb.append(", ");
+      sb.append("strings:");
+      if (this.strings == null) {
+        sb.append("null");
+      } else {
+        sb.append(this.strings);
+      }
+      first = false;
     }
-    first = false;
     sb.append(")");
     return sb.toString();
   }
@@ -461,16 +462,18 @@ public class RDF_StreamRow implements org.apache.thrift.TBase<RDF_StreamRow, RDF
         oprot.writeFieldEnd();
       }
       if (struct.strings != null) {
-        oprot.writeFieldBegin(STRINGS_FIELD_DESC);
-        {
-          oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRING, struct.strings.size()));
-          for (java.lang.String _iter3 : struct.strings)
+        if (struct.isSetStrings()) {
+          oprot.writeFieldBegin(STRINGS_FIELD_DESC);
           {
-            oprot.writeString(_iter3);
+            oprot.writeListBegin(new org.apache.thrift.protocol.TList(org.apache.thrift.protocol.TType.STRING, struct.strings.size()));
+            for (java.lang.String _iter3 : struct.strings)
+            {
+              oprot.writeString(_iter3);
+            }
+            oprot.writeListEnd();
           }
-          oprot.writeListEnd();
+          oprot.writeFieldEnd();
         }
-        oprot.writeFieldEnd();
       }
       oprot.writeFieldStop();
       oprot.writeStructEnd();

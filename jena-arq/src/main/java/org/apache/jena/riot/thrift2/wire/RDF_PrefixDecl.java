@@ -100,10 +100,6 @@ public class RDF_PrefixDecl implements org.apache.thrift.TBase<RDF_PrefixDecl, R
   }
 
   public RDF_PrefixDecl() {
-    this.prefix = -1;
-
-    this.uri = -1;
-
   }
 
   public RDF_PrefixDecl(
@@ -133,10 +129,10 @@ public class RDF_PrefixDecl implements org.apache.thrift.TBase<RDF_PrefixDecl, R
 
   @Override
   public void clear() {
-    this.prefix = -1;
-
-    this.uri = -1;
-
+    setPrefixIsSet(false);
+    this.prefix = 0;
+    setUriIsSet(false);
+    this.uri = 0;
   }
 
   public int getPrefix() {

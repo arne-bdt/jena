@@ -19,16 +19,31 @@
 package org.apache.jena.riot.thrift2;
 
 import java.util.ArrayList;
+import java.util.List;
 
-public class StringDictionaryReader extends ArrayList<String> {
+public class StringDictionaryReader {
+
+    private ArrayList<String> strings = null;
+    private boolean isInitialized = false;
+
 
     public StringDictionaryReader() {
         super();
     }
 
+    public void addAll(List<String> strings) {
+        if(strings == null || strings.isEmpty()) {
+            return;
+        }
+        if(isInitialized) {
+            this.strings.addAll(strings);
+        } else {
+            this.strings = new ArrayList<>(strings);
+            isInitialized = true;
+        }
+    }
+
     public String get(int index) {
-        if (index < 0)
-            return null;
-        return super.get(index);
+        return strings.get(index);
     }
 }

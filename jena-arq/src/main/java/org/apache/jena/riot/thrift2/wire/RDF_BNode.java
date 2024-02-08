@@ -92,8 +92,6 @@ public class RDF_BNode implements org.apache.thrift.TBase<RDF_BNode, RDF_BNode._
   }
 
   public RDF_BNode() {
-    this.label = -1;
-
   }
 
   public RDF_BNode(
@@ -119,8 +117,8 @@ public class RDF_BNode implements org.apache.thrift.TBase<RDF_BNode, RDF_BNode._
 
   @Override
   public void clear() {
-    this.label = -1;
-
+    setLabelIsSet(false);
+    this.label = 0;
   }
 
   public int getLabel() {

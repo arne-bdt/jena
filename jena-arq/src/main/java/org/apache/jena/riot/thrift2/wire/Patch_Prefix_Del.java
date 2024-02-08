@@ -100,8 +100,6 @@ public class Patch_Prefix_Del implements org.apache.thrift.TBase<Patch_Prefix_De
   }
 
   public Patch_Prefix_Del() {
-    this.prefix = -1;
-
   }
 
   public Patch_Prefix_Del(
@@ -131,8 +129,8 @@ public class Patch_Prefix_Del implements org.apache.thrift.TBase<Patch_Prefix_De
   @Override
   public void clear() {
     this.graphNode = null;
-    this.prefix = -1;
-
+    setPrefixIsSet(false);
+    this.prefix = 0;
   }
 
   @org.apache.thrift.annotation.Nullable

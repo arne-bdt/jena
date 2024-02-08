@@ -92,8 +92,6 @@ public class RDF_VAR implements org.apache.thrift.TBase<RDF_VAR, RDF_VAR._Fields
   }
 
   public RDF_VAR() {
-    this.name = -1;
-
   }
 
   public RDF_VAR(
@@ -119,8 +117,8 @@ public class RDF_VAR implements org.apache.thrift.TBase<RDF_VAR, RDF_VAR._Fields
 
   @Override
   public void clear() {
-    this.name = -1;
-
+    setNameIsSet(false);
+    this.name = 0;
   }
 
   public int getName() {

@@ -108,10 +108,6 @@ public class Patch_Prefix_Add implements org.apache.thrift.TBase<Patch_Prefix_Ad
   }
 
   public Patch_Prefix_Add() {
-    this.prefix = -1;
-
-    this.iriStr = -1;
-
   }
 
   public Patch_Prefix_Add(
@@ -145,10 +141,10 @@ public class Patch_Prefix_Add implements org.apache.thrift.TBase<Patch_Prefix_Ad
   @Override
   public void clear() {
     this.graphNode = null;
-    this.prefix = -1;
-
-    this.iriStr = -1;
-
+    setPrefixIsSet(false);
+    this.prefix = 0;
+    setIriStrIsSet(false);
+    this.iriStr = 0;
   }
 
   @org.apache.thrift.annotation.Nullable

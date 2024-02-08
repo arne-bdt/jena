@@ -23,15 +23,10 @@ import java.util.List;
 public class StringDictionaryWriter {
     private final StringSet stringSet = new StringSet();
 
-    private static final List<String> EMPTY_LIST = List.of();
-
     private int flushStartIndex = 0;
 
     public int getIndex(String string) {
-        if(string == null) {
-            return -1;
-        }
-        var index = stringSet.addAndGetIndex(string);
+        final var index = stringSet.addAndGetIndex(string);
         if(index < 0) {
             return ~index;
         }
@@ -40,7 +35,7 @@ public class StringDictionaryWriter {
 
     public List<String> flush() {
         if(flushStartIndex == stringSet.size()) {
-            return EMPTY_LIST;
+            return null;
         }
         final var result = stringSet.subList(flushStartIndex, stringSet.size());
         flushStartIndex = stringSet.size();

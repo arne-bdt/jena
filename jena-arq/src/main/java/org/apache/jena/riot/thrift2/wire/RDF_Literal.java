@@ -116,12 +116,6 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
   }
 
   public RDF_Literal() {
-    this.lex = -1;
-
-    this.langtag = -1;
-
-    this.datatype = -1;
-
   }
 
   public RDF_Literal(
@@ -152,12 +146,12 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
 
   @Override
   public void clear() {
-    this.lex = -1;
-
-    this.langtag = -1;
-
-    this.datatype = -1;
-
+    setLexIsSet(false);
+    this.lex = 0;
+    setLangtagIsSet(false);
+    this.langtag = 0;
+    setDatatypeIsSet(false);
+    this.datatype = 0;
     this.dtPrefix = null;
   }
 

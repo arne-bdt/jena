@@ -99,8 +99,6 @@ public class Patch_Header implements org.apache.thrift.TBase<Patch_Header, Patch
   }
 
   public Patch_Header() {
-    this.name = -1;
-
   }
 
   public Patch_Header(
@@ -131,8 +129,8 @@ public class Patch_Header implements org.apache.thrift.TBase<Patch_Header, Patch
 
   @Override
   public void clear() {
-    this.name = -1;
-
+    setNameIsSet(false);
+    this.name = 0;
     this.value = null;
   }
 
