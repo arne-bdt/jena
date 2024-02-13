@@ -27,6 +27,7 @@ import org.apache.jena.riot.protobuf.ProtobufRDF;
 import org.apache.jena.riot.protobuf2.Protobuf2RDF;
 import org.apache.jena.riot.thrift.ThriftRDF;
 import org.apache.jena.riot.thrift2.Thrift2RDF;
+import org.apache.jena.riot.thrift3.Thrift3RDF;
 import org.apache.jena.riot.writer.StreamWriterTriX;
 import org.apache.jena.riot.writer.WriterStreamRDFBlocks;
 import org.apache.jena.riot.writer.WriterStreamRDFFlat;
@@ -111,6 +112,13 @@ public class StreamRDFWriter {
         }
     } ;
 
+    private static StreamRDFWriterFactory streamWriterFactoryThrift3 = new StreamRDFWriterFactory() {
+        @Override
+        public StreamRDF create(OutputStream output, RDFFormat format, Context context) {
+            return Thrift3RDF.streamToOutputStream(output) ;
+        }
+    } ;
+
     private static StreamRDFWriterFactory streamWriterFactoryTriX = new StreamRDFWriterFactory() {
         @Override
         public StreamRDF create(OutputStream output, RDFFormat format, Context context) {
@@ -161,6 +169,7 @@ public class StreamRDFWriter {
         register(Lang.RDFPROTO2,    RDFFormat.RDF_PROTO2) ;
         register(Lang.RDFTHRIFT,    RDFFormat.RDF_THRIFT) ;
         register(Lang.RDFTHRIFT2,   RDFFormat.RDF_THRIFT2) ;
+        register(Lang.RDFTHRIFT3,   RDFFormat.RDF_THRIFT3) ;
         register(Lang.TRIX,         RDFFormat.TRIX) ;
         register(Lang.RDFNULL,      RDFFormat.RDFNULL) ;
         register(Lang.RDFRAW,       RDFFormat.RDFRAW) ;
@@ -187,6 +196,7 @@ public class StreamRDFWriter {
         register(RDFFormat.RDF_THRIFT_VALUES,   streamWriterFactoryThrift) ;
 
         register(RDFFormat.RDF_THRIFT2,         streamWriterFactoryThrift2) ;
+        register(RDFFormat.RDF_THRIFT3,         streamWriterFactoryThrift3) ;
 
         register(RDFFormat.TRIX,            streamWriterFactoryTriX) ;
         register(RDFFormat.RDFNULL,         streamWriterFactoryNull) ;

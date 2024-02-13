@@ -52,6 +52,7 @@ public class TestResultSetIO {
                        , RS_TSV
                        , RS_Thrift
                        , RS_Thrift2
+                       , RS_Thrift3
                        , RS_Protobuf
                        , RS_Protobuf2
         } ;

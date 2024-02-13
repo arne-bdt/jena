@@ -74,6 +74,7 @@ public class ResultSetReaderRegistry {
         register(RS_None,     factory) ;
         register(RS_Thrift,   factory) ;
         register(RS_Thrift2,  factory) ;
+        register(RS_Thrift3,  factory) ;
         register(RS_Protobuf, factory) ;
         register(RS_Protobuf2,factory) ;
     }

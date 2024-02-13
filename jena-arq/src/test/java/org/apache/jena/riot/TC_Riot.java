@@ -30,6 +30,7 @@ import org.apache.jena.riot.stream.TS_IO2;
 import org.apache.jena.riot.system.TS_RiotSystem;
 import org.apache.jena.riot.thrift.TS_RDFThrift;
 import org.apache.jena.riot.thrift2.TS_RDFThrift2;
+import org.apache.jena.riot.thrift3.TS_RDFThrift3;
 import org.apache.jena.riot.tokens.TS_Tokens;
 import org.apache.jena.riot.web.TS_RiotWeb;
 import org.apache.jena.riot.writer.TS_RiotWriter;
@@ -53,6 +54,7 @@ import org.junit.runners.Suite;
     , TS_RDFProtobuf2.class
     , TS_RDFThrift.class
     , TS_RDFThrift2.class
+    , TS_RDFThrift3.class
     , TS_RowSetRIOT.class
     // Scripted tests in ARQTestSuite.
 })

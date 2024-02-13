@@ -64,6 +64,7 @@ public class RowSetWriterRegistry {
 
         register(RS_Thrift,     RowSetWriterThrift.factory);
         register(RS_Thrift2,    RowSetWriterThrift2.factory);
+        register(RS_Thrift3,    RowSetWriterThrift3.factory);
         register(RS_Protobuf,   RowSetWriterProtobuf.factory);
         register(RS_Protobuf2,  RowSetWriterProtobuf2.factory);
 

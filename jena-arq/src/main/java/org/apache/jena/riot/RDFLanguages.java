@@ -54,6 +54,7 @@ public class RDFLanguages
     public static final String strLangRDFPROTO2  = "RDF-PROTO2";
     public static final String strLangRDFTHRIFT  = "RDF-THRIFT";
     public static final String strLangRDFTHRIFT2 = "RDF-THRIFT2";
+    public static final String strLangRDFTHRIFT3 = "RDF-THRIFT3";
 
     /* ".owl" is not a formally registered file extension for OWL using RDF/XML. It
      * was mentioned in OWL1 (when there was formally only one syntax for publishing
@@ -163,6 +164,12 @@ public class RDFLanguages
             .addFileExtensions("rt2", "t2rdf")
             .build();
 
+    /** The RDF syntax RDFThrift2, which is like RDFTHRIFT but uses a single set of strings to reduce data */
+    public static final Lang RDFTHRIFT3  = LangBuilder.create(strLangRDFTHRIFT3, contentTypeRDFThrift3)
+            .addAltNames("RDF_THRIFT3", "RDFTHRIFT3", "RDF/THRIFT3", "T3RDF")
+            .addFileExtensions("rt3", "t3rdf")
+            .build();
+
     /** Text */
     public static final Lang TEXT       = LangBuilder.create("text", contentTypeTextPlain)
                                                      .addAltNames("TEXT")
@@ -234,6 +241,7 @@ public class RDFLanguages
         Lang.RDFPROTO2  = RDFLanguages.RDFPROTO2;
         Lang.RDFTHRIFT  = RDFLanguages.RDFTHRIFT;
         Lang.RDFTHRIFT2 = RDFLanguages.RDFTHRIFT2;
+        Lang.RDFTHRIFT3 = RDFLanguages.RDFTHRIFT3;
         Lang.TRIX       = RDFLanguages.TRIX;
         Lang.RDFNULL    = RDFLanguages.RDFNULL;
         Lang.RDFRAW     = RDFLanguages.RDFRAW;

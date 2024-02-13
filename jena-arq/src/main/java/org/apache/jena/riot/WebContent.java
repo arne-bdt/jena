@@ -84,6 +84,8 @@ public class WebContent {
     public static final String contentTypeRDFThrift = "application/rdf+thrift";
 
     public static final String contentTypeRDFThrift2 = "application/rdf+thrift2";
+
+    public static final String contentTypeRDFThrift3 = "application/rdf+thrift3";
     public static final ContentType ctRDFTHRIFT = ContentType.create(contentTypeRDFThrift);
 
     public static final String contentTypeNQuadsAlt1 = "text/n-quads";
@@ -139,6 +141,8 @@ public class WebContent {
     public static final String      contentTypeResultsThrift     = "application/sparql-results+thrift" ;
 
     public static final String      contentTypeResultsThrift2     = "application/sparql-results+thrift2" ;
+
+    public static final String      contentTypeResultsThrift3     = "application/sparql-results+thrift3" ;
 
     public static final ContentType ctResultsThrift              = ContentType.create(contentTypeResultsThrift) ;
 

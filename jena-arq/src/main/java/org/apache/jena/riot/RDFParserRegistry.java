@@ -74,6 +74,7 @@ public class RDFParserRegistry
         registerLangTriples(RDFPROTO2,  RiotParsers.factoryRDFProtobuf2);
         registerLangTriples(RDFTHRIFT,  RiotParsers.factoryRDFThrift);
         registerLangTriples(RDFTHRIFT2, RiotParsers.factoryRDFThrift2);
+        registerLangTriples(RDFTHRIFT3, RiotParsers.factoryRDFThrift3);
 
         registerLangTriples(TRIX,       ReaderTriX.factory);
         registerLangTriples(RDFNULL,    ReaderRDFNULL.factory);
@@ -88,6 +89,7 @@ public class RDFParserRegistry
         registerLangQuads(RDFPROTO2,    RiotParsers.factoryRDFProtobuf2);
         registerLangQuads(RDFTHRIFT,    RiotParsers.factoryRDFThrift);
         registerLangQuads(RDFTHRIFT2,   RiotParsers.factoryRDFThrift2);
+        registerLangQuads(RDFTHRIFT3,   RiotParsers.factoryRDFThrift3);
         registerLangQuads(TRIX,         ReaderTriX.factory);
         registerLangQuads(RDFNULL,      ReaderRDFNULL.factory);
 

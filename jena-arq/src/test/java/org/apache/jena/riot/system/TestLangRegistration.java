@@ -53,9 +53,10 @@ public class TestLangRegistration
         add("TRIG",     x, Lang.TRIG,       false, true) ;
         add("TRIX",     x, Lang.TRIX,       true, true) ;
         add("PB RDF",   x, Lang.RDFPROTO,   true, true) ;
-        add("PB2 RDF",  x, Lang.RDFPROTO,   true, true) ;
+        add("PB2 RDF",  x, Lang.RDFPROTO2,  true, true) ;
         add("TRDF",     x, Lang.RDFTHRIFT,  true, true) ;
         add("T2RDF",    x, Lang.RDFTHRIFT2, true, true) ;
+        add("T3RDF",    x, Lang.RDFTHRIFT3, true, true) ;
         return x ;
     }
 

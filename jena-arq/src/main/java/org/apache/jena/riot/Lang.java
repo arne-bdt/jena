@@ -94,6 +94,9 @@ public class Lang
     /** Variant of RDFTHRIFT, which uses a set of Strings to avoid repeated string values */
     public static Lang RDFTHRIFT2 ;
 
+    /** Variant of RDFTHRIFT, which uses a set of Strings to avoid repeated string values */
+    public static Lang RDFTHRIFT3 ;
+
     /** <a href="https://w3c.github.io/shacl/shacl-compact-syntax/">SHACL Compact Syntax</a> (2020-07-01) */
     public static Lang SHACLC;
 

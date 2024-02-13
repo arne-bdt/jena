@@ -42,16 +42,16 @@ import java.util.List;
 public class TestResultSerialization {
 
     @Param({
-//            "cheeses-0.1.ttl",
-//            "pizza.owl.rdf",
+            "cheeses-0.1.ttl",
+            "pizza.owl.rdf",
             "xxx_CGMES_EQ.xml",
             "xxx_CGMES_SSH.xml",
             "xxx_CGMES_TP.xml",
-//            "RealGrid_EQ.xml",
-//            "RealGrid_SSH.xml",
-//            "RealGrid_TP.xml",
-//            "RealGrid_SV.xml",
-//            "bsbm-1m.nt.gz",
+            "RealGrid_EQ.xml",
+            "RealGrid_SSH.xml",
+            "RealGrid_TP.xml",
+            "RealGrid_SV.xml",
+            "bsbm-1m.nt.gz",
 //            "bsbm-5m.nt.gz",
 //            "bsbm-25m.nt.gz",
     })
@@ -89,13 +89,14 @@ public class TestResultSerialization {
     }
 
     @Param({
-//            "RS_XML",
-//            "RS_JSON",
-//            "RS_CSV",
-//            "RS_TSV",
-//            "RS_Text",
+            "RS_XML",
+            "RS_JSON",
+            "RS_CSV",
+            "RS_TSV",
+            //"RS_Text", --> there is no Reader for RS_Text
             "RS_Thrift",
             "RS_Thrift2",
+            "RS_Thrift3",
             "RS_Protobuf",
             "RS_Protobuf2"
     })
@@ -103,7 +104,7 @@ public class TestResultSerialization {
     @Param({
             ResultSetSerialization.NO_COMPRESSOR,
             ResultSetSerialization.LZ4_FASTEST,
-//            ResultSetSerialization.GZIP
+            ResultSetSerialization.GZIP
     })
     public String param2_Compressor;
 
@@ -131,6 +132,8 @@ public class TestResultSerialization {
                 return ResultSetLang.RS_Thrift;
             case "RS_Thrift2":
                 return ResultSetLang.RS_Thrift2;
+            case "RS_Thrift3":
+                return ResultSetLang.RS_Thrift3;
             case "RS_Protobuf":
                 return ResultSetLang.RS_Protobuf;
             case "RS_Protobuf2":
@@ -144,15 +147,15 @@ public class TestResultSerialization {
     @Ignore
     public void loadSerializeAndDeserialize() {
         for(var file : List.of(
-//                "../testing/cheeses-0.1.ttl",
-//                "../testing/pizza.owl.rdf",
+                "../testing/cheeses-0.1.ttl",
+                "../testing/pizza.owl.rdf",
                 "C:/temp/res_test/xxx_CGMES_EQ.xml",
                 "C:/temp/res_test/xxx_CGMES_SSH.xml",
-                "C:/temp/res_test/xxx_CGMES_TP.xml"
-//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+                "C:/temp/res_test/xxx_CGMES_TP.xml",
+                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml"
 //                "../testing/BSBM/bsbm-1m.nt.gz"
             )) {
             final var g = new GraphMem2Fast();
@@ -161,13 +164,14 @@ public class TestResultSerialization {
             final var resultSet = QueryExecutionFactory.create("SELECT * WHERE { ?s ?p ?o }", ModelFactory.createModelForGraph(g))
                     .execSelect().materialise().rewindable();
             for (var resultSetLang : List.of(
-//                    ResultSetLang.RS_XML,
-//                    ResultSetLang.RS_JSON,
-//                    ResultSetLang.RS_CSV,
-//                    ResultSetLang.RS_TSV,
-//                    ResultSetLang.RS_Text,
+                    ResultSetLang.RS_XML,
+                    ResultSetLang.RS_JSON,
+                    ResultSetLang.RS_CSV,
+                    ResultSetLang.RS_TSV,
+//                    ResultSetLang.RS_Text
                     ResultSetLang.RS_Thrift,
                     ResultSetLang.RS_Thrift2,
+                    ResultSetLang.RS_Thrift3,
                     ResultSetLang.RS_Protobuf,
                     ResultSetLang.RS_Protobuf2
                 )) {
@@ -215,7 +219,6 @@ public class TestResultSerialization {
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
                 .warmupIterations(8)
-                .measurementIterations(20)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

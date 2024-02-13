@@ -40,14 +40,14 @@ public class TestGraphSerialization {
     @Param({
 //            "cheeses-0.1.ttl",
 //            "pizza.owl.rdf",
-            "xxx_CGMES_EQ.xml",
-            "xxx_CGMES_SSH.xml",
-            "xxx_CGMES_TP.xml",
+//            "xxx_CGMES_EQ.xml",
+//            "xxx_CGMES_SSH.xml",
+//            "xxx_CGMES_TP.xml",
 //            "RealGrid_EQ.xml",
 //            "RealGrid_SSH.xml",
 //            "RealGrid_TP.xml",
 //            "RealGrid_SV.xml",
-//            "bsbm-1m.nt.gz",
+            "bsbm-1m.nt.gz",
 //            "bsbm-5m.nt.gz",
 //            "bsbm-25m.nt.gz",
     })
@@ -85,29 +85,30 @@ public class TestGraphSerialization {
     }
 
     @Param({
-//            "TURTLE_PRETTY",
-//            "TURTLE_BLOCKS",
-//            "TURTLE_FLAT",
-//            "TURTLE_LONG",
-//            "NTRIPLES_UTF8",
-//            "NQUADS_UTF8",
-//            "TRIG_PRETTY",
-//            "TRIG_BLOCKS",
-//            "TRIG_FLAT",
-//            "TRIG_LONG",
+            "TURTLE_PRETTY",
+            "TURTLE_BLOCKS",
+            "TURTLE_FLAT",
+            "TURTLE_LONG",
+            "NTRIPLES_UTF8",
+            "NQUADS_UTF8",
+            "TRIG_PRETTY",
+            "TRIG_BLOCKS",
+            "TRIG_FLAT",
+            "TRIG_LONG",
 //            "JSONLD11_PRETTY", --> seems to be broken
-//            "JSONLD11_PLAIN",
-//            "JSONLD11_FLAT",
-//            "RDFXML_PRETTY",
-//            "RDFXML_PLAIN",
-//            "RDFJSON",
-//            "TRIX",
+            "JSONLD11_PLAIN",
+            "JSONLD11_FLAT",
+            "RDFXML_PRETTY",
+            "RDFXML_PLAIN",
+            "RDFJSON",
+            "TRIX",
             "RDF_PROTO",
             "RDF_PROTO2",
 //            "RDF_PROTO_VALUES",
             "RDF_THRIFT",
 //            "RDF_THRIFT_VALUES",
             "RDF_THRIFT2",
+            "RDF_THRIFT3",
     })
     public String param1_RDFFormat;
     @Param({
@@ -172,6 +173,8 @@ public class TestGraphSerialization {
                 return RDFFormat.RDF_THRIFT_VALUES;
             case "RDF_THRIFT2":
                 return RDFFormat.RDF_THRIFT2;
+            case "RDF_THRIFT3":
+                return RDFFormat.RDF_THRIFT3;
             default:
                 throw new IllegalArgumentException("Unknown resultSetLang: " + rdfFormat);
         }
@@ -181,33 +184,38 @@ public class TestGraphSerialization {
     @Ignore
     public void loadSerializeAndDeserialize() {
         for(var file : List.of(
-//                "../testing/cheeses-0.1.ttl",
-//                "../testing/pizza.owl.rdf",
+                "../testing/cheeses-0.1.ttl",
+                "../testing/pizza.owl.rdf",
                 "C:/temp/res_test/xxx_CGMES_EQ.xml",
                 "C:/temp/res_test/xxx_CGMES_SSH.xml",
-                "C:/temp/res_test/xxx_CGMES_TP.xml"
-//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-//                "../testing/BSBM/bsbm-1m.nt.gz"
+                "C:/temp/res_test/xxx_CGMES_TP.xml",
+                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+                "../testing/BSBM/bsbm-1m.nt.gz"
             )) {
             final var fileName = new File(file).getName();
             final var g = new GraphMem2Fast();
             RDFDataMgr.read(g, file);
             for (var rdfFormat : List.of(
-//                    RDFFormat.TURTLE_PRETTY, RDFFormat.TURTLE_BLOCKS, RDFFormat.TURTLE_FLAT, RDFFormat.TURTLE_LONG,
-//                    RDFFormat.NTRIPLES_UTF8, RDFFormat.NQUADS_UTF8,
-//                    RDFFormat.TRIG_PRETTY, RDFFormat.TRIG_BLOCKS, RDFFormat.TRIG_FLAT, RDFFormat.TRIG_LONG,
-//                    /*RDFFormat.JSONLD11_PRETTY, --> seem to be broken*/ RDFFormat.JSONLD11_PLAIN, RDFFormat.JSONLD11_FLAT,
-//                    RDFFormat.RDFXML_PRETTY, RDFFormat.RDFXML_PLAIN, RDFFormat.RDFJSON,
-//                    RDFFormat.TRIX,
+                    RDFFormat.TURTLE_PRETTY, RDFFormat.TURTLE_BLOCKS, RDFFormat.TURTLE_FLAT, RDFFormat.TURTLE_LONG,
+                    RDFFormat.NTRIPLES_UTF8, RDFFormat.NQUADS_UTF8,
+                    RDFFormat.TRIG_PRETTY, RDFFormat.TRIG_BLOCKS, RDFFormat.TRIG_FLAT, RDFFormat.TRIG_LONG,
+                    /*RDFFormat.JSONLD11_PRETTY, --> seem to be broken*/ RDFFormat.JSONLD11_PLAIN, RDFFormat.JSONLD11_FLAT,
+                    RDFFormat.RDFXML_PRETTY, RDFFormat.RDFXML_PLAIN, RDFFormat.RDFJSON,
+                    RDFFormat.TRIX,
                     RDFFormat.RDF_PROTO, //RDFFormat.RDF_PROTO_VALUES,
                     RDFFormat.RDF_PROTO2,
                     RDFFormat.RDF_THRIFT, //RDFFormat.RDF_THRIFT_VALUES,
-                    RDFFormat.RDF_THRIFT2)) {
+                    RDFFormat.RDF_THRIFT2,
+                    RDFFormat.RDF_THRIFT3)) {
                 for (var compressor : List.of(GraphSerialization.NO_COMPRESSOR, GraphSerialization.LZ4_FASTEST, GraphSerialization.GZIP)) {
                     final var compressedGraph = GraphSerialization.serialize(g, rdfFormat, compressor);
+                    for(var i=0; i<10; i++) {
+                        final var deserializedGraph = GraphSerialization.deserialize(compressedGraph, false);
+                        Assert.assertEquals(g.size(), deserializedGraph.size());
+                    }
                     //print: "Size of output stream in format %resultSetLang% and with compressor %compressor% is xxx.xx MB.
                     System.out.printf("Size of %-20s in format %-20s and with compressor %-12s is %7.2f MB.\n", fileName, rdfFormat.toString(), compressor, compressedGraph.bytes().length / 1024.0 / 1024.0);
                 }
@@ -247,7 +255,6 @@ public class TestGraphSerialization {
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
                 .warmupIterations(8)
-                .measurementIterations(20)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

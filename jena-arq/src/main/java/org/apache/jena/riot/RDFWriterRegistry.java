@@ -29,6 +29,8 @@ import org.apache.jena.riot.thrift.WriterDatasetThrift;
 import org.apache.jena.riot.thrift.WriterGraphThrift;
 import org.apache.jena.riot.thrift2.WriterDatasetThrift2;
 import org.apache.jena.riot.thrift2.WriterGraphThrift2;
+import org.apache.jena.riot.thrift3.WriterDatasetThrift3;
+import org.apache.jena.riot.thrift3.WriterGraphThrift3;
 import org.apache.jena.riot.writer.*;
 import org.apache.jena.sys.JenaSystem;
 
@@ -131,8 +133,10 @@ public class RDFWriterRegistry
         WriterDatasetRIOTFactory wdsProto2Factory   = syntaxForm -> new WriterDatasetProtobuf2();
         WriterGraphRIOTFactory wgThriftFactory      = syntaxForm -> new WriterGraphThrift(syntaxForm);
         WriterGraphRIOTFactory wgThrift2Factory     = syntaxForm -> new WriterGraphThrift2();
+        WriterGraphRIOTFactory wgThrift3Factory     = syntaxForm -> new WriterGraphThrift3();
         WriterDatasetRIOTFactory wdsThriftFactory   = syntaxForm -> new WriterDatasetThrift(syntaxForm);
         WriterDatasetRIOTFactory wdsThrift2Factory  = syntaxForm -> new WriterDatasetThrift2();
+        WriterDatasetRIOTFactory wdsThrift3Factory  = syntaxForm -> new WriterDatasetThrift3();
         WriterGraphRIOTFactory wgTriXFactory        = syntaxForm -> new WriterTriX();
         WriterDatasetRIOTFactory wdsTriXFactory     = syntaxForm -> new WriterTriX() ;
 
@@ -162,6 +166,7 @@ public class RDFWriterRegistry
         register(Lang.RDFPROTO2,   RDFFormat.RDF_PROTO2) ;
         register(Lang.RDFTHRIFT,   RDFFormat.RDF_THRIFT) ;
         register(Lang.RDFTHRIFT2,  RDFFormat.RDF_THRIFT2) ;
+        register(Lang.RDFTHRIFT3,  RDFFormat.RDF_THRIFT3) ;
 
         register(Lang.TRIX,        RDFFormat.TRIX) ;
 
@@ -218,6 +223,7 @@ public class RDFWriterRegistry
         register(RDFFormat.RDF_THRIFT,          wgThriftFactory) ;
         register(RDFFormat.RDF_THRIFT_VALUES,   wgThriftFactory) ;
         register(RDFFormat.RDF_THRIFT2,         wgThrift2Factory) ;
+        register(RDFFormat.RDF_THRIFT3,         wgThrift3Factory) ;
 
         register(RDFFormat.TRIX, wgTriXFactory) ;
 
@@ -238,6 +244,7 @@ public class RDFWriterRegistry
 
         register(RDFFormat.RDF_PROTO2,          wdsProto2Factory) ;
         register(RDFFormat.RDF_THRIFT2,         wdsThrift2Factory) ;
+        register(RDFFormat.RDF_THRIFT3,         wdsThrift3Factory) ;
 
         register(RDFFormat.TRIX, wdsTriXFactory) ;
     }

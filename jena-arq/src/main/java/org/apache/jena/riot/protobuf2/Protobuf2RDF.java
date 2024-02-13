@@ -102,9 +102,9 @@ public class Protobuf2RDF {
         try {
             while(true) {
                 RDF_StreamRow x = RDF_StreamRow.parseDelimitedFrom(input);
-                boolean b = PBuf2RDF.visit(x, action);
-                if ( !b )
+                if(!PBuf2RDF.visit(x, action)) {
                     return;
+                }
             }
         } catch(IOException ex) { IO.exception(ex); }
     }

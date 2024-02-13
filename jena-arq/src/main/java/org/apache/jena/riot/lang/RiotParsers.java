@@ -35,6 +35,8 @@ import org.apache.jena.riot.thrift.RiotThriftException;
 import org.apache.jena.riot.thrift.ThriftRDF;
 import org.apache.jena.riot.thrift2.RiotThrift2Exception;
 import org.apache.jena.riot.thrift2.Thrift2RDF;
+import org.apache.jena.riot.thrift3.RiotThrift3Exception;
+import org.apache.jena.riot.thrift3.Thrift3RDF;
 import org.apache.jena.riot.tokens.Tokenizer;
 import org.apache.jena.riot.tokens.TokenizerText;
 import org.apache.jena.sparql.util.Context;
@@ -71,6 +73,9 @@ public class RiotParsers {
 
     public static ReaderRIOTFactory factoryRDFThrift2 =
             (Lang language, ParserProfile profile) -> new ReaderRDFThrift2(profile);
+
+    public static ReaderRIOTFactory factoryRDFThrift3 =
+            (Lang language, ParserProfile profile) -> new ReaderRDFThrift3(profile);
 
     public static ReaderRIOTFactory factoryRDFProtobuf =
             (Lang language, ParserProfile profile) -> new ReaderRDFProtobuf(profile);
@@ -321,6 +326,29 @@ public class RiotParsers {
         @Override
         public void read(Reader reader, String baseURI, ContentType ct, StreamRDF output, Context context) {
             throw new RiotException("RDF Thrift2 : Reading binary data from a java.io.reader is not supported. Please use an InputStream");
+        }
+    }
+
+    private static class ReaderRDFThrift3 implements ReaderRIOT {
+        private final ParserProfile profile;
+        public ReaderRDFThrift3(ParserProfile profile) { this.profile = profile; }
+
+        @Override
+        public void read(InputStream in, String baseURI, ContentType ct, StreamRDF output, Context context) {
+            try {
+                Thrift3RDF.inputStreamToStream(in, output);
+            } catch (RiotThrift3Exception ex) {
+                if ( profile != null && profile.getErrorHandler() != null )
+                    profile.getErrorHandler().error(ex.getMessage(), -1, -1);
+                else
+                    ErrorHandlerFactory.errorHandlerStd.error(ex.getMessage(), -1 , -1);
+                throw ex;
+            }
+        }
+
+        @Override
+        public void read(Reader reader, String baseURI, ContentType ct, StreamRDF output, Context context) {
+            throw new RiotException("RDF Thrift3 : Reading binary data from a java.io.reader is not supported. Please use an InputStream");
         }
     }
 }

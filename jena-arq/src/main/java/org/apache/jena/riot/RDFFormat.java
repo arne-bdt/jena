@@ -231,6 +231,16 @@ public class RDFFormat {
     public static final RDFFormat RDF_THRIFT2            = new RDFFormat(Lang.RDFTHRIFT2) ;
 
     /**
+     * RDF Thrift2 output. This format is faithful representation of RDF written
+     * and it is suitable for database dumps. It does not encode numeric
+     * literals as values (see {@link #RDF_THRIFT_VALUES}).
+     *
+     * @see #RDF_THRIFT_VALUES
+     */
+
+    public static final RDFFormat RDF_THRIFT3            = new RDFFormat(Lang.RDFTHRIFT3) ;
+
+    /**
      * The "null" output format (a sink that prints nothing, usually quite
      * efficiently)
      */

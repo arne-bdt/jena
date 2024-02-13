@@ -1,0 +1,26 @@
+##!/bin/bash
+## Licensed under the terms of http://www.apache.org/licenses/LICENSE-2.0
+
+if [ "$#" != 1 ]
+then
+    echo "Usage: $(basename $0) FILE" 2>&1
+    exit 1
+fi
+
+# Find the namespace
+PKG=../../src/main/java/org/apache/jena/riot/thrift3/wire
+rm -f "$PKG"/*.java
+
+## Avoid needing a dependency javax.annotations
+## generated_annotations=[undated|suppress]:
+##                      undated: suppress the date at @Generated annotations
+##                      suppress: suppress @Generated annotations entirely
+
+./thrift.exe -r -out ../../src/main/java -gen 'java:generated_annotations=suppress' "$@"
+
+for f in "$PKG"/*.java
+do
+    perl -i.bak -p -e 's/^\@SuppressWarnings.*$/\@SuppressWarnings("all")/' $f
+    rm -f $f.bak
+done
+
