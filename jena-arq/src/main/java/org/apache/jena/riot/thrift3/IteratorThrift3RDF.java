@@ -24,6 +24,9 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TTransportException;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  *  Iterator over a Thrift-encoded RDF stream.
  */
@@ -31,7 +34,7 @@ public class IteratorThrift3RDF extends IteratorStreamRowRDF {
 
     private final PrefixMap pmap = PrefixMapFactory.create() ;
     private final StreamRDFCollectOne collector = new StreamRDFCollectOne(pmap) ;
-    private final StringDictionaryReader readerDict = new StringDictionaryReader();
+    private final List<String> readerDict = new ArrayList<>();
     private final Thrift2StreamRDF converter = new Thrift2StreamRDF(pmap, collector, readerDict) ;
     
     private final RDF_StreamRow row = new RDF_StreamRow() ;

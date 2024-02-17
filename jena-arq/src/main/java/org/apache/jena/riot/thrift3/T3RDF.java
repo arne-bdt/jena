@@ -35,6 +35,7 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TTransport;
 
 import java.io.*;
+import java.util.List;
 
 /** Support operations for RDF Thrift */
 public class T3RDF {
@@ -129,8 +130,11 @@ public class T3RDF {
 
     static { tUNDEF.setUndefined(new RDF_UNDEF()) ; }
 
-    public static void visit(RDF_StreamRow row, VisitorStreamRowT3RDF visitor, StringDictionaryReader readerDict) {
-        readerDict.addAll(row.getStrings());
+    public static void visit(RDF_StreamRow row, VisitorStreamRowT3RDF visitor, List<String> readerDict) {
+        final var strings = row.getStrings();
+        if(strings != null && !strings.isEmpty()) {
+            readerDict.addAll(strings);
+        }
         final var r = row.getRow();
         if ( r.isSetTriple() ) {
             visitor.visit(r.getTriple()) ;

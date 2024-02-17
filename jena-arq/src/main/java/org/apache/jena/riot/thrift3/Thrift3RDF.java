@@ -35,6 +35,7 @@ import org.apache.thrift.transport.TTransportException;
 import java.io.BufferedOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -116,7 +117,7 @@ public class Thrift3RDF {
      */
     public static void protocolToStream(TProtocol protocol, StreamRDF dest) {
         final PrefixMap pmap = PrefixMapFactory.create() ;
-        final var readerDict = new StringDictionaryReader();
+        final var readerDict = new ArrayList<String>();
         final Thrift2StreamRDF s = new Thrift2StreamRDF(pmap, dest, readerDict) ;
 
         dest.start() ;
@@ -154,7 +155,7 @@ public class Thrift3RDF {
      */
     public static void dump(OutputStream out, InputStream in) {
         IndentedWriter iOut = new IndentedWriter(out) ;
-        final var readerDict = new StringDictionaryReader();
+        final var readerDict = new ArrayList<String>();
         StreamRowT3RDFPrinter printer = new StreamRowT3RDFPrinter(iOut, readerDict) ;
         TProtocol protocol = T3RDF.protocol(in) ;
         apply(protocol, z -> T3RDF.visit(z, printer, readerDict));

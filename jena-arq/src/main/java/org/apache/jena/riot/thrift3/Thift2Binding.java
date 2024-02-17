@@ -19,7 +19,10 @@
 package org.apache.jena.riot.thrift3;
 
 import org.apache.jena.atlas.iterator.IteratorSlotted;
+import org.apache.jena.atlas.lib.Cache;
+import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.graph.Node;
+import org.apache.jena.riot.system.FactoryRDFCaching;
 import org.apache.jena.riot.thrift3.wire.RDF_DataTuple;
 import org.apache.jena.riot.thrift3.wire.RDF_Term;
 import org.apache.jena.riot.thrift3.wire.RDF_VAR;
@@ -43,13 +46,14 @@ public class Thift2Binding extends IteratorSlotted<Binding> implements Iterator<
     private List<Var> vars = new ArrayList<>() ;
     private List<String> varNames = new ArrayList<>() ;
     private final RDF_DataTuple row = new RDF_DataTuple() ;
-    private InputStream in ;
     private TProtocol protocol ;
     private BindingBuilder b = Binding.builder() ;
-    private final StringDictionaryReader readerDict = new StringDictionaryReader();
+    private final List<String> readerDict = new ArrayList<>();
+
+    private final Cache<String, Node> uriCache =
+            CacheFactory.createSimpleFastCache(FactoryRDFCaching.DftNodeCacheSize);
 
     public Thift2Binding(InputStream in) {
-        this.in = in ;
         try {
             TIOStreamTransport transport = new TIOStreamTransport(in) ;
             this.protocol = T3RDF.protocol(transport) ;
@@ -58,7 +62,6 @@ public class Thift2Binding extends IteratorSlotted<Binding> implements Iterator<
     }
 
     public Thift2Binding(TProtocol out) {
-        this.in = null ;
         this.protocol = out ;
         readVars() ;
     }
@@ -67,7 +70,12 @@ public class Thift2Binding extends IteratorSlotted<Binding> implements Iterator<
         RDF_VarTuple vrow = new RDF_VarTuple() ;
         try { vrow.read(protocol) ; }
         catch (TException e) { T3RDF.exception(e) ; }
-        readerDict.addAll(vrow.getStrings());
+
+        final var strings = vrow.getStrings();
+        if(strings != null && !strings.isEmpty()) {
+            readerDict.addAll(strings);
+        }
+
         if ( vrow.getVars() != null ) {
             // It can be null if there are no variables and both the encoder
             // and the allocation above used RDF_VarTuple().
@@ -93,16 +101,18 @@ public class Thift2Binding extends IteratorSlotted<Binding> implements Iterator<
         if ( row.getRowSize() != vars.size() )
             throw new RiotThrift3Exception(String.format("Vars %d : Row length : %d", vars.size(), row.getRowSize())) ;
 
-        readerDict.addAll(row.getStrings());
+        final var strings = row.getStrings();
+        if(strings != null && !strings.isEmpty()) {
+            readerDict.addAll(strings);
+        }
 
         for ( int i = 0 ;  i < vars.size() ; i++ ) {
             // Old school
-            Var v = vars.get(i) ;
             RDF_Term rt = row.getRow().get(i) ;
             if ( rt.isSetUndefined() )
                 continue ;
-            Node n = Thrift3Convert.convert(rt, readerDict) ;
-            b.add(v, n) ;
+
+            b.add(vars.get(i), Thrift3Convert.convert(uriCache, rt, readerDict) ) ;
         }
         row.clear() ;
         return b.build() ;

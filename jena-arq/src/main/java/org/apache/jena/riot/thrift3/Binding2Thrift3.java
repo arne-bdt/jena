@@ -39,19 +39,28 @@ import java.util.Iterator;
 public class Binding2Thrift3 implements AutoCloseable {
     private final RDF_DataTuple row = new RDF_DataTuple() ;
     private final Collection<Var> vars ;
-    private final OutputStream out ;
     private final TProtocol protocol ;
+
+    private final RDF_Term[] terms;
 
     private final StringDictionaryWriter writerDict = new StringDictionaryWriter() ;
 
     public Binding2Thrift3(OutputStream out, Collection<Var> vars) {
-        this.out = out ;
         this.vars = vars ;
+        this.terms = initTerms(vars.size());
         try {
             TIOStreamTransport transport = new TIOStreamTransport(out) ;
             this.protocol = T3RDF.protocol(transport) ;
         } catch (TTransportException ex) { throw new RiotThrift3Exception(ex); }
         varsRow() ;
+    }
+
+    private static RDF_Term[] initTerms(int size) {
+        RDF_Term[] terms = new RDF_Term[size];
+        for(int i = 0; i < size; i++) {
+            terms[i] = new RDF_Term();
+        }
+        return terms;
     }
 
     private void varsRow() {
@@ -70,8 +79,8 @@ public class Binding2Thrift3 implements AutoCloseable {
 
     public Binding2Thrift3(TProtocol out, Collection<Var> vars) {
         this.vars = vars ;
-        this.out = null ;
         this.protocol = out ;
+        this.terms = initTerms(vars.size());
         varsRow() ;
     }
 
@@ -79,17 +88,27 @@ public class Binding2Thrift3 implements AutoCloseable {
         Iterator<Var> vIter = (vars == null ? null : vars.iterator()) ;
         if ( vIter == null )
             vIter = binding.vars() ;
+
+        row.clear() ;
+        for(var t: terms) {
+            t.clear();
+        }
+
+        final int[] i = {0};
         vIter.forEachRemaining(v -> {
-            Node n = binding.get(v) ;
-            RDF_Term rt = ( n == null ) ? T3RDF.tUNDEF : Thrift3Convert.convert(n, writerDict) ;
-            row.addToRow(rt) ;
+            final Node n = binding.get(v) ;
+            if(n != null) {
+                Thrift3Convert.toThrift(n, terms[i[0]], writerDict);
+                row.addToRow(terms[i[0]++]);
+            } else {
+                row.addToRow(T3RDF.tUNDEF);
+            }
         }) ;
         if(writerDict.hasStringsToFlush()) {
             row.setStrings(writerDict.flush()) ;
         }
         try { row.write(protocol) ; }
         catch (TException e) { T3RDF.exception(e) ; }
-        row.clear() ;
     }
 
     @Override

@@ -38,6 +38,7 @@ import org.apache.thrift.TSerializer;
 import org.apache.thrift.protocol.TCompactProtocol;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import static org.apache.jena.riot.thrift3.T3RDF.ANY;
 
@@ -97,7 +98,7 @@ public class Thrift3Convert
             String lang = node.getLiteralLanguage();
 
             // General encoding.
-            RDF_Literal literal = new RDF_Literal(writerDict.getIndex(lex));
+            RDF_Literal literal = new RDF_Literal(lex);
             if ( node.getLiteralDatatype().equals(XSDDatatype.XSDstring) ||
                     node.getLiteralDatatype().equals(RDFLangString.rdfLangString) ) {
                 dt = null;
@@ -149,17 +150,17 @@ public class Thrift3Convert
     private static final PrefixMap emptyPrefixMap = PrefixMapFactory.emptyPrefixMap();
 
     /** Build a {@link Node} from an {@link RDF_Term}. */
-    public static Node convert(RDF_Term term, StringDictionaryReader dict) {
+    public static Node convert(RDF_Term term, List<String> dict) {
         return convert(null, term, null, dict);
     }
 
     /** Build a {@link Node} from an {@link RDF_Term}. */
-    public static Node convert(Cache<String, Node> uriCache, RDF_Term term, StringDictionaryReader dict) {
+    public static Node convert(Cache<String, Node> uriCache, RDF_Term term, List<String> dict) {
         return convert(uriCache, term, null, dict);
     }
 
     /** Build a {@link Node} from an {@link RDF_Term}. */
-    public static Node convert(RDF_Term term, PrefixMap pmap, StringDictionaryReader dict) {
+    public static Node convert(RDF_Term term, PrefixMap pmap, List<String> dict) {
         return convert(null, term, pmap, dict);
     }
 
@@ -167,7 +168,7 @@ public class Thrift3Convert
      * Build a {@link Node} from an {@link RDF_Term} using a prefix map which must agree
      * with the map used to create the {@code RDF_Term} in the first place.
      */
-    public static Node convert(Cache<String, Node> uriCache, RDF_Term term, PrefixMap pmap, StringDictionaryReader dict) {
+    public static Node convert(Cache<String, Node> uriCache, RDF_Term term, PrefixMap pmap, List<String> dict) {
         if ( term.isSetPrefixName() ) {
             String x = expand(term.getPrefixName(), pmap, dict);
             if ( x != null )
@@ -185,7 +186,7 @@ public class Thrift3Convert
 
         if ( term.isSetLiteral() ) {
             RDF_Literal lit = term.getLiteral();
-            String lex = dict.get(lit.getLex());
+            String lex = lit.getLex();
             String dtString = null;
             if ( lit.isSetDatatype() )
                 dtString = dict.get(lit.getDatatype());
@@ -226,7 +227,7 @@ public class Thrift3Convert
         return RiotLib.createIRIorBNode(uriStr);
     }
 
-    private static String expand(RDF_PrefixName prefixName, PrefixMap pmap, StringDictionaryReader dict) {
+    private static String expand(RDF_PrefixName prefixName, PrefixMap pmap, List<String> dict) {
         if ( pmap == null )
             return null;
 
@@ -261,15 +262,15 @@ public class Thrift3Convert
         return new RDF_PrefixName(dictionaryWriter.getIndex(p.getLeft()), dictionaryWriter.getIndex(p.getRight()));
     }
 
-    public static Triple convert(RDF_Triple triple, StringDictionaryReader dict) {
+    public static Triple convert(RDF_Triple triple, List<String> dict) {
         return convert(triple, null, dict);
     }
 
-    public static Triple convert(RDF_Triple rt, PrefixMap pmap, StringDictionaryReader dict) {
+    public static Triple convert(RDF_Triple rt, PrefixMap pmap, List<String> dict) {
         return convert(null, rt, pmap, dict);
     }
 
-    public static Triple convert(Cache<String, Node> uriCache, RDF_Triple rt, PrefixMap pmap, StringDictionaryReader dict) {
+    public static Triple convert(Cache<String, Node> uriCache, RDF_Triple rt, PrefixMap pmap, List<String> dict) {
         Node s = convert(uriCache, rt.getS(), pmap, dict);
         Node p = convert(uriCache, rt.getP(), pmap, dict);
         Node o = convert(uriCache, rt.getO(), pmap, dict);
@@ -291,15 +292,15 @@ public class Thrift3Convert
         return t;
     }
 
-    public static Quad convert(RDF_Quad quad, StringDictionaryReader dict) {
+    public static Quad convert(RDF_Quad quad, List<String> dict) {
         return convert(quad, null, dict);
     }
 
-    public static Quad convert(RDF_Quad rq, PrefixMap pmap, StringDictionaryReader dict) {
+    public static Quad convert(RDF_Quad rq, PrefixMap pmap, List<String> dict) {
         return convert(null, rq, pmap, dict);
     }
 
-    public static Quad convert(Cache<String, Node> uriCache, RDF_Quad rq, PrefixMap pmap, StringDictionaryReader dict) {
+    public static Quad convert(Cache<String, Node> uriCache, RDF_Quad rq, PrefixMap pmap, List<String> dict) {
         Node g = (rq.isSetG() ? convert(uriCache, rq.getG(), pmap, dict) : null );
         Node s = convert(uriCache, rq.getS(), pmap, dict);
         Node p = convert(uriCache, rq.getP(), pmap, dict);

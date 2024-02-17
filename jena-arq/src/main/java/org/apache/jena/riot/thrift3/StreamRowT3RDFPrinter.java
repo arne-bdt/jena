@@ -24,15 +24,17 @@ import org.apache.jena.riot.thrift3.wire.RDF_Quad;
 import org.apache.jena.riot.thrift3.wire.RDF_Term;
 import org.apache.jena.riot.thrift3.wire.RDF_Triple;
 
+import java.util.List;
+
 /** Print (in debug format) an rdf-thrift stream */ 
 public class StreamRowT3RDFPrinter implements VisitorStreamRowT3RDF
 {
     private static final boolean ONELINE = false ;
     private final IndentedWriter out ;
 
-    private final StringDictionaryReader readerDict;
+    private final List<String> readerDict;
 
-    public StreamRowT3RDFPrinter(IndentedWriter out, StringDictionaryReader readerDict) { this.out = out ;
+    public StreamRowT3RDFPrinter(IndentedWriter out, List<String> readerDict) { this.out = out ;
         this.readerDict = readerDict;
     }
     
@@ -84,11 +86,7 @@ public class StreamRowT3RDFPrinter implements VisitorStreamRowT3RDF
         if ( ! ONELINE )
             out.println() ;
     }
-    
-    private void startRow() { }
-    
-    private void finishRow() { }
-    
+
     private void print(RDF_Term term) {
         out.print(term.toString()) ;
     }

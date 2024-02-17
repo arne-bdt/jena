@@ -30,6 +30,8 @@ import org.apache.jena.riot.thrift3.wire.RDF_Quad;
 import org.apache.jena.riot.thrift3.wire.RDF_Triple;
 import org.apache.jena.sparql.core.Quad;
 
+import java.util.List;
+
 /** Thrift RDF (wire format) to RDF terms (Jena java objects)
  *
  * @see StreamRDF2Thrift3 for the reverse process.
@@ -40,11 +42,11 @@ public class Thrift2StreamRDF implements VisitorStreamRowT3RDF {
     private final StreamRDF dest;
     private final PrefixMap pmap;
     private final Cache<String, Node> uriCache =
-            CacheFactory.createSimpleCache(FactoryRDFCaching.DftNodeCacheSize);
+            CacheFactory.createSimpleFastCache(FactoryRDFCaching.DftNodeCacheSize);
 
-    private final StringDictionaryReader readerDict;
+    private final List<String> readerDict;
 
-    public Thrift2StreamRDF(PrefixMap pmap, StreamRDF stream, StringDictionaryReader readerDict) {
+    public Thrift2StreamRDF(PrefixMap pmap, StreamRDF stream, List<String> readerDict) {
         this.pmap = pmap;
         this.dest = stream;
         this.readerDict = readerDict;

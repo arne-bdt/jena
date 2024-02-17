@@ -19,15 +19,14 @@
 package org.apache.jena.mem.graph;
 
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
-import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.graph.helper.ResultSetSerialization;
+import org.apache.jena.mem.graph.helper.TripleReaderReadingCGMES_2_4_15_WithTypedLiterals;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.query.ResultSetRewindable;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.resultset.ResultSetLang;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -42,8 +41,8 @@ import java.util.List;
 public class TestResultSerialization {
 
     @Param({
-            "cheeses-0.1.ttl",
-            "pizza.owl.rdf",
+//            "cheeses-0.1.ttl",
+//            "pizza.owl.rdf",
             "xxx_CGMES_EQ.xml",
             "xxx_CGMES_SSH.xml",
             "xxx_CGMES_TP.xml",
@@ -89,22 +88,22 @@ public class TestResultSerialization {
     }
 
     @Param({
-            "RS_XML",
-            "RS_JSON",
-            "RS_CSV",
-            "RS_TSV",
+//            "RS_XML",
+//            "RS_JSON",
+//            "RS_CSV",
+//            "RS_TSV",
             //"RS_Text", --> there is no Reader for RS_Text
             "RS_Thrift",
-            "RS_Thrift2",
+//            "RS_Thrift2",
             "RS_Thrift3",
-            "RS_Protobuf",
-            "RS_Protobuf2"
+//            "RS_Protobuf",
+//            "RS_Protobuf2"
     })
     public String param1_RDFFormat;
     @Param({
             ResultSetSerialization.NO_COMPRESSOR,
-            ResultSetSerialization.LZ4_FASTEST,
-            ResultSetSerialization.GZIP
+//            ResultSetSerialization.LZ4_FASTEST,
+//            ResultSetSerialization.GZIP
     })
     public String param2_Compressor;
 
@@ -160,7 +159,7 @@ public class TestResultSerialization {
             )) {
             final var g = new GraphMem2Fast();
             final var fileName = new File(file).getName();
-            RDFDataMgr.read(g, file);
+            TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read(file, g);
             final var resultSet = QueryExecutionFactory.create("SELECT * WHERE { ?s ?p ?o }", ModelFactory.createModelForGraph(g))
                     .execSelect().materialise().rewindable();
             for (var resultSetLang : List.of(
@@ -175,8 +174,11 @@ public class TestResultSerialization {
                     ResultSetLang.RS_Protobuf,
                     ResultSetLang.RS_Protobuf2
                 )) {
+                int i=0;
                 for (var compressor : List.of(ResultSetSerialization.NO_COMPRESSOR, ResultSetSerialization.LZ4_FASTEST, ResultSetSerialization.GZIP)) {
                     final var compressedGraph = ResultSetSerialization.serialize(resultSet, resultSetLang, compressor);
+                    var copy = ResultSetSerialization.deserialize(compressedGraph).rewindable();
+                    Assert.assertEquals(resultSet.size(), copy.size());
                     //print: "Size of output stream in format %resultSetLang% and with compressor %compressor% is xxx.xx MB.
                     System.out.printf("Size of %-20s in ResultSetLang %-30s and with compressor %-12s is %7.2f MB.  ResultSet::size: %8d\n", fileName, resultSetLang.toString(), compressor, compressedGraph.bytes().length / 1024.0 / 1024.0, resultSet.size());
                     resultSet.reset();
@@ -187,25 +189,26 @@ public class TestResultSerialization {
 
     @Benchmark
     public ResultSetSerialization.SerializedData serialize() {
-        var result =  ResultSetSerialization.serialize(resultSetToSerialize, resultSetLang, param2_Compressor);
         resultSetToSerialize.reset();
-        return result;
+        return  ResultSetSerialization.serialize(resultSetToSerialize, resultSetLang, param2_Compressor);
     }
 
     @Benchmark
     public ResultSet deserialize() {
-        return ResultSetSerialization.deserialize(serializedResultSet);
+        return ResultSetSerialization.deserialize(serializedResultSet).materialise();
     }
 
-//    @Benchmark
+    @Benchmark
     public ResultSet serializeAndDeserialize() {
-        return ResultSetSerialization.deserialize(ResultSetSerialization.serialize(resultSetToSerialize, resultSetLang, param2_Compressor));
+        resultSetToSerialize.reset();
+        return ResultSetSerialization.deserialize(ResultSetSerialization.serialize(resultSetToSerialize, resultSetLang, param2_Compressor)).materialise();
     }
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
         var g = new GraphMem2Fast();
-        Releases.current.readTriples(getFilePath(param0_GraphUri)).forEach(g::add);
+        TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read(getFilePath(param0_GraphUri), g);
+
         this.resultSetToSerialize = QueryExecutionFactory.create("SELECT * WHERE { ?s ?p ?o }", ModelFactory.createModelForGraph(g))
                 .execSelect().materialise().rewindable();
 

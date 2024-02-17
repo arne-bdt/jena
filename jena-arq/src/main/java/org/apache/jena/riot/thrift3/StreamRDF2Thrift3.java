@@ -77,6 +77,13 @@ public class StreamRDF2Thrift3 implements StreamRDF, AutoCloseable
     }
 
     private void doTriple(Node subject, Node predicate, Node object) {
+        tStreamRow.clear();
+        tStreamUnion.clear();
+        ttriple.clear();
+        tsubject.clear();
+        tpredicate.clear();
+        tobject.clear();
+
         Thrift3Convert.toThrift(subject, pmap, tsubject, writerDict);
         Thrift3Convert.toThrift(predicate, pmap, tpredicate, writerDict);
         Thrift3Convert.toThrift(object, pmap, tobject, writerDict);
@@ -91,14 +98,6 @@ public class StreamRDF2Thrift3 implements StreamRDF, AutoCloseable
         }
         try { tStreamRow.write(protocol); }
         catch (TException e) { T3RDF.exception(e); }
-        finally {
-            tStreamRow.clear();
-            tStreamUnion.clear();
-            ttriple.clear();
-            tsubject.clear();
-            tpredicate.clear();
-            tobject.clear();
-        }
     }
 
     @Override
@@ -107,6 +106,14 @@ public class StreamRDF2Thrift3 implements StreamRDF, AutoCloseable
             doTriple(quad.getSubject(), quad.getPredicate(), quad.getObject());
             return;
         }
+
+        tStreamRow.clear();
+        tStreamUnion.clear();
+        tquad.clear();
+        tgraph.clear();
+        tsubject.clear();
+        tpredicate.clear();
+        tobject.clear();
 
         Thrift3Convert.toThrift(quad.getGraph(), pmap, tgraph, writerDict);
         Thrift3Convert.toThrift(quad.getSubject(), pmap, tsubject, writerDict);
@@ -125,15 +132,6 @@ public class StreamRDF2Thrift3 implements StreamRDF, AutoCloseable
 
         try { tStreamRow.write(protocol); }
         catch (TException e) { T3RDF.exception(e); }
-        finally {
-            tStreamRow.clear();
-            tStreamUnion.clear();
-            tquad.clear();
-            tgraph.clear();
-            tsubject.clear();
-            tpredicate.clear();
-            tobject.clear();
-        }
     }
 
     @Override
@@ -147,6 +145,11 @@ public class StreamRDF2Thrift3 implements StreamRDF, AutoCloseable
         catch ( RiotException ex) {
             Log.warn(this, "Prefix mapping error", ex);
         }
+
+        tStreamRow.clear();
+        tStreamUnion.clear();
+        tprefix.clear();
+
         tprefix.setPrefix(writerDict.getIndex(prefix));
         tprefix.setUri(writerDict.getIndex(iri));
         tStreamUnion.setPrefixDecl(tprefix);
@@ -156,11 +159,6 @@ public class StreamRDF2Thrift3 implements StreamRDF, AutoCloseable
         }
         try { tStreamRow.write(protocol); }
         catch (TException e) { T3RDF.exception(e); }
-        finally {
-            tStreamRow.clear();
-            tStreamUnion.clear();
-            tprefix.clear();
-        }
     }
 
     @Override

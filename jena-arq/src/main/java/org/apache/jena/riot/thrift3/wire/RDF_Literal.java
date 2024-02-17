@@ -10,7 +10,7 @@ package org.apache.jena.riot.thrift3.wire;
 public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Literal._Fields>, java.io.Serializable, Cloneable, Comparable<RDF_Literal> {
   private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("RDF_Literal");
 
-  private static final org.apache.thrift.protocol.TField LEX_FIELD_DESC = new org.apache.thrift.protocol.TField("lex", org.apache.thrift.protocol.TType.I32, (short)1);
+  private static final org.apache.thrift.protocol.TField LEX_FIELD_DESC = new org.apache.thrift.protocol.TField("lex", org.apache.thrift.protocol.TType.STRING, (short)1);
   private static final org.apache.thrift.protocol.TField LANGTAG_FIELD_DESC = new org.apache.thrift.protocol.TField("langtag", org.apache.thrift.protocol.TType.I32, (short)2);
   private static final org.apache.thrift.protocol.TField DATATYPE_FIELD_DESC = new org.apache.thrift.protocol.TField("datatype", org.apache.thrift.protocol.TType.I32, (short)3);
   private static final org.apache.thrift.protocol.TField DT_PREFIX_FIELD_DESC = new org.apache.thrift.protocol.TField("dtPrefix", org.apache.thrift.protocol.TType.STRUCT, (short)4);
@@ -18,7 +18,7 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
   private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new RDF_LiteralStandardSchemeFactory();
   private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new RDF_LiteralTupleSchemeFactory();
 
-  public int lex; // required
+  public @org.apache.thrift.annotation.Nullable java.lang.String lex; // required
   public int langtag; // optional
   public int datatype; // optional
   public @org.apache.thrift.annotation.Nullable RDF_PrefixName dtPrefix; // optional
@@ -95,16 +95,15 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
   }
 
   // isset id assignments
-  private static final int __LEX_ISSET_ID = 0;
-  private static final int __LANGTAG_ISSET_ID = 1;
-  private static final int __DATATYPE_ISSET_ID = 2;
+  private static final int __LANGTAG_ISSET_ID = 0;
+  private static final int __DATATYPE_ISSET_ID = 1;
   private byte __isset_bitfield = 0;
   private static final _Fields optionals[] = {_Fields.LANGTAG,_Fields.DATATYPE,_Fields.DT_PREFIX};
   public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
   static {
     java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
     tmpMap.put(_Fields.LEX, new org.apache.thrift.meta_data.FieldMetaData("lex", org.apache.thrift.TFieldRequirementType.REQUIRED, 
-        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I32)));
+        new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
     tmpMap.put(_Fields.LANGTAG, new org.apache.thrift.meta_data.FieldMetaData("langtag", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
         new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.I32)));
     tmpMap.put(_Fields.DATATYPE, new org.apache.thrift.meta_data.FieldMetaData("datatype", org.apache.thrift.TFieldRequirementType.OPTIONAL, 
@@ -119,11 +118,10 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
   }
 
   public RDF_Literal(
-    int lex)
+    java.lang.String lex)
   {
     this();
     this.lex = lex;
-    setLexIsSet(true);
   }
 
   /**
@@ -131,7 +129,9 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
    */
   public RDF_Literal(RDF_Literal other) {
     __isset_bitfield = other.__isset_bitfield;
-    this.lex = other.lex;
+    if (other.isSetLex()) {
+      this.lex = other.lex;
+    }
     this.langtag = other.langtag;
     this.datatype = other.datatype;
     if (other.isSetDtPrefix()) {
@@ -146,8 +146,7 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
 
   @Override
   public void clear() {
-    setLexIsSet(false);
-    this.lex = 0;
+    this.lex = null;
     setLangtagIsSet(false);
     this.langtag = 0;
     setDatatypeIsSet(false);
@@ -155,27 +154,29 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
     this.dtPrefix = null;
   }
 
-  public int getLex() {
+  @org.apache.thrift.annotation.Nullable
+  public java.lang.String getLex() {
     return this.lex;
   }
 
-  public RDF_Literal setLex(int lex) {
+  public RDF_Literal setLex(@org.apache.thrift.annotation.Nullable java.lang.String lex) {
     this.lex = lex;
-    setLexIsSet(true);
     return this;
   }
 
   public void unsetLex() {
-    __isset_bitfield = org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __LEX_ISSET_ID);
+    this.lex = null;
   }
 
   /** Returns true if field lex is set (has been assigned a value) and false otherwise */
   public boolean isSetLex() {
-    return org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __LEX_ISSET_ID);
+    return this.lex != null;
   }
 
   public void setLexIsSet(boolean value) {
-    __isset_bitfield = org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __LEX_ISSET_ID, value);
+    if (!value) {
+      this.lex = null;
+    }
   }
 
   public int getLangtag() {
@@ -256,7 +257,7 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
       if (value == null) {
         unsetLex();
       } else {
-        setLex((java.lang.Integer)value);
+        setLex((java.lang.String)value);
       }
       break;
 
@@ -340,12 +341,12 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
     if (this == that)
       return true;
 
-    boolean this_present_lex = true;
-    boolean that_present_lex = true;
+    boolean this_present_lex = true && this.isSetLex();
+    boolean that_present_lex = true && that.isSetLex();
     if (this_present_lex || that_present_lex) {
       if (!(this_present_lex && that_present_lex))
         return false;
-      if (this.lex != that.lex)
+      if (!this.lex.equals(that.lex))
         return false;
     }
 
@@ -383,7 +384,9 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
   public int hashCode() {
     int hashCode = 1;
 
-    hashCode = hashCode * 8191 + lex;
+    hashCode = hashCode * 8191 + ((isSetLex()) ? 131071 : 524287);
+    if (isSetLex())
+      hashCode = hashCode * 8191 + lex.hashCode();
 
     hashCode = hashCode * 8191 + ((isSetLangtag()) ? 131071 : 524287);
     if (isSetLangtag())
@@ -473,7 +476,11 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
     boolean first = true;
 
     sb.append("lex:");
-    sb.append(this.lex);
+    if (this.lex == null) {
+      sb.append("null");
+    } else {
+      sb.append(this.lex);
+    }
     first = false;
     if (isSetLangtag()) {
       if (!first) sb.append(", ");
@@ -503,7 +510,9 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
 
   public void validate() throws org.apache.thrift.TException {
     // check for required fields
-    // alas, we cannot check 'lex' because it's a primitive and you chose the non-beans generator.
+    if (lex == null) {
+      throw new org.apache.thrift.protocol.TProtocolException("Required field 'lex' was not present! Struct: " + toString());
+    }
     // check for sub-struct validity
     if (dtPrefix != null) {
       dtPrefix.validate();
@@ -549,8 +558,8 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
         }
         switch (schemeField.id) {
           case 1: // LEX
-            if (schemeField.type == org.apache.thrift.protocol.TType.I32) {
-              struct.lex = iprot.readI32();
+            if (schemeField.type == org.apache.thrift.protocol.TType.STRING) {
+              struct.lex = iprot.readString();
               struct.setLexIsSet(true);
             } else { 
               org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
@@ -589,9 +598,6 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
       iprot.readStructEnd();
 
       // check for required fields of primitive type, which can't be checked in the validate method
-      if (!struct.isSetLex()) {
-        throw new org.apache.thrift.protocol.TProtocolException("Required field 'lex' was not found in serialized data! Struct: " + toString());
-      }
       struct.validate();
     }
 
@@ -600,9 +606,11 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
       struct.validate();
 
       oprot.writeStructBegin(STRUCT_DESC);
-      oprot.writeFieldBegin(LEX_FIELD_DESC);
-      oprot.writeI32(struct.lex);
-      oprot.writeFieldEnd();
+      if (struct.lex != null) {
+        oprot.writeFieldBegin(LEX_FIELD_DESC);
+        oprot.writeString(struct.lex);
+        oprot.writeFieldEnd();
+      }
       if (struct.isSetLangtag()) {
         oprot.writeFieldBegin(LANGTAG_FIELD_DESC);
         oprot.writeI32(struct.langtag);
@@ -638,7 +646,7 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
     @Override
     public void write(org.apache.thrift.protocol.TProtocol prot, RDF_Literal struct) throws org.apache.thrift.TException {
       org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
-      oprot.writeI32(struct.lex);
+      oprot.writeString(struct.lex);
       java.util.BitSet optionals = new java.util.BitSet();
       if (struct.isSetLangtag()) {
         optionals.set(0);
@@ -664,7 +672,7 @@ public class RDF_Literal implements org.apache.thrift.TBase<RDF_Literal, RDF_Lit
     @Override
     public void read(org.apache.thrift.protocol.TProtocol prot, RDF_Literal struct) throws org.apache.thrift.TException {
       org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
-      struct.lex = iprot.readI32();
+      struct.lex = iprot.readString();
       struct.setLexIsSet(true);
       java.util.BitSet incoming = iprot.readBitSet(3);
       if (incoming.get(0)) {

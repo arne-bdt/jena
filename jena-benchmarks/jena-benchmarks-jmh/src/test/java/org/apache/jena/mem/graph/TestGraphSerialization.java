@@ -21,9 +21,8 @@ package org.apache.jena.mem.graph;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.mem.graph.helper.GraphSerialization;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
-import org.apache.jena.mem.graph.helper.Releases;
+import org.apache.jena.mem.graph.helper.TripleReaderReadingCGMES_2_4_15_WithTypedLiterals;
 import org.apache.jena.mem2.GraphMem2Fast;
-import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -40,13 +39,13 @@ public class TestGraphSerialization {
     @Param({
 //            "cheeses-0.1.ttl",
 //            "pizza.owl.rdf",
-//            "xxx_CGMES_EQ.xml",
-//            "xxx_CGMES_SSH.xml",
-//            "xxx_CGMES_TP.xml",
-//            "RealGrid_EQ.xml",
-//            "RealGrid_SSH.xml",
-//            "RealGrid_TP.xml",
-//            "RealGrid_SV.xml",
+            "xxx_CGMES_EQ.xml",
+            "xxx_CGMES_SSH.xml",
+            "xxx_CGMES_TP.xml",
+            "RealGrid_EQ.xml",
+            "RealGrid_SSH.xml",
+            "RealGrid_TP.xml",
+            "RealGrid_SV.xml",
             "bsbm-1m.nt.gz",
 //            "bsbm-5m.nt.gz",
 //            "bsbm-25m.nt.gz",
@@ -85,27 +84,27 @@ public class TestGraphSerialization {
     }
 
     @Param({
-            "TURTLE_PRETTY",
-            "TURTLE_BLOCKS",
-            "TURTLE_FLAT",
-            "TURTLE_LONG",
-            "NTRIPLES_UTF8",
-            "NQUADS_UTF8",
-            "TRIG_PRETTY",
-            "TRIG_BLOCKS",
-            "TRIG_FLAT",
-            "TRIG_LONG",
+//            "TURTLE_PRETTY",
+//            "TURTLE_BLOCKS",
+//            "TURTLE_FLAT",
+//            "TURTLE_LONG",
+//            "NTRIPLES_UTF8",
+//            "NQUADS_UTF8",
+//            "TRIG_PRETTY",
+//            "TRIG_BLOCKS",
+//            "TRIG_FLAT",
+//            "TRIG_LONG",
 //            "JSONLD11_PRETTY", --> seems to be broken
-            "JSONLD11_PLAIN",
-            "JSONLD11_FLAT",
-            "RDFXML_PRETTY",
-            "RDFXML_PLAIN",
-            "RDFJSON",
-            "TRIX",
-            "RDF_PROTO",
-            "RDF_PROTO2",
+//            "JSONLD11_PLAIN",
+//            "JSONLD11_FLAT",
+//            "RDFXML_PRETTY",
+//            "RDFXML_PLAIN",
+//            "RDFJSON",
+//            "TRIX",
+//            "RDF_PROTO",
+//            "RDF_PROTO2",
 //            "RDF_PROTO_VALUES",
-            "RDF_THRIFT",
+//            "RDF_THRIFT",
 //            "RDF_THRIFT_VALUES",
             "RDF_THRIFT2",
             "RDF_THRIFT3",
@@ -184,29 +183,29 @@ public class TestGraphSerialization {
     @Ignore
     public void loadSerializeAndDeserialize() {
         for(var file : List.of(
-                "../testing/cheeses-0.1.ttl",
-                "../testing/pizza.owl.rdf",
+//                "../testing/cheeses-0.1.ttl",
+//                "../testing/pizza.owl.rdf",
                 "C:/temp/res_test/xxx_CGMES_EQ.xml",
                 "C:/temp/res_test/xxx_CGMES_SSH.xml",
                 "C:/temp/res_test/xxx_CGMES_TP.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-                "../testing/BSBM/bsbm-1m.nt.gz"
+//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml"
+//                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+//                "../testing/BSBM/bsbm-1m.nt.gz"
             )) {
             final var fileName = new File(file).getName();
             final var g = new GraphMem2Fast();
-            RDFDataMgr.read(g, file);
+            TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read(file, g);
             for (var rdfFormat : List.of(
-                    RDFFormat.TURTLE_PRETTY, RDFFormat.TURTLE_BLOCKS, RDFFormat.TURTLE_FLAT, RDFFormat.TURTLE_LONG,
-                    RDFFormat.NTRIPLES_UTF8, RDFFormat.NQUADS_UTF8,
-                    RDFFormat.TRIG_PRETTY, RDFFormat.TRIG_BLOCKS, RDFFormat.TRIG_FLAT, RDFFormat.TRIG_LONG,
-                    /*RDFFormat.JSONLD11_PRETTY, --> seem to be broken*/ RDFFormat.JSONLD11_PLAIN, RDFFormat.JSONLD11_FLAT,
-                    RDFFormat.RDFXML_PRETTY, RDFFormat.RDFXML_PLAIN, RDFFormat.RDFJSON,
-                    RDFFormat.TRIX,
+//                    RDFFormat.TURTLE_PRETTY, RDFFormat.TURTLE_BLOCKS, RDFFormat.TURTLE_FLAT, RDFFormat.TURTLE_LONG,
+//                    RDFFormat.NTRIPLES_UTF8, RDFFormat.NQUADS_UTF8,
+//                    RDFFormat.TRIG_PRETTY, RDFFormat.TRIG_BLOCKS, RDFFormat.TRIG_FLAT, RDFFormat.TRIG_LONG,
+//                    /*RDFFormat.JSONLD11_PRETTY, --> seem to be broken*/ RDFFormat.JSONLD11_PLAIN, RDFFormat.JSONLD11_FLAT,
+//                    RDFFormat.RDFXML_PRETTY, RDFFormat.RDFXML_PLAIN, RDFFormat.RDFJSON,
+//                    RDFFormat.TRIX,
                     RDFFormat.RDF_PROTO, //RDFFormat.RDF_PROTO_VALUES,
-                    RDFFormat.RDF_PROTO2,
+//                    RDFFormat.RDF_PROTO2,
                     RDFFormat.RDF_THRIFT, //RDFFormat.RDF_THRIFT_VALUES,
                     RDFFormat.RDF_THRIFT2,
                     RDFFormat.RDF_THRIFT3)) {
@@ -233,19 +232,15 @@ public class TestGraphSerialization {
         return GraphSerialization.deserialize(serializedGraph, false);
     }
 
-//    @Benchmark
+    @Benchmark
     public Graph serializeAndDeserializeGraph() {
         return GraphSerialization.deserialize(GraphSerialization.serialize(graphToSerialize, rdfFormat, param2_Compressor), false);
     }
 
-
-
-
-
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
         this.graphToSerialize = new GraphMem2Fast();
-        Releases.current.readTriples(getFilePath(param0_GraphUri)).forEach(this.graphToSerialize::add);
+        TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read(getFilePath(param0_GraphUri), this.graphToSerialize);
         this.rdfFormat = getRDFFormat(param1_RDFFormat);
         this.serializedGraph = GraphSerialization.serialize(graphToSerialize, rdfFormat, param2_Compressor);
         System.out.printf("\nSize of output stream in resultSetLang %s is %4.2f MB. Graph contains %d triples.\n", rdfFormat.toString(), serializedGraph.bytes().length / 1024.0 / 1024.0, graphToSerialize.size());

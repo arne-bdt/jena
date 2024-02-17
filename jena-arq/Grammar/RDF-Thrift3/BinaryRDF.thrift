@@ -44,7 +44,7 @@ struct RDF_BNode {
 // union with additional values. 
 
 struct RDF_Literal {
-1: required i32  lex;
+1: required string lex;
 2: optional i32  langtag;
 3: optional i32  datatype;          // Either 3 or 4 but UNION is heavy.
 4: optional RDF_PrefixName dtPrefix ;   // datatype as prefix name
@@ -161,8 +161,8 @@ union RDF_Patch_Union {
 }
 
 struct RDF_Patch_Row {
-1: RDF_Patch_Union    row;
-2: optional list<string>       strings;
+1: RDF_Patch_Union          row;
+2: optional list<string>    strings;
 }
 
 // Local Variables:

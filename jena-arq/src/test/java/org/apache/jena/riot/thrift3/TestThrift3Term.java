@@ -33,6 +33,9 @@ import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.XSD;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.Assert.*;
 
 public class TestThrift3Term {
@@ -48,11 +51,11 @@ public class TestThrift3Term {
 
     // Terms
     @Test public void term_uri_01() {
-        testTerm("<http://hostname/>", new StringDictionaryWriter(), new StringDictionaryReader()) ;
+        testTerm("<http://hostname/>", new StringDictionaryWriter(), new ArrayList<>()) ;
     }
 
     @Test public void term_uri_02()  {
-        var readerDict = new StringDictionaryReader();
+        var readerDict = new ArrayList<String>();
         RDF_Term rt = testTerm("<http://example/>", new StringDictionaryWriter(), readerDict) ;
         assertTrue(rt.isSetPrefixName()) ;
         assertEquals("", readerDict.get(rt.getPrefixName().prefix)) ;
@@ -60,7 +63,7 @@ public class TestThrift3Term {
     }
 
     @Test public void term_uri_03()  {
-        var readerDict = new StringDictionaryReader();
+        var readerDict = new ArrayList<String>();
         RDF_Term rt = testTerm("<http://namespace/ns#foobar>", new StringDictionaryWriter(), readerDict) ;
         assertTrue(rt.isSetPrefixName()) ;
         assertEquals("ns", readerDict.get(rt.getPrefixName().prefix)) ;
@@ -68,7 +71,7 @@ public class TestThrift3Term {
     }
 
     @Test public void term_uri_04()  {
-        var readerDict = new StringDictionaryReader();
+        var readerDict = new ArrayList<String>();
         RDF_Term rt = testTerm("rdf:type", new StringDictionaryWriter(), readerDict) ;
         assertTrue(rt.isSetPrefixName()) ;
         assertEquals("rdf", readerDict.get(rt.getPrefixName().prefix)) ;
@@ -76,7 +79,7 @@ public class TestThrift3Term {
     }
 
     @Test public void term_literal_01() {
-        var readerDict = new StringDictionaryReader();
+        var readerDict = new ArrayList<String>();
         RDF_Term rt = testTerm("'foo'", new StringDictionaryWriter(), readerDict) ;
         assertFalse(rt.getLiteral().isSetDatatype()) ;
         assertFalse(rt.getLiteral().isSetDtPrefix()) ;
@@ -84,7 +87,7 @@ public class TestThrift3Term {
     }
 
     @Test public void term_literal_02() {
-        var readerDict = new StringDictionaryReader();
+        var readerDict = new ArrayList<String>();
         RDF_Term rt = testTerm("'foo'@en", new StringDictionaryWriter(), readerDict) ;
         assertFalse(rt.getLiteral().isSetDatatype()) ;
         assertFalse(rt.getLiteral().isSetDtPrefix()) ;
@@ -92,7 +95,7 @@ public class TestThrift3Term {
     }
 
     @Test public void term_literal_03() {
-        var readerDict = new StringDictionaryReader();
+        var readerDict = new ArrayList<String>();
         RDF_Term rt = testTerm("123", new StringDictionaryWriter(), readerDict) ;
         assertFalse(rt.getLiteral().isSetDatatype()) ;
         assertTrue(rt.getLiteral().isSetDtPrefix()) ;
@@ -101,7 +104,7 @@ public class TestThrift3Term {
     }
 
     @Test public void term_literal_04() {
-        var readerDict = new StringDictionaryReader();
+        var readerDict = new ArrayList<String>();
         RDF_Term rt = testTerm("'foo'^^<http://dataype/>", new StringDictionaryWriter(), readerDict) ;
         assertTrue(rt.getLiteral().isSetDatatype()) ;
         assertFalse(rt.getLiteral().isSetDtPrefix()) ;
@@ -109,7 +112,7 @@ public class TestThrift3Term {
     }
 
     @Test public void term_literal_05() {
-        var readerDict = new StringDictionaryReader();
+        var readerDict = new ArrayList<String>();
         RDF_Term rt = testTerm("'foo'^^<http://example/>", new StringDictionaryWriter(), readerDict) ;
         assertFalse(rt.getLiteral().isSetDatatype()) ;
         assertTrue(rt.getLiteral().isSetDtPrefix()) ;
@@ -118,18 +121,18 @@ public class TestThrift3Term {
     }
 
     @Test public void term_var_01() {
-        testTerm("?var", new StringDictionaryWriter(), new StringDictionaryReader()) ;
+        testTerm("?var", new StringDictionaryWriter(), new ArrayList<>()) ;
     }
 
     @Test public void term_bnode_01() {
-        var readerDict = new StringDictionaryReader();
+        var readerDict = new ArrayList<String>();
         Node n = SSE.parseNode("_:blanknode") ;
         RDF_Term rt = testTerm(n, new StringDictionaryWriter(), readerDict) ;
         assertEquals(n.getBlankNodeLabel(), readerDict.get(rt.getBnode().getLabel())) ;
     }
 
     @Test public void term_bnode_02() {
-        var readerDict = new StringDictionaryReader();
+        var readerDict = new ArrayList<String>();
         String label = "abcdefghijklmn" ;
         Node n = NodeFactory.createBlankNode(label) ;
         RDF_Term rt = testTerm(n, new StringDictionaryWriter(), readerDict) ;
@@ -138,20 +141,20 @@ public class TestThrift3Term {
     }
 
     @Test public void term_any_1() {
-        RDF_Term rt = testTerm(Node.ANY, new StringDictionaryWriter(), new StringDictionaryReader());
+        RDF_Term rt = testTerm(Node.ANY, new StringDictionaryWriter(), new ArrayList<>());
         assertTrue(rt.isSetAny()) ;
     }
 
-    private RDF_Term testTerm(String str, StringDictionaryWriter writerDict, StringDictionaryReader readerDict) {
+    private RDF_Term testTerm(String str, StringDictionaryWriter writerDict, List<String> readerDict) {
         RDF_Term rt = testTerm(SSE.parseNode(str), prefixMap, writerDict, readerDict) ;
         return rt ;
     }
 
-    private RDF_Term testTerm(Node node, StringDictionaryWriter writerDict, StringDictionaryReader readerDict) {
+    private RDF_Term testTerm(Node node, StringDictionaryWriter writerDict, List<String> readerDict) {
         return testTerm(node, null, writerDict, readerDict) ;
     }
 
-    private RDF_Term testTerm(Node node, PrefixMap pmap, StringDictionaryWriter writerDict, StringDictionaryReader readerDict) {
+    private RDF_Term testTerm(Node node, PrefixMap pmap, StringDictionaryWriter writerDict, List<String> readerDict) {
         RDF_Term rt = Thrift3Convert.convert(node, pmap, writerDict) ;
         if(writerDict.hasStringsToFlush()) {
             readerDict.addAll(writerDict.flush());
@@ -174,7 +177,7 @@ public class TestThrift3Term {
             assertTrue(rt.isSetLiteral()) ;
             RDF_Literal lit = rt.getLiteral() ;
             assertTrue(lit.isSetLex()) ;
-            assertEquals(node.getLiteralLexicalForm(), readerDict.get(lit.getLex())) ;
+            assertEquals(node.getLiteralLexicalForm(), lit.getLex()) ;
 
             // RDF 1.1
             if ( Util.isSimpleString(node) ) {
@@ -211,27 +214,27 @@ public class TestThrift3Term {
 
     @Test public void rdfterm_01() {
             RDF_Term rt = T3RDF.tANY ;
-            Node n = Thrift3Convert.convert(rt, new StringDictionaryReader()) ;
+            Node n = Thrift3Convert.convert(rt, new ArrayList<>()) ;
             assertEquals(Node.ANY, n) ;
        }
 
     @Test public void rdfterm_02() {
         RDF_Term rt = T3RDF.tUNDEF ;
-        Node n = Thrift3Convert.convert(rt, new StringDictionaryReader()) ;
+        Node n = Thrift3Convert.convert(rt, new ArrayList<>()) ;
         assertNull(n) ;
     }
 
     @Test public void round_trip_01() {
-        testTerm(null, null, new StringDictionaryWriter(), new StringDictionaryReader());
+        testTerm(null, null, new StringDictionaryWriter(), new ArrayList<>());
     }
 
     @Test public void round_trip_02() {
-        testTerm(Node.ANY, null, new StringDictionaryWriter(), new StringDictionaryReader());
+        testTerm(Node.ANY, null, new StringDictionaryWriter(), new ArrayList<>());
     }
 
     @Test public void round_trip_03() {
         testTerm(NodeFactory.createVariable("x"), null,
-                new StringDictionaryWriter(), new StringDictionaryReader());
+                new StringDictionaryWriter(), new ArrayList<>());
     }
 
     // Round trip node->bytes->node.
@@ -249,7 +252,7 @@ public class TestThrift3Term {
 
     private void testTermBytes(Node node) {
         final var writerDict = new StringDictionaryWriter();
-        final var readerDict = new StringDictionaryReader();
+        final var readerDict = new ArrayList<String>();
         RDF_Term rt = Thrift3Convert.convert(node, writerDict);
         if(writerDict.hasStringsToFlush()) {
             readerDict.addAll(writerDict.flush());
