@@ -79,6 +79,14 @@ public class CacheFactory {
         return new CacheSimpleFast<>(size) ;
     }
 
+    /**
+     * Create a lightweight cache (e.g. slot replacement).
+     * This cache is thread-safe.
+     */
+    public static <Key, Value> Cache<Key, Value> createSimpleFastConcurrentCache(int size) {
+        return new CacheSimpleFastConcurrent<>(size) ;
+    }
+
     /** One slot cache */
     public static <Key, Value> Cache<Key, Value> createOneSlotCache() {
         return new Cache1<>() ;

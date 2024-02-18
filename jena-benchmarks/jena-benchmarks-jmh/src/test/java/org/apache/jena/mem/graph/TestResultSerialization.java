@@ -94,9 +94,9 @@ public class TestResultSerialization {
 //            "RS_TSV",
             //"RS_Text", --> there is no Reader for RS_Text
             "RS_Thrift",
-//            "RS_Thrift2",
+            "RS_Thrift2",
             "RS_Thrift3",
-//            "RS_Protobuf",
+            "RS_Protobuf",
 //            "RS_Protobuf2"
     })
     public String param1_RDFFormat;
@@ -187,16 +187,16 @@ public class TestResultSerialization {
         }
     }
 
-    @Benchmark
-    public ResultSetSerialization.SerializedData serialize() {
-        resultSetToSerialize.reset();
-        return  ResultSetSerialization.serialize(resultSetToSerialize, resultSetLang, param2_Compressor);
-    }
-
-    @Benchmark
-    public ResultSet deserialize() {
-        return ResultSetSerialization.deserialize(serializedResultSet).materialise();
-    }
+//    @Benchmark
+//    public ResultSetSerialization.SerializedData serialize() {
+//        resultSetToSerialize.reset();
+//        return  ResultSetSerialization.serialize(resultSetToSerialize, resultSetLang, param2_Compressor);
+//    }
+//
+//    @Benchmark
+//    public ResultSet deserialize() {
+//        return ResultSetSerialization.deserialize(serializedResultSet).materialise();
+//    }
 
     @Benchmark
     public ResultSet serializeAndDeserialize() {
@@ -222,6 +222,7 @@ public class TestResultSerialization {
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
                 .warmupIterations(8)
+                .measurementIterations(30)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

@@ -104,7 +104,7 @@ public class TestGraphSerialization {
 //            "RDF_PROTO",
 //            "RDF_PROTO2",
 //            "RDF_PROTO_VALUES",
-//            "RDF_THRIFT",
+            "RDF_THRIFT",
 //            "RDF_THRIFT_VALUES",
             "RDF_THRIFT2",
             "RDF_THRIFT3",
@@ -112,8 +112,8 @@ public class TestGraphSerialization {
     public String param1_RDFFormat;
     @Param({
             GraphSerialization.NO_COMPRESSOR,
-            GraphSerialization.LZ4_FASTEST,
-            GraphSerialization.GZIP
+//            GraphSerialization.LZ4_FASTEST,
+//            GraphSerialization.GZIP
     })
     public String param2_Compressor;
 
@@ -222,15 +222,15 @@ public class TestGraphSerialization {
         }
     }
 
-    @Benchmark
-    public GraphSerialization.SerializedData serialize() {
-        return GraphSerialization.serialize(graphToSerialize, rdfFormat, param2_Compressor);
-    }
-
-    @Benchmark
-    public Graph deserialize() {
-        return GraphSerialization.deserialize(serializedGraph, false);
-    }
+//    @Benchmark
+//    public GraphSerialization.SerializedData serialize() {
+//        return GraphSerialization.serialize(graphToSerialize, rdfFormat, param2_Compressor);
+//    }
+//
+//    @Benchmark
+//    public Graph deserialize() {
+//        return GraphSerialization.deserialize(serializedGraph, false);
+//    }
 
     @Benchmark
     public Graph serializeAndDeserializeGraph() {
@@ -250,6 +250,7 @@ public class TestGraphSerialization {
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
                 .warmupIterations(8)
+                .measurementIterations(30)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

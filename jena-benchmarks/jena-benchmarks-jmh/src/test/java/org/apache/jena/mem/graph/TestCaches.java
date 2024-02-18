@@ -20,12 +20,12 @@ package org.apache.jena.mem.graph;
 
 import org.apache.jena.atlas.lib.Cache;
 import org.apache.jena.atlas.lib.CacheFactory;
+import org.apache.jena.atlas.lib.cache.CacheSimpleFastConcurrent;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.TripleReaderReadingCGMES_2_4_15_WithTypedLiterals;
 import org.apache.jena.mem2.GraphMem2Fast;
-import org.apache.jena.riot.system.FactoryRDFCaching;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -82,8 +82,10 @@ public class TestCaches {
     }
 
     @Param({
-            "Simple",
-            "SimpleFast",
+            "Caffeine",
+//            "Simple",
+//            "SimpleFast",
+            "SimpleFastConcurrent"
     })
     public String param1_Cache;
 
@@ -92,17 +94,23 @@ public class TestCaches {
     private Cache<String, Node> cache;
 
     private static Cache<String, Node> createCache(String cacheName) {
+        //final var defaultCacheSize = FactoryRDFCaching.DftNodeCacheSize;
+        final var defaultCacheSize = 1_000_000;
         // the cache size is a power of 2 --> that is a requirement for the CacheSimpleFast
         // to start with fair conditions for the caches, we use the same size for all caches
-        var cacheSize = Integer.highestOneBit(FactoryRDFCaching.DftNodeCacheSize);
-        if (cacheSize < FactoryRDFCaching.DftNodeCacheSize) {
+        var cacheSize = Integer.highestOneBit(defaultCacheSize);
+        if (cacheSize < defaultCacheSize) {
             cacheSize <<= 1;
         }
         switch (cacheName) {
+            case "Caffeine":
+                return CacheFactory.createCache(cacheSize);
             case "Simple":
                 return CacheFactory.createSimpleCache(cacheSize);
             case "SimpleFast":
                 return CacheFactory.createSimpleFastCache(cacheSize);
+            case "SimpleFastConcurrent":
+                return new CacheSimpleFastConcurrent(cacheSize);
             default:
                 throw new IllegalArgumentException("Unknown Cache: " + cacheName);
         }
@@ -110,31 +118,25 @@ public class TestCaches {
 
     @Benchmark
     public int updateFilledCache() {
-        final int[] count = {0};
+        final int[] hash = {0};
         graph.find().forEachRemaining(t -> {
             if(t.getSubject().isURI()) {
-                cache.get(t.getSubject().getURI(),
-                        s -> {
-                            count[0]++;
-                            return t.getSubject();
-                        });
+                hash[0] += cache.get(t.getSubject().getURI(),
+                        s -> t.getSubject()).getURI().hashCode();
+
             }
             if(t.getPredicate().isURI()) {
-                cache.get(t.getPredicate().getURI(),
-                        s -> {
-                            count[0]++;
-                            return t.getPredicate();
-                        });
+                hash[0] += cache.get(t.getPredicate().getURI(),
+                        s -> t.getPredicate()).getURI().hashCode();
+
             }
             if(t.getObject().isURI()) {
-                cache.get(t.getObject().getURI(),
-                        s -> {
-                            count[0]++;
-                            return t.getObject();
-                        });
+                hash[0] += cache.get(t.getObject().getURI(),
+                        s -> t.getObject()).getURI().hashCode();
+
             }
         });
-        return count[0];
+        return hash[0];
     }
 
     @Benchmark
@@ -162,17 +164,18 @@ public class TestCaches {
     public void setupTrial() throws Exception {
         this.graph = new GraphMem2Fast();
         TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read(getFilePath(param0_GraphUri), this.graph);
+        this.cache = createCache(param1_Cache);
     }
 
     @Setup(Level.Iteration)
     public void setupIteration() {
-        this.cache = createCache(param1_Cache);
         fillCacheByGet(this.cache, this.graph);
     }
 
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
+                .threads(8)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);
