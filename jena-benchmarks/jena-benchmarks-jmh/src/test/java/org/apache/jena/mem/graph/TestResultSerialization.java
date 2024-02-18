@@ -69,13 +69,13 @@ public class TestResultSerialization {
             case "xxx_CGMES_TP.xml":
                 return "C:/temp/res_test/xxx_CGMES_TP.xml";
             case "RealGrid_EQ.xml":
-                return "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml";
+                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml";
             case "RealGrid_SSH.xml":
-                return "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml";
+                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_SSH_V2.xml";
             case "RealGrid_TP.xml":
-                return "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml";
+                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_TP_V2.xml";
             case "RealGrid_SV.xml":
-                return "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml";
+                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_SV_V2.xml";
             case "bsbm-1m.nt.gz":
                 return "../testing/BSBM/bsbm-1m.nt.gz";
             case "bsbm-5m.nt.gz":
@@ -151,10 +151,10 @@ public class TestResultSerialization {
                 "C:/temp/res_test/xxx_CGMES_EQ.xml",
                 "C:/temp/res_test/xxx_CGMES_SSH.xml",
                 "C:/temp/res_test/xxx_CGMES_TP.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-                "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml"
+                "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml",
+                "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_SSH_V2.xml",
+                "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_TP_V2.xml",
+                "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_SV_V2.xml"
 //                "../testing/BSBM/bsbm-1m.nt.gz"
             )) {
             final var g = new GraphMem2Fast();

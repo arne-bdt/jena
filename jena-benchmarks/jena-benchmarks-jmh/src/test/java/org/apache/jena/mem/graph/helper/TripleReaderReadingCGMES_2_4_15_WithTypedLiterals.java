@@ -78,6 +78,7 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
             """).asQuery();
 
     private static String getRDFSchemaUri(String graphUri) {
+        graphUri = graphUri.replaceAll("_V2.xml", ".xml");
         if (graphUri.endsWith("_EQ.xml")) {
             return "C:/rd/CGMES/ENTSOE_CGMES_v2.4.15_04Jul2016_RDFS/EquipmentProfileCoreRDFSAugmented-v2_4_15-4Jul2016.rdf";
         } else if (graphUri.endsWith("_SSH.xml")) {
@@ -169,11 +170,6 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
         rowSet.forEach(vars -> {
             map.put(URI.create(vars.get("property").getURI()),
                     getDataType(vars.get("primitiveType").getLiteralLexicalForm()));
-            if(vars.get("property").getURI().startsWith("http://iec.ch/TC57/2013/CIM-schema-cim16#")) {
-                // add also the CIM100 version of the property
-                map.put(URI.create(vars.get("property").getURI().replace("http://iec.ch/TC57/2013/CIM-schema-cim16#", "http://iec.ch/TC57/CIM100#")),
-                        getDataType(vars.get("primitiveType").getLiteralLexicalForm()));
-            }
         });
         return map;
     }

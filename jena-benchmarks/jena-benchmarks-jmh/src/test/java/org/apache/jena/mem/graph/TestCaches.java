@@ -44,7 +44,7 @@ public class TestCaches {
 //            "RealGrid_SSH.xml",
 //            "RealGrid_TP.xml",
 //            "RealGrid_SV.xml",
-            "bsbm-1m.nt.gz",
+//            "bsbm-1m.nt.gz",
 //            "bsbm-5m.nt.gz",
 //            "bsbm-25m.nt.gz",
     })
@@ -63,13 +63,13 @@ public class TestCaches {
             case "xxx_CGMES_TP.xml":
                 return "C:/temp/res_test/xxx_CGMES_TP.xml";
             case "RealGrid_EQ.xml":
-                return "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml";
+                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml";
             case "RealGrid_SSH.xml":
-                return "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml";
+                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_SSH_V2.xml";
             case "RealGrid_TP.xml":
-                return "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml";
+                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_TP_V2.xml";
             case "RealGrid_SV.xml":
-                return "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml";
+                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_SV_V2.xml";
             case "bsbm-1m.nt.gz":
                 return "../testing/BSBM/bsbm-1m.nt.gz";
             case "bsbm-5m.nt.gz":
@@ -139,12 +139,12 @@ public class TestCaches {
         return hash[0];
     }
 
-    @Benchmark
-    public Cache<String, Node> createAndFillCacheByGet() {
-        var c = createCache(param1_Cache);
-        fillCacheByGet(c, graph);
-        return c;
-    }
+//    @Benchmark
+//    public Cache<String, Node> createAndFillCacheByGet() {
+//        var c = createCache(param1_Cache);
+//        fillCacheByGet(c, graph);
+//        return c;
+//    }
 
     private static void fillCacheByGet(Cache<String, Node> cacheToFill, Graph g) {
         g.find().forEachRemaining(t -> {
@@ -167,10 +167,10 @@ public class TestCaches {
         this.cache = createCache(param1_Cache);
     }
 
-    @Setup(Level.Iteration)
-    public void setupIteration() {
-        fillCacheByGet(this.cache, this.graph);
-    }
+//    @Setup(Level.Iteration)
+//    public void setupIteration() {
+//        fillCacheByGet(this.cache, this.graph);
+//    }
 
     @Test
     public void benchmark() throws Exception {
