@@ -160,6 +160,47 @@ public class TestCaches {
         });
     }
 
+//    @Test
+//    public void printHashCodesAsJson() throws IOException {
+//        final var g = new GraphMem2Fast();
+//        TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read(getFilePath("xxx_CGMES_EQ.xml"), g);
+//        var jsonText = convertGraphToJson(g);
+//        // write to c:/temp/xxx_CGMES_EQ.json using java nio
+//        java.nio.file.Files.writeString(java.nio.file.Paths.get("c:/temp/xxx_CGMES_EQ.json"),
+//                jsonText, StandardOpenOption.CREATE_NEW);
+//    }
+
+//    public static String convertGraphToJson(Graph graph) {
+//        List<Map<String, Integer>> triplesList = new ArrayList<>();
+//        ExtendedIterator<Triple> it = graph.find(null, null, null);
+//
+//        while (it.hasNext()) {
+//            Triple triple = it.next();
+//            Map<String, Integer> tripleMap = new HashMap<>();
+//
+//            // Assuming hashCodes are integers and directly usable
+//            tripleMap.put("x", triple.getSubject().hashCode());
+//            tripleMap.put("y", triple.getPredicate().hashCode());
+//            tripleMap.put("z", triple.getObject().hashCode());
+//
+//            triplesList.add(tripleMap);
+//        }
+//
+//        // Convert to JSON (you can use Gson, Jackson, or any other library)
+//        // Here's a simple manual conversion for illustration
+//        StringBuilder jsonBuilder = new StringBuilder("[");
+//        for (Map<String, Integer> tripleMap : triplesList) {
+//            jsonBuilder.append(String.format(
+//                    "{\"x\": %d, \"y\": %d, \"z\": %d},",
+//                    tripleMap.get("x"), tripleMap.get("y"), tripleMap.get("z")
+//            ));
+//        }
+//        if (jsonBuilder.length() > 1) jsonBuilder.setLength(jsonBuilder.length() - 1); // Remove last comma
+//        jsonBuilder.append("]");
+//
+//        return jsonBuilder.toString();
+//    }
+
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
         this.graph = new GraphMem2Fast();
