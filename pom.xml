@@ -52,8 +52,7 @@
   
   <properties>
     <!-- Build -->
-    <java.version>17</java.version>
-
+    <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.build.outputTimestamp>2024-03-16T16:17:59Z</project.build.outputTimestamp>
 
@@ -101,7 +100,7 @@
     <ver.junit4>4.13.2</ver.junit4>
     <ver.junit5>5.10.2</ver.junit5>
     <ver.junit5-platform>1.10.2</ver.junit5-platform>
- 
+
     <ver.mockito>5.12.0</ver.mockito>
     <ver.awaitility>4.2.1</ver.awaitility>
     <ver.contract.tests>0.2.0</ver.contract.tests>
@@ -304,7 +303,7 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-      
+
       <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>

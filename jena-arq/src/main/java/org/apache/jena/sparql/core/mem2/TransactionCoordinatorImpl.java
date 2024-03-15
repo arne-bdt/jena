@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * This class is responsible for keeping track of the threads that are currently running transactions.
@@ -42,8 +41,6 @@ public class TransactionCoordinatorImpl implements TransactionCoordinator {
     private final TransactionCoordinatorScheduler transactionCoordinatorScheduler;
 
     private final long instanceId = instanceCounter.incrementAndGet();
-
-    private final ReentrantLock lock = new ReentrantLock();
 
     public TransactionCoordinatorImpl(final int transactionTimeoutMs,
                                       final int keepInfoAboutTransactionTimeoutForXTimesTheTimeout,
@@ -82,17 +79,12 @@ public class TransactionCoordinatorImpl implements TransactionCoordinator {
     }
 
     @Override
-    public void registerCurrentThread(Runnable timedOutRunnable) {
-        final var thread = Thread.currentThread();
-        try {
-            lock.lock();
-            if (activeThreadsByThreadId.isEmpty()) {
-                transactionCoordinatorScheduler.register(this);
-            }
-            activeThreadsByThreadId.put(thread.getId(), new TheadTransactionInfo(thread, timedOutRunnable));
-        } finally {
-            lock.unlock();
+    public synchronized void registerCurrentThread(Runnable timedOutRunnable) {
+        if (activeThreadsByThreadId.isEmpty()) {
+            transactionCoordinatorScheduler.register(this);
         }
+        final var thread = Thread.currentThread();
+        activeThreadsByThreadId.put(thread.getId(), new TheadTransactionInfo(thread, timedOutRunnable));
     }
 
     @Override
@@ -117,28 +109,23 @@ public class TransactionCoordinatorImpl implements TransactionCoordinator {
     }
 
     @Override
-    public void unregisterCurrentThread() {
+    public synchronized void unregisterCurrentThread() {
         final var thread = Thread.currentThread();
-        try {
-            lock.lock();
-            var removedThreadInfo = activeThreadsByThreadId.remove(thread.getId());
+        var removedThreadInfo = activeThreadsByThreadId.remove(thread.getId());
+        if (removedThreadInfo == null) {
+            removedThreadInfo = timedOutThreadsByThreadId.remove(thread.getId());
             if (removedThreadInfo == null) {
-                removedThreadInfo = timedOutThreadsByThreadId.remove(thread.getId());
-                if (removedThreadInfo == null) {
-                    LOGGER.error("Thread '{}' [{}] is not registered", thread.getName(), thread.getId());
-                    throw new JenaTransactionException("Thread is not registered");
-                } else {
-                    LOGGER.error("Thread '{}' [{}] has timed out", thread.getName(), thread.getId());
-                    throw new JenaTransactionException("Thread has timed out before it was unregistered.");
-                }
+                LOGGER.error("Thread '{}' [{}] is not registered", thread.getName(), thread.getId());
+                throw new JenaTransactionException("Thread is not registered");
             } else {
-                timedOutThreadsByThreadId.remove(thread.getId());
+                LOGGER.error("Thread '{}' [{}] has timed out", thread.getName(), thread.getId());
+                throw new JenaTransactionException("Thread has timed out before it was unregistered.");
             }
-            if (activeThreadsByThreadId.isEmpty() && timedOutThreadsByThreadId.isEmpty()) {
-                transactionCoordinatorScheduler.unregister(this);
-            }
-        } finally {
-            lock.unlock();
+        } else {
+            timedOutThreadsByThreadId.remove(thread.getId());
+        }
+        if (activeThreadsByThreadId.isEmpty() && timedOutThreadsByThreadId.isEmpty()) {
+            transactionCoordinatorScheduler.unregister(this);
         }
     }
 
