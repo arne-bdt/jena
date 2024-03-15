@@ -317,9 +317,9 @@ public class TestMEASTransactional2 {
         final var bulkUpdateRateInSeconds = 3;
         final var spontaneousUpdateRateInSeconds = 1;
         final var queryRateInSeconds = 1;
-        final var numberOfSpontaneousUpdateThreads = 4;
-        final var numberOfQueryThreads = 8;
-        final var numberOfSpontaneousUpdatesPerSecond = 100;
+        final var numberOfSpontaneousUpdateThreads = 6;
+        final var numberOfQueryThreads = 10;
+        final var numberOfSpontaneousUpdatesPerSecond = 200;
 
         final var version = new AtomicInteger(0);
         final var versionTriple = Triple.create(NodeFactory.createURI("_" + UUID.randomUUID().toString()), NodeFactory.createLiteralByValue("jena.apache.org/jena-jmh-benchmarks#version"), NodeFactory.createLiteralByValue(version.intValue()));
@@ -339,7 +339,7 @@ public class TestMEASTransactional2 {
         final var overallStopwatch = StopWatch.createStarted();
         final var updatesRunning = new AtomicBoolean(true);
 
-        final var updateThread = new Thread(() -> {
+        final var updateThread = Thread.startVirtualThread(() -> {
             try {
                 while(updatesRunning.get()) {
                     while(!updateQueue.isEmpty()) {
@@ -358,9 +358,8 @@ public class TestMEASTransactional2 {
                 e.printStackTrace();
             }
         });
-        updateThread.start();
 
-        final var updateScheduler = Executors.newSingleThreadScheduledExecutor();
+        final var updateScheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory());
         var scheduledFutureForBulkUpdates = updateScheduler.scheduleAtFixedRate(() -> {
             try {
                 updateQueue.add(
@@ -374,7 +373,7 @@ public class TestMEASTransactional2 {
         }, 0, bulkUpdateRateInSeconds, TimeUnit.SECONDS);
 
 
-        final var spontaneousUpdateScheduler = Executors.newScheduledThreadPool(numberOfSpontaneousUpdateThreads);
+        final var spontaneousUpdateScheduler = Executors.newScheduledThreadPool(numberOfSpontaneousUpdateThreads, Thread.ofVirtual().factory());
         final var spontaneousUpdateFutures = new ArrayList<ScheduledFuture>(numberOfSpontaneousUpdatesPerSecond);
 
         for (int i = 0; i < numberOfSpontaneousUpdatesPerSecond; i++) {
@@ -392,7 +391,7 @@ public class TestMEASTransactional2 {
         }
 
         final var queryFutures = new ArrayList<ScheduledFuture>(numberOfQueryThreads);
-        final var queryScheduler = Executors.newScheduledThreadPool(numberOfQueryThreads);
+        final var queryScheduler = Executors.newScheduledThreadPool(numberOfQueryThreads, Thread.ofVirtual().factory());
 
         for (int i = 0; i < numberOfQueryThreads; i++) {
             final var threadNumber = Integer.toString(i);

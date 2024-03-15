@@ -53,8 +53,7 @@
   
   <properties>
     <!-- Build -->
-    <java.version>17</java.version>
-
+    <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.build.outputTimestamp>2025-01-16T09:54:01Z</project.build.outputTimestamp>
 
@@ -443,7 +442,7 @@
              <groupId>commons-logging</groupId>
              <artifactId>commons-logging</artifactId>
            </exclusion>
-         </exclusions>         
+         </exclusions>
        </dependency>
 
       <!--
@@ -455,7 +454,7 @@
           Either explicitly depend here or choose one
           route and exclude from the others or exclude
           systematically. If the dependency plugin is being used,
-    it will likely report errors because it is stricter than 
+    it will likely report errors because it is stricter than
     the maven resolution rule.
 
           Gson is probably the one to choose as the preferred route.
