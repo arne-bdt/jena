@@ -18,6 +18,7 @@
 
 package org.apache.jena.sparql.core.mem2;
 
+import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.*;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.ReadWrite;
@@ -140,11 +141,11 @@ public class GraphMem2Txn implements Graph, Transactional {
         this.maxChainLength = maxChainLength;
         final var newGraph = graphFactory.get();
         final Graph activeBase, staleBase;
-//        if(graphToWrap.getClass().equals(newGraph) && graphToWrap instanceof Copyable<?>) {
-//            final var copyable = (Copyable<Graph>) graphToWrap;
-//            activeBase = copyable.copy();
-//            staleBase = copyable.copy();
-//        } else
+        if(graphToWrap.getClass().equals(newGraph) && graphToWrap instanceof Copyable<?>) {
+            final var copyable = (Copyable<Graph>) graphToWrap;
+            activeBase = copyable.copy();
+            staleBase = copyable.copy();
+        } else
         {
             activeBase = graphFactory.get();
             staleBase = graphFactory.get();
