@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.sparql.core.mem2;
+package org.apache.jena.sparql.core.mem2.wrapper;
 
 import org.apache.jena.graph.*;
 import org.apache.jena.graph.impl.SimpleTransactionHandler;
