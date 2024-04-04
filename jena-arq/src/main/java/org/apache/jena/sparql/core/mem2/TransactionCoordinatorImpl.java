@@ -63,14 +63,14 @@ public class TransactionCoordinatorImpl implements TransactionCoordinator {
                 .forEach(tInfo -> {
                     if (tInfo.getThread().isAlive()) {
                         LOGGER.error("Thread '{}' [{}] has timed out. Calling runnable for timed out thread.",
-                                tInfo.getThread().getName(), tInfo.getThread().getId());
+                                tInfo.getThread().getName(), tInfo.getThread().threadId());
                     } else {
                         LOGGER.error("Thread '{}' [{}] is not alive. Calling runnable timed out thread.",
-                                tInfo.getThread().getName(), tInfo.getThread().getId());
+                                tInfo.getThread().getName(), tInfo.getThread().threadId());
                     }
                     tInfo.callTimedOutRunnableAndCatchAll();
-                    activeThreadsByThreadId.remove(tInfo.getThread().getId());
-                    timedOutThreadsByThreadId.put(tInfo.getThread().getId(), tInfo);
+                    activeThreadsByThreadId.remove(tInfo.getThread().threadId());
+                    timedOutThreadsByThreadId.put(tInfo.getThread().threadId(), tInfo);
                 });
     }
 
@@ -84,25 +84,25 @@ public class TransactionCoordinatorImpl implements TransactionCoordinator {
             transactionCoordinatorScheduler.register(this);
         }
         final var thread = Thread.currentThread();
-        activeThreadsByThreadId.put(thread.getId(), new TheadTransactionInfo(thread, timedOutRunnable));
+        activeThreadsByThreadId.put(thread.threadId(), new TheadTransactionInfo(thread, timedOutRunnable));
     }
 
     @Override
     public void refreshTimeoutForCurrentThread() {
         final var thread = Thread.currentThread();
-        var threadTransactionInfo = activeThreadsByThreadId.get(thread.getId());
+        var threadTransactionInfo = activeThreadsByThreadId.get(thread.threadId());
         if (threadTransactionInfo == null) {
-            threadTransactionInfo = timedOutThreadsByThreadId.get(thread.getId());
+            threadTransactionInfo = timedOutThreadsByThreadId.get(thread.threadId());
             if (threadTransactionInfo == null) {
-                LOGGER.error("Thread '{}' [{}] is not registered", thread.getName(), thread.getId());
+                LOGGER.error("Thread '{}' [{}] is not registered", thread.getName(), thread.threadId());
                 throw new JenaTransactionException("Thread is not registered");
             }
             throw new JenaTransactionException("Thread has timed out");
         }
         if (threadTransactionInfo.isTimedOut()) {
-            activeThreadsByThreadId.remove(thread.getId());
-            timedOutThreadsByThreadId.put(thread.getId(), threadTransactionInfo);
-            LOGGER.error("Thread '{}' [{}] has timed out", thread.getName(), thread.getId());
+            activeThreadsByThreadId.remove(thread.threadId());
+            timedOutThreadsByThreadId.put(thread.threadId(), threadTransactionInfo);
+            LOGGER.error("Thread '{}' [{}] has timed out", thread.getName(), thread.threadId());
             throw new JenaTransactionException("Thread has timed out");
         }
         threadTransactionInfo.refresh();
@@ -111,18 +111,18 @@ public class TransactionCoordinatorImpl implements TransactionCoordinator {
     @Override
     public synchronized void unregisterCurrentThread() {
         final var thread = Thread.currentThread();
-        var removedThreadInfo = activeThreadsByThreadId.remove(thread.getId());
+        var removedThreadInfo = activeThreadsByThreadId.remove(thread.threadId());
         if (removedThreadInfo == null) {
-            removedThreadInfo = timedOutThreadsByThreadId.remove(thread.getId());
+            removedThreadInfo = timedOutThreadsByThreadId.remove(thread.threadId());
             if (removedThreadInfo == null) {
-                LOGGER.error("Thread '{}' [{}] is not registered", thread.getName(), thread.getId());
+                LOGGER.error("Thread '{}' [{}] is not registered", thread.getName(), thread.threadId());
                 throw new JenaTransactionException("Thread is not registered");
             } else {
-                LOGGER.error("Thread '{}' [{}] has timed out", thread.getName(), thread.getId());
+                LOGGER.error("Thread '{}' [{}] has timed out", thread.getName(), thread.threadId());
                 throw new JenaTransactionException("Thread has timed out before it was unregistered.");
             }
         } else {
-            timedOutThreadsByThreadId.remove(thread.getId());
+            timedOutThreadsByThreadId.remove(thread.threadId());
         }
         if (activeThreadsByThreadId.isEmpty() && timedOutThreadsByThreadId.isEmpty()) {
             transactionCoordinatorScheduler.unregister(this);
@@ -145,7 +145,7 @@ public class TransactionCoordinatorImpl implements TransactionCoordinator {
         this.activeThreadsByThreadId.values()
                 .forEach(tInfo -> {
                     LOGGER.error("Thread '{}' [{}] time out runnable is called due to closing of transaction coordinator",
-                            tInfo.getThread().getName(), tInfo.getThread().getId());
+                            tInfo.getThread().getName(), tInfo.getThread().threadId());
                     tInfo.callTimedOutRunnableAndCatchAll();
                 });
         this.activeThreadsByThreadId.clear();
@@ -188,7 +188,7 @@ public class TransactionCoordinatorImpl implements TransactionCoordinator {
             } catch (Exception exception) {
                 LOGGER.error(String.format("Error while calling runnable for timed out thread '%s' [%s]",
                                 thread.getName(),
-                                thread.getId()),
+                                thread.threadId()),
                         exception);
             }
         }

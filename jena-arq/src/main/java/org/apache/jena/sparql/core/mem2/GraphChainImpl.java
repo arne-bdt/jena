@@ -19,6 +19,7 @@
 package org.apache.jena.sparql.core.mem2;
 
 import org.apache.jena.graph.Graph;
+import org.apache.jena.sparql.core.mem2.wrapper.GraphReadOnlyWrapper;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -105,23 +106,23 @@ public class GraphChainImpl implements GraphChain {
     }
 
     @Override
-    public boolean hasUnmergedDeltas() {
-        return deltaChainLength.get() != 0;
+    public boolean hasNoUnmergedDeltas() {
+        return deltaChainLength.get() == 0;
     }
 
     @Override
-    public boolean hasReader() {
-        return !reader.isEmpty();
+    public boolean hasNoReader() {
+        return reader.isEmpty();
     }
 
     @Override
     public boolean isReadyToMerge() {
-        return !hasReader() && !hasGraphForWriting();
+        return hasNoReader() && !hasGraphForWriting();
     }
 
     @Override
     public boolean isReadyToApplyDeltas() {
-        return !hasUnmergedDeltas() && !hasReader() && !hasGraphForWriting();
+        return hasNoUnmergedDeltas() && hasNoReader() && !hasGraphForWriting();
     }
 
     @Override
@@ -198,8 +199,6 @@ public class GraphChainImpl implements GraphChain {
             lastCommittedGraph = mergeDeltas(lastCommittedGraph);
             deltaChainLength.set(0);
         }
-//        //println: Instance #: Merged delta chain.
-//        System.out.println("Instance " + instanceId + ": Merged delta chain.");
     }
 
     /**
@@ -211,7 +210,6 @@ public class GraphChainImpl implements GraphChain {
         if (!isReadyToApplyDeltas())
             throw new IllegalStateException("Not ready to apply deltas");
 
-        //final var deltasSize = deltasToApply.size();
         while (!deltasToApply.isEmpty()) {
             var delta = deltasToApply.poll();
             // first add, then delete --> this may use more memory but should be much faster, as it avoids unnecessary
@@ -220,9 +218,5 @@ public class GraphChainImpl implements GraphChain {
             delta.getDeletions().forEachRemaining(lastCommittedGraph::delete);
             dataVersion.getAndIncrement();
         }
-//        if(deltasSize > 0) {
-//            //println: Instance #: Applied deltas.
-//            System.out.println("Instance " + instanceId + ": Applied " + deltasSize + " deltas.");
-//        }
     }
 }

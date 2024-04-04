@@ -19,7 +19,6 @@
 package org.apache.jena.sparql.core.mem2;
 
 import org.apache.jena.graph.*;
-import org.apache.jena.mem2.GraphMem2;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.query.TxnType;
@@ -82,11 +81,12 @@ import java.util.stream.Stream;
  * It is also responsible for checking if a thread has timed out and calling the runnable that was passed to the
  * {@link TransactionCoordinator#registerCurrentThread(Runnable)} method.
  */
-public class GraphWrapperTransactional2 implements Graph, Transactional {
+public class GraphMem2Txn implements Graph, Transactional {
 
     private static final String ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS = "Failed to acquire write semaphore within %s ms.";
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GraphWrapperTransactional2.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(GraphMem2Txn.class);
+    public static final String NOT_IN_A_TRANSACTION = "Not in a transaction.";
 
     /**
      * This lock is used to ensure that only one thread can write to the graph at a time.
@@ -96,16 +96,13 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     private final Semaphore writeSemaphore = new Semaphore(1, true);
 
     private record TransactionInfo(UUID transactionID, AtomicBoolean isAlive, TxnType type, ReadWrite mode, Graph graph, GraphChain activeChain, long version) {}
-    private final ThreadLocal<TransactionInfo> txnInfo = new ThreadLocal<>();
+    private final ThreadLocal<TransactionInfo> threadLocalTxnInfo = new ThreadLocal<>();
     private final AtomicLong dataVersion = new AtomicLong(0);
     private final TransactionCoordinator transactionCoordinator;
-    private final Thread backgroundThread;
     private GraphChain active;
     private GraphChain stale;
 
     private volatile boolean isClosed = false;
-
-    private final Object syncBackgroundUpdateLoop = new Object();
 
     private final Object syncActiveAndStaleSwitching = new Object();
 
@@ -113,68 +110,70 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
 
     private final int maxChainLength;
 
-    public GraphWrapperTransactional2(final int maxChainLength) {
+    private final Object syncBackgroundUpdate = new Object();
+
+    private Thread backgroundUpdateThread = Thread.startVirtualThread(() -> {});
+
+    public GraphMem2Txn(final int maxChainLength) {
         this(GraphMem2Fast::new, maxChainLength, new TransactionCoordinatorImpl());
     }
 
-    public GraphWrapperTransactional2() {
+    public GraphMem2Txn() {
         this(GraphMem2Fast::new);
     }
 
-    public GraphWrapperTransactional2(final Supplier<Graph> graphFactory) {
+    public GraphMem2Txn(final Supplier<Graph> graphFactory) {
         this(graphFactory, DEFAULT_MAX_CHAIN_LENGTH, new TransactionCoordinatorImpl());
     }
-    public GraphWrapperTransactional2(final Supplier<Graph> graphFactory, final int maxChainLength, final TransactionCoordinator transactionCoordinator) {
+    public GraphMem2Txn(final Supplier<Graph> graphFactory, final int maxChainLength, final TransactionCoordinator transactionCoordinator) {
         this.maxChainLength = maxChainLength;
         this.active = new GraphChainImpl(graphFactory);
         this.stale = new GraphChainImpl(graphFactory);
         this.transactionCoordinator = transactionCoordinator;
-        this.backgroundThread = new Thread(() -> backgroundUpdateLoop());
-        this.backgroundThread.start();
     }
 
-    public GraphWrapperTransactional2(final Graph graphToWrap, final Supplier<Graph> graphFactory) {
+    public GraphMem2Txn(final Graph graphToWrap, final Supplier<Graph> graphFactory) {
         this(graphToWrap, graphFactory, DEFAULT_MAX_CHAIN_LENGTH);
     }
-    public GraphWrapperTransactional2(final Graph graphToWrap, final Supplier<Graph> graphFactory, final int maxChainLength) {
+    @SuppressWarnings("unchecked")
+    public GraphMem2Txn(final Graph graphToWrap, final Supplier<Graph> graphFactory, final int maxChainLength) {
         this.maxChainLength = maxChainLength;
-        final Graph graphToUse = graphFactory.get();
+        final var newGraph = graphFactory.get();
         final Graph activeBase, staleBase;
-        if (graphToUse.getClass().equals(graphToWrap.getClass()) // graphToWrap has the same typ the factory produces
-                && graphToWrap instanceof GraphMem2 graphMem2) { // and the type is GraphMem2, thus it supports copy
-            // we copy the graph to wrap to avoid that the graph to wrap is modified
-            activeBase = graphMem2.copy();
-            staleBase = graphMem2.copy();
-        } else {
-            activeBase = graphToUse; /*otherwise use the supplied empty graph*/
-            if (activeBase instanceof GraphMem2 activeBaseAsMem2) { //if it supports copy
-                graphToWrap.find().forEachRemaining(activeBaseAsMem2::add); // only fill the activeBase
-                staleBase = activeBaseAsMem2.copy(); // copy activeBase to staleBase
-            } else {  // if copy is not supported, we have to fill both graphs
-                staleBase = graphFactory.get();
-                graphToWrap.find().forEachRemaining(t -> {
-                    activeBase.add(t);
-                    staleBase.add(t);
-                });
-            }
+//        if(graphToWrap.getClass().equals(newGraph) && graphToWrap instanceof Copyable<?>) {
+//            final var copyable = (Copyable<Graph>) graphToWrap;
+//            activeBase = copyable.copy();
+//            staleBase = copyable.copy();
+//        } else
+        {
+            activeBase = graphFactory.get();
+            staleBase = graphFactory.get();
+            graphToWrap.find().forEachRemaining(t -> {
+                activeBase.add(t);
+                staleBase.add(t);
+            });
         }
         this.active = new GraphChainImpl(activeBase, graphFactory);
         this.stale = new GraphChainImpl(staleBase, graphFactory);
         this.transactionCoordinator = new TransactionCoordinatorImpl();
-        this.backgroundThread = new Thread(this::backgroundUpdateLoop);
-        this.backgroundThread.start();
     }
 
     private Graph getGraphForCurrentTransaction() {
-        final var txnInfo = this.getTransactionInfoOrNull();
-        if (txnInfo == null) {
-            throw new JenaTransactionException("Not in a transaction.");
+        final var tI = this.getTransactionInfoOrNull();
+        if (tI == null) {
+            throw new JenaTransactionException(NOT_IN_A_TRANSACTION);
         }
         transactionCoordinator.refreshTimeoutForCurrentThread();
-        return txnInfo.graph;
+        return tI.graph;
     }
 
+    private synchronized void triggerBackgroundUpdate() {
+        if (!backgroundUpdateThread.isAlive()) {
+            backgroundUpdateThread = Thread.startVirtualThread(this::backgroundUpdate);
+        }
+    }
 
+    @SuppressWarnings("java:S2142")
     @Override
     public void begin(TxnType txnType) {
         if (isInTransaction())
@@ -185,8 +184,9 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                 final var timeoutMs = transactionCoordinator.getTransactionTimeoutMs()
                         + transactionCoordinator.getStaleTransactionRemovalTimerIntervalMs();
                 if (!writeSemaphore.tryAcquire(timeoutMs, TimeUnit.MILLISECONDS)) {
-                    throw new JenaTransactionException(String.format(ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS, (Integer)timeoutMs));
+                    throw new JenaTransactionException(String.format(ERROR_MSG_FAILED_TO_ACQUIRE_WRITE_SEMAPHORE_WITHIN_X_MS, timeoutMs));
                 }
+
             } catch (InterruptedException e) {
                 endOnceByRemovingThreadLocalsAndUnlocking();
                 throw new JenaTransactionException("Interrupted while waiting for write semaphore.", e);
@@ -201,29 +201,28 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                     activeChain = this.active;
                     info = new TransactionInfo(transactionId, new AtomicBoolean(true), txnType, readWrite, activeChain.getLastCommittedAndAddReader(transactionId), activeChain, dataVersion.get());
                 }
-                txnInfo.set(info);
+                threadLocalTxnInfo.set(info);
                 transactionCoordinator.registerCurrentThread(() -> {
                     info.isAlive.set(false);
                     activeChain.removeReader(transactionId);
-                    synchronized (syncBackgroundUpdateLoop) {
-                        syncBackgroundUpdateLoop.notifyAll();
-                    }
+                    triggerBackgroundUpdate();
                 });
             }
             case WRITE -> {
                 onBeginWriteTrySwitchActiveAndStale();
-                final GraphChain activeChain = this.active;
-                info = new TransactionInfo(transactionId, new AtomicBoolean(true), txnType, readWrite, activeChain.prepareGraphForWriting(), activeChain, dataVersion.get());
-                txnInfo.set(info);
+                final GraphChain activeChain;
+                synchronized (syncActiveAndStaleSwitching) {
+                    activeChain = this.active;
+                    info = new TransactionInfo(transactionId, new AtomicBoolean(true), txnType, readWrite, activeChain.prepareGraphForWriting(), activeChain, dataVersion.get());
+                }
+                threadLocalTxnInfo.set(info);
                 transactionCoordinator.registerCurrentThread(() -> {
                     info.isAlive.set(false);
                     synchronized (syncActiveAndStaleSwitching) {
                         activeChain.discardGraphForWriting();
                         writeSemaphore.release();
                     }
-                    synchronized (syncBackgroundUpdateLoop) {
-                        syncBackgroundUpdateLoop.notifyAll();
-                    }
+                    triggerBackgroundUpdate();
                 });
             }
             default -> throw new IllegalStateException("Unexpected value: " + readWrite);
@@ -241,17 +240,18 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                 }
                 default -> throw new IllegalStateException("Unexpected value: " + txnInfo.mode);
             }
-            this.txnInfo.remove();
+            this.threadLocalTxnInfo.remove();
+            triggerBackgroundUpdate();
         }
     }
 
     private void onBeginWriteTrySwitchActiveAndStale() {
         while(!active.hasNothingToMergeAndNoDeltasToApply()
                 && (stale.hasNothingToMergeAndNoDeltasToApply()
-                    || !stale.hasReader()
-                    || active.getDeltaChainLength() >= this.maxChainLength)) {
+                || stale.hasNoReader()
+                || active.getDeltaChainLength() >= this.maxChainLength)) {
             synchronized (syncActiveAndStaleSwitching) {
-                if (!stale.hasReader()) {
+                if (stale.hasNoReader()) {
                     stale.mergeAndApplyDeltas();
                 }
                 if (stale.hasNothingToMergeAndNoDeltasToApply()) {
@@ -262,35 +262,29 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
             }
         }
     }
-
-    private void backgroundUpdateLoop() {
-        while (!isClosed) {
+    private void backgroundUpdate() {
+        boolean didSomething = true;
+        while (!isClosed && didSomething) {
+            didSomething = false;
             try {
-                final GraphChain activeChain;
-                final GraphChain staleChain;
                 synchronized (syncActiveAndStaleSwitching) {
-                    if (!active.hasNothingToMergeAndNoDeltasToApply() && !stale.hasReader()) {
+                    if (!active.hasNothingToMergeAndNoDeltasToApply() && stale.hasNoReader()) {
                         if (!stale.hasNothingToMergeAndNoDeltasToApply()) {
                             stale.mergeAndApplyDeltas();
                         }
                         final var tmp = active;
                         active = stale;
                         stale = tmp;
+                        didSomething = true;
                     }
-                    if(!stale.hasReader() && !stale.hasNothingToMergeAndNoDeltasToApply()) {
+                    if(stale.isReadyToMerge() && !stale.hasNothingToMergeAndNoDeltasToApply()) {
                         stale.mergeAndApplyDeltas();
-                    }
-                    activeChain = this.active;
-                    staleChain = this.stale;
-                }
-                synchronized (syncBackgroundUpdateLoop) {
-                    if(activeChain.hasNothingToMergeAndNoDeltasToApply()
-                            && staleChain.hasNothingToMergeAndNoDeltasToApply()) {
-                        syncBackgroundUpdateLoop.wait();
+                        didSomething = true;
                     }
                 }
             } catch (Exception e) {
                 LOGGER.error("Exception in background update loop.", e);
+                throw e;
             }
         }
     }
@@ -314,12 +308,12 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     }
 
     private TransactionInfo getTransactionInfoOrNull() {
-        final var txnInfo = this.txnInfo.get();
+        final var txnInfo = this.threadLocalTxnInfo.get();
         if (txnInfo == null)
             return null;
 
         if(!txnInfo.isAlive.get()) {
-            this.txnInfo.remove();
+            this.threadLocalTxnInfo.remove();
             return null;
         }
         return txnInfo;
@@ -337,6 +331,10 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
         }
         try {
             final var txnInfo = this.getTransactionInfoOrNull();
+            if (txnInfo == null) {
+                writeSemaphore.release();
+                throw new JenaTransactionException(NOT_IN_A_TRANSACTION);
+            }
             // if we are promoting to isolated, we need to check that the data hasn't changed
             if (txnType == Promote.ISOLATED
                     && txnInfo.version != dataVersion.get()) {
@@ -345,9 +343,13 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
             }
             transactionCoordinator.unregisterCurrentThread();
             txnInfo.activeChain.removeReader(txnInfo.transactionID);
-            final var activeChain = this.active;
-            final var info = new TransactionInfo(txnInfo.transactionID, new AtomicBoolean(true), txnInfo.type, ReadWrite.WRITE, activeChain.prepareGraphForWriting(), activeChain, dataVersion.get());
-            this.txnInfo.set(info);
+            final GraphChain activeChain;
+            final TransactionInfo info;
+            synchronized (syncActiveAndStaleSwitching) {
+                activeChain = this.active;
+                info = new TransactionInfo(txnInfo.transactionID, new AtomicBoolean(true), txnInfo.type, ReadWrite.WRITE, activeChain.prepareGraphForWriting(), activeChain, dataVersion.get());
+            }
+            this.threadLocalTxnInfo.set(info);
             transactionCoordinator.registerCurrentThread(() -> {
                 info.isAlive.set(false);
                 activeChain.discardGraphForWriting();
@@ -364,16 +366,14 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     public void commit() {
         final var txnInfo = this.getTransactionInfoOrNull();
         if (txnInfo == null) {
-            throw new JenaTransactionException("Not in a transaction.");
+            throw new JenaTransactionException(NOT_IN_A_TRANSACTION);
         }
         try {
             transactionCoordinator.unregisterCurrentThread();
             switch (transactionMode()) {
                 case READ -> {
                     txnInfo.activeChain.removeReader(txnInfo.transactionID);
-                    synchronized (syncBackgroundUpdateLoop) {
-                        syncBackgroundUpdateLoop.notifyAll();
-                    }
+                    triggerBackgroundUpdate();
                 }
                 case WRITE -> {
                     final var delta = (FastDeltaGraph) txnInfo.graph;
@@ -390,24 +390,18 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                                 stale.discardGraphForWriting();
                                 stale.queueDelta(delta);
                                 active.rebaseAndLinkDeltaForWritingToChain(delta);
-                                //printf: Rebased
-//                                System.out.println("Rebased");
                             }
                             dataVersion.incrementAndGet(); // increment the data version to signal that the data has changed
                         }
                     } else {
                         txnInfo.activeChain.discardGraphForWriting();
                     }
-                    synchronized (syncBackgroundUpdateLoop) {
-                        syncBackgroundUpdateLoop.notifyAll();
-                    }
+                    triggerBackgroundUpdate();
                     writeSemaphore.release();
                 }
-                default -> {
-                    throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
-                }
+                default -> throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
             }
-            this.txnInfo.remove();
+            this.threadLocalTxnInfo.remove();
         }
         catch (Exception e) {
             endOnceByRemovingThreadLocalsAndUnlocking();
@@ -419,29 +413,23 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
     public void abort() {
         final var txnInfo = this.getTransactionInfoOrNull();
         if (txnInfo == null) {
-            throw new JenaTransactionException("Not in a transaction.");
+            return;
         }
         try {
             transactionCoordinator.unregisterCurrentThread();
             switch (transactionMode()) {
                 case READ -> {
                     txnInfo.activeChain.removeReader(txnInfo.transactionID);
-                    synchronized (syncBackgroundUpdateLoop) {
-                        syncBackgroundUpdateLoop.notifyAll();
-                    }
+                    triggerBackgroundUpdate();
                 }
                 case WRITE -> {
                     txnInfo.activeChain.discardGraphForWriting();
-                    synchronized (syncBackgroundUpdateLoop) {
-                        syncBackgroundUpdateLoop.notifyAll();
-                    }
+                    triggerBackgroundUpdate();
                     writeSemaphore.release();
                 }
-                default -> {
-                    throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
-                }
+                default -> throw new JenaTransactionException("Unknown transaction mode: " + transactionMode());
             }
-            this.txnInfo.remove();
+            this.threadLocalTxnInfo.remove();
         } catch (Exception e) {
             endOnceByRemovingThreadLocalsAndUnlocking();
         }
@@ -565,22 +553,16 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
                 try {
                     txnInfo.graph.close();
                 } finally {
-                    this.txnInfo.remove();
+                    this.threadLocalTxnInfo.remove();
                 }
             }
         } finally {
             try {
                 transactionCoordinator.close();
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                LOGGER.error("Exception while closing transaction coordinator.", e);
             } finally {
                 this.isClosed = true;
-                try {
-                    backgroundThread.join(200);
-                } catch (InterruptedException e) {
-                    backgroundThread.interrupt();
-                    throw new RuntimeException(e);
-                }
             }
         }
     }
@@ -618,11 +600,5 @@ public class GraphWrapperTransactional2 implements Graph, Transactional {
 
     int getStaleGraphLengthOfDeltaQueue() {
         return stale.getDeltaQueueLength();
-    }
-
-    public void printDeltaChainLengths() {
-        //printf: Active (instance #) has delta chain length of (length). Stale (instance #) has delta chain length of (length).
-        System.out.printf("Active (instance %s) has delta chain length of %s. Stale (instance %s) has delta chain length of %s.%n",
-                active.getInstanceId(), active.getDeltaChainLength(), stale.getInstanceId(), stale.getDeltaChainLength());
     }
 }

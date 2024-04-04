@@ -28,6 +28,7 @@ import org.apache.jena.graph.impl.GraphBase;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -66,10 +67,10 @@ public class FastDeltaGraph extends GraphBase {
      * This is used to rebase a {@link FastDeltaGraph} on a new base graph.
      * There are no checks performed to ensure that the new base graph is compatible with the
      * previous base graph.
-     * @param newBase
-     * @param deltaGraphToRebase
+     * @param newBase the new base graph
+     * @param deltaGraphToRebase the delta graph to rebase
      */
-    /*package*/ FastDeltaGraph(Graph newBase, FastDeltaGraph deltaGraphToRebase) {
+    public FastDeltaGraph(Graph newBase, FastDeltaGraph deltaGraphToRebase) {
         super();
         if (newBase == null)
             throw new IllegalArgumentException("base graph must not be null");
@@ -80,6 +81,20 @@ public class FastDeltaGraph extends GraphBase {
         this.base = newBase;
         this.additions = deltaGraphToRebase.additions;
         this.deletions = deltaGraphToRebase.deletions;
+    }
+
+    public FastDeltaGraph(Graph base, Collection<Triple> additions, Collection<Triple> deletions) {
+        super();
+        if (base == null)
+            throw new IllegalArgumentException("base graph must not be null");
+        if (base.getCapabilities().handlesLiteralTyping())
+            throw new IllegalArgumentException("base graph must not handle literal typing");
+        if (!base.getCapabilities().sizeAccurate())
+            throw new IllegalArgumentException("base graph must be size accurate");
+        this.base = base;
+        this.additions = new GraphMem2Fast();
+        additions.forEach(this.additions::add);
+        this.deletions = new HashSet<>(deletions);
     }
 
     public Iterator<Triple> getAdditions() {
