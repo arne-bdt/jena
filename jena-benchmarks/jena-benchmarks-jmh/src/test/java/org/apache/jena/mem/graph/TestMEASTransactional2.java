@@ -29,7 +29,7 @@ import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Serialization;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.riot.RDFFormat;
-import org.apache.jena.sparql.core.mem2.GraphWrapperTransactional2;
+import org.apache.jena.sparql.core.mem2.GraphMem2Txn;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.Scope;
@@ -54,7 +54,7 @@ public class TestMEASTransactional2 {
 
 
 
-    private static void updateAnalogAndDiscreteValues(GraphWrapperTransactional2 g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues) {
+    private static void updateAnalogAndDiscreteValues(GraphMem2Txn g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues) {
         boolean beginTransactionAndCommitIsNeeded = !g.isInTransaction();
         if(beginTransactionAndCommitIsNeeded) {
             g.begin(ReadWrite.WRITE);
@@ -116,9 +116,7 @@ public class TestMEASTransactional2 {
      * @return the memory consumption in MB
      */
     private static double runGcAndGetUsedMemoryInMB() {
-        System.runFinalization();
         System.gc();
-        Runtime.getRuntime().runFinalization();
         Runtime.getRuntime().gc();
         return BigDecimal.valueOf(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024L)).divide(BigDecimal.valueOf(1024L)).doubleValue();
     }
@@ -224,7 +222,6 @@ public class TestMEASTransactional2 {
                 //printf: Bulk-Updated from version X to Y in XX.XXXs
                 if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
                     System.out.printf("Bulk-Update from version %d to %d in %s (total time: %s)%n", verTriple.getObject().getLiteralValue(), ver, stopwatch, overallStopwatch);
-                    g.printDeltaChainLengths();
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -252,7 +249,6 @@ public class TestMEASTransactional2 {
                     stopwatch.stop();
                     if(stopwatch.getTime(TimeUnit.MILLISECONDS) > bulkUpdateRateInSeconds*1000) {
                         System.out.printf("Spontaneous-Update-Thread %s from version %d to %d in %s (total time: %s)%n", threadNumber, version.get(), ver, stopwatch, overallStopwatch);
-                        g.printDeltaChainLengths();
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -280,7 +276,6 @@ public class TestMEASTransactional2 {
                     //printf: Thread x reading version y in XX.XXXs
                     if(threadNumber.equals("0") || stopwatch.getTime(TimeUnit.MILLISECONDS) > queryRateInSeconds*1000) {
                         System.out.printf("Thread %s reading version %d in %s (total time: %s)%n", threadNumber, ver, stopwatch, overallStopwatch);
-                        g.printDeltaChainLengths();
                     }
                 } catch (Exception e) {
                     try{
@@ -318,8 +313,8 @@ public class TestMEASTransactional2 {
         final var spontaneousUpdateRateInSeconds = 1;
         final var queryRateInSeconds = 1;
         final var numberOfSpontaneousUpdateThreads = 6;
-        final var numberOfQueryThreads = 10;
-        final var numberOfSpontaneousUpdatesPerSecond = 200;
+        final var numberOfQueryThreads = 8;
+        final var numberOfSpontaneousUpdatesPerSecond = 300;
 
         final var version = new AtomicInteger(0);
         final var versionTriple = Triple.create(NodeFactory.createURI("_" + UUID.randomUUID().toString()), NodeFactory.createLiteralByValue("jena.apache.org/jena-jmh-benchmarks#version"), NodeFactory.createLiteralByValue(version.intValue()));
@@ -339,7 +334,7 @@ public class TestMEASTransactional2 {
         final var overallStopwatch = StopWatch.createStarted();
         final var updatesRunning = new AtomicBoolean(true);
 
-        final var updateThread = Thread.startVirtualThread(() -> {
+        final var updateThread = new Thread(() -> {
             try {
                 while(updatesRunning.get()) {
                     while(!updateQueue.isEmpty()) {
@@ -358,6 +353,7 @@ public class TestMEASTransactional2 {
                 e.printStackTrace();
             }
         });
+        updateThread.start();
 
         final var updateScheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().factory());
         var scheduledFutureForBulkUpdates = updateScheduler.scheduleAtFixedRate(() -> {
@@ -409,7 +405,6 @@ public class TestMEASTransactional2 {
                     //printf: Thread x reading version y in XX.XXXs
                     if(threadNumber.equals("0") || stopwatch.getTime(TimeUnit.MILLISECONDS) > queryRateInSeconds*1000) {
                         System.out.printf("Thread %s reading version %d in %s (total time: %s, update-queue-length: %d)%n", threadNumber, ver, stopwatch, overallStopwatch, updateQueue.size());
-                        g.printDeltaChainLengths();
                     }
                 } catch (Exception e) {
                     try{
@@ -447,11 +442,11 @@ public class TestMEASTransactional2 {
     }
 
 
-    public GraphWrapperTransactional2 createGraph() {
-        return new GraphWrapperTransactional2();
+    public GraphMem2Txn createGraph() {
+        return new GraphMem2Txn();
     }
 
-    private static Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillListsByGraph(GraphWrapperTransactional2 g, int totalAnalogValues, int totalDiscreteValues) {
+    private static Pair<List<MEASData.AnalogValue>, List<MEASData.DiscreteValue>> fillListsByGraph(GraphMem2Txn g, int totalAnalogValues, int totalDiscreteValues) {
 
         final var analogValues = new ArrayList<MEASData.AnalogValue>(totalAnalogValues);
         final var discreteValues = new ArrayList<MEASData.DiscreteValue>(totalDiscreteValues);

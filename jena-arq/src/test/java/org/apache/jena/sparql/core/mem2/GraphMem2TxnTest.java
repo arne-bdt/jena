@@ -31,14 +31,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.*;
 
-public class GraphWrapperTransactional2Test {
+public class GraphMem2TxnTest {
 
     @Test
     public void testAddWithoutTransaction() {
-        var sut = new GraphWrapperTransactional2();
+        var sut = new GraphMem2Txn();
         var t = triple("s p o");
         assertThrows(JenaTransactionException.class, () -> sut.add(t));
         sut.close();
@@ -46,7 +45,7 @@ public class GraphWrapperTransactional2Test {
 
     @Test
     public void testAddAndCommit() {
-        var sut = new GraphWrapperTransactional2();
+        var sut = new GraphMem2Txn();
         sut.begin(ReadWrite.WRITE);
         assertEquals(0, sut.size());
         sut.add(triple("s p o"));
@@ -63,7 +62,7 @@ public class GraphWrapperTransactional2Test {
         graphToWrap.add(triple("s p o"));
         assertEquals(1, graphToWrap.size());
 
-        var sut = new GraphWrapperTransactional2(graphToWrap, () -> new GraphMem2Fast());
+        var sut = new GraphMem2Txn(graphToWrap, GraphMem2Fast::new);
         sut.begin(ReadWrite.WRITE);
         assertEquals(1, sut.size());
         sut.delete(triple("s p o"));
@@ -78,7 +77,7 @@ public class GraphWrapperTransactional2Test {
 
     @Test
     public void testAddAndAbort() {
-        var sut = new GraphWrapperTransactional2();
+        var sut = new GraphMem2Txn();
         sut.begin(ReadWrite.WRITE);
         assertEquals(0, sut.size());
         sut.add(triple("s p o"));
@@ -91,12 +90,12 @@ public class GraphWrapperTransactional2Test {
 
     @Test
     public void testAddAndEnd() {
-        var sut = new GraphWrapperTransactional2();
+        var sut = new GraphMem2Txn();
         sut.begin(ReadWrite.WRITE);
         assertEquals(0, sut.size());
         sut.add(triple("s p o"));
         assertEquals(1, sut.size());
-        assertThrows(JenaTransactionException.class, () -> sut.end());
+        assertThrows(JenaTransactionException.class, sut::end);
         sut.begin(ReadWrite.READ);
         assertEquals(0, sut.size());
         sut.end();
@@ -104,7 +103,7 @@ public class GraphWrapperTransactional2Test {
 
     @Test
     public void testReaderThatStartedTransactionBeforeWriteDoesNotSeeWrittenData() throws InterruptedException {
-        var sut = new GraphWrapperTransactional2();
+        var sut = new GraphMem2Txn();
         var threadHasStarted = new Semaphore(1);
         var newDataWritten = new Semaphore(1);
         threadHasStarted.acquire();
@@ -139,7 +138,7 @@ public class GraphWrapperTransactional2Test {
 
     @Test
     public void testReaderThatStartedAfterWriteSeesWrittenData() throws InterruptedException {
-        var sut = new GraphWrapperTransactional2();
+        var sut = new GraphMem2Txn();
         var threadHasStarted = new Semaphore(1);
         var newDataWritten = new Semaphore(1);
         threadHasStarted.acquire();
@@ -174,7 +173,7 @@ public class GraphWrapperTransactional2Test {
 
     @Test
     public void testThatMultipleReaderSeeDifferentThingsWhenStartedAfterDifferentCommits() throws InterruptedException {
-        var sut = new GraphWrapperTransactional2();
+        var sut = new GraphMem2Txn();
         var threadHasStarted = new Semaphore(1);
         var oneTripleWritten = new Semaphore(1);
         var twoTriplesWritten = new Semaphore(1);
@@ -235,8 +234,8 @@ public class GraphWrapperTransactional2Test {
     }
 
     @Test
-    public void testDeltasAreProcessed() throws InterruptedException {
-        var sut = new GraphWrapperTransactional2();
+    public void testDeltasAreProcessed()  {
+        var sut = new GraphMem2Txn();
         sut.begin(ReadWrite.WRITE);
         sut.add(triple("s p o"));
         sut.commit();
@@ -264,7 +263,7 @@ public class GraphWrapperTransactional2Test {
             }
         };
 
-        var sut = new GraphWrapperTransactional2(GraphMem2Fast::new, 3, coordinator);
+        var sut = new GraphMem2Txn(GraphMem2Fast::new, 3, coordinator);
 
         var t = new Thread(() -> {
             sut.begin(ReadWrite.WRITE);
@@ -308,7 +307,7 @@ public class GraphWrapperTransactional2Test {
 
         t.join();
 
-        assertEquals(true, exceptionThrown.get());
+        assertTrue(exceptionThrown.get());
 
         sut.begin(ReadWrite.READ);
         assertEquals(1, sut.size());
@@ -328,7 +327,7 @@ public class GraphWrapperTransactional2Test {
                 });
             }
         };
-        var sut = new GraphWrapperTransactional2(GraphMem2Fast::new, 3, coordinator);
+        var sut = new GraphMem2Txn(GraphMem2Fast::new, 3, coordinator);
 
         sut.begin(ReadWrite.WRITE);
         sut.add(triple("s p o"));
@@ -349,7 +348,7 @@ public class GraphWrapperTransactional2Test {
             semaphore.release();
             try
             {
-                sut.end();
+                sut.size();
             }
             catch (JenaTransactionException e)
             {
@@ -363,6 +362,6 @@ public class GraphWrapperTransactional2Test {
 
         t.join();
 
-        assertEquals(true, exceptionThrown.get());
+        assertTrue(exceptionThrown.get());
     }
 }

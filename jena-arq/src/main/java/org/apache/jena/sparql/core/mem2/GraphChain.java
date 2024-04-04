@@ -17,6 +17,8 @@
  */
 package org.apache.jena.sparql.core.mem2;
 
+import org.apache.jena.sparql.core.mem2.wrapper.GraphReadOnlyWrapper;
+
 import java.util.UUID;
 
 /**
@@ -42,12 +44,12 @@ public interface GraphChain {
 
     boolean hasGraphForWriting();
 
-    boolean hasUnmergedDeltas();
+    boolean hasNoUnmergedDeltas();
 
-    boolean hasReader();
+    boolean hasNoReader();
 
     default boolean hasNothingToMergeAndNoDeltasToApply() {
-        return !hasUnmergedDeltas() && getDeltaQueueLength() == 0;
+        return hasNoUnmergedDeltas() && getDeltaQueueLength() == 0;
     }
 
     boolean isReadyToMerge();
