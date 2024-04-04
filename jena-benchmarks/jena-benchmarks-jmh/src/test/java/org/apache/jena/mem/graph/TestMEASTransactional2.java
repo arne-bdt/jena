@@ -313,8 +313,8 @@ public class TestMEASTransactional2 {
         final var spontaneousUpdateRateInSeconds = 1;
         final var queryRateInSeconds = 1;
         final var numberOfSpontaneousUpdateThreads = 6;
-        final var numberOfQueryThreads = 8;
-        final var numberOfSpontaneousUpdatesPerSecond = 300;
+        final var numberOfQueryThreads = 6;
+        final var numberOfSpontaneousUpdatesPerSecond = 200;
 
         final var version = new AtomicInteger(0);
         final var versionTriple = Triple.create(NodeFactory.createURI("_" + UUID.randomUUID().toString()), NodeFactory.createLiteralByValue("jena.apache.org/jena-jmh-benchmarks#version"), NodeFactory.createLiteralByValue(version.intValue()));
