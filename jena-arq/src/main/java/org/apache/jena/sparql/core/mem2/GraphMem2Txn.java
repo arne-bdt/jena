@@ -107,11 +107,9 @@ public class GraphMem2Txn implements Graph, Transactional {
 
     private final Object syncActiveAndStaleSwitching = new Object();
 
-    private static final int DEFAULT_MAX_CHAIN_LENGTH = 3;
+    private static final int DEFAULT_MAX_CHAIN_LENGTH = 2;
 
     private final int maxChainLength;
-
-    private final Object syncBackgroundUpdate = new Object();
 
     private Thread backgroundUpdateThread = Thread.startVirtualThread(() -> {});
 

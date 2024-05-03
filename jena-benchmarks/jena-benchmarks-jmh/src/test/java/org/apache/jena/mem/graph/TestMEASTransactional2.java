@@ -48,13 +48,15 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @State(Scope.Benchmark)
 public class TestMEASTransactional2 {
 
 
 
-    private static void updateAnalogAndDiscreteValues(GraphMem2Txn g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues) {
+    private static int updateAnalogAndDiscreteValues(GraphMem2Txn g, List<MEASData.AnalogValue> analogValues, List<MEASData.DiscreteValue> discreteValues) {
+        var updates = 0;
         boolean beginTransactionAndCommitIsNeeded = !g.isInTransaction();
         if(beginTransactionAndCommitIsNeeded) {
             g.begin(ReadWrite.WRITE);
@@ -66,6 +68,7 @@ public class TestMEASTransactional2 {
             if(analogValue.value() != (Float)tAnalogValueValue.getObject().getLiteralValue()) {
                 g.add(Triple.create(subject, tAnalogValueValue.getPredicate(), NodeFactory.createLiteralByValue(analogValue.value(), XSDDatatype.XSDfloat)));
                 g.delete(tAnalogValueValue);
+                updates++;
             }
 
 
@@ -74,6 +77,7 @@ public class TestMEASTransactional2 {
             if(!tMeasurementValueTimeStamp.getObject().equals(newTimeStamp)) {
                 g.add(Triple.create(subject, tMeasurementValueTimeStamp.getPredicate(), newTimeStamp));
                 g.delete(tMeasurementValueTimeStamp);
+                updates++;
             }
 
 
@@ -81,6 +85,7 @@ public class TestMEASTransactional2 {
             if(analogValue.status() != (Integer)tMeasurementValueStatus.getObject().getLiteralValue()) {
                 g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(analogValue.status(), XSDDatatype.XSDinteger)));
                 g.delete(tMeasurementValueStatus);
+                updates++;
             }
         }
         for (final var discreteValue : discreteValues) {
@@ -90,6 +95,7 @@ public class TestMEASTransactional2 {
             if(discreteValue.value() != (Integer)tDiscreteValueValue.getObject().getLiteralValue()) {
                 g.add(Triple.create(subject, tDiscreteValueValue.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.value(), XSDDatatype.XSDinteger)));
                 g.delete(tDiscreteValueValue);
+                updates++;
             }
 
             final var tMeasurementValueTimeStamp = g.find(subject, MEASData.MeasurementValueTimeStamp.asNode(), Node.ANY).next();
@@ -97,17 +103,20 @@ public class TestMEASTransactional2 {
             if(!tMeasurementValueTimeStamp.getObject().equals(newTimeStamp)) {
                 g.add(Triple.create(subject, tMeasurementValueTimeStamp.getPredicate(), newTimeStamp));
                 g.delete(tMeasurementValueTimeStamp);
+                updates++;
             }
 
             final var tMeasurementValueStatus = g.find(subject, MEASData.MeasurementValueStatus.asNode(), Node.ANY).next();
             if(discreteValue.status() != (Integer)tMeasurementValueStatus.getObject().getLiteralValue()) {
                 g.add(Triple.create(subject, tMeasurementValueStatus.getPredicate(), NodeFactory.createLiteralByValue(discreteValue.status(), XSDDatatype.XSDinteger)));
                 g.delete(tMeasurementValueStatus);
+                updates++;
             }
         }
         if(beginTransactionAndCommitIsNeeded) {
             g.commit();
         }
+        return updates;
     }
 
     /**
@@ -314,7 +323,9 @@ public class TestMEASTransactional2 {
         final var queryRateInSeconds = 1;
         final var numberOfSpontaneousUpdateThreads = 6;
         final var numberOfQueryThreads = 6;
-        final var numberOfSpontaneousUpdatesPerSecond = 200;
+        final var numberOfSpontaneousUpdatesPerSecond = 500;
+
+        final var updateCounter = new AtomicLong(0);
 
         final var version = new AtomicInteger(0);
         final var versionTriple = Triple.create(NodeFactory.createURI("_" + UUID.randomUUID().toString()), NodeFactory.createLiteralByValue("jena.apache.org/jena-jmh-benchmarks#version"), NodeFactory.createLiteralByValue(version.intValue()));
@@ -322,7 +333,7 @@ public class TestMEASTransactional2 {
         final var analogValues = MEASData.generateRandomAnalogValues(100000);
         final var discreteValues = MEASData.generateRandomDiscreteValues(25000);
 
-        final var g = createGraph();
+        final var g = new GraphMem2Txn(2);
         g.begin(ReadWrite.WRITE);
         g.add(versionTriple);
         MEASData.addAnalogValuesToGraph(g, analogValues);
@@ -344,8 +355,9 @@ public class TestMEASTransactional2 {
                         final var ver = (Integer)version.incrementAndGet();
                         g.add(versionTriple.getSubject(), versionTriple.getPredicate(), NodeFactory.createLiteralByValue(ver));
                         g.delete(verTriple);
-                        updateAnalogAndDiscreteValues(g, update.analogValues(), update.discreteValues());
+                        final var numOfUpdates = updateAnalogAndDiscreteValues(g, update.analogValues(), update.discreteValues()) + 1;
                         g.commit();
+                        updateCounter.getAndAdd(numOfUpdates);
                     }
                 }
             }
@@ -404,7 +416,7 @@ public class TestMEASTransactional2 {
                     stopwatch.stop();
                     //printf: Thread x reading version y in XX.XXXs
                     if(threadNumber.equals("0") || stopwatch.getTime(TimeUnit.MILLISECONDS) > queryRateInSeconds*1000) {
-                        System.out.printf("Thread %s reading version %d in %s (total time: %s, update-queue-length: %d)%n", threadNumber, ver, stopwatch, overallStopwatch, updateQueue.size());
+                        System.out.printf("Thread %s reading version %d in %s (total time: %s, update-queue-length: %d, updated-rate: %d t/s)%n", threadNumber, ver, stopwatch, overallStopwatch, updateQueue.size(), (int)((updateCounter.get()/(double)overallStopwatch.getTime(TimeUnit.MILLISECONDS)*1000.0)));
                     }
                 } catch (Exception e) {
                     try{
