@@ -375,7 +375,7 @@ public class GraphMem2Txn implements Graph, Transactional {
                     triggerBackgroundUpdate();
                 }
                 case WRITE -> {
-                    final var delta = (FastDeltaGraph) txnInfo.graph;
+                    final var delta = (DeltaGraph) txnInfo.graph;
                     if (delta.hasChanges()) {
                         synchronized (syncActiveAndStaleSwitching) {
                             if(active == txnInfo.activeChain) {

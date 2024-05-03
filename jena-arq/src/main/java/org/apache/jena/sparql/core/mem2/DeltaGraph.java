@@ -39,13 +39,13 @@ import java.util.stream.Stream;
  * Faster alternative to {@link Delta} that uses a {@link GraphMem2Fast} for the additions
  * and a {@link HashSet} for the deletions.
  */
-public class FastDeltaGraph extends GraphBase {
+public class DeltaGraph extends GraphBase {
 
     private final Graph base;
     private final Graph additions;
     private final Set<Triple> deletions;
 
-    public FastDeltaGraph(Graph base, Supplier<Graph> graphFactory) {
+    public DeltaGraph(Graph base, Supplier<Graph> graphFactory) {
         super();
         if (base == null)
             throw new IllegalArgumentException("base graph must not be null");
@@ -58,19 +58,19 @@ public class FastDeltaGraph extends GraphBase {
         this.deletions = new HashSet<>();
     }
 
-    public FastDeltaGraph(Graph base) {
+    public DeltaGraph(Graph base) {
         this(base, GraphMem2Fast::new);
     }
 
     /**
-     * Creates a new {@link FastDeltaGraph} that is based on the given {@code newBase} graph.
-     * This is used to rebase a {@link FastDeltaGraph} on a new base graph.
+     * Creates a new {@link DeltaGraph} that is based on the given {@code newBase} graph.
+     * This is used to rebase a {@link DeltaGraph} on a new base graph.
      * There are no checks performed to ensure that the new base graph is compatible with the
      * previous base graph.
      * @param newBase the new base graph
      * @param deltaGraphToRebase the delta graph to rebase
      */
-    public FastDeltaGraph(Graph newBase, FastDeltaGraph deltaGraphToRebase) {
+    public DeltaGraph(Graph newBase, DeltaGraph deltaGraphToRebase) {
         super();
         if (newBase == null)
             throw new IllegalArgumentException("base graph must not be null");
@@ -83,7 +83,7 @@ public class FastDeltaGraph extends GraphBase {
         this.deletions = deltaGraphToRebase.deletions;
     }
 
-    public FastDeltaGraph(Graph base, Collection<Triple> additions, Collection<Triple> deletions) {
+    public DeltaGraph(Graph base, Collection<Triple> additions, Collection<Triple> deletions) {
         super();
         if (base == null)
             throw new IllegalArgumentException("base graph must not be null");
