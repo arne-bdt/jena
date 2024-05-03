@@ -45,19 +45,19 @@ import java.util.function.Supplier;
  */
 public class GraphChainImpl implements GraphChain {
 
-    private final ConcurrentLinkedQueue<FastDeltaGraph> deltasToApply = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<DeltaGraph> deltasToApply = new ConcurrentLinkedQueue<>();
 
     /**
      * Queues a delta to be applied to the last committed graph.
      * @param deltaGraph the delta to apply
      */
-    public void queueDelta(FastDeltaGraph deltaGraph) {
+    public void queueDelta(DeltaGraph deltaGraph) {
         deltasToApply.add(deltaGraph);
     }
 
     private Graph lastCommittedGraph;
 
-    private FastDeltaGraph deltaGraphOfWriteTransaction = null;
+    private DeltaGraph deltaGraphOfWriteTransaction = null;
 
     private final AtomicInteger deltaChainLength = new AtomicInteger(0);
 
@@ -88,7 +88,7 @@ public class GraphChainImpl implements GraphChain {
     }
 
     private static Graph mergeDeltas(Graph graph) {
-        if (graph instanceof FastDeltaGraph delta) {
+        if (graph instanceof DeltaGraph delta) {
             final var base = mergeDeltas(delta.getBase());
             // first add, then delete --> this may use more memory but should be much faster, as it avoids unnecessary
             // destruction and recreation of the internal data structures
@@ -144,10 +144,10 @@ public class GraphChainImpl implements GraphChain {
      * @return the delta graph
      */
     @Override
-    public FastDeltaGraph prepareGraphForWriting() {
+    public DeltaGraph prepareGraphForWriting() {
         if (hasGraphForWriting())
             throw new IllegalStateException("There is already a transaction in progress");
-        deltaGraphOfWriteTransaction = new FastDeltaGraph(lastCommittedGraph, graphFactory);
+        deltaGraphOfWriteTransaction = new DeltaGraph(lastCommittedGraph, graphFactory);
         return deltaGraphOfWriteTransaction;
     }
 
@@ -165,8 +165,8 @@ public class GraphChainImpl implements GraphChain {
     }
 
     @Override
-    public void rebaseAndLinkDeltaForWritingToChain(FastDeltaGraph deltaGraph) {
-        lastCommittedGraph = new FastDeltaGraph(lastCommittedGraph, deltaGraph);
+    public void rebaseAndLinkDeltaForWritingToChain(DeltaGraph deltaGraph) {
+        lastCommittedGraph = new DeltaGraph(lastCommittedGraph, deltaGraph);
         deltaChainLength.incrementAndGet();
         deltaGraphOfWriteTransaction = null;
         dataVersion.getAndIncrement();

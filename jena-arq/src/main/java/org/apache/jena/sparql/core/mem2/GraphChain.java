@@ -60,11 +60,11 @@ public interface GraphChain {
 
     void removeReader(final UUID readerId);
 
-    FastDeltaGraph prepareGraphForWriting();
+    DeltaGraph prepareGraphForWriting();
 
     void linkGraphForWritingToChain();
 
-    void rebaseAndLinkDeltaForWritingToChain(FastDeltaGraph deltaGraph);
+    void rebaseAndLinkDeltaForWritingToChain(DeltaGraph deltaGraph);
 
     void discardGraphForWriting();
 
@@ -76,7 +76,7 @@ public interface GraphChain {
 
     void applyQueuedDeltas();
 
-    void queueDelta(FastDeltaGraph deltaGraph);
+    void queueDelta(DeltaGraph deltaGraph);
 
     default void mergeAndApplyDeltas() {
         mergeDeltaChain();
