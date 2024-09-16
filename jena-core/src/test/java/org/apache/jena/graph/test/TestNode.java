@@ -19,19 +19,35 @@
 package org.apache.jena.graph.test;
 
 
-import junit.framework.TestSuite ;
-
+import junit.framework.TestSuite;
 import org.apache.jena.atlas.lib.Creator;
-import org.apache.jena.datatypes.RDFDatatype ;
-import org.apache.jena.datatypes.TypeMapper ;
-import org.apache.jena.datatypes.xsd.XSDDatatype ;
-import org.apache.jena.graph.* ;
-import org.apache.jena.graph.impl.LiteralLabel ;
-import org.apache.jena.graph.impl.LiteralLabelFactory ;
-import org.apache.jena.rdf.model.impl.Util ;
-import org.apache.jena.shared.JenaException ;
-import org.apache.jena.shared.PrefixMapping ;
-import org.apache.jena.vocabulary.* ;
+import org.apache.jena.datatypes.RDFDatatype;
+import org.apache.jena.datatypes.TypeMapper;
+import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.apache.jena.graph.BlankNodeId;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.GraphMemFactory;
+import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.graph.NodeVisitor;
+import org.apache.jena.graph.Node_ANY;
+import org.apache.jena.graph.Node_Blank;
+import org.apache.jena.graph.Node_Graph;
+import org.apache.jena.graph.Node_Literal;
+import org.apache.jena.graph.Node_Triple;
+import org.apache.jena.graph.Node_URI;
+import org.apache.jena.graph.Node_Variable;
+import org.apache.jena.graph.Triple;
+import org.apache.jena.graph.impl.LiteralLabel;
+import org.apache.jena.graph.impl.LiteralLabelFactory;
+import org.apache.jena.shared.JenaException;
+import org.apache.jena.shared.PrefixMapping;
+import org.apache.jena.util.SplitIRI;
+import org.apache.jena.vocabulary.DC;
+import org.apache.jena.vocabulary.OWL;
+import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RSS;
+import org.apache.jena.vocabulary.VCARD;
 
 /**
     Exercise nodes. Make sure that the different node types do not overlap
@@ -419,7 +435,7 @@ public class TestNode extends GraphTestBase
         testCreateURI( "dc:creator", DC.getURI() + "creator" );
         testCreateURI( "rss:something", RSS.getURI() + "something" );
         testCreateURI( "vcard:TITLE", VCARD.getURI() + "TITLE" );
-        testCreateURI( "owl:wol", OWL.NAMESPACE.getURI() + "wol" );
+        testCreateURI( "owl:wol", OWL.getURI() + "wol" );
     }
 
     public void testCreateURIOtherMap()
@@ -611,8 +627,8 @@ public class TestNode extends GraphTestBase
         TypeMapper tm = TypeMapper.getInstance();
         RDFDatatype dt1 = tm.getTypeByValue( Integer.valueOf( 10 ) );
         RDFDatatype dt2 = tm.getTypeByValue( Short.valueOf( (short) 10 ) );
-        Node a = NodeFactory.createLiteral( "10", dt1 );
-        Node b = NodeFactory.createLiteral( "10", dt2 );
+        Node a = NodeFactory.createLiteralDT( "10", dt1 );
+        Node b = NodeFactory.createLiteralDT( "10", dt2 );
         assertDiffer( "types must make a difference", a, b );
         assertTrue( "A and B must express the same value", a.sameValueAs( b ) );
         assertTrue( "matching literals must respect sameValueAs", a.matches( b ) );
@@ -624,7 +640,7 @@ public class TestNode extends GraphTestBase
         RDFDatatype dtInt = tm.getTypeByValue( Integer.valueOf( 10 ) );
         Node plain = NodeFactory.createLiteralLang( "rhubarb", "");
         Node english = NodeFactory.createLiteralLang( "eccentric", "en-UK");
-        Node typed = NodeFactory.createLiteral( "10", dtInt );
+        Node typed = NodeFactory.createLiteralDT( "10", dtInt );
         assertEquals( "\"rhubarb\"", plain.toString() );
         assertEquals( "\"eccentric\"@en-UK", english.toString() );
         assertEquals( "\"10\"^^xsd:int", typed.toString() );
@@ -714,7 +730,7 @@ public class TestNode extends GraphTestBase
     {
         for ( String uri : someURIs )
         {
-            int split = Util.splitNamespaceXML( uri );
+            int split = SplitIRI.splitXML( uri );
             Node n = NodeCreateUtils.create( uri );
             assertEquals( "check namespace", uri.substring( 0, split ), n.getNameSpace() );
             assertEquals( "check localname", uri.substring( split ), n.getLocalName() );

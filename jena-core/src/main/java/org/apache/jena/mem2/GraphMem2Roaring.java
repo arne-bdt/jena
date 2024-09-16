@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem2;
 
+import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.mem2.store.roaring.RoaringTripleStore;
 
 /**
@@ -36,14 +37,23 @@ import org.apache.jena.mem2.store.roaring.RoaringTripleStore;
  * No heritage of GraphMem.
  * <p>
  * Internal structure:
- * - One indexed hash set (same as GraphMem2Fast uses) that holds all triples.
- * - Three hash maps indexed by subjects, predicates, and objects with RoaringBitmaps as values.
- * - The bitmaps contain the indices of the triples in the central hash set.
+ * <ul>
+ * <li>One indexed hash set (same as GraphMem2Fast uses) that holds all triples.
+ * <li>Three hash maps indexed by subjects, predicates, and objects with RoaringBitmaps as values.
+ * <li>The bitmaps contain the indices of the triples in the central hash set.
+ * </ul>
  */
 public class GraphMem2Roaring extends GraphMem2 {
-
     public GraphMem2Roaring() {
         super(new RoaringTripleStore());
     }
 
+    private GraphMem2Roaring(final TripleStore tripleStore) {
+        super(tripleStore);
+    }
+
+    @Override
+    public GraphMem2Roaring copy() {
+        return new GraphMem2Roaring(this.tripleStore.copy());
+    }
 }

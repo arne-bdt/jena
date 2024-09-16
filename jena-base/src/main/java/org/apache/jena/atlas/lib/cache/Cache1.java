@@ -20,11 +20,10 @@ package org.apache.jena.atlas.lib.cache;
 
 import java.util.Iterator;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import org.apache.jena.atlas.iterator.SingletonIterator;
+import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.atlas.lib.Cache;
 
 /** A one-slot cache. */
@@ -59,11 +58,6 @@ public class Cache1<K, V> implements Cache<K, V> {
     }
 
     @Override
-    public V getOrFill(K key, Callable<V> callable) {
-        return CacheOps.getOrFillSync(this, key, callable);
-    }
-
-    @Override
     public V get(K key, Function<K, V> function) {
         return CacheOps.getOrFillSync(this, key, function);
     }
@@ -88,7 +82,7 @@ public class Cache1<K, V> implements Cache<K, V> {
 
     @Override
     public Iterator<K> keys() {
-        return new SingletonIterator<>(cacheKey);
+        return Iter.singletonIterator(cacheKey);
     }
 
     @Override

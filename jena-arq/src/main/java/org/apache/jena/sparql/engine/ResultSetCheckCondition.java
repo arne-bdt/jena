@@ -30,7 +30,9 @@ import org.apache.jena.sparql.engine.binding.Binding ;
 
 /** ResultSet wrapper that check whether some condition is true
  * (e.g. the QueryExecution has not been closed).
+ * @deprecated To be removed.
  */
+@Deprecated(forRemoval = true)
 public class ResultSetCheckCondition implements ResultSet
 {
     interface Condition { boolean check() ; }
@@ -41,7 +43,7 @@ public class ResultSetCheckCondition implements ResultSet
         this(other, checkQExec(qExec) ) ;
     }
 
-    public  ResultSetCheckCondition(ResultSet other, Condition condition) {
+    public ResultSetCheckCondition(ResultSet other, Condition condition) {
         this.other = other ;
         this.condition = condition ;
     }

@@ -18,7 +18,7 @@
 
 package org.apache.jena.fuseki.main.sys;
 
-/** Extension access to Fuseki disptch and execution. */
+/** Extension access to Fuseki dispatch and execution. */
 public interface FusekiActionCycle {
     // Placeholder.
 }

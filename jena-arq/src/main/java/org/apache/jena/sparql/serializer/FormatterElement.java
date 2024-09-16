@@ -237,6 +237,18 @@ public class FormatterElement extends FormatterBase implements ElementVisitor {
     }
 
     @Override
+    public void visit(ElementUnfold el) {
+        out.print("UNFOLD(");
+        FmtExprSPARQL v = new FmtExprSPARQL(out, context);
+        v.format(el.getExpr());
+        out.print(" AS ");
+        out.print("?" + el.getVar1().getVarName());
+        if ( el.getVar2() != null )
+            out.print(", ?" + el.getVar2().getVarName());
+        out.print(")");
+    }
+
+    @Override
     public void visit(ElementData el) {
         QuerySerializer.outputDataBlock(out, el.getVars(), el.getRows(), context);
     }
@@ -248,7 +260,7 @@ public class FormatterElement extends FormatterBase implements ElementVisitor {
             return ;
         }
 
-        if ( el.getElements().size() == 0 ) {
+        if ( el.getElements().size() == 1 ) {
             // If this is a union of one elements, put in a {}-group
             visitAsGroup(el.getElements().get(0));
             return;

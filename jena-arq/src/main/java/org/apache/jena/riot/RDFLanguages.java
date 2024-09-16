@@ -219,6 +219,7 @@ public class RDFLanguages
     private static Map<String, Lang> mapFileExtToLang                  = new HashMap<>();
 
     // ----------------------
+    /** System initialization function. */
     public static void init() {}
     static { init$(); }
 

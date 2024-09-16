@@ -78,10 +78,10 @@ public class ResultSetReaderRegistry {
         register(RS_Protobuf, factory) ;
         register(RS_Protobuf2,factory) ;
     }
-    
+
     /** Return registered result set languages. */
     public static Set<Lang> registered() {
-        return Collections.unmodifiableSet(registry.keySet());
+        return Set.copyOf(registry.keySet());
     }
 
     private static class ResultSetReaderAdapter implements ResultSetReader {

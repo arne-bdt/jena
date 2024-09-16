@@ -72,14 +72,20 @@ public class Iter<T> implements IteratorCloseable<T> {
 
     public static <T> Stream<T> asStream(Iterator<T> iterator, boolean parallel) {
         int characteristics = Spliterator.IMMUTABLE;
-        Stream<T> stream = StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, characteristics), parallel);
-        stream.onClose(()->close(iterator));
-        return stream;
+        Stream<T> stream1 = StreamSupport.stream(Spliterators.spliteratorUnknownSize(iterator, characteristics), parallel);
+        Stream<T> stream2 = stream1.onClose(()->close(iterator));
+        return stream2;
     }
 
     // ---- Special iterators.
 
+    /** @deprecated Sue {@link #singletonIterator} */
+    @Deprecated
     public static <T> Iterator<T> singleton(T item) {
+        return singletonIterator(item);
+    }
+
+    public static <T> Iterator<T> singletonIterator(T item) {
         // There is a singleton iterator in Collections but it is not public.
         return new SingletonIterator<>(item);
     }
@@ -95,7 +101,7 @@ public class Iter<T> implements IteratorCloseable<T> {
     }
 
     public static <T> Iter<T> of(T item) {
-        return Iter.iter(new SingletonIterator<>(item));
+        return Iter.iter(singletonIterator(item));
     }
 
     @SafeVarargs
@@ -241,8 +247,14 @@ public class Iter<T> implements IteratorCloseable<T> {
         return new IterFiltered<T>(stream, filter);
     }
 
-    public static <T> Iterator<T> notFilter(final Iterator<? extends T> stream, final Predicate<T> filter) {
+    public static <T> Iterator<T> filterDrop(final Iterator<? extends T> stream, final Predicate<T> filter) {
         return filter(stream, filter.negate());
+    }
+
+    /** @deprecated Use {@link #filterDrop} */
+    @Deprecated
+    public static <T> Iterator<T> notFilter(final Iterator<? extends T> stream, final Predicate<T> filter) {
+        return filterDrop(stream, filter);
     }
 
     // Filter-related
@@ -796,11 +808,11 @@ public class Iter<T> implements IteratorCloseable<T> {
     }
 
     public static <T> Iter<T> singletonIter(T item) {
-        return iter(new SingletonIterator<>(item));
+        return iter(singletonIterator(item));
     }
 
     public static <T> Iter<T> nullIter() {
-        return iter(new NullIterator<T>());
+        return iter(nullIterator());
     }
 
     /**

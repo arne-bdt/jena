@@ -26,7 +26,6 @@ import jakarta.servlet.ServletContext;
 
 import org.apache.jena.atlas.logging.Log;
 import org.apache.jena.fuseki.Fuseki;
-import org.apache.jena.fuseki.patch.PatchApplyService;
 import org.apache.jena.fuseki.servlets.*;
 import org.apache.jena.riot.WebContent;
 
@@ -47,9 +46,11 @@ public class OperationRegistry {
     private static final ActionService uploadServlet   = new UploadRDF();
     private static final ActionService gspServlet_R    = new GSP_R();
     private static final ActionService gspServlet_RW   = new GSP_RW();
-    private static final ActionService rdfPatch        = new PatchApplyService();
+    private static final ActionService rdfPatch        = new PatchApply();
     private static final ActionService noOperation     = new NoOpActionService();
     private static final ActionService shaclValidation = new SHACL_Validation();
+    private static final ActionService prefixes_R      = new ActionPrefixesR();
+    private static final ActionService prefixes_RW     = new ActionPrefixesRW();
 
     /** The server-wide standard configuration. */
     private static final OperationRegistry stdConfig   = stdConfig();
@@ -71,6 +72,9 @@ public class OperationRegistry {
         stdOpReg.register(Operation.Patch,   WebContent.contentTypePatch, rdfPatch);
         stdOpReg.register(Operation.Shacl,   null, shaclValidation);
         stdOpReg.register(Operation.Upload,  null, uploadServlet);
+
+        stdOpReg.register(Operation.PREFIXES_R,  null, prefixes_R);
+        stdOpReg.register(Operation.PREFIXES_RW, null, prefixes_RW);
 
         stdOpReg.register(Operation.NoOp,    null, noOperation);
         return stdOpReg;

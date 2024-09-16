@@ -18,14 +18,8 @@
 
 package org.apache.jena.system;
 
-import static org.apache.jena.graph.Node.ANY;
-
-import java.util.*;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
-
 import org.apache.jena.atlas.iterator.Iter;
+import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.*;
@@ -38,6 +32,13 @@ import org.apache.jena.sparql.util.graph.GNode;
 import org.apache.jena.sparql.util.graph.GraphList;
 import org.apache.jena.util.IteratorCollection;
 import org.apache.jena.util.iterator.ExtendedIterator;
+
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+
+import static org.apache.jena.graph.Node.ANY;
 
 /**
  * A library of functions for working with {@link Graph}. Internally all
@@ -92,11 +93,53 @@ public class G {
         return hasDatatype(n, XSDDatatype.XSDboolean);
     }
 
-    /** Convert null to Node.ANY */
+    /**
+     * Convert null to Node.ANY, otherwise return the original node so that
+     * {@code ==} may be used to test whether any change has occurred.
+     */
     public static Node nullAsAny(Node x)        { return nullAsDft(x, Node.ANY); }
 
-    /** Convert null to some default Node */
+    /**
+     * Convert null to some default Node, otherwise return the original node so that
+     * {@code ==} may be used to test whether any change has occurred.
+     */
     public static Node nullAsDft(Node x, Node dft) { return x==null ? dft : x; }
+
+    /**
+     * Convert any null terms in a triple to "ANY". If there are no changes, return
+     * the original triple object so that {@code ==} may be used to test whether any
+     * change has occurred.
+     */
+    public static Triple nullAsAny(Triple triple) {
+        Node s = triple.getSubject();
+        Node p = triple.getPredicate();
+        Node o = triple.getObject();
+        Node s1 = nullAsAny(s);
+        Node p1 = nullAsAny(p);
+        Node o1 = nullAsAny(o);
+        if ( s == s1 && p == p1 && o == o1 )
+            return triple;
+        return Triple.create(s1, p1, o1);
+    }
+
+    /**
+     * Convert any null terms in a quad to "ANY". If there are no changes, return
+     * the original quad object so that {@code ==} may be used to test whether any
+     * change has occurred.
+     */
+    public static Quad nullAsAny(Quad quad) {
+        Node g = quad.getGraph();
+        Node s = quad.getSubject();
+        Node p = quad.getPredicate();
+        Node o = quad.getObject();
+        Node g1 = nullAsAny(g);
+        Node s1 = nullAsAny(s);
+        Node p1 = nullAsAny(p);
+        Node o1 = nullAsAny(o);
+        if ( s == s1 && p == p1 && o == o1 && g == g1 )
+            return quad;
+        return Quad.create(g1, s1, p1, o1);
+    }
 
     /** Get a string, assuming the node is an xsd:string literal. */
     public static String asString(Node x) {
@@ -808,6 +851,25 @@ public class G {
     }
 
     /**
+     * Creates a copy of the given graph.
+     * If the graph implements Copyable<Graph> then the copy method is called.
+     * Otherwise, a new system default memory-based graph is created and the triples are copied
+     * into it.
+     * @param src the graph to copy
+     * @return a copy of the graph
+     */
+    @SuppressWarnings("unchecked")
+    public static Graph copy(Graph src) {
+        if(src instanceof Copyable<?> copyable) {
+            Copyable<Graph> copyableGraph = (Copyable<Graph>)copyable;
+            return copyableGraph.copy();
+        }
+        Graph dst = GraphMemFactory.createDefaultGraph();
+        copyGraphSrcToDst(src, dst);
+        return dst;
+    }
+
+    /**
      * Clear graph.
      */
     public static void clear(Graph graph) {
@@ -985,11 +1047,12 @@ public class G {
         // Both nodes with language tags : compare languages case insensitively.
         String lex1 = match.getLiteralLexicalForm();
         String lex2 = data.getLiteralLexicalForm();
+        if ( ! lex1.equals(lex2) )
+            return false;
         String lang1 = match.getLiteralLanguage();
         String lang2 = data.getLiteralLanguage();
-        return lex1.equals(lex2) && lang1.equalsIgnoreCase(lang2);
+        return lang1.equalsIgnoreCase(lang2);
     }
-
 
     /** Contains, and language tags compare case-insentively */
     public static boolean containsByLang(Graph g, Node s, Node p, Node o) {

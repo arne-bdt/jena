@@ -20,7 +20,6 @@ package org.apache.jena.fuseki.main.sys;
 
 import java.util.Set;
 
-import org.apache.jena.base.module.SubsystemLifecycle;
 import org.apache.jena.fuseki.main.FusekiServer;
 import org.apache.jena.fuseki.server.DataAccessPoint;
 import org.apache.jena.fuseki.server.DataAccessPointRegistry;
@@ -62,45 +61,55 @@ import org.apache.jena.rdf.model.Model;
  *     Modules must not rely on a call to {@code serverStopped} happening.</li>
  * </ul>
  */
-public interface FusekiAutoModule extends FusekiModule, SubsystemLifecycle {
+public interface FusekiAutoModule extends FusekiModule, FusekiLifecycle {
     // Inherited javadoc.
     // Methods mentioned here to show all method interfaces in one place.
 
+    /** {@inheritDoc} */
     @Override
     public String name();
 
     // ---- SubsystemLifecycle
 
+    /** {@inheritDoc} */
     @Override
     public default void start() { }
 
+    /** {@inheritDoc} */
     @Override
     public default void stop() {}
 
     // ---- Build cycle
 
+    /** {@inheritDoc} */
     @Override
     public default void prepare(FusekiServer.Builder serverBuilder, Set<String> datasetNames, Model configModel) { }
 
+    /** {@inheritDoc} */
     @Override
     public default void configured(FusekiServer.Builder serverBuilder, DataAccessPointRegistry dapRegistry, Model configModel) {
         dapRegistry.accessPoints().forEach(accessPoint->configDataAccessPoint(accessPoint, configModel));
     }
 
+    /** {@inheritDoc} */
     @Override
     public default void configDataAccessPoint(DataAccessPoint dap, Model configModel) {}
 
+    /** {@inheritDoc} */
     @Override
     public default void server(FusekiServer server) { }
 
+    /** {@inheritDoc} */
     @Override
     public default void serverBeforeStarting(FusekiServer server) { }
 
     // ---- Server start-stop.
 
+    /** {@inheritDoc} */
     @Override
     public default void serverAfterStarting(FusekiServer server) { }
 
+    /** {@inheritDoc} */
     @Override
     public default void serverStopped(FusekiServer server) { }
 }

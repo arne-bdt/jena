@@ -325,19 +325,27 @@ public class RDFParser {
 
     /**
      * Parse the source in to a fresh {@link Dataset} and return the dataset.
+     * <p>
+     * It may be preferable to instead call {@link #parse(Dataset)} supplying your desired {@link Dataset}
+     * implementation instead depending on how you intend to further process the parsed data.
+     * </p>
      */
     public Dataset toDataset() {
         Dataset dataset = DatasetFactory.createTxnMem();
-        parse(dataset);
+        dataset.executeWrite(() -> parse(dataset));
         return dataset;
     }
 
     /**
      * Parse the source in to a fresh {@link DatasetGraph} and return the DatasetGraph.
+     * <p>
+     * It may be preferable to instead call {@link #parse(DatasetGraph)} supplying your desired {@link DatasetGraph}
+     * implementation instead depending on how you intend to further process the parsed data.
+     * </p>
      */
     public DatasetGraph toDatasetGraph() {
         DatasetGraph dataset = DatasetGraphFactory.createTxnMem();
-        parse(StreamRDFLib.dataset(dataset));
+        dataset.executeWrite(() -> parse(StreamRDFLib.dataset(dataset)));
         return dataset;
     }
 
@@ -379,25 +387,38 @@ public class RDFParser {
     private void parseURI(StreamRDF destination) {
         // Source by uri or path.
         try (TypedInputStream input = openTypedInputStream(uri, path)) {
-            ReaderRIOT reader;
+            ReaderRIOT readerRiot;
             ContentType ct;
             if ( forceLang != null ) {
                 ReaderRIOTFactory r = RDFParserRegistry.getFactory(forceLang);
                 if ( r == null )
                     throw new RiotException("No parser registered for language: " + forceLang);
                 ct = forceLang.getContentType();
-                reader = createReader(r, forceLang);
+                readerRiot = createReader(r, forceLang);
             } else {
                 // No forced language.
-                // Conneg and hint, ignoring text/plain.
-                ct = WebContent.determineCT(input.getContentType(), hintLang, baseURI);
+                // Determine the syntax based on
+                //   Content-type, ignoring text/plain
+                //   hintLanguage
+                //   Any pathname extension from file or URI.
+                //
+                // Prefer the uri being read for more information, or oath, and the base if all else fails.
+
+                String target;
+                if ( uri != null )
+                    target = uri;
+                else if ( path != null )
+                    target = path.toString();
+                else
+                    target = baseURI;
+                ct = WebContent.determineCT(input.getContentType(), hintLang, target);
                 if ( ct == null )
                     throw new RiotException("Failed to determine the content type: (URI=" + baseURI + " : stream=" + input.getContentType()+")");
-                reader = createReader(ct);
-                if ( reader == null )
+                readerRiot = createReader(ct);
+                if ( readerRiot == null )
                     throw new RiotException("No parser registered for content type: " + ct.getContentTypeStr());
             }
-            read(reader, input, null, baseURI, context, ct, destination);
+            read(readerRiot, input, null, baseURI, context, ct, destination);
         }
     }
 
@@ -438,7 +459,6 @@ public class RDFParser {
         throw new InternalErrorException("Both inputStream and javaReader are null");
     }
 
-    @SuppressWarnings("resource")
     private TypedInputStream openTypedInputStream(String urlStr, Path path) {
         // If path, use that.
         if ( path != null ) {
@@ -533,7 +553,7 @@ public class RDFParser {
                 ? resolver
                 : IRIxResolver.create().base(baseStr).resolve(resolve).allowRelative(allowRelative).build();
         PrefixMap pmap = ( this.prefixMap != null ) ? this.prefixMap : PrefixMapFactory.create();
-        ParserProfileStd parserFactory = new ParserProfileStd(factory, errorHandler,
+        ParserProfileStd parserFactory = new CDTAwareParserProfile(factory, errorHandler,
                                                               parserResolver, pmap,
                                                               context, checking$, strict);
         return parserFactory;

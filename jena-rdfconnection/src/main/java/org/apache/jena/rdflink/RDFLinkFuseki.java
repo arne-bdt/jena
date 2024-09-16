@@ -18,12 +18,14 @@
 
 package org.apache.jena.rdflink;
 
+import java.net.http.HttpClient;
+
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.resultset.ResultSetLang;
 import org.apache.jena.sparql.core.Transactional;
-
-import java.net.http.HttpClient;
+import org.apache.jena.sparql.exec.http.QuerySendMode;
+import org.apache.jena.sparql.exec.http.UpdateSendMode;
 
 /**
  * Implementation of the {@link RDFLink} interface for connecting to an Apache Jena Fuseki.
@@ -57,11 +59,8 @@ public class RDFLinkFuseki extends RDFLinkHTTP {
         String ctRDFThrift = Lang.RDFTHRIFT.getHeaderString();
         String acceptHeaderSPARQL = String.join(","
                             , ResultSetLang.RS_Thrift.getHeaderString()
-                            , ResultSetLang.RS_Thrift2.getHeaderString()
                             , ResultSetLang.RS_JSON.getHeaderString()+";q=0.9"
-                            , Lang.RDFTHRIFT.getHeaderString()
-                            , Lang.RDFTHRIFT2.getHeaderString());
-
+                            , Lang.RDFTHRIFT.getHeaderString());
         return builder
             .quadsFormat(RDFFormat.RDF_THRIFT)
             .triplesFormat(RDFFormat.RDF_THRIFT)
@@ -89,19 +88,22 @@ public class RDFLinkFuseki extends RDFLinkHTTP {
             base.outputQuads, base.outputTriples,
             base.acceptDataset, base.acceptGraph,
             base.acceptSparqlResults, base.acceptSelectResult, base.acceptAskResult,
-            base.parseCheckQueries, base.parseCheckUpdates);
+            base.parseCheckQueries, base.parseCheckUpdates,
+            base.querySendMode, base.updateSendMode);
     }
 
     protected RDFLinkFuseki(Transactional txnLifecycle, HttpClient httpClient, String destination,
                             String queryURL, String updateURL, String gspURL, RDFFormat outputQuads, RDFFormat outputTriples,
                             String acceptDataset, String acceptGraph,
                             String acceptSparqlResults, String acceptSelectResult, String acceptAskResult,
-                            boolean parseCheckQueries, boolean parseCheckUpdates) {
+                            boolean parseCheckQueries, boolean parseCheckUpdates,
+                            QuerySendMode querySendMode, UpdateSendMode updateSendMode) {
         super(txnLifecycle, httpClient,
               destination, queryURL, updateURL, gspURL,
               outputQuads, outputTriples,
               acceptDataset, acceptGraph,
-              acceptSparqlResults, acceptSelectResult, acceptAskResult, parseCheckQueries, parseCheckUpdates);
+              acceptSparqlResults, acceptSelectResult, acceptAskResult, parseCheckQueries, parseCheckUpdates,
+              querySendMode, updateSendMode);
     }
 
     // Fuseki specific operations.

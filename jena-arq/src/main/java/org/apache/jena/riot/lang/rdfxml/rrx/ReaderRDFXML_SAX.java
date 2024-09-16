@@ -47,6 +47,8 @@ public class ReaderRDFXML_SAX implements ReaderRIOT
 
     private final ParserProfile parserProfile;
 
+    public static boolean TRACE = false;
+
     public ReaderRDFXML_SAX(ParserProfile parserProfile) {
         this.parserProfile = parserProfile;
     }
@@ -64,7 +66,7 @@ public class ReaderRDFXML_SAX implements ReaderRIOT
     }
 
     private void parse(InputSource inputSource, String xmlBase, ContentType ct, StreamRDF destination, Context context) {
-        ParserRDFXML_SAX sax2rdf = new ParserRDFXML_SAX(xmlBase, parserProfile, destination, RIOT.getContext().copy());
+        ParserRRX_SAX sax2rdf = new ParserRRX_SAX(xmlBase, parserProfile, destination, RIOT.getContext().copy());
         // Configured to avoid XXE
         XMLReader xmlReader;
         try {

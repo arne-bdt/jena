@@ -18,6 +18,15 @@
 
 package org.apache.jena.riot.resultset;
 
+import static org.apache.jena.riot.resultset.ResultSetLang.*;
+
+import java.io.OutputStream;
+import java.io.Writer;
+import java.util.Map ;
+import java.util.Objects ;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.rowset.RowSetWriter;
@@ -25,16 +34,6 @@ import org.apache.jena.riot.rowset.RowSetWriterFactory;
 import org.apache.jena.riot.rowset.RowSetWriterRegistry;
 import org.apache.jena.sparql.exec.RowSet;
 import org.apache.jena.sparql.util.Context;
-
-import java.io.OutputStream;
-import java.io.Writer;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static org.apache.jena.riot.resultset.ResultSetLang.*;
 
 /** Registry for ResultSetWriter factories. */
 public class ResultSetWriterRegistry {
@@ -60,10 +59,10 @@ public class ResultSetWriterRegistry {
     }
 
     /** All registered languages */
-    public static Collection<Lang> registered() {
+    public static Set<Lang> registered() {
         return Set.copyOf(registry.keySet());
     }
-    
+
     private static boolean initialized = false ;
     public static void init() {
         if ( initialized )
@@ -79,10 +78,8 @@ public class ResultSetWriterRegistry {
         register(RS_TSV,      factory) ;
         register(RS_Text,     factory) ;
         register(RS_Thrift,   factory) ;
-        register(RS_Thrift2,  factory) ;
         register(RS_Thrift3,  factory) ;
         register(RS_Protobuf, factory) ;
-        register(RS_Protobuf2,factory) ;
         register(RS_None,     factory) ;
     }
 

@@ -178,6 +178,28 @@ final public class LiteralLabel {
     }
 
     /**
+     * Create a typed literal for which both the lexical form and the value
+     * form are already available. This constructor does not attempt any
+     * validation of the given lexical form, nor any check that the given
+     * lexical form does indeed represent the given value. Use with care!
+     *
+     * @param lex the lexical form of the literal (assumed to be well-formed
+     *            for the given datatype)
+     * @param value the value of the literal (assumed to be the value obtained
+     *              when applying the lexical-to-value mapping of the the given
+     *              datatype to the given lexical form)
+     * @param dtype the datatype of the literal
+     */
+    /*package*/ LiteralLabel(String lex, Object value, RDFDatatype dtype) throws DatatypeFormatException {
+        this.dtype = Objects.requireNonNull(dtype);
+        this.lexicalForm = Objects.requireNonNull(lex);
+        this.value = Objects.requireNonNull(value);
+        this.lang = "";
+        this.wellformed = true;
+        hash = calcHashCode();
+    }
+
+    /**
      * Internal function to set the object value from the lexical form.
      * Requires datatype to be set. Return true if it succeeded else false.
      * @throws DatatypeFormatException if the value is ill-formed and
@@ -286,9 +308,11 @@ final public class LiteralLabel {
         if ( quoting )
             b.append('"');
 
-        if ( lang != null && !lang.equals("") )
+        if ( lang != null && !lang.equals("") ) {
             b.append("@").append(lang);
-        else if ( ! dtype.equals(XSDDatatype.XSDstring) ) {
+            if ( textDir != null )
+                b.append("--").append(textDir);
+        } else if ( ! dtype.equals(XSDDatatype.XSDstring) ) {
                 String dtStr = (pmap != null)
                         ? PrefixMapping.Standard.shortForm(dtype.getURI())
                         : dtype.getURI();
@@ -341,7 +365,7 @@ final public class LiteralLabel {
      * Therefore getValueHashCode is the same as hashCode();
      */
     private boolean indexingValueIsSelf() {
-        return dtype == XMLLiteralType.theXMLLiteralType ||
+        return dtype == XMLLiteralType.rdfXMLLiteral ||
                dtype == RDFjson.rdfJSON ||
                dtype == RDFhtml.rdfHTML ;
     }
@@ -451,7 +475,7 @@ final public class LiteralLabel {
         if ( !typeEquals )
             return false;
 
-        // Don't just use this.lexcialForm -- need to force delayed calculation from values.
+        // Don't just use this.lexicalForm -- need to force delayed calculation from values.
         boolean lexEquals = Objects.equals(getLexicalForm(), otherLiteral.getLexicalForm());
         if ( ! lexEquals )
             return false;
@@ -471,6 +495,7 @@ final public class LiteralLabel {
     public boolean sameValueAs( LiteralLabel other ) {
         return sameValueAs(this, other);
     }
+
     /**
      * Two literal labels are the "same value" if they are the same string,
      * or same language string or same value-by-datatype or .equals (= Same RDF Term)

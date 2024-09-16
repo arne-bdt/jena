@@ -1,3 +1,193 @@
+==== Apache Jena 5.1.0
+Released: 2024-07-18
+Issues: https://s.apache.org/jena-5.1.0-issues
+Announcement:
+https://lists.apache.org/thread/hx8zljq8hn5p1ddb2qf66f1jwo6kfs0q
+
+The major item for the 5.1.0 release is the new artifact jena-ontapi:
+
+It has API support for working with OWL2 as well as other ontologies. It 
+is the long-term replacement for org.apache.jena.ontology.
+
+   https://github.com/apache/jena/issues/2160
+
+This is a contribution from @sszuev
+
+== Contributions
+
+@karolina-telicent
+   Prefixes Service
+     New endpoint for Fuseki to give read and read-write access to the
+     prefixes of a dataset enabling lookup and modification over HTTP.
+   https://github.com/apache/jena/issues/2543
+
+Micrometer - Prometheus upgrade
+   See 
+https://github.com/micrometer-metrics/micrometer/wiki/1.13-Migration-Guide
+   https://github.com/apache/jena/pull/2480
+
+Value space of rdf:XMLLiteral changed to be RDF 1.1/1.2 value semantics.
+   Issue https://github.com/apache/jena/issues/2430
+   The value space in RDF 1.0 was different.
+
+@TelicentPaul - Paul Gallagher
+Migrating Base 64 operations from Apache Commons Codec to Util package.
+   https://github.com/apache/jena/pull/2409
+
+@thomasjtaylor Thomas J. Taylor
+     Fix for NodeValueFloat
+     https://github.com/apache/jena/pull/2374
+
+@Aklakan Claus Stadler
+"Incorrect JoinClassifier results with unbound values."
+   https://github.com/apache/jena/issues/2412
+
+@Aklakan Claus Stadler
+   "QueryExec: abort before exec is ignored."
+   https://github.com/apache/jena/issues/2394
+
+@osi peter royal
+   Track rule engine instances
+   https://github.com/apache/jena/issues/2382
+   https://github.com/apache/jena/pull/2432
+
+Normalization/Canonicalization of values
+   Including RDFParserBuilder.canonicalValues
+     This has been reworked to provide a consistent framework
+     and also guarantee the same behavior between parsing
+     and TDB2 handling of values.
+   https://github.com/apache/jena/issues/2557
+
+
+==== Apache Jena 5.0.0
+Released: 2024-03-20
+Issues: https://s.apache.org/jena-5.0.0-issues
+which includes the ones specifically related to Jena5:
+  https://github.com/apache/jena/issues?q=label%3Ajena5
+Announcement:
+https://lists.apache.org/thread/hn1d1mpg9hwv7m0m620j53jgpw2rrdyz
+
+== Apache Jena 5.0.0-rc1
+Released: 2024-02-14
+
+* Minimum Java requirement: Java 17
+* Language tags are case-insensitive unique.
+* Term graphs for in-memory models
+* RRX - New RDF/XML parser
+* Remove support for JSON-LD 1.0
+* Turtle/Trig Output : default output PREFIX and BASE
+* New artifacts : jena-bom and OWASP CycloneDX SBOM
+* API deprecation removal
+* Dependency updates :
+    Note: slf4j update : v1 to v2 (needs log4j change)
+
+== Contributions
+
+Configurable CORS headers for Fuseki
+  From Paul Gallagher
+
+Balduin Landolt @BalduinLandolt - javadoc fix for Literal.getString.
+
+@OyvindLGjesdal - https://github.com/apache/jena/pull/2121 -- text index fix
+
+Tong Wang @wang3820 Fix tests due to hashmap order
+
+Explicit Accept headers on RDFConnectionRemote fix
+  from @Aklakan
+
+** Java and Servlet versions
+
+Java 17 or later is required.
+Java 17 language constructs now are used in the codebase.
+
+Jakarta JavaEE required for deploying the WAR file (Apache Tomcat10 or later)
+
+** Language tags
+
+Language tags become are case-insensitive unique.
+"abc"@EN and "abc"@en are the same RDF term.
+Internally, language tags are formatted using the algorithm of RFC 5646.
+
+Examples "@en", "@en-GB", "@en-Latn-GB".
+
+SPARQL LANG(?literal) will return a formatted language tag.
+
+Data stored in TDB using language tags must be reloaded.
+
+** Term graphs
+
+Graphs are now term graphs in the API or SPARQL. That is, they do not match
+"same value" for some of the Java mapped datatypes. The model API already
+normalizes values written.
+
+TDB1, TDB2 keep their value canonicalization during data loading.
+
+A legacy value-graph implementation can be obtained from GraphMemFactory.
+
+** RRX - New RDF/XML parser
+
+RRX is the default RDF/XML parser. RIOT uses RRX.
+
+The ARP parser is still temporarily available for transition assistance.
+
+** Remove support for JSON-LD 1.0
+
+JSON-LD 1.1, using Titanium-JSON-LD, is the supported version of JSON-LD.
+
+https://github.com/filip26/titanium-json-ld
+
+** Turtle/Trig Output
+
+"PREFIX" and "BASE" are output by default for Turtle and TriG output.
+
+** Artifacts
+
+There is now a release BOM for Jena artifacts - artifact org.apache.jena:jena-bom
+
+There are now OWASP CycloneDX SBOM for Jena artifacts.
+https://github.com/CycloneDX
+
+jena-tdb is renamed jena-tdb1.
+
+jena-jdbc is no longer released
+
+** Dependencies
+
+The update to slf4j 2.x means the log4j artifact changes to
+"log4j-slf4j2-impl" (was "log4j-slf4j-impl").
+
+== API Users
+
+** Deprecation removal
+
+There has been a clearing out of deprecated functions, methods and classes. This includes the deprecations in Jena 4.10.0 added to show code that is being removed in Jena5.
+
+** QueryExecutionFactory
+
+QueryExecutionFactory is simplified to cover commons cases only; it becomes a way to call the general QueryExecution builders which are preferred and provide all full query execution setup controls.
+
+Local execution builder:
+QueryExecution.create()...
+
+Remote execution builder:
+QueryExecution.service(URL)...
+
+** QueryExecution variable substitution
+
+Using "substitution", where the query is modified by replacing one or more variables by RDF terms, is now preferred to using "initial bindings", where query solutions include (var,value) pairs.
+
+"substitution" is available for all queries, local and remote, not just local executions.
+
+Rename TDB1 packages org.apache.jena.tdb -> org.apache.jena.tdb1
+
+== Fuseki Users
+
+Fuseki: Uses the Jakarta namespace for servlets and Fuseki has been upgraded to use Eclipse Jetty12.
+
+Apache Tomcat10 or later, is required for running the WAR file.
+Tomcat 9 or earlier will not work.
+
+
 ==== Apache Jena 4.10.0
 Released: 2023-11-01
 Issues: https://s.apache.org/jena-4.10.0-issues
@@ -32,7 +222,7 @@ All issues: https://s.apache.org/jena-4.10.0-issues
 There is a CHANGES.txt in the root of the repository
 with the history of announcement messages.
 
-==== Contributions:
+== Contributions:
 
 Shawn Smith
 "Race condition with QueryEngineRegistry and
@@ -60,7 +250,7 @@ GH-1374: add copyWithRegisties Context helper method
 All issues in this release:
      https://s.apache.org/jena-4.10.0-issues
 
-==== Key upgrades
+== Key upgrades
 
 org.apache.lucene : 9.5.0 -> 9.7.0
 org.apache.commons:commons-lang3: 3.12.0 -> 3.13.0
@@ -106,7 +296,7 @@ keeping with the policy of supporting two java versions.
 Jena 4.9.0 is built for a minimum of Java11.
 It has been tested on Java17 and Java21 EA.
 
-==== Items in this release
+== Items in this release
 
 Arne Berdhardt
 https://github.com/apache/jena/issues/1912

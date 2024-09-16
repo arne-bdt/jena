@@ -56,7 +56,7 @@ import org.junit.runners.Suite;
     , TS_RDFThrift2.class
     , TS_RDFThrift3.class
     , TS_RowSetRIOT.class
-    // Scripted tests in ARQTestSuite.
+    // Scripted parser tests in ARQTestSuite.
 })
 
 public class TC_Riot

@@ -18,10 +18,6 @@
 
 package org.apache.jena.shacl.lib;
 
-import java.io.OutputStream;
-import java.io.PrintStream;
-import java.util.*;
-
 import org.apache.jena.atlas.io.IndentedLineBuffer;
 import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.atlas.lib.StrUtils;
@@ -29,7 +25,13 @@ import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.query.*;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.QueryParseException;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.query.Syntax;
 import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.impl.Util;
@@ -54,6 +56,15 @@ import org.apache.jena.vocabulary.OWL;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.XSD;
+
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringJoiner;
 
 /** Misc operations used in the jena-shacl module. */
 public class ShLib {
@@ -150,18 +161,19 @@ public class ShLib {
 
         String qs = StrUtils.strjoinNL
             (PREFIXES
-                ,"SELECT * {"
-                //, "    [ a sh:ValidationReport ; sh:result ?R ]
-                , "    [] sh:result ?R ."
-                , "    ?R"
-                , "       sh:focusNode ?focusNode ;"
-                , "       sh:resultMessage ?message ;"
-                , "       sh:resultSeverity  ?severity ; "
-                , "       ."
-                , "    OPTIONAL { ?R sh:sourceConstraintComponent ?component }"
-                , "    OPTIONAL { ?R sh:sourceShape ?sourceShape }"
-                , "    OPTIONAL { ?R sh:resultPath    ?path}"
-                ,"}");
+            ,"""
+               SELECT * {
+                        #[ a sh:ValidationReport ; sh:result ?R ]
+                   [] sh:result ?R .
+                   ?R sh:focusNode ?focusNode ;
+                      sh:resultMessage ?message ;
+                      sh:resultSeverity  ?severity ;
+                      .
+                   OPTIONAL { ?R sh:sourceConstraintComponent ?component }
+                   OPTIONAL { ?R sh:sourceShape ?sourceShape }
+                   OPTIONAL { ?R sh:resultPath  ?path}
+               }
+               """);
         try ( QueryExecution qExec = QueryExecutionFactory.create(qs, report.getModel()) ) {
             ResultSet rs = qExec.execSelect();
             if ( ! rs.hasNext() ) {

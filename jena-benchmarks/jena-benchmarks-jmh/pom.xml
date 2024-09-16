@@ -21,8 +21,7 @@
     <parent>
         <groupId>org.apache.jena</groupId>
         <artifactId>jena-benchmarks</artifactId>
-        <version>5.0.0-SNAPSHOT</version>
-        <relativePath>..</relativePath>
+        <version>5.2.0-SNAPSHOT</version>
     </parent>
 
     <name>Apache Jena - Benchmarks JMH</name>
@@ -47,6 +46,7 @@
     <properties>
         <build.time.xsd>${maven.build.timestamp}</build.time.xsd>
         <automatic.module.name>org.apache.jena.benchmarks.jmh</automatic.module.name>
+        <benchmark.skip>true</benchmark.skip>
         <scope>test</scope>
     </properties>
 
@@ -54,21 +54,21 @@
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-base</artifactId>
-            <version>5.0.0-SNAPSHOT</version>
+            <version>5.2.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-core</artifactId>
-            <version>5.0.0-SNAPSHOT</version>
+            <version>5.2.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-arq</artifactId>
-            <version>5.0.0-SNAPSHOT</version>
+            <version>5.2.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
@@ -76,26 +76,26 @@
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-arq</artifactId>
             <classifier>tests</classifier>
-            <version>5.0.0-SNAPSHOT</version>
+            <version>5.2.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-benchmarks-shadedJena480</artifactId>
-            <version>5.0.0-SNAPSHOT</version>
+            <version>5.2.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
             <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -124,6 +124,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <release>${java.version}</release>
+                    <compilerArgs>
+                      <arg>-proc:full</arg>
+                    </compilerArgs>
+                </configuration>
             </plugin>
 
             <plugin>
@@ -135,7 +141,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <skipTests>true</skipTests>
+                    <skipTests>${benchmark.skip}</skipTests>
                     <includes>
                         <!-- no includes yet -->
                     </includes>

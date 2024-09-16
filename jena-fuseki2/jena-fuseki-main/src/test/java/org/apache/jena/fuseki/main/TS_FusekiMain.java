@@ -18,24 +18,27 @@
 
 package org.apache.jena.fuseki.main;
 
+import org.apache.jena.fuseki.main.prefixes.*;
 import org.apache.jena.fuseki.main.sys.TestFusekiModules;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
-import org.junit.runners.Suite.SuiteClasses;
+import org.junit.platform.suite.api.SelectClasses;
+import org.junit.platform.suite.api.Suite;
 
-@RunWith(Suite.class)
-@SuiteClasses({
+@Suite
+@SelectClasses({
 
   TestPlainServer.class
 
   // This tests modules and modifies the system state.
   , TestFusekiModules.class
+
   , TestMultipleEmbedded.class
   , TestFusekiCustomOperation.class
   , TestFusekiMainCmd.class
+  , TestFusekiMainCmdArguments.class
   , TestFusekiStdSetup.class
   , TestFusekiStdReadOnlySetup.class
   , TestConfigFile.class
+  , TestCrossOriginFilter.class
   , TestFusekiServerBuild.class
   , TestFusekiDatasetSharing.class
 
@@ -44,14 +47,14 @@ import org.junit.runners.Suite.SuiteClasses;
   , TestAuthUpdate_JDK.class
   , TestHttpOperations.class
   , TestHttpOptions.class
-
   , TestQuery.class
   , TestSPARQLProtocol.class
 
   , TestPatchFuseki.class
   , TestFusekiCustomScriptFunc.class
 
-  // Test ping.
+  , PrefixesServiceTests.class
+
   , TestMetrics.class
   , TestFusekiShaclValidation.class
 })

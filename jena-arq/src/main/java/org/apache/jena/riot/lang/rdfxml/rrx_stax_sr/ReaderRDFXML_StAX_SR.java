@@ -42,7 +42,6 @@ import org.apache.jena.sparql.util.Context;
  *
  * @see <a href="https://www.w3.org/TR/rdf-xml/">https://www.w3.org/TR/rdf-xml/</a>
  */
-
 public class ReaderRDFXML_StAX_SR implements ReaderRIOT
 {
     public static ReaderRIOTFactory factory = (Lang language, ParserProfile parserProfile) -> {
@@ -51,6 +50,8 @@ public class ReaderRDFXML_StAX_SR implements ReaderRIOT
 
     private static final XMLInputFactory xmlInputFactory = SysRRX.createXMLInputFactory();
     private final ParserProfile parserProfile;
+
+    public static boolean TRACE = false;
 
     public ReaderRDFXML_StAX_SR(ParserProfile parserProfile) {
         this.parserProfile = parserProfile;
@@ -77,7 +78,7 @@ public class ReaderRDFXML_StAX_SR implements ReaderRIOT
     }
 
      private void parse(XMLStreamReader xmlStreamReader, String xmlBase, ContentType ct, StreamRDF destination, Context context) {
-        ParserRDFXML_StAX_SR parser = new ParserRDFXML_StAX_SR(xmlStreamReader, xmlBase, parserProfile, destination, context);
+        ParserRRX_StAX_SR parser = new ParserRRX_StAX_SR(xmlStreamReader, xmlBase, parserProfile, destination, context);
         destination.start();
         try {
             parser.parse();

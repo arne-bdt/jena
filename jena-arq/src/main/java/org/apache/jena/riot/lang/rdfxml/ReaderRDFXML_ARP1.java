@@ -133,7 +133,7 @@ public class ReaderRDFXML_ARP1 implements ReaderRIOT
         options.setErrorMode(cond, val);
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "removal"})
     private void parse(InputStream input, Reader reader, String xmlBase, ContentType ct, StreamRDF sink, Context context) {
         // One of input and reader is null.
         boolean legacySwitch = context.isTrue(RIOT.symRDFXML0);
@@ -235,7 +235,7 @@ public class ReaderRDFXML_ARP1 implements ReaderRIOT
                 return parserProfile.createLangLiteral(lit.toString(), lit.getLang(), -1, -1);
 
             if (lit.isWellFormedXML()) {
-                return parserProfile.createTypedLiteral(lit.toString(), XMLLiteralType.theXMLLiteralType, -1, -1);
+                return parserProfile.createTypedLiteral(lit.toString(), XMLLiteralType.rdfXMLLiteral, -1, -1);
             }
 
             RDFDatatype dt = TypeMapper.getInstance().getSafeTypeByName(dtURI);

@@ -21,33 +21,53 @@
 package jena;
 
 
-import static org.apache.jena.atlas.logging.LogCtl.setLogging;
-
-import java.io.File ;
-import java.io.FileOutputStream ;
-import java.io.PrintStream ;
-import java.net.MalformedURLException ;
-import java.net.URL ;
-import java.text.SimpleDateFormat ;
-import java.util.* ;
-import java.util.regex.Pattern ;
-import java.util.regex.PatternSyntaxException ;
-
-import org.apache.jena.ontology.Individual ;
-import org.apache.jena.ontology.OntModel ;
-import org.apache.jena.ontology.OntModelSpec ;
-import org.apache.jena.rdf.model.* ;
+import org.apache.jena.ontology.Individual;
+import org.apache.jena.ontology.OntModel;
+import org.apache.jena.ontology.OntModelSpec;
+import org.apache.jena.rdf.model.Literal;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.NodeIterator;
+import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.ResourceFactory;
+import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.RDFWriter;
-import org.apache.jena.shared.JenaException ;
+import org.apache.jena.shared.JenaException;
 import org.apache.jena.util.XMLChar;
-import org.apache.jena.util.iterator.ExtendedIterator ;
-import org.apache.jena.util.iterator.WrappedIterator ;
-import org.apache.jena.vocabulary.OWL ;
-import org.apache.jena.vocabulary.RDF ;
-import org.apache.jena.vocabulary.RDFS ;
-import org.apache.jena.vocabulary.XSD ;
+import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.WrappedIterator;
+import org.apache.jena.vocabulary.OWL;
+import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RDFS;
+import org.apache.jena.vocabulary.XSD;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringTokenizer;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+
+import static org.apache.jena.atlas.logging.LogCtl.setLogging;
 
 /**
  * <p>
@@ -1018,7 +1038,7 @@ public class schemagen {
         String template = m_options.hasIndividualTemplateOption() ?  m_options.getIndividualTemplateOption() : DEFAULT_INDIVIDUAL_TEMPLATE;
 
         for (Iterator<? extends RDFNode> i = selectIndividuals(); i.hasNext(); ) {
-            Individual ind = ((Resource) i.next()).as( Individual.class );
+            Individual ind = i.next().as( Individual.class );
 
             // do we have a local class resource
             Resource cls = ind.getOntClass();

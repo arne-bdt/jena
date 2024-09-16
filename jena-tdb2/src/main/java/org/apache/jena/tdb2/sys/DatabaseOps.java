@@ -20,17 +20,24 @@ package org.apache.jena.tdb2.sys;
 
 import java.io.*;
 import java.nio.file.*;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 
 import org.apache.jena.atlas.RuntimeIOException;
+import org.apache.jena.atlas.io.IO;
 import org.apache.jena.atlas.io.IOX;
 import org.apache.jena.atlas.lib.DateTimeUtils;
-import org.apache.jena.atlas.lib.Lib;
+import org.apache.jena.atlas.lib.InternalErrorException;
 import org.apache.jena.atlas.lib.Pair;
+import org.apache.jena.atlas.lib.StrUtils;
+import org.apache.jena.atlas.logging.FmtLog;
 import org.apache.jena.atlas.logging.Log;
+import org.apache.jena.base.Sys;
+import org.apache.jena.dboe.DBOpEnvException;
 import org.apache.jena.dboe.base.file.Location;
 import org.apache.jena.dboe.sys.IO_DB;
 import org.apache.jena.dboe.sys.Names;
@@ -44,13 +51,17 @@ import org.apache.jena.sparql.engine.optimizer.reorder.ReorderTransformation;
 import org.apache.jena.sparql.sse.SSE_ParseException;
 import org.apache.jena.system.Txn;
 import org.apache.jena.tdb2.TDBException;
-import org.apache.jena.tdb2.params.*;
+import org.apache.jena.tdb2.params.StoreParams;
+import org.apache.jena.tdb2.params.StoreParamsBuilder;
+import org.apache.jena.tdb2.params.StoreParamsCodec;
+import org.apache.jena.tdb2.params.StoreParamsFactory;
 import org.apache.jena.tdb2.store.DatasetGraphSwitchable;
 import org.apache.jena.tdb2.store.DatasetGraphTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Operations on and about TDB2 databases.
+/**
+ * Operations related to TDB2 databases.
  * <p>
  * TDB2 uses a hierarchical structure to manage on disk.
  * <p>
@@ -68,13 +79,26 @@ import org.slf4j.LoggerFactory;
  */
 public class DatabaseOps {
     private static Logger LOG = LoggerFactory.getLogger(DatabaseOps.class);
-    public static final String dbPrefix     = "Data";
-    public static final String SEP          = "-";
-    public static final String startCount   = "0001";
+    // Composition of a database storage area directory name.
+    public static final String dbNameBase       = "Data";
+    public static final String SEP              = "-";
+    public static final String dbSuffixPattern  = "[\\d]+";
 
-    private static final String BACKUPS_DIR  = "Backups";
+    public static final String startCount       = "0001";
+
+    // Additional suffix used during compact
+    private static final String dbTmpSuffix      = "-tmp";
+    private static final String dbTmpPattern     = "[\\d]+"+dbTmpSuffix;
+
+    private static final String BACKUPS_DIR      = "Backups";
     // Basename of the backup file. "backup_{DateTime}.nq.gz
-    private static final String BACKUPS_FN   = "backup";
+    private static final String BACKUPS_FN       = "backup";
+
+    // A file name for a list of files to remove in cleanDatabaseDirectory()
+    // while initializing the area for TDB2 usage in this JVM.
+    /*package*/ static final String incompleteWIP    = "jena-tdb-temp-files";
+
+    private enum ScanAccept { EXACT, SKIP }
 
     /**
      * Create a fresh database - called by {@code DatabaseMgr}.
@@ -101,15 +125,20 @@ public class DatabaseOps {
         if ( ! containerLocation.exists() )
             throw new TDBException("No such location: "+containerLocation);
         Path path = IO_DB.asPath(containerLocation);
+
+        // Clean any temporary files and directories that there might be.
+        cleanDatabaseDirectory(path);
+
         // Scan for DBs
-        Path existingStorage = findLocation(path, dbPrefix);
+        Path existingStorage = findStorageLocation(path);
         boolean isNewArea = (existingStorage == null);
 
         Path db = existingStorage;
         if ( db == null ) {
-            db = path.resolve(dbPrefix+SEP+startCount);
+            db = path.resolve(dbNameBase+SEP+startCount);
             IOX.createDirectory(db);
         }
+
         Location storageLocation = IO_DB.asLocation(db);
 
         // ---- Find the params (if any).
@@ -139,6 +168,39 @@ public class DatabaseOps {
         return appDSG;
     }
 
+    /**
+     * Clear out any partial compactions.
+     */
+    private static void cleanDatabaseDirectory(Path containerDirectory) {
+        // Remove "-tmp" directories.
+        List<Path> tmpDirs = scanForDirByPattern(containerDirectory, dbNameBase, SEP, dbTmpPattern, ScanAccept.SKIP);
+        for ( Path dir : tmpDirs ) {
+            FmtLog.info(LOG, "Remove incomplete compaction temporary directory: "+dir);
+            IO.deleteAll(dir);
+        }
+        // Remove anything listed in "jena-tdb-temp-files" (used by Windows compaction)
+        try {
+            Path workfileList = containerDirectory.resolve(incompleteWIP);
+            if ( Files.exists(workfileList) ) {
+                List<String> filenames = Files.readAllLines(workfileList);
+                for ( String fn : filenames) {
+                    FmtLog.info(LOG, "Remove incomplete work-in-progress: "+fn);
+                    Path path = Path.of(fn);
+                    if ( Files.exists(path) ) {
+                        try {
+                            IO.deleteAll(path);
+                        } catch (Throwable ex) {
+                            FmtLog.error(LOG, "Exception while deleting "+fn+ " : manual clean-up required");
+                        }
+                    }
+                }
+                // Remove the list of clean-ups.
+                Files.delete(workfileList);
+            }
+        } catch (IOException e) {
+            throw IOX.exception(e);
+        }
+    }
 
     private static ReorderTransformation maybeTransform(ReorderTransformation reorderTransform, Location location) {
         if ( reorderTransform != null )
@@ -247,12 +309,19 @@ public class DatabaseOps {
     }
 
     public static void compact(DatasetGraphSwitchable container, boolean shouldDeleteOld) {
+        if ( Sys.isWindows) {
+            // Windows does not support Files.move when the directory contains memory mapped files.
+            // https://github.com/apache/jena/issues/2315
+            DatabaseOpsWindows.compact_win(container, shouldDeleteOld);
+            return;
+        }
+
         checkSupportsAdmin(container);
         synchronized(compactionLock) {
-            Path base = container.getContainerPath();
-            Path db1 = findLocation(base, dbPrefix);
+            Path containerPath = container.getContainerPath();
+            Path db1 = findStorageLocation(containerPath);
             if ( db1 == null )
-                throw new TDBException("No location: ("+base+", "+dbPrefix+")");
+                throw new TDBException("No location: ("+containerPath+", "+dbNameBase+")");
             Location loc1 = IO_DB.asLocation(db1);
 
             // -- Checks
@@ -266,40 +335,60 @@ public class DatabaseOps {
                 throw new TDBException("Inconsistent (not latest?) : "+loc1a+" : "+loc1);
 
             // Check version
-            int v = IO_DB.extractIndex(db1.getFileName().toString(), dbPrefix, SEP);
-            String next = FilenameUtils.filename(dbPrefix, SEP, v+1);
+            int v = extractIndex(db1.getFileName().toString(), dbNameBase, SEP);
+            String next = FilenameUtils.filename(dbNameBase, SEP, v+1);
 
             Path db2 = db1.getParent().resolve(next);
-            IOX.createDirectory(db2);
-            Location loc2 = IO_DB.asLocation(db2);
             LOG.debug(String.format("Compact %s -> %s\n", db1.getFileName(), db2.getFileName()));
+            if ( Files.exists(db2) )
+                throw new TDBException("Inconsistent : "+db2+" already exists");
 
-            compact(container, loc1, loc2);
+            // MS Windows: 2024-03-08 https://github.com/apache/jena/issues/2315
+            // Moving the temporary directory does not work.
+
+            // Location of the storage area for the compacted database.
+            // This is a temporary directory that is atomically moved into place when complete.
+
+            Path tmpDir = makeTempDirName(db2);
+            if ( Files.exists(tmpDir) )
+                throw new TDBException("Inconsistent : tmpdir"+tmpDir+" already exists");
+            IOX.createDirectory(tmpDir);
+            Location loc2tmp = Location.create(tmpDir);
+
+            try {
+                compaction(container, loc1, loc2tmp, db2);
+                // Container now using the new location.
+            } catch (RuntimeIOException ex) {
+                // Clear up - disk problems.
+                try { IO.deleteAll(tmpDir); } catch (Throwable th) { /* Continue with original error. */ }
+                throw ex;
+            } catch (Throwable th) {
+                // Jena and Java errors
+                try { IO.deleteAll(tmpDir); } catch (Throwable th2) { /* Continue with original error. */ }
+                throw th;
+            }
 
             if ( shouldDeleteOld ) {
                 // Compact put each of the databases into exclusive mode to do the switchover.
                 // There are no previous transactions on the old database at this point.
                 Path loc1Path = IO_DB.asPath(loc1);
                 LOG.debug("Deleting old database after successful compaction (old db path='" + loc1Path + "')...");
-                deleteDatabase(loc1Path);
+                IO.deleteAll(loc1Path);
             }
         }
     }
 
-    private static void deleteDatabase(Path locationPath) {
-        try (Stream<Path> walk = Files.walk(locationPath)){
-            walk.sorted(Comparator.reverseOrder())
-                .map(Path::toFile)
-                .forEach(File::delete);
-        } catch (IOException ex) {
-            throw IOX.exception(ex);
-        }
+    private static Path makeTempDirName(Path path) {
+        String dirname = path.toString();
+        if ( dirname.endsWith("/"))
+            dirname = StrUtils.chop(dirname);
+        return Path.of(dirname+dbTmpSuffix);
     }
 
     /** Copy the latest version from one location to another. */
-    private static void compact(DatasetGraphSwitchable container, Location loc1, Location loc2) {
-        if ( loc1.isMem() || loc2.isMem() )
-            throw new TDBException("Compact involves a memory location: "+loc1+" : "+loc2);
+    private static void compaction(DatasetGraphSwitchable container, Location loc1, Location loc2tmp, Path path2final) {
+        if ( loc1.isMem() || loc2tmp.isMem() )
+            throw new TDBException("Compact involves a memory location: "+loc1+" : "+loc2tmp);
 
         StoreConnection srcConn = StoreConnection.connectExisting(loc1);
 
@@ -332,19 +421,26 @@ public class DatabaseOps {
             // These are held up on a lock in the switchable container.
 
             // -- Copy the current state to the new area.
-            copyConfigFiles(loc1, loc2);
-            DatasetGraphTDB dsgCompact = StoreConnection.connectCreate(loc2).getDatasetGraphTDB();
-            CopyDSG.copy(dsgBase, dsgCompact);
+            copyConfigFiles(loc1, loc2tmp);
 
-            if ( false ) {
-                // DEVELOMENT. FAke a long copy time in state copy.
-                System.err.println("-- Inside compact 1");
-                Lib.sleep(3_000);
-                System.err.println("-- Inside compact 2");
-            }
+            // -- Copy to temporary area so that if the copy is interrupted
+            // (e.g. the server exits mid-copy) the restart does choose the
+            // directory as the data storage.
 
-            TransactionCoordinator txnMgr2 = dsgCompact.getTxnSystem().getTxnMgr();
+            DatasetGraphTDB dsgTmpCompact = StoreConnection.connectCreate(loc2tmp).getDatasetGraphTDB();
+            CopyDSG.copy(dsgBase, dsgTmpCompact);
+            StoreConnection.internalExpel(loc2tmp, true);
+            // Now on-disk in tmp location.
+
+            moveDirectory(loc2tmp, path2final);
+            Location loc2final = Location.create(path2final);   // Location must exist.
+
+            // Next generation storage datasetGraph.
+            DatasetGraphTDB dsgCompact = StoreConnection.connectCreate(loc2final).getDatasetGraphTDB();
+
+            // -- Switch
             // Update TransactionCoordinator and switch over.
+            TransactionCoordinator txnMgr2 = dsgCompact.getTxnSystem().getTxnMgr();
             txnMgr2.execExclusive(()->{
                 // No active transactions in either database.
                 txnMgr2.takeOverFrom(txnMgr1);
@@ -372,7 +468,6 @@ public class DatabaseOps {
 
         });
 
-
         // This switches off the source database.
         // It waits until all transactions (readers) have finished.
         // This call is not undone.
@@ -380,6 +475,14 @@ public class DatabaseOps {
         txnMgr1.startExclusiveMode();
         // Clean-up.
         StoreConnection.release(dsgBase.getLocation());
+    }
+
+    private static void moveDirectory(Location locTmp, Path pathDst) {
+        Path pathSrc = IO_DB.asPath(locTmp);
+        try {
+            // MS Windows: Fails when the directory has memory mapped files in it.
+            Files.move(pathSrc, pathDst);
+        } catch (IOException ex) { throw IOX.exception(ex); }
     }
 
     /** Copy certain configuration files from {@code loc1} to {@code loc2}. */
@@ -407,11 +510,82 @@ public class DatabaseOps {
         }
     }
 
-    private static Path findLocation(Path directory, String namebase) {
+    /**
+     * Find the files in this directory that have namebase as a prefix and
+     * are then numbered.
+     *  <p>
+     * Returns a sorted list from, low to high index.
+     * @param directory Path to the data base directory
+     * @param namebase Initial common component of the name
+     * @param nameSep  Separator
+     * @param trailerPattern Pattern for the part of the name after the namebase.
+     * @return List<Path> List sorted low to high
+     */
+    private static List<Path> scanForDirByPattern(Path directory, String namebase, String nameSep, String trailerPattern, ScanAccept skipOthers) {
+        Pattern pattern = Pattern.compile(Pattern.quote(namebase)+
+                                          Pattern.quote(nameSep)+
+                                          trailerPattern);
+        List<Path> paths = new ArrayList<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(directory, namebase + "*")) {
+            for ( Path entry : stream ) {
+                String filename = entry.getFileName().toString();
+                if ( !pattern.matcher(filename).matches() ) {
+                    switch ( skipOthers ) {
+                        case EXACT: throw new DBOpEnvException("Invalid filename for matching: "+entry.getFileName());
+                        case SKIP:  continue;
+                    }
+                }
+                // Follows symbolic links.
+                if ( !Files.isDirectory(entry) )
+                    throw new DBOpEnvException("Not a directory: "+entry);
+                paths.add(entry);
+            }
+        }
+        catch (IOException ex) {
+            FmtLog.warn(IO_DB.class, "Can't inspect directory: (%s, %s)", directory, namebase);
+            throw new DBOpEnvException(ex);
+        }
+        Comparator<Path> comp = (f1, f2) -> {
+            int num1 = extractIndex(f1.getFileName().toString(), namebase, nameSep);
+            int num2 = extractIndex(f2.getFileName().toString(), namebase, nameSep);
+            return Integer.compare(num1, num2);
+        };
+        paths.sort(comp);
+        //indexes.sort(Long::compareTo);
+        return paths;
+    }
+
+    private static Pattern numberPattern = Pattern.compile("[\\d]+");
+    /** Given a filename in "base-NNNN(-text)" format, return the value of NNNN */
+    private static int extractIndex(String name, String namebase, String nameSep) {
+        Matcher matcher = numberPattern.matcher(name);
+        if ( matcher.find() ) {
+            var numStr = matcher.group();
+            int num = Integer.parseInt(numStr);
+            return num;
+        } else {
+            throw new InternalErrorException("Expected to find a number in '"+name+"'");
+        }
+    }
+
+    /**
+     * Find the active working storage area for a TDB2 database.
+     * Return null if none.
+     */
+    public static Path findStorageLocation(Location directory) {
+        Path dirPath = IO_DB.asPath(directory);
+        return findStorageLocation(dirPath);
+    }
+
+    /**
+     * Find the active working storage area for a TDB2 database.
+     * Return null if none.
+     */
+    public static Path findStorageLocation(Path directory) {
         if ( ! Files.exists(directory) )
             return null;
         // In-order, low to high.
-        List<Path> maybe = IO_DB.scanForDirByPattern(directory, namebase, SEP);
+        List<Path> maybe = scanForDirByPattern(directory, dbNameBase, SEP, dbSuffixPattern, ScanAccept.EXACT);
         return Util.getLastOrNull(maybe);
     }
 

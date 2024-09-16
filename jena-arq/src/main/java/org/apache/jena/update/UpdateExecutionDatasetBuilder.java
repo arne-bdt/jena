@@ -66,6 +66,12 @@ public class UpdateExecutionDatasetBuilder implements UpdateExecutionBuilder {
         return this;
     }
 
+    @Override
+    public UpdateExecutionBuilder parseCheck(boolean parseCheck) {
+        builder.parseCheck(parseCheck);
+        return this;
+    }
+
     public UpdateExecutionDatasetBuilder dataset(Dataset dataset) {
         builder.dataset(dataset.asDatasetGraph());
         return this;
@@ -99,7 +105,7 @@ public class UpdateExecutionDatasetBuilder implements UpdateExecutionBuilder {
 //    }
 
     /** @deprecated Prefer {@link #substitution(QuerySolution)}. */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public UpdateExecutionDatasetBuilder initialBinding(QuerySolution querySolution) {
         if ( querySolution == null )
             return this;

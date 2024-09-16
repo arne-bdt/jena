@@ -271,7 +271,7 @@ public class LogCtl {
     /**
      * @deprecated Use {@link #setLogging}.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static void setCmdLogging() {
         setLogging();
     }
@@ -285,9 +285,23 @@ public class LogCtl {
 
     private static final String[] log4j2files = {"log4j2.properties", "log4j2.xml"};
 
+    /**
+     * Environment variable for debugging logging initialization.
+     * Set "true" to get trace on stderr.
+     */
+    // Must be final for static LogLogging to work.
+    public static final String envLogLoggingProperty = "JENA_LOGLOGGING";
+
+    /**
+     * Property variable for debugging logging initialization. Set "true" to get
+     * trace on stderr.
+     */
+    // Must be final for static LogLogging to work.
+    public static final String logLoggingProperty = "jena.logLogging";
+
     private static final boolean LogLogging =
-            System.getenv("JENA_LOGLOGGING") != null ||
-            System.getProperty("jena.loglogging") != null;
+            System.getenv(envLogLoggingProperty) != null ||
+            System.getProperty(logLoggingProperty) != null;
 
     private static void logLogging(String fmt, Object ... args) {
         if ( LogLogging ) {
@@ -317,7 +331,7 @@ public class LogCtl {
             }
             // Nothing found - built-in default.
             logLogging("Log4j2: built-in default");
-            LogCtlLog4j2.resetLogging(LogCtlLog4j2.log4j2setup);
+            LogCtlLog4j2.reconfigureLog4j2fromString(LogCtlLog4j2.log4j2setup, LogCtlLog4j2.SyntaxHint.PROPERTIES);
         } else {
             if ( isSetLog4j2property(log4j2ConfigFilePropertyLegacy) )
                 logLogging("Already set: %s=%s", log4j2ConfigFilePropertyLegacy, System.getProperty(log4j2ConfigFilePropertyLegacy));

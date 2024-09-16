@@ -39,11 +39,11 @@ public class IOX {
         void actionEx(X arg) throws IOException;
     }
 
+    // Maybe change to java.io.UncheckedIOException
     /**
      * Convert an {@link IOException} into a {@link RuntimeIOException}.
      * <p>
      * Idiom:
-     *
      * <pre>
      *     catch(IOException ex) { throw new exception(ex); }
      * </pre>
@@ -59,7 +59,6 @@ public class IOX {
      * Convert an {@link IOException} into a {@link RuntimeIOException}.
      * <p>
      * Idiom:
-     *
      * <pre>
      *     catch(IOException ex) { throw new exception("Oh dear", ex); }
      * </pre>
@@ -125,7 +124,7 @@ public class IOX {
     }
 
     /**
-     * Write a file safely, but allow system to use copy-delete if the chnage can not
+     * Write a file safely, but allow system to use copy-delete if the change can not
      * be done atomically. Prefer {@link #safeWrite} which requires an atomic move.
      */
     public static boolean safeWriteOrCopy(Path file, Path tmpFile, IOConsumer<OutputStream> writerAction) {

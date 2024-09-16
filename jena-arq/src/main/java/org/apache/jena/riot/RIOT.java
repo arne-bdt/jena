@@ -51,9 +51,6 @@ public class RIOT {
     /** The root package name for RIOT */
     public static final String PATH    = "org.apache.jena.riot" ;
 
-    /** Control of multiline literals */
-    public static final Symbol multilineLiterals = Symbol.create("riot.multiline_literals") ;
-
     /** The system-wide context, shared with ARQ and other modules. */
     private static Context systemGlobalContext = new Context();
 
@@ -119,11 +116,13 @@ public class RIOT {
     private static String RDFXML_SYMBOL_BASE = "http://jena.apache.org/riot/rdfxml#";
 
     /**
-     * Access to the original legacy RDF/XML parser
-     * Use Lang constant {@link RRX#RDFXML_ARP0}
-     * @deprecated Do not use! This will be removed.
+     * Legacy access to the original legacy RDF/XML parser.
+     * The original ARP parser will be removed.
+     * Use {@link Lang} constant {@link RRX#RDFXML_ARP1} or {@link RRX#RDFXML_ARP0}
+     * to access ARP v1 (RIOT integration) or ARP v0 (the original ARP parser).
+     * @deprecated Do not use this symbol! This will be removed.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static Symbol symRDFXML0 = SystemARQ.allocSymbol(RDFXML_SYMBOL_BASE, "rdfxml0");
 
     /**
@@ -156,4 +155,16 @@ public class RIOT {
      * Printing style. Whether to use a "wide" or "long" indentation style.
      */
     public static final Symbol symTurtleIndentStyle = SystemARQ.allocSymbol(TURTLE_SYMBOL_BASE, "indentStyle");
+
+    /**
+     * Print literals with newlines in multiple line form, using triple quotes.
+     */
+    public static final Symbol symTurtleMultilineLiterals = SystemARQ.allocSymbol(TURTLE_SYMBOL_BASE, "multiline_literals") ;
+
+    /**
+     * Control of multiline literals.
+     * @deprecated Use {@link #symTurtleMultilineLiterals}.
+     */
+    @Deprecated(forRemoval = true)
+    public static final Symbol multilineLiterals = symTurtleMultilineLiterals;
 }

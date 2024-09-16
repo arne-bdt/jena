@@ -19,6 +19,7 @@
 package org.apache.jena.fuseki.main;
 
 import static java.util.Objects.requireNonNull;
+import static org.apache.jena.atlas.lib.PropertyUtils.loadFromFile;
 import static org.apache.jena.fuseki.Fuseki.serverLog;
 
 import java.io.IOException;
@@ -146,6 +147,16 @@ public class FusekiServer {
     public static Builder create(OperationRegistry serviceDispatchRegistry) {
         return new Builder(serviceDispatchRegistry);
     }
+
+    /**
+     * Default port when running in Java via {@code FusekiServer....build()}.
+     * The server will be http://localhost:3330.
+     *
+     * This is not the command line port (3030) which the command line programme sets.
+     *
+     * See {@link FusekiMain#defaultPort} and {@link FusekiMain#defaultHttpsPort}.
+     */
+    public static final int DefaultServerPort  = 3330;
 
     private final Server server;
     private int httpPort;
@@ -375,7 +386,6 @@ public class FusekiServer {
 
     /** FusekiServer.Builder */
     public static class Builder {
-        private static final int DefaultServerPort  = 3330;
         private static final int PortUnset          = -2;
         private static final int PortInactive       = -3;
 
@@ -513,7 +523,9 @@ public class FusekiServer {
             requireNonNull(directory, "directory");
             if ( ! FileOps.exists(directory) )
                 Fuseki.configLog.warn("File area not found: "+directory);
-            this.staticContentDir = directory;
+            // Resolve path.
+            String dir = Path.of(directory).toAbsolutePath().toString();
+            this.staticContentDir = dir;
             return this;
         }
 
@@ -543,11 +555,28 @@ public class FusekiServer {
             return this;
         }
 
-        /** Add the Cross Origin (CORS) filter.
-         * {@link CrossOriginFilter}.
+        /**
+         * Enable or disable a Cross Origin (CORS) filter with default settings.
+         * @see CrossOriginFilter
          */
         public Builder enableCors(boolean withCORS) {
-            corsInitParams = withCORS ? corsInitParamsDft : null ;
+            return enableCors(withCORS, null);
+
+        }
+        /**
+         * Enable a Cross Origin (CORS) filter with a specific configuration,
+         * or disable CORS processing.
+         *
+         * @see CrossOriginFilter
+         */
+        public Builder enableCors(boolean withCORS, String corsConfigFile) {
+            if ( withCORS ) {
+                corsInitParams = (corsConfigFile == null)
+                        ? corsInitParamsDft
+                        : parseCORSConfigFile(corsConfigFile);
+            } else {
+                corsInitParams = null;
+            }
             return this;
         }
 
@@ -1702,6 +1731,19 @@ public class FusekiServer {
                 if ( connectors[i] instanceof ServerConnector serverConnector) {
                     serverConnector.setHost("localhost");
                 }
+            }
+        }
+
+        private static Map<String, String> parseCORSConfigFile(String filename) {
+            try {
+                Properties properties = loadFromFile(filename);
+                Map<String, String> map = new HashMap<>(properties.size());
+                for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+                    map.put((String) entry.getKey(), (String) entry.getValue());
+                }
+                return map;
+            } catch (Exception ex) {
+                throw new FusekiConfigException("Failed to read the CORS config file: "+ filename, ex);
             }
         }
     }

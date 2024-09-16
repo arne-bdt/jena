@@ -103,16 +103,32 @@ public class HttpLib {
         return "Basic " + Base64.getEncoder().encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8));
     }
 
+    public static String BEARER = "Bearer";
+    public static String BEARER_PREFIX = BEARER+" ";
+
     /**
      * Calculate bearer auth header value.
      * The token supplied is expected to already be in base 64.
      * Use with header "Authorization" (constant {@link HttpNames#hAuthorization}).
      */
-    public static String bearerAuth(String tokenBase64) {
+    public static String bearerAuthHeader(String tokenBase64) {
         Objects.requireNonNull(tokenBase64);
         if ( tokenBase64.indexOf(' ') >= 0 )
             throw new IllegalArgumentException("Base64 token contains a space");
-        return "Bearer " + tokenBase64;
+        return BEARER_PREFIX + tokenBase64;
+    }
+
+    /**
+     * Extract the token, without decoding,
+     * The token supplied is expected to already be in base 64.
+     * Use with header "Authorization" (constant {@link HttpNames#hAuthorization}).
+     */
+    public static String bearerAuthTokenFromHeader(String authHeaderString) {
+        Objects.requireNonNull(authHeaderString);
+        if ( ! authHeaderString.startsWith(BEARER_PREFIX) ) {
+            throw new IllegalArgumentException("Auth headerString does not start 'Bearer ...'");
+        }
+        return authHeaderString.substring("Bearer ".length()).trim();
     }
 
     /**
@@ -578,7 +594,26 @@ public class HttpLib {
     }
 
     /**
-     * Execute request and return a response without authentication challenge handling.
+     * Execute request and return a {@code HttpResponse<InputStream>} response.
+     * Status codes have not been handled. The response can be passed to
+     * {@link #handleResponseInputStream(HttpResponse)} which will convert non-2xx
+     * status code to {@link HttpException HttpExceptions}.
+     *
+     * @param httpClient
+     * @param httpRequest
+     * @return HttpResponse
+     */
+    public static HttpResponse<InputStream> executeJDK(HttpClient httpClient, HttpRequest httpRequest) {
+        return execute(httpClient, httpRequest, BodyHandlers.ofInputStream());
+    }
+
+    /**
+     * Execute request and return a response without authentication challenge
+     * handling. Status codes have not been handled. This is a call to
+     * {@code HttpClient.send} converting exceptions to {@link HttpException}.
+     * request and responses are logged as "debug" to logger
+     * {@code org.apache.jena.http.HTTP}.
+     *
      * @param httpClient
      * @param httpRequest
      * @param bodyHandler

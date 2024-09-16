@@ -240,39 +240,46 @@ public class AdapterFileManager implements org.apache.jena.util.FileManager
 
     // -------- Cache operations (start)
     /** Reset the model cache */
+    @Deprecated
     @Override
     public void resetCache() {
         modelCache.resetCache() ;
     }
 
     /** Change the state of model cache : does not clear the cache */
+    @Deprecated
     @Override
     public void setModelCaching(boolean state) {
         modelCache.setModelCaching(state) ;
     }
 
     /** return whether caching is on of off */
+    @Deprecated
     @Override
     public boolean isCachingModels() {
         return modelCache.isCachingModels() ;
     }
 
     /** Read out of the cache - return null if not in the cache */
+    @Deprecated
     @Override
     public Model getFromCache(String filenameOrURI) {
         return modelCache.getFromCache(filenameOrURI) ;
     }
 
+    @Deprecated
     @Override
     public boolean hasCachedModel(String filenameOrURI) {
         return modelCache.hasCachedModel(filenameOrURI) ;
     }
 
+    @Deprecated
     @Override
     public void addCacheModel(String uri, Model m) {
         modelCache.addCacheModel(uri, m) ;
     }
 
+    @Deprecated
     @Override
     public void removeCacheModel(String uri) {
         modelCache.removeCacheModel(uri) ;
@@ -413,7 +420,7 @@ public class AdapterFileManager implements org.apache.jena.util.FileManager
      * @deprecated Use {@link IO#readWholeFileAsUTF8(InputStream)}
      */
     @Override
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public String readWholeFileAsUTF8(InputStream in) {
         return IO.readWholeFileAsUTF8(in);
     }
@@ -421,8 +428,8 @@ public class AdapterFileManager implements org.apache.jena.util.FileManager
     /**
      * @deprecated Use {@link IO#readWholeFileAsUTF8(String)}
      */
-    @Deprecated
     @Override
+    @Deprecated(forRemoval = true)
     public String readWholeFileAsUTF8(String filename)
     {
         InputStream in = open(filename) ;

@@ -38,20 +38,20 @@ public class RRX {
     /** <a href="http://www.w3.org/TR/rdf-xml/">RDF/XML</a> implemented by RRX-StAXev */
     public static final Lang RDFXML_StAX_ev = LangBuilder.create("RDFXML-StAX-EV", "application/rdf+stax-ev")
             .addAltNames("RRX-StAX-ev", "rrxstaxev")
-            .addFileExtensions("rdfstax")
+            .addFileExtensions("rdfstaxev")
             .build();
 
     /** <a href="http://www.w3.org/TR/rdf-xml/">RDF/XML</a> implemented by RRX-StAXsr */
     public static final Lang RDFXML_StAX_sr = LangBuilder.create("RDFXML-StAX-SR", "application/rdf+stax-sr")
             .addAltNames("RRX-StAX-sr", "rrxstaxsr")
-            .addFileExtensions("rdfstaxev")
+            .addFileExtensions("rdfstaxsr")
             .build();
 
     /**
      * <a href="http://www.w3.org/TR/rdf-syntax-grammar/">RDF/XML</a> implemented by ARP1.
      * @deprecated To be removed. Transition only.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static final Lang RDFXML_ARP1 = LangBuilder.create("RDFXML-ARP1", "application/rdf+arp1")
             .addAltContentTypes("application/rdf+arp")
             .addAltNames("arp1", "arp", "RDFXML-ARP")
@@ -62,7 +62,7 @@ public class RRX {
      * <a href="http://www.w3.org/TR/rdf-syntax-grammar/">RDF/XML</a> implemented by ARP0.
      * @deprecated To be removed. Transition only.
      */
-    @Deprecated
+    @Deprecated(forRemoval = true)
     public static final Lang RDFXML_ARP0 = LangBuilder.create("RDFXML-ARP0", "application/rdf+arp0")
             .addAltNames("arp0")
             .addFileExtensions("arp0")

@@ -34,6 +34,7 @@ import org.apache.jena.riot.writer.WriterStreamRDFFlat;
 import org.apache.jena.riot.writer.WriterStreamRDFPlain;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.util.Context;
+import org.apache.jena.sys.JenaSystem;
 
 import java.io.OutputStream;
 import java.util.Collection;
@@ -51,6 +52,8 @@ import java.util.Map;
  * @see RDFWriterRegistry
  */
 public class StreamRDFWriter {
+
+    static { JenaSystem.init(); }
 
     private static StreamRDFWriterFactory streamWriterFactoryBlocks = new StreamRDFWriterFactory() {
         @Override

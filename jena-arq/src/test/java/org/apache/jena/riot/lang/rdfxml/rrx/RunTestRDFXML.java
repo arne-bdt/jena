@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 
 import org.apache.jena.atlas.io.IO;
 import org.apache.jena.atlas.io.IOX;
+import org.apache.jena.atlas.logging.LogCtl;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.riot.*;
 import org.apache.jena.riot.lang.rdfxml.ReaderRDFXML_ARP1;
@@ -70,11 +71,15 @@ public class RunTestRDFXML {
         }
     }
 
+    private static String ParserBase = "http://external/base#";
+
     /**
-     * Manifest-like in that the test files in a specific order.
+     * Manifest-like in that the test files are run in a specific order.
      * The local files cover all the features of RDF/XML parsing
      * but not in great depth.
      * These tests more easily highlight problems and the grouping helps.
+     *
+     * Check the files on disk agree with the built-in order list.
      */
     static List<String> localTestFiles() {
         Path LOCAL_DIR = Path.of("testing/RIOT/rrx/");
@@ -92,7 +97,9 @@ public class RunTestRDFXML {
 
         // For a better order ...
         List<String> testfiles = List.of(
-                 "xml.rdf", "xml10.rdf", "xml11.rdf",
+                 "xml.rdf",
+                 "xml10.rdf",
+                 "xml11.rdf",
 
                  "basic01.rdf",
                  "basic02.rdf",
@@ -183,7 +190,6 @@ public class RunTestRDFXML {
                  );
 
         for ( String fn : testfiles ) {
-
             if ( ! found.contains(fn) )
                 output.printf("Not found in file area: %s\n", fn);
         }
@@ -213,17 +219,6 @@ public class RunTestRDFXML {
             x.add(new Object[] {label, fn});
         }
         return x;
-    }
-
-    static void runTest(String label, ReaderRIOTFactory factory, String implLabel, String filename) {
-        try {
-            runTestCompareARP(label, factory, implLabel, filename);
-        } catch(Throwable ex) {
-            throw new RuntimeException(filename, ex) {
-                @Override
-                public Throwable fillInStackTrace() { return this; }
-            };
-        }
     }
 
     static class ErrorHandlerCollector implements ErrorHandler {
@@ -294,9 +289,9 @@ public class RunTestRDFXML {
         String testFullLabel = format("-- Test : %-4s : %s", testLabel, filename);
 
         Graph expectedGraph;
-        // -- "Reference" implementation
         ErrorHandlerCollector errorHandlerReference = new ErrorHandlerCollector();
         try {
+            // Reference expectation
             expectedGraph = parseFile(referenceFactory, errorHandlerReference, filename);
         } catch (RiotException ex) {
             // Exception expected. Run as "failure test"
@@ -308,6 +303,15 @@ public class RunTestRDFXML {
         runTestExpectGraph(testLabel, testSubjectFactory, subjectLabel, expectedGraph, filename, errorHandlerReference);
     }
 
+
+    /**
+     * Run a test, single parse of using the given reader factory.
+     */
+    public static void runTestPlain(String label, ReaderRIOTFactory testSubjectFactory, String implLabel, String filename) {
+        String testLabel = format("-- Test : %-4s : %s", implLabel, filename);
+        ErrorHandlerCollector errorHandlerReference = new ErrorHandlerCollector();
+        parseFile(testSubjectFactory, errorHandlerReference, filename);
+    }
 
     /**
      * Run a test, expecting a graph as the result.
@@ -325,9 +329,21 @@ public class RunTestRDFXML {
         ErrorHandlerCollector actualErrorHandler = new ErrorHandlerCollector();
         assertThrows(RiotException.class, ()->{
             parseFile(testSubjectFactory, actualErrorHandler, filename);
-            output.printf("## Expected RiotExpection : %-4s : %s : %s", subjectLabel, testLabel, filename);
+            //output.printf("## Expected RiotExpection : %-4s : %s : %s\n", subjectLabel, testLabel, filename);
         });
-        checkErrorHandler(testLabel, actualErrorHandler, -1, 1, -1);
+        checkErrorHandler(testLabel, actualErrorHandler, -1, 1, 0);
+    }
+
+    /** Run a test expecting a warning.. */
+    static void runTestExpectWarning(String testLabel,
+                                     ReaderRIOTFactory testSubjectFactory, String subjectLabel,
+                                     int numWarnings,
+                                     String filename) {
+        ErrorHandlerCollector actualErrorHandler = new ErrorHandlerCollector();
+        LogCtl.withLevel(SysRIOT.getLogger(), "Error", ()->
+            parseFile(testSubjectFactory, actualErrorHandler, filename)
+            );
+        checkErrorHandler(testLabel, actualErrorHandler, numWarnings, 0, 0);
     }
 
     /**
@@ -356,8 +372,8 @@ public class RunTestRDFXML {
                 checkErrorHandler(testLabel, expectedErrorHandler, errorHandlerTest);
             return;
         } catch(RiotException ex) {
-            output.println("## "+testLabel);
-            ex.printStackTrace();
+//            output.println("## "+testLabel);
+//            ex.printStackTrace();
             fail("Unexpected parse error: "+ex.getMessage());
         }
     }
@@ -391,7 +407,7 @@ public class RunTestRDFXML {
         ErrorHandlerCollector actualErrorHandler = new ErrorHandlerCollector();
         assertThrows(RiotException.class, ()->{
             parseFile(testSubjectFactory, actualErrorHandler, filename);
-            output.printf("## Expected RiotExpection : %-4s : %s : %s", subjectLabel, testLabel, filename);
+            output.printf("## Expected RiotExpection : %-4s : %s : %s\n", subjectLabel, testLabel, filename);
         });
 
         if ( expectedErrorHandler != null )
@@ -434,7 +450,7 @@ public class RunTestRDFXML {
     /** Counts check of an error handler */
     private static void checkErrorHandler(String testLabel, ErrorHandlerCollector errorHandler, int countWarnings, int countErrors, int countFatals) {
         if ( countFatals >= 0 )
-            assertEquals("Fatal message counts different", countWarnings, errorHandler.fatals.size());
+            assertEquals("Fatal message counts different", countFatals, errorHandler.fatals.size());
         if ( countErrors >= 0 )
             assertEquals("Error message counts different", countErrors, errorHandler.errors.size());
         if ( countWarnings >= 0 )
@@ -449,7 +465,7 @@ public class RunTestRDFXML {
         Graph graph = GraphFactory.createDefaultGraph();
         StreamRDF dest = StreamRDFLib.graph(graph);
         try ( InputStream in = IO.openFile(filename) ) {
-            reader.read(in, "http://external/base", WebContent.ctRDFXML, dest, RIOT.getContext().copy());
+            reader.read(in, ParserBase, WebContent.ctRDFXML, dest, RIOT.getContext().copy());
         } catch (IOException ex) {
             throw IOX.exception(ex);
         }

@@ -427,24 +427,30 @@ class Unparser {
      * [6.12.2] propertyElt ::= '<' propName idAttr? parseLiteral '>' literal '</'
      * propName '>'
      */
-    private boolean wPropertyEltLiteral(WType wt, Property prop, Statement s, RDFNode r) {
+    private boolean wPropertyEltLiteral(WType wt, Property prop, Statement statement, RDFNode rdfNode) {
+        // Is the rule blocked?
         if (prettyWriter.sParseTypeLiteralPropertyElt)
             return false;
-        boolean isXML = (r instanceof Literal) && XMLLiteralType.theXMLLiteralType.equals(((Literal) r).getDatatype());
-        if (! isXML ) {
+        if ( ! (rdfNode instanceof Literal lit) )
             return false;
-        }
+        if (! XMLLiteralType.isXMLLiteral(lit.getDatatype()) )
+            return false;
+        // Must be a legal XML fragment.
+        // It must be valid XML and also self-contained XML content (e.g. includes namespaces - they are not inherited from the model).
+        if ( ! lit.asNode().getLiteral().isWellFormed() )
+            return false;
+
         // print out.
-        done(s);
+        done(statement);
         tab();
         print("<");
         wt.wTypeStart(prop);
-        wIdAttrReified(s);
+        wIdAttrReified(statement);
         maybeNewline();
         wParseLiteral();
         maybeNewline();
         print(">");
-        print(((Literal) r).getLexicalForm());
+        print(lit.getLexicalForm());
         print("</");
         wt.wTypeEnd(prop);
         print(">");
@@ -1178,9 +1184,8 @@ class Unparser {
             throw new BrokenException("Internal error: getNameSpace(bNode)");
         }
         String uri = r.getURI();
-        int split = Util.splitNamespaceXML(uri);
+        int split = SplitRDFXML.splitXML10(uri);
         return uri.substring(0, split);
-
     }
 
     /**
@@ -1211,13 +1216,12 @@ class Unparser {
 
     private String getXMLLocalName(Resource r) {
         if (r.isAnon()) {
-            logger.error("Internal error - giving up - Unparser.getLocalName");
-            throw new BrokenException("Internal error: getLocalName(bNode)");
+            logger.error("Internal error - giving up - Unparser.getXMLLocalName");
+            throw new BrokenException("Internal error: getXMLLocalName(bNode)");
         }
         String uri = r.getURI();
-        int split = Util.splitNamespaceXML(uri);
+        int split = SplitRDFXML.splitXML10(uri);
         return uri.substring(split);
-
     }
 
     /**
@@ -1492,15 +1496,14 @@ class Unparser {
 
         if (!(n instanceof Resource))
             return -1;
-        if (((Resource) n).isAnon())
+        if ( n.isAnon() )
             return -1;
         // Only allow resources with namespace and fragment ID
         String uri = ((Resource) n).getURI();
 
-        int split = Util.splitNamespaceXML(uri);
+        int split = SplitRDFXML.splitXML10(uri);
         if (split == 0 || split == uri.length())
             return -1;
-
         return split;
     }
 

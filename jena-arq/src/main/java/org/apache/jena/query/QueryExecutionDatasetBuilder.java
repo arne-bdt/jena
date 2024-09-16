@@ -67,6 +67,12 @@ public class QueryExecutionDatasetBuilder implements QueryExecutionBuilder {
         return this;
     }
 
+    @Override
+    public QueryExecutionBuilder parseCheck(boolean parseCheck) {
+        builder.parseCheck(parseCheck);
+        return this;
+    }
+
     public QueryExecutionDatasetBuilder dataset(Dataset dataset) {
         this.dataset = dataset;
         builder.dataset(dataset.asDatasetGraph());
@@ -98,7 +104,8 @@ public class QueryExecutionDatasetBuilder implements QueryExecutionBuilder {
     }
 
     /** @deprecated Prefer {@link #substitution(Binding)} which substitutes variables for values in the the query before execution. */
-    @Deprecated
+    @Deprecated(forRemoval = true)
+    @SuppressWarnings("all")
     public QueryExecutionDatasetBuilder initialBinding(Binding binding) {
         builder.initialBinding(binding);
         return this;

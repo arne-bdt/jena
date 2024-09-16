@@ -233,10 +233,16 @@ public class DataService {
     /** Cumulative counter of transactions */
     public AtomicLong   totalTxn            = new AtomicLong(0);
 
+    /** Note the start of a transaction */
     public void startTxn(TxnType mode) {
         check(DataServiceStatus.ACTIVE);
         activeTxn.getAndIncrement();
         totalTxn.getAndIncrement();
+    }
+
+    /** Note the finish of a transaction */
+    public void finishTxn() {
+        activeTxn.decrementAndGet();
     }
 
     private void check(DataServiceStatus status) {
@@ -244,10 +250,6 @@ public class DataService {
             String msg = format("DataService %s: Expected=%s, Actual=%s", label(), status, state);
             throw new FusekiException(msg);
         }
-    }
-
-    public void finishTxn() {
-        activeTxn.decrementAndGet();
     }
 
     /** Shutdown and never use again. */

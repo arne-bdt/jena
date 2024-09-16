@@ -18,6 +18,8 @@
 
 package tdb2;
 
+import static org.apache.jena.atlas.lib.ListUtils.toList;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -25,7 +27,6 @@ import java.util.List;
 import java.util.Objects;
 
 import org.apache.jena.atlas.lib.InternalErrorException;
-import org.apache.jena.atlas.lib.ListUtils;
 import org.apache.jena.atlas.lib.Timer;
 import org.apache.jena.cmd.ArgDecl;
 import org.apache.jena.cmd.CmdException;
@@ -143,8 +144,11 @@ public class tdbloader extends CmdTDBGraph {
 
         for ( String url : urls ) {
             Lang lang = RDFLanguages.filenameToLang(url);
-            if ( lang != null && RDFLanguages.isQuads(lang) ) {
-                throw new CmdException("Warning: Quads format given - only the default graph is loaded into the graph for --graph");
+            if ( lang != null && ! Lang.JSONLD.equals(lang) && RDFLanguages.isQuads(lang) ) {
+                // People think JSONLD is a single graph format.
+                if ( RDFLanguages.isQuads(lang) ) {
+                    System.err.println("Warning: Quads format given - only the default graph from the data is loaded into the graph for --graph");
+                }
             }
         }
 
@@ -156,13 +160,14 @@ public class tdbloader extends CmdTDBGraph {
 
     // Check files exists before starting.
     private void checkFiles(List<String> urls) {
-        List<String> problemFiles = ListUtils.toList(urls.stream().filter(u -> FileUtils.isFile(u))  // Local
-                                                                                                     // files.
-                                                         .map(Paths::get)
-                                                         .filter(p -> !Files.exists(p) || !Files.isRegularFile(p /* follow
-                                                                                                                  * links */)
-                                                                      || !Files.isReadable(p))
-                                                         .map(Path::toString));
+        List<String> problemFiles = toList(urls.stream()
+                                           // Local files.
+                                           .filter(u -> FileUtils.isFile(u))
+                                           .map(Paths::get)
+                                           .filter(p -> !Files.exists(p) ||
+                                                        !Files.isRegularFile(p /* this follows links */) ||
+                                                        !Files.isReadable(p))
+                                           .map(Path::toString));
         if ( !problemFiles.isEmpty() ) {
             if ( problemFiles.size() == 1 )
                 throw new CmdException("Can't read file : " + problemFiles.get(0));

@@ -35,9 +35,9 @@ import org.apache.jena.graph.* ;
 import org.apache.jena.rdf.model.* ;
 import org.apache.jena.shared.* ;
 import org.apache.jena.shared.impl.JenaParameters;
-import org.apache.jena.shared.impl.PrefixMappingImpl ;
 import org.apache.jena.sys.JenaSystem ;
 import org.apache.jena.util.CollectionFactory ;
+import org.apache.jena.util.SplitIRI;
 import org.apache.jena.util.iterator.ClosableIterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.FilterIterator;
@@ -135,7 +135,7 @@ public class ModelCom extends EnhGraph implements Model, PrefixMapping, Lock
     { return new LiteralImpl( NodeFactory.createLiteralLang( s, lang), this ); }
 
     private Literal literal( String lex, RDFDatatype datatype)
-    { return new LiteralImpl( NodeFactory.createLiteral( lex, datatype), this ); }
+    { return new LiteralImpl( NodeFactory.createLiteralDT( lex, datatype), this ); }
 
     @Override
     public Model add( Resource s, Property p, String o, String l )
@@ -161,6 +161,7 @@ public class ModelCom extends EnhGraph implements Model, PrefixMapping, Lock
         return this;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public RDFReaderI getReader(String lang)  {
         return readerFactory.getReader(lang);
@@ -215,11 +216,13 @@ public class ModelCom extends EnhGraph implements Model, PrefixMapping, Lock
     /**
      * Get the model's writer after priming it with the model's namespace prefixes.
      */
+    @SuppressWarnings("deprecation")
     @Override
     public RDFWriterI getWriter(String lang) {
         return writerFactory.getWriter(lang);
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public Model write(Writer writer) {
         getWriter(null).write(this, writer, "");
@@ -588,7 +591,7 @@ public class ModelCom extends EnhGraph implements Model, PrefixMapping, Lock
      */
     @Override
     public Literal createTypedLiteral(String lex, RDFDatatype dtype) throws DatatypeFormatException {
-        Node n = NodeFactory.createLiteral( lex, dtype );
+        Node n = NodeFactory.createLiteralDT( lex, dtype );
         // Force value to be calculated if it was delayed.
         // Check here as well because NodeFactory may change to be being "lazy value".
         if ( JenaParameters.enableEagerLiteralValidation ) {
@@ -623,7 +626,7 @@ public class ModelCom extends EnhGraph implements Model, PrefixMapping, Lock
     @Override
     public Literal createTypedLiteral(String lex, String typeURI) {
         RDFDatatype dt = TypeMapper.getInstance().getSafeTypeByName(typeURI);
-        Node n = NodeFactory.createLiteral(lex, dt);
+        Node n = NodeFactory.createLiteralDT(lex, dt);
         // Force value to be calculated if it was delayed.
         // Check here as well because NodeFactory may change to be being "lazy value".
         if ( JenaParameters.enableEagerLiteralValidation ) {
@@ -830,7 +833,7 @@ public class ModelCom extends EnhGraph implements Model, PrefixMapping, Lock
             Node node = it.next();
             if ( node.isURI() ) {
                 String uri = node.getURI();
-                String ns = uri.substring(0, Util.splitNamespaceXML(uri));
+                String ns = uri.substring(0,  SplitIRI.splitXML(uri));
                 // String ns = IteratorFactory.asResource( node, this
                 // ).getNameSpace();
                 set.add(ns);
@@ -953,9 +956,7 @@ public class ModelCom extends EnhGraph implements Model, PrefixMapping, Lock
             Set<String> values = e.getValue();
             Set<String> niceValues = CollectionFactory.createHashedSet();
             for ( String uri : values ) {
-                if ( PrefixMappingImpl.isNiceURI(uri) ) {
-                    niceValues.add(uri);
-                }
+                niceValues.add(uri);
             }
             if ( niceValues.size() == 1 ) {
                 pm.setNsPrefix(key, niceValues.iterator().next());
