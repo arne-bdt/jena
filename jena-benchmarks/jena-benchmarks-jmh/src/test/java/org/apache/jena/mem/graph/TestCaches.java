@@ -83,9 +83,9 @@ public class TestCaches {
 
     @Param({
             "Caffeine",
-//            "Simple",
-//            "SimpleFast",
-            "SimpleFastConcurrent"
+            "Simple",
+            "SimpleFast",
+//            "SimpleFastConcurrent"
     })
     public String param1_Cache;
 
@@ -139,12 +139,12 @@ public class TestCaches {
         return hash[0];
     }
 
-//    @Benchmark
-//    public Cache<String, Node> createAndFillCacheByGet() {
-//        var c = createCache(param1_Cache);
-//        fillCacheByGet(c, graph);
-//        return c;
-//    }
+    @Benchmark
+    public Cache<String, Node> createAndFillCacheByGet() {
+        var c = createCache(param1_Cache);
+        fillCacheByGet(c, graph);
+        return c;
+    }
 
     private static void fillCacheByGet(Cache<String, Node> cacheToFill, Graph g) {
         g.find().forEachRemaining(t -> {
@@ -208,6 +208,35 @@ public class TestCaches {
         this.cache = createCache(param1_Cache);
     }
 
+//    @Test
+//    public void findBug() {
+//        var graph = new GraphMem2Fast();
+//        TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read("C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml", graph);
+//        var cache = createCache("SimpleFast");
+//        fillCacheByGet(cache, graph);
+//        final int[] hash = {0};
+//        graph.find().forEachRemaining(t -> {
+////            if(t == null) {
+////                return;
+////            }
+//            if(t.getSubject().isURI()) {
+//                hash[0] += cache.get(t.getSubject().getURI(),
+//                        s -> t.getSubject()).getURI().hashCode();
+//
+//            }
+//            if(t.getPredicate().isURI()) {
+//                hash[0] += cache.get(t.getPredicate().getURI(),
+//                        s -> t.getPredicate()).getURI().hashCode();
+//
+//            }
+//            if(t.getObject().isURI()) {
+//                hash[0] += cache.get(t.getObject().getURI(),
+//                        s -> t.getObject()).getURI().hashCode();
+//
+//            }
+//        });
+//    }
+
 //    @Setup(Level.Iteration)
 //    public void setupIteration() {
 //        fillCacheByGet(this.cache, this.graph);
@@ -216,7 +245,7 @@ public class TestCaches {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-                .threads(8)
+//                .threads(8)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

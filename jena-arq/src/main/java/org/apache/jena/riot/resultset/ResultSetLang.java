@@ -18,15 +18,15 @@
 
 package org.apache.jena.riot.resultset;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.LangBuilder;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.riot.WebContent;
 import org.apache.jena.riot.rowset.RowSetReaderRegistry;
 import org.apache.jena.riot.rowset.RowSetWriterRegistry;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /** {@link Lang} related to SPARQL result sets. */
 public class ResultSetLang {
@@ -53,6 +53,11 @@ public class ResultSetLang {
                      .addFileExtensions("srt")
                      .build();
 
+    public static final Lang RS_Thrift2 = LangBuilder.create("SPARQL-Results-Thrift2", WebContent.contentTypeResultsThrift2)
+            .addAltNames("SRT2")
+            .addFileExtensions("srt2")
+            .build();
+
     public static final Lang RS_Thrift3 = LangBuilder.create("SPARQL-Results-Thrift3", WebContent.contentTypeResultsThrift3)
             .addAltNames("SRT3")
             .addFileExtensions("srt3")
@@ -62,6 +67,11 @@ public class ResultSetLang {
                      .addAltNames("SRP")
                      .addFileExtensions("srp")
                      .build();
+
+    public static final Lang RS_Protobuf2 = LangBuilder.create("SPARQL-Results-Protobuf2", WebContent.contentTypeResultsProtobuf2)
+            .addAltNames("SRP2")
+            .addFileExtensions("srp2")
+            .build();
 
     public static final Lang RS_Text = LangBuilder.create("SPARQL-Results-Text", WebContent.contentTypeTextPlain)
                      .addFileExtensions("txt")
@@ -81,8 +91,10 @@ public class ResultSetLang {
         registerResultSetLang(RS_CSV);
         registerResultSetLang(RS_TSV);
         registerResultSetLang(RS_Thrift);
+        RDFLanguages.register(RS_Thrift2);
         RDFLanguages.register(RS_Thrift3);
         registerResultSetLang(RS_Protobuf);
+        registerResultSetLang(RS_Protobuf2);
         // Not output-only text.
         registerResultSetLang(RS_None);
 

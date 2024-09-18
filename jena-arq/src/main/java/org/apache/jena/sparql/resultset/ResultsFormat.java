@@ -56,6 +56,7 @@ public class ResultsFormat extends Symbol
 
     static public ResultsFormat FMT_RS_THRIFT    = new ResultsFormat(contentTypeResultsThrift) ;
     static public ResultsFormat FMT_RS_THRIFT2    = new ResultsFormat(contentTypeResultsThrift2) ;
+    static public ResultsFormat FMT_RS_THRIFT3    = new ResultsFormat(contentTypeResultsThrift3) ;
     static public ResultsFormat FMT_RS_PROTOBUF  = new ResultsFormat(contentTypeResultsProtobuf) ;
 
     static public ResultsFormat FMT_RS_PROTOBUF2  = new ResultsFormat(contentTypeResultsProtobuf2) ;
@@ -225,6 +226,7 @@ public class ResultsFormat extends Symbol
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_JSON,     ResultSetLang.RS_JSON) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_THRIFT,   ResultSetLang.RS_Thrift) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_THRIFT2,  ResultSetLang.RS_Thrift2) ;
+        mapResultsFormatToLang.put(ResultsFormat.FMT_RS_THRIFT3,  ResultSetLang.RS_Thrift3) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_PROTOBUF, ResultSetLang.RS_Protobuf) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_RS_PROTOBUF2,ResultSetLang.RS_Protobuf2) ;
         mapResultsFormatToLang.put(ResultsFormat.FMT_TEXT,        ResultSetLang.RS_Text);
