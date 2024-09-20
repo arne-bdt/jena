@@ -18,14 +18,6 @@
 
 package org.apache.jena.system;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import javax.xml.XMLConstants;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.stream.XMLInputFactory;
-
 import org.apache.jena.query.ResultSetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -33,6 +25,12 @@ import org.apache.jena.util.JenaXMLInput;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
+
+import javax.xml.XMLConstants;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.stream.XMLInputFactory;
+
+import static org.junit.Assert.*;
 
 public class TestReadXML {
 
@@ -72,10 +70,19 @@ public class TestReadXML {
         assertEquals("XMLInputFactory.SUPPORT_DTD",
                      Boolean.FALSE, xf.getProperty(XMLInputFactory.SUPPORT_DTD));
 
-        // Java19. Setting ACCESS_EXTERNAL_DTD to "" now returns "" whereas it was returning null.
-        Object obj = xf.getProperty(XMLConstants.ACCESS_EXTERNAL_DTD);
-        boolean noAccessExternalDTD = ( (obj == null) || ((obj instanceof String) && ((String)obj).isEmpty()) );
-        assertTrue("XMLConstants.ACCESS_EXTERNAL_DTD", noAccessExternalDTD);
+
+        String name = xf.getClass().getName();
+        boolean isWoodstox = name.startsWith("com.ctc.wstx.stax.");
+        boolean isAalto = name.startsWith("com.fasterxml.aalto.");
+        if(!isWoodstox && !isAalto) {
+            // Not supported by Woodstox an Aalto. IS_SUPPORTING_EXTERNAL_ENTITIES = false is enough.
+            // Disable external DTDs (files and HTTP) - errors unless SUPPORT_DTD is false.
+
+            // Java19. Setting ACCESS_EXTERNAL_DTD to "" now returns "" whereas it was returning null.
+            Object obj = xf.getProperty(XMLConstants.ACCESS_EXTERNAL_DTD);
+            boolean noAccessExternalDTD = ( (obj == null) || ((obj instanceof String) && ((String)obj).isEmpty()) );
+            assertTrue("XMLConstants.ACCESS_EXTERNAL_DTD", noAccessExternalDTD);
+        }
 
         assertEquals("javax.xml.stream.isSupportingExternalEntities",
                      Boolean.FALSE,xf.getProperty("javax.xml.stream.isSupportingExternalEntities"));

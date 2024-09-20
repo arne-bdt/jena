@@ -66,6 +66,11 @@
     <ver.titanium-json-ld>1.4.1</ver.titanium-json-ld>
     <ver.jakarta.json>2.0.1</ver.jakarta.json>
 
+    <!-- XML -->
+    <ver.stax2-api>4.2.2</ver.stax2-api>
+    <ver.aalto-xml>1.3.3</ver.aalto-xml>
+    <ver.woodstox-core>7.0.0</ver.woodstox-core>
+
     <!-- These two must be in-step -->
     <ver.jetty>12.0.13</ver.jetty>
     <ver.jakarta-servlet>6.1.0</ver.jakarta-servlet>
@@ -531,6 +536,26 @@
         <version>${ver.jakarta.json}</version>
       </dependency>
       <!-- End JSON-LD 1.1 read support -->
+
+      <!--- XML -->
+      <dependency>
+        <groupId>org.codehaus.woodstox</groupId>
+        <artifactId>stax2-api</artifactId>
+        <version>${ver.stax2-api}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.fasterxml</groupId>
+        <artifactId>aalto-xml</artifactId>
+        <version>${ver.aalto-xml}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.fasterxml.woodstox</groupId>
+        <artifactId>woodstox-core</artifactId>
+        <version>7.0.0</version>
+      </dependency>
+      <!--- End XML -->
 
       <!-- Ensure the properties align the jakarta.servlet-api version to that of Jetty. -->
       <dependency>

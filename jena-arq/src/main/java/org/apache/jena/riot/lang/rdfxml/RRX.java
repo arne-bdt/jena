@@ -22,6 +22,10 @@ import org.apache.jena.riot.*;
 import org.apache.jena.riot.lang.rdfxml.rrx.ReaderRDFXML_SAX;
 import org.apache.jena.riot.lang.rdfxml.rrx_stax_ev.ReaderRDFXML_StAX_EV;
 import org.apache.jena.riot.lang.rdfxml.rrx_stax_sr.ReaderRDFXML_StAX_SR;
+import org.apache.jena.riot.lang.rdfxml.stax2.aalto.ReaderRDFXML_StAX2_EV_aalto;
+import org.apache.jena.riot.lang.rdfxml.stax2.aalto.ReaderRDFXML_StAX2_SR_aalto;
+import org.apache.jena.riot.lang.rdfxml.stax2.woodstox.ReaderRDFXML_StAX2_EV;
+import org.apache.jena.riot.lang.rdfxml.stax2.woodstox.ReaderRDFXML_StAX2_SR;
 
 /**
  * Addition registration of RDF/XML parsers to given each its own {@link Lang} name.
@@ -45,6 +49,30 @@ public class RRX {
     public static final Lang RDFXML_StAX_sr = LangBuilder.create("RDFXML-StAX-SR", "application/rdf+stax-sr")
             .addAltNames("RRX-StAX-sr", "rrxstaxsr")
             .addFileExtensions("rdfstaxsr")
+            .build();
+
+    /** <a href="http://www.w3.org/TR/rdf-xml/">RDF/XML</a> implemented by RRX-StAX2ev using aalto */
+    public static final Lang RDFXML_StAX2_ev = LangBuilder.create("RDFXML-StAX2-EV", "application/rdf+stax2-ev")
+            .addAltNames("RRX-StAX2-ev", "rrxstax2ev")
+            .addFileExtensions("rdfstax2ev")
+            .build();
+
+    /** <a href="http://www.w3.org/TR/rdf-xml/">RDF/XML</a> implemented by RRX-StAX2sr using woodstox */
+    public static final Lang RDFXML_StAX2_sr = LangBuilder.create("RDFXML-StAX2-SR", "application/rdf+stax2-sr")
+            .addAltNames("RRX-StAX2-sr", "rrxstax2sr")
+            .addFileExtensions("rdfstax2sr")
+            .build();
+
+    /** <a href="http://www.w3.org/TR/rdf-xml/">RDF/XML</a> implemented by RRX-StAX2ev using aalto */
+    public static final Lang RDFXML_StAX2_ev_aalto = LangBuilder.create("RDFXML-StAX2-EV_aalto", "application/rdf+stax2-ev_aalto")
+            .addAltNames("RRX-StAX2-ev_aalto", "rrxstax2ev_aalto")
+            .addFileExtensions("rdfstax2ev_aalto")
+            .build();
+
+    /** <a href="http://www.w3.org/TR/rdf-xml/">RDF/XML</a> implemented by RRX-StAX2sr using aalto */
+    public static final Lang RDFXML_StAX2_sr_aalto = LangBuilder.create("RDFXML-StAX2-SR_aalto", "application/rdf+stax2-sr_aalto")
+            .addAltNames("RRX-StAX2-sr_aalto", "rrxstax2sr_aalto")
+            .addFileExtensions("rdfstax2sr_aalto")
             .build();
 
     /**
@@ -77,6 +105,11 @@ public class RRX {
         register(RDFXML_StAX_ev, ReaderRDFXML_StAX_EV.factory);
         register(RDFXML_StAX_sr, ReaderRDFXML_StAX_SR.factory);
 
+        register(RDFXML_StAX2_ev, ReaderRDFXML_StAX2_EV.factory);
+        register(RDFXML_StAX2_sr, ReaderRDFXML_StAX2_SR.factory);
+        register(RDFXML_StAX2_ev_aalto, ReaderRDFXML_StAX2_EV_aalto.factory);
+        register(RDFXML_StAX2_sr_aalto, ReaderRDFXML_StAX2_SR_aalto.factory);
+
         // Names for ARP
         register(RDFXML_ARP1,    ReaderRDFXML_ARP1.factory);
         register(RDFXML_ARP0,    ReaderRDFXML_ARP0.factory);
@@ -94,6 +127,12 @@ public class RRX {
         unregister(RDFXML_SAX);
         unregister(RDFXML_StAX_ev);
         unregister(RDFXML_StAX_sr);
+
+        unregister(RDFXML_StAX2_ev);
+        unregister(RDFXML_StAX2_sr);
+        unregister(RDFXML_StAX2_ev_aalto);
+        unregister(RDFXML_StAX2_sr_aalto);
+
         unregister(RDFXML_ARP1);
         unregister(RDFXML_ARP0);
     }

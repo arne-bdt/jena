@@ -1,0 +1,123 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.jena.cimxml;
+
+import org.apache.jena.cimxml.schema.BaseURI;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFParser;
+import org.apache.jena.riot.lang.rdfxml.RRX;
+import org.apache.jena.sparql.graph.GraphFactory;
+import org.junit.Assert;
+import org.junit.Test;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.runner.Runner;
+
+@State(Scope.Benchmark)
+public class TestXMLParser {
+
+    @Param({
+            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\EquipmentProfileCoreRDFSAugmented-v2_4_15-4Sep2020.rdf",
+            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\SteadyStateHypothesisProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
+            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\StateVariableProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
+            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\TopologyProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
+            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml",
+            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_SSH_V2.xml",
+            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_SV_V2.xml",
+            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_TP_V2.xml",
+            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+            "C:/temp/res_test/xxx_CGMES_TP.xml",
+    })
+    public String param0_GraphUri;
+    @Param({
+            "RRX.RDFXML_SAX",
+            "RRX.RDFXML_StAX_ev",
+            "RRX.RDFXML_StAX_sr",
+
+            "RRX.RDFXML_StAX2_ev",
+            "RRX.RDFXML_StAX2_sr",
+
+            "RRX.RDFXML_StAX2_ev_aalto",
+            "RRX.RDFXML_StAX2_sr_aalto",
+
+//            "RRX.RDFXML_ARP0",
+//            "RRX.RDFXML_ARP1"
+    })
+    public String param1_ParserLang;
+
+    private static Lang getLang(String langName) {
+        switch (langName) {
+            case "RRX.RDFXML_SAX":
+                return RRX.RDFXML_SAX;
+            case "RRX.RDFXML_StAX_ev":
+                return RRX.RDFXML_StAX_ev;
+            case "RRX.RDFXML_StAX_sr":
+                return RRX.RDFXML_StAX_sr;
+
+            case "RRX.RDFXML_StAX2_ev":
+                return RRX.RDFXML_StAX2_ev;
+            case "RRX.RDFXML_StAX2_sr":
+                return RRX.RDFXML_StAX2_sr;
+
+            case "RRX.RDFXML_StAX2_ev_aalto":
+                return RRX.RDFXML_StAX2_ev_aalto;
+            case "RRX.RDFXML_StAX2_sr_aalto":
+                return RRX.RDFXML_StAX2_sr_aalto;
+
+            case "RRX.RDFXML_ARP0":
+                return RRX.RDFXML_ARP0;
+            case "RRX.RDFXML_ARP1":
+                return RRX.RDFXML_ARP1;
+
+            default:
+                throw new IllegalArgumentException("Unknown lang: " + langName);
+        }
+    }
+
+    @Benchmark
+    public Graph parseXML() throws Exception {
+        //var stopWatch = StopWatch.createStarted();
+        var sink = GraphFactory.createGraphMem();
+        RDFParser.source(this.param0_GraphUri)
+                .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
+                .forceLang(getLang(this.param1_ParserLang))
+                .checking(false)
+                .parse(sink);
+        //stopWatch.stop();
+        //System.out.println("Triples in graph: " + sink.size());
+        //System.out.println(stopWatch);
+        return sink;
+    }
+
+    @Test
+    public void benchmark() throws Exception {
+        var opt = JMHDefaultOptions.getDefaults(this.getClass())
+                //.warmupIterations(0)
+                .measurementIterations(25)
+                .build();
+        var results = new Runner(opt).run();
+        Assert.assertNotNull(results);
+    }
+
+}

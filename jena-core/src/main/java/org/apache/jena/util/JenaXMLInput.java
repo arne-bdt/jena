@@ -18,8 +18,9 @@
 
 package org.apache.jena.util;
 
-import java.io.InputStream;
-import java.io.Reader;
+import org.apache.jena.atlas.logging.Log;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
 
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -30,10 +31,8 @@ import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
-
-import org.apache.jena.atlas.logging.Log;
-import org.xml.sax.SAXException;
-import org.xml.sax.XMLReader;
+import java.io.InputStream;
+import java.io.Reader;
 
 /**
  * Create XML input methods.
@@ -106,7 +105,7 @@ public class JenaXMLInput {
         return xmlreader;
     }
 
-    private static XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance() ;
+    private static XMLInputFactory xmlInputFactory = XMLInputFactory.newDefaultFactory() ;
 
     static { initXMLInputFactory(xmlInputFactory); }
 
@@ -134,6 +133,7 @@ public class JenaXMLInput {
 
         String name = xmlInputFactory.getClass().getName();
         boolean isWoodstox = name.startsWith("com.ctc.wstx.stax.");
+        boolean isAalto = name.startsWith("com.fasterxml.aalto.");
         boolean isJDK = name.contains("sun.xml.internal");
         boolean isXerces = name.startsWith("org.apache.xerces");
 
@@ -146,9 +146,9 @@ public class JenaXMLInput {
         // disable external entities (silently ignore)
         setXMLInputFactoryProperty(xmlInputFactory, XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, Boolean.FALSE);
 
-        // Not supported by Woodstox. IS_SUPPORTING_EXTERNAL_ENTITIES = false is enough.
+        // Not supported by Woodstox an Aalto. IS_SUPPORTING_EXTERNAL_ENTITIES = false is enough.
         // Disable external DTDs (files and HTTP) - errors unless SUPPORT_DTD is false.
-        if ( ! isWoodstox )
+        if ( ! isWoodstox && ! isAalto)
             setXMLInputFactoryProperty(xmlInputFactory, XMLConstants.ACCESS_EXTERNAL_DTD, "");
 
         return xmlInputFactory;

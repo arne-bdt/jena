@@ -18,6 +18,22 @@
 
 package org.apache.jena.riot.lang.rdfxml.rrx;
 
+import org.apache.commons.collections4.SetUtils;
+import org.apache.jena.atlas.io.IO;
+import org.apache.jena.atlas.io.IOX;
+import org.apache.jena.riot.*;
+import org.apache.jena.riot.lang.rdfxml.RRX;
+import org.apache.jena.riot.lang.rdfxml.rrx.RunTestRDFXML.ErrorHandlerCollector;
+import org.apache.jena.riot.system.ParserProfile;
+import org.apache.jena.riot.system.RiotLib;
+import org.apache.jena.riot.system.StreamRDF;
+import org.apache.jena.riot.system.StreamRDFWriter;
+import org.junit.AfterClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -27,19 +43,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import org.apache.commons.collections4.SetUtils;
-import org.apache.jena.atlas.io.IO;
-import org.apache.jena.atlas.io.IOX;
-import org.apache.jena.riot.*;
-import org.apache.jena.riot.lang.rdfxml.RRX;
-import org.apache.jena.riot.lang.rdfxml.rrx.RunTestRDFXML.ErrorHandlerCollector;
-import org.apache.jena.riot.system.*;
-import org.junit.AfterClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
 /**
  * Additional tests for RRX:
@@ -61,6 +64,10 @@ public class TestRRX {
         x.add(new Object[] {"SAX", RRX.RDFXML_SAX});
         x.add(new Object[] {"StAXsr", RRX.RDFXML_StAX_sr});
         x.add(new Object[] {"StAXev", RRX.RDFXML_StAX_ev});
+        x.add(new Object[] {"StAX2sr", RRX.RDFXML_StAX2_sr});
+        x.add(new Object[] {"StAX2ev", RRX.RDFXML_StAX2_ev});
+        x.add(new Object[] {"StAX2sr_aalto", RRX.RDFXML_StAX2_sr_aalto});
+        x.add(new Object[] {"StAX2ev_aalto", RRX.RDFXML_StAX2_ev_aalto});
         return x;
     }
 
