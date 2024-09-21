@@ -43,7 +43,7 @@ import java.io.Reader;
  */
 public class ReaderRDFXML_StAX2_SR_aalto implements ReaderRIOT
 {
-    private static final XMLInputFactory2 xmlInputFactory = SysRRX.createXMLInputFactory2Woodstox();
+    private static final XMLInputFactory2 xmlInputFactory = SysRRX.createXMLInputFactoryAsyncAalto();
 
     public static ReaderRIOTFactory factory = (Lang language, ParserProfile parserProfile) -> {
         xmlInputFactory.configureForSpeed();
@@ -62,7 +62,7 @@ public class ReaderRDFXML_StAX2_SR_aalto implements ReaderRIOT
     public void read(InputStream input, String baseURI, ContentType ct, StreamRDF output, Context context) {
         try {
             XMLStreamReader xmlStreamReader = xmlInputFactory.createXMLStreamReader(input);
-            parse(xmlStreamReader, baseURI, ct, output, context);
+            parse(xmlStreamReader, baseURI, ct, output);
         } catch (XMLStreamException ex) {
             throw new RiotException("Failed to create the XMLEventReader", ex);
         }
@@ -72,14 +72,14 @@ public class ReaderRDFXML_StAX2_SR_aalto implements ReaderRIOT
     public void read(Reader reader, String baseURI, ContentType ct, StreamRDF output, Context context) {
         try {
             XMLStreamReader xmlStreamReader = xmlInputFactory.createXMLStreamReader(reader);
-            parse(xmlStreamReader, baseURI, ct, output, context);
+            parse(xmlStreamReader, baseURI, ct, output);
         } catch (XMLStreamException ex) {
             throw new RiotException("Failed to create the XMLEventReader", ex);
         }
     }
 
-     private void parse(XMLStreamReader xmlStreamReader, String xmlBase, ContentType ct, StreamRDF destination, Context context) {
-        ParserRRX_StAX2_SR_aalto parser = new ParserRRX_StAX2_SR_aalto(xmlStreamReader, xmlBase, parserProfile, destination, context);
+     private void parse(XMLStreamReader xmlStreamReader, String xmlBase, ContentType ct, StreamRDF destination) {
+        ParserRRX_StAX2_SR_aalto parser = new ParserRRX_StAX2_SR_aalto(xmlStreamReader, xmlBase, parserProfile.getErrorHandler(), destination);
         destination.start();
         try {
             parser.parse();

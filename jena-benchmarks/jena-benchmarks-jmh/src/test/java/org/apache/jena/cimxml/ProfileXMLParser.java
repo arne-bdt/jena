@@ -18,12 +18,15 @@
 
 package org.apache.jena.cimxml;
 
+import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.cimxml.schema.BaseURI;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.lang.rdfxml.RRX;
 import org.apache.jena.sparql.graph.GraphFactory;
 import org.junit.Test;
+
+import java.nio.file.StandardOpenOption;
 
 public class ProfileXMLParser {
 
@@ -32,11 +35,17 @@ public class ProfileXMLParser {
     public void parseXML() throws Exception {
         var stopWatch = StopWatch.createStarted();
         var sink = GraphFactory.createGraphMem();
-        RDFParser.source("C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml")
-                .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
-                .forceLang(RRX.RDFXML_StAX2_ev)
-                .checking(false)
-                .parse(sink);
+        try(final var is = new BufferedFileChannelInputStream.Builder()
+                .setFile("C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml")
+                .setOpenOptions(StandardOpenOption.READ)
+                .setBufferSize(64*4096)
+                .get()) {
+            RDFParser.source(is)
+                    .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
+                    .forceLang(RRX.RDFXML_StAX2_sr_aalto)
+                    .checking(false)
+                    .parse(sink);
+        }
         stopWatch.stop();
         System.out.println("Triples in graph: " + sink.size());
         System.out.println(stopWatch);

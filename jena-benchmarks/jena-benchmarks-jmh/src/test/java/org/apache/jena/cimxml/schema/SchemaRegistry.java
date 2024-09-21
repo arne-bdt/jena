@@ -18,6 +18,7 @@
 
 package org.apache.jena.cimxml.schema;
 
+import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
@@ -28,14 +29,16 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryFactory;
-import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.RDFParserBuilder;
+import org.apache.jena.riot.lang.rdfxml.RRX;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.exec.QueryExec;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.StandardOpenOption;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -79,11 +82,19 @@ public class SchemaRegistry {
      */
     public SchemaRegistry register(Node schemaUri, String uriOrFile, String baseURIForParsing) {
         final Graph g = new GraphMem2Fast();
-        RDFParser
-                .source(uriOrFile)
-                .lang(Lang.RDFXML)
-                .checking(false)
-                .parse(g);
+        try(final var is = new BufferedFileChannelInputStream.Builder()
+                .setFile(uriOrFile)
+                .setOpenOptions(StandardOpenOption.READ)
+                .setBufferSize(64*4096)
+                .get()) {
+            RDFParser
+                    .source(is)
+                    .forceLang(RRX.RDFXML_StAX2_sr_aalto)
+                    .checking(false)
+                    .parse(g);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
         register(schemaUri, g, baseURIForParsing);
         return this;
     }
@@ -113,7 +124,7 @@ public class SchemaRegistry {
         final Graph g = new GraphMem2Fast();
         RDFParser
                 .source(inputStream)
-                .lang(Lang.RDFXML)
+                .forceLang(RRX.RDFXML_StAX2_sr_aalto)
                 .checking(false)
                 .parse(g);
         register(schemaUri, g, baseURIForParsing);
@@ -157,7 +168,18 @@ public class SchemaRegistry {
      * @return
      */
     public Graph parseRDFXML(Node schemaUri, String filename) {
-        return parseRDFXML(schemaUri, RDFParser.source(filename));
+        final Graph g;
+        try(final var is = new BufferedFileChannelInputStream.Builder()
+                .setFile(filename)
+                .setOpenOptions(StandardOpenOption.READ)
+                .setBufferSize(64*4096)
+                .get()) {
+            g = parseRDFXML(schemaUri, is);
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return g;
     }
 
     /**
@@ -178,7 +200,7 @@ public class SchemaRegistry {
         final var sink = new GraphMem2Fast();
         parserBuilderWithSource
                 .base(schemaGraph.baseUriForParsing())  // base URI for the model and thus for al mRID's in the model
-                .lang(Lang.RDFXML)
+                .forceLang(RRX.RDFXML_StAX2_sr_aalto)
                 .checking(false)
                 .parse(new StreamTypedTriples(sink, this.typedProperties.get(schemaUri)));
         return sink;

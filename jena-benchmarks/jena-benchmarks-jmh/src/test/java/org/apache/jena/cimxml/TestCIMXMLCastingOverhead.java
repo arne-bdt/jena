@@ -18,14 +18,15 @@
 
 package org.apache.jena.cimxml;
 
+import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.jena.cimxml.schema.BaseURI;
 import org.apache.jena.cimxml.schema.SchemaRegistry;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
-import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;
+import org.apache.jena.riot.lang.rdfxml.RRX;
 import org.apache.jena.sparql.graph.GraphFactory;
 import org.junit.Assert;
 import org.junit.Test;
@@ -33,6 +34,7 @@ import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
 import java.io.IOException;
+import java.nio.file.StandardOpenOption;
 
 
 @State(Scope.Benchmark)
@@ -58,12 +60,18 @@ public class TestCIMXMLCastingOverhead {
 
     @Benchmark
     public Graph parseXML() throws Exception {
-        var g = GraphFactory.createGraphMem();
-        RDFParser.source(param0_GraphUri)
-                .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
-                .lang(Lang.RDFXML)
-                .checking(false)
-                .parse(g);
+        final var g = GraphFactory.createGraphMem();
+        try(final var is = new BufferedFileChannelInputStream.Builder()
+                .setFile(param0_GraphUri)
+                .setOpenOptions(StandardOpenOption.READ)
+                .setBufferSize(64*4096)
+                .get()) {
+            RDFParser.source(is)
+                    .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
+                    .forceLang(RRX.RDFXML_StAX2_ev_aalto)
+                    .checking(false)
+                    .parse(g);
+        }
         return g;
     }
 

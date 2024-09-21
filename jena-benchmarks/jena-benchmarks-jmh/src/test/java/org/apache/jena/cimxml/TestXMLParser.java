@@ -18,6 +18,7 @@
 
 package org.apache.jena.cimxml;
 
+import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.jena.cimxml.schema.BaseURI;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
@@ -33,14 +34,16 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.runner.Runner;
 
+import java.nio.file.StandardOpenOption;
+
 @State(Scope.Benchmark)
 public class TestXMLParser {
 
     @Param({
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\EquipmentProfileCoreRDFSAugmented-v2_4_15-4Sep2020.rdf",
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\SteadyStateHypothesisProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\StateVariableProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\TopologyProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
+//            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\EquipmentProfileCoreRDFSAugmented-v2_4_15-4Sep2020.rdf",
+//            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\SteadyStateHypothesisProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
+//            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\StateVariableProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
+//            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\TopologyProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
             "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml",
             "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_SSH_V2.xml",
             "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_SV_V2.xml",
@@ -51,20 +54,29 @@ public class TestXMLParser {
     })
     public String param0_GraphUri;
     @Param({
-            "RRX.RDFXML_SAX",
-            "RRX.RDFXML_StAX_ev",
-            "RRX.RDFXML_StAX_sr",
+//            "RRX.RDFXML_SAX",
+//            "RRX.RDFXML_StAX_ev",
+//            "RRX.RDFXML_StAX_sr",
 
-            "RRX.RDFXML_StAX2_ev",
-            "RRX.RDFXML_StAX2_sr",
+//            "RRX.RDFXML_StAX2_ev",
+//            "RRX.RDFXML_StAX2_sr",
 
-            "RRX.RDFXML_StAX2_ev_aalto",
+//            "RRX.RDFXML_StAX2_ev_aalto",
             "RRX.RDFXML_StAX2_sr_aalto",
 
 //            "RRX.RDFXML_ARP0",
 //            "RRX.RDFXML_ARP1"
     })
     public String param1_ParserLang;
+
+//    @Param({ "1048576",
+//             "524288",
+//             "262144",
+//             "131072",
+//              "65536",
+//              "32768",
+//    })
+//    public String param2_BufferSize;
 
     private static Lang getLang(String langName) {
         switch (langName) {
@@ -95,18 +107,39 @@ public class TestXMLParser {
         }
     }
 
+//    @Benchmark
+//    public Graph parseXMLUsingDefault() throws Exception {
+////        final var stopWatch = StopWatch.createStarted();
+//        final var sink = GraphFactory.createGraphMem();
+//        RDFParser.source(this.param0_GraphUri)
+//                .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
+//                .forceLang(getLang(this.param1_ParserLang))
+//                .checking(false)
+//                .parse(sink);
+////        stopWatch.stop();
+////        System.out.println("Triples in graph: " + sink.size());
+////        System.out.println(stopWatch);
+//        return sink;
+//    }
+
     @Benchmark
-    public Graph parseXML() throws Exception {
-        //var stopWatch = StopWatch.createStarted();
-        var sink = GraphFactory.createGraphMem();
-        RDFParser.source(this.param0_GraphUri)
-                .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
-                .forceLang(getLang(this.param1_ParserLang))
-                .checking(false)
-                .parse(sink);
-        //stopWatch.stop();
-        //System.out.println("Triples in graph: " + sink.size());
-        //System.out.println(stopWatch);
+    public Graph parseXMLUsingBufferedInputStream() throws Exception {
+//        final var stopWatch = StopWatch.createStarted();
+        final var sink = GraphFactory.createGraphMem();
+        try(final var is = new BufferedFileChannelInputStream.Builder()
+                .setFile(this.param0_GraphUri)
+                .setOpenOptions(StandardOpenOption.READ)
+                .setBufferSize(64*4096)
+                .get()) {
+            RDFParser.source(is)
+                    .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
+                    .forceLang(getLang(this.param1_ParserLang))
+                    .checking(false)
+                    .parse(sink);
+        }
+//        stopWatch.stop();
+//        System.out.println("Triples in graph: " + sink.size());
+//        System.out.println(stopWatch);
         return sink;
     }
 
@@ -114,7 +147,7 @@ public class TestXMLParser {
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
                 //.warmupIterations(0)
-                .measurementIterations(25)
+                //.measurementIterations(10)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);
