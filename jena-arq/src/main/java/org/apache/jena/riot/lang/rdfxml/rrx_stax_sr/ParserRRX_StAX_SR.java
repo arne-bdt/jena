@@ -18,19 +18,6 @@
 
 package org.apache.jena.riot.lang.rdfxml.rrx_stax_sr;
 
-import static javax.xml.stream.XMLStreamConstants.*;
-import static org.apache.jena.riot.SysRIOT.fmtMessage;
-
-import java.util.*;
-
-import javax.xml.XMLConstants;
-import javax.xml.namespace.NamespaceContext;
-import javax.xml.namespace.QName;
-import javax.xml.stream.Location;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
-import javax.xml.stream.events.XMLEvent;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.atlas.lib.EscapeStr;
@@ -51,6 +38,18 @@ import org.apache.jena.sparql.util.Context;
 import org.apache.jena.util.XML11Char;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDF.Nodes;
+
+import javax.xml.XMLConstants;
+import javax.xml.namespace.NamespaceContext;
+import javax.xml.namespace.QName;
+import javax.xml.stream.Location;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
+import javax.xml.stream.events.XMLEvent;
+import java.util.*;
+
+import static javax.xml.stream.XMLStreamConstants.*;
+import static org.apache.jena.riot.SysRIOT.fmtMessage;
 
 /* StAX - stream reader */
 class ParserRRX_StAX_SR {
@@ -1452,19 +1451,20 @@ class ParserRRX_StAX_SR {
     private Node iriResolve(String uriStr, Location location) {
         Objects.requireNonNull(uriStr);
         Objects.requireNonNull(location);
-        String resolved = resolveIRI(uriStr, location);
-        int line = location.getLineNumber();
-        int col = location.getColumnNumber();
-        return parserProfile.createURI(resolved, line, col);
+        final int line = location.getLineNumber();
+        final int col = location.getColumnNumber();
+        return uriStr.startsWith("_:")
+                ?  parserProfile.createURI(uriStr, line, col) // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
+                :  parserProfile.createURI(resolveIRIx(uriStr, location), line, col);
     }
 
-    /** Resolve an IRI. */
-    private String resolveIRI(String uriStr, Location location) {
-        if ( uriStr.startsWith("_:") )
-            // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
-            return uriStr;
-        return resolveIRIx(uriStr, location).str();
-    }
+//    /** Resolve an IRI. */
+//    private String resolveIRI(String uriStr, Location location) {
+//        if ( uriStr.startsWith("_:") )
+//            // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
+//            return uriStr;
+//        return resolveIRIx(uriStr, location).str();
+//    }
 
     private IRIx resolveIRIx(String uriStr, Location location) {
         // This does not use the parser profile because the base stacks and unstacks in RDF/XML.

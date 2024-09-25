@@ -18,15 +18,6 @@
 
 package org.apache.jena.riot.lang.rdfxml.rrx;
 
-import static org.apache.jena.riot.SysRIOT.fmtMessage;
-
-import java.io.IOException;
-import java.util.*;
-
-import javax.xml.XMLConstants;
-import javax.xml.namespace.NamespaceContext;
-import javax.xml.namespace.QName;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.atlas.lib.EscapeStr;
@@ -51,6 +42,14 @@ import org.xml.sax.*;
 import org.xml.sax.ext.DeclHandler;
 import org.xml.sax.ext.EntityResolver2;
 import org.xml.sax.ext.LexicalHandler;
+
+import javax.xml.XMLConstants;
+import javax.xml.namespace.NamespaceContext;
+import javax.xml.namespace.QName;
+import java.io.IOException;
+import java.util.*;
+
+import static org.apache.jena.riot.SysRIOT.fmtMessage;
 
 class ParserRRX_SAX
         implements
@@ -1364,11 +1363,9 @@ class ParserRRX_SAX
     private Node iriResolve(String uriStr, Position position) {
         Objects.requireNonNull(uriStr);
         Objects.requireNonNull(position);
-        if ( uriStr.startsWith("_:") )
-            // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
-            return createURI(uriStr, position);
-        String resolved =  resolveIRIx(uriStr, position).str();
-        return createURI(resolved, position);
+        return uriStr.startsWith("_:")
+                ?  createURI(uriStr, position) // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
+                :  createURI(resolveIRIx(uriStr, position), position);
     }
 
     private IRIx resolveIRIx(String uriStr, Position position) {
@@ -1401,6 +1398,13 @@ class ParserRRX_SAX
         int col = position.column();
         // Checking
         return parserProfile.createURI(iriStr, line, col);
+    }
+
+    private Node createURI(IRIx iriX, Position position) {
+        int line = position.line();
+        int col = position.column();
+        // Checking
+        return parserProfile.createURI(iriX, line, col);
     }
 
     private Node blankNode(Position position) {

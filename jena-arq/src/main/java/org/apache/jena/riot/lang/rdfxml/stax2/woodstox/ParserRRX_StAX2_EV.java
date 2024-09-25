@@ -1475,19 +1475,20 @@ class ParserRRX_StAX2_EV {
     private Node iriResolve(String uriStr, Location location) {
         Objects.requireNonNull(uriStr);
         Objects.requireNonNull(location);
-        int line = location.getLineNumber();
-        int col = location.getColumnNumber();
-        String resolved = resolveIRI(uriStr, location);
-        return parserProfile.createURI(resolved, line, col);
+        final int line = location.getLineNumber();
+        final int col = location.getColumnNumber();
+        return uriStr.startsWith("_:")
+                ?  parserProfile.createURI(uriStr, line, col) // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
+                :  parserProfile.createURI(resolveIRIx(uriStr, location), line, col);
     }
 
-    /** Resolve an IRI. */
-    private String resolveIRI(String uriStr, Location location) {
-        if ( uriStr.startsWith("_:") )
-            // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
-            return uriStr;
-        return resolveIRIx(uriStr, location).str();
-    }
+//    /** Resolve an IRI. */
+//    private String resolveIRI(String uriStr, Location location) {
+//        if ( uriStr.startsWith("_:") )
+//            // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
+//            return uriStr;
+//        return resolveIRIx(uriStr, location).str();
+//    }
 
     private IRIx resolveIRIx(String uriStr, Location location) {
         // This does not use the parser profile because the base stacks and unstacks in RDF/XML.

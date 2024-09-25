@@ -20,9 +20,8 @@ package org.apache.jena.riot.lang.rdfxml.stax2.aalto;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.atlas.io.IndentedWriter;
-import org.apache.jena.atlas.lib.Cache;
-import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.atlas.lib.EscapeStr;
+import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.impl.XMLLiteralType;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -32,8 +31,10 @@ import org.apache.jena.irix.IRIx;
 import org.apache.jena.riot.RiotException;
 import org.apache.jena.riot.lang.rdfxml.RDFXMLParseException;
 import org.apache.jena.riot.system.ErrorHandler;
+import org.apache.jena.riot.system.ParserProfile;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.sparql.graph.NodeConst;
+import org.apache.jena.sparql.util.Context;
 import org.apache.jena.util.XML11Char;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDF.Nodes;
@@ -52,44 +53,44 @@ import static org.apache.jena.riot.SysRIOT.fmtMessage;
 
 /* StAX - stream reader */
 class ParserRRX_StAX2_SR_aalto {
-    private static int IRI_CACHE_SIZE = 5000;
-    private static int NODE_CACHE_SIZE = 50000;
     private static boolean EVENTS = false;
     private final IndentedWriter trace;
 
     private final XMLStreamReader xmlSource;
-    private final Cache<String, Node> currentUriNodeCache =
-            CacheFactory.createSimpleFastCache(NODE_CACHE_SIZE);
-    private Cache<String, IRIx> currentIriCache =
-            CacheFactory.createSimpleFastCache(IRI_CACHE_SIZE);
-
-
     // Stacks.
 
     // Constants
+    private static final String XML_PREFIX = "xml";
     private static final String rdfNS = RDF.uri;
     private static final String xmlNS = "http://www.w3.org/XML/1998/namespace";
+    private static final String ID = "ID";
+    private static final String NODE_ID = "nodeID";
+    private static final String ABOUT = "about";
+    private int blankNodeCounter  = 0 ;
     private boolean hasRDF = false;
 
+    private final ParserProfile parserProfile;
     private final ErrorHandler errorHandler;
+    private final Context context;
+    private final String initialXmlBase;
+    private final String initialXmlLang;
     private final StreamRDF destination;
 
-    private record BaseLang(IRIx base, String lang, Cache<String, IRIx> iriCache) {}
+    private record BaseLang(IRIx base, String lang) {}
     private Deque<BaseLang> stack = new ArrayDeque<>();
     // Just these operations:
 
     private void pushFrame(IRIx base, String lang) {
-        BaseLang frame = new BaseLang(_currentBase, currentLang, currentIriCache);
+        BaseLang frame = new BaseLang(currentBase, currentLang);
         stack.push(frame);
-        setCurrentBase(base);
+        currentBase = base;
         currentLang = lang;
     }
 
     private void popFrame() {
         BaseLang frame = stack.pop();
-        _currentBase = frame.base;
+        currentBase = frame.base;
         currentLang = frame.lang;
-        currentIriCache = frame.iriCache;
     }
 
     /** Mark the usage of a QName */
@@ -130,8 +131,8 @@ class ParserRRX_StAX2_SR_aalto {
     private int countTrackingIDs = 0;
     private Map<IRIx, Map<String,  Location>> trackUsedIDs = new HashMap<>();
     private Location previousUseOfID(String idStr, Location location) {
-        final Map<String, Location> scope = trackUsedIDs.computeIfAbsent(_currentBase, k->new HashMap<>());
-        final Location prev = scope.get(idStr);
+        Map<String, Location> scope = trackUsedIDs.computeIfAbsent(currentBase, k->new HashMap<>());
+        Location prev = scope.get(idStr);
         if ( prev != null )
             return prev;
         if ( countTrackingIDs > 10000 )
@@ -145,29 +146,15 @@ class ParserRRX_StAX2_SR_aalto {
     // no nested objects while gathering characters for lexical or XMLLiterals.
     private StringBuilder accCharacters = new StringBuilder(100);
 
-    private IRIx _currentBase = null;
-
-    private void setCurrentBase(IRIx base) {
-        if(_currentBase == null) {
-            if(base == null) {
-                return;
-            }
-            _currentBase = base;
-            currentIriCache = CacheFactory.createSimpleFastCache(IRI_CACHE_SIZE);
-        } else if(!_currentBase.equals(base)) {
-            _currentBase = base;
-            currentIriCache = CacheFactory.createSimpleFastCache(IRI_CACHE_SIZE);
-        }
-    }
-
-    private String currentLang = "";
+    private IRIx currentBase = null;
+    private String currentLang = null;
 
     /** Integer holder for rdf:li */
     private static class Counter { int value = 1; }
 
-    ParserRRX_StAX2_SR_aalto(XMLStreamReader reader, String xmlBase, ErrorHandler errorHandler, StreamRDF destination) {
+    ParserRRX_StAX2_SR_aalto(XMLStreamReader reader, String xmlBase, ParserProfile parserProfile, StreamRDF destination, Context context) {
         // Debug
-        final IndentedWriter out = IndentedWriter.stdout.clone();
+        IndentedWriter out = IndentedWriter.stdout.clone();
         out.setFlushOnNewline(true);
         out.setUnitIndent(4);
         out.setLinePrefix("# ");
@@ -176,10 +163,18 @@ class ParserRRX_StAX2_SR_aalto {
         // Debug
 
         this.xmlSource = reader;
-        this.errorHandler = errorHandler;
+        this.parserProfile = parserProfile;
+        this.context = context;
+        this.errorHandler = parserProfile.getErrorHandler();
+        this.initialXmlBase = xmlBase;
+        this.initialXmlLang = "";
         if ( xmlBase != null ) {
-            setCurrentBase(IRIx.create(xmlBase));
+            this.currentBase = IRIx.create(xmlBase);
+            parserProfile.setBaseIRI(currentBase.str());
+        } else {
+            this.currentBase = null;
         }
+        this.currentLang = "";
         this.destination = destination;
     }
 
@@ -189,6 +184,10 @@ class ParserRRX_StAX2_SR_aalto {
     private static final QName rdfNodeID = new QName(rdfNS, "nodeID");
     private static final QName rdfAbout = new QName(rdfNS, "about");
     private static final QName rdfType = new QName(rdfNS, "type");
+
+    private static final QName rdfSeq = new QName(rdfNS, "Seq");
+    private static final QName rdfBag = new QName(rdfNS, "Bag");
+    private static final QName rdfAlt = new QName(rdfNS, "Alt");
 
     private static final QName rdfContainerItem = new QName(rdfNS, "li");
     private static final QName rdfDatatype = new QName(rdfNS, "datatype");
@@ -238,6 +237,7 @@ class ParserRRX_StAX2_SR_aalto {
             return false;
         return $coreSyntaxTerms.contains(qName);
     }
+
 
     // 6.2.5 Production nodeElementURIs
     // anyURI - ( coreSyntaxTerms | rdf:li | oldTerms )
@@ -404,7 +404,7 @@ class ParserRRX_StAX2_SR_aalto {
      * this is needed for nested node elements.
      */
     private void nodeElement(Node subject) {
-        final QName qName = qName();
+        QName qName = qName();
 
         if ( ReaderRDFXML_StAX2_SR_aalto.TRACE )
             trace.println(">> nodeElement: "+str(location())+" "+str(qName));
@@ -414,12 +414,12 @@ class ParserRRX_StAX2_SR_aalto {
 
 
         // rdf:resource not allowed on a node element
-        final String rdfResourceStr = attribute(rdfResource);
+        String rdfResourceStr = attribute(rdfResource);
         if ( rdfResourceStr != null )
             throw RDFXMLparseError("rdf:resource not allowed as attribute here: "+str(qName));
 
         incIndent();
-        final boolean hasFrame = startElement();
+        boolean hasFrame = startElement();
         if ( subject == null )
             subject = attributesToSubjectNode();
         nodeElementProcess(subject);
@@ -431,8 +431,8 @@ class ParserRRX_StAX2_SR_aalto {
     }
 
     private void nodeElementProcess(Node subject) {
-        final QName qName = qName();
-        final Location location = location();
+        QName qName = qName();
+        Location location = location();
 
         if ( ! qNameMatches(qName, rdfDescription) ) {
             // Typed Node Element
@@ -443,8 +443,8 @@ class ParserRRX_StAX2_SR_aalto {
                     RDFXMLparseWarning(str(qName)+" is not a recognized RDF term for a type");
             }
 
-            final Node object = qNameToIRI(qName, QNameUsage.TypedNodeElement, location);
-            emit(subject, NodeConst.nodeRDFType, object);
+            Node object = qNameToIRI(qName, QNameUsage.TypedNodeElement, location);
+            emit(subject, NodeConst.nodeRDFType, object, location);
         }
 
         processPropertyAttributes(subject, qName, false, location);
@@ -460,7 +460,7 @@ class ParserRRX_StAX2_SR_aalto {
     // ---- Property elements
 
     private int propertyElementlLoop(Node subject, int event) {
-        final Counter listElementCounter = new Counter();
+        Counter listElementCounter = new Counter();
         while (true) {
             if ( ! lookingAt(event, START_ELEMENT) )
                 break;
@@ -480,8 +480,8 @@ class ParserRRX_StAX2_SR_aalto {
             trace.println(">> propertyElement: "+str(location())+" "+str(qName()));
 
         incIndent();
-        final boolean hasFrame = startElement();
-        final QName qName = qName();
+        boolean hasFrame = startElement();
+        QName qName = qName();
 
         if ( ! allowedPropertyElementURIs(qName) )
             throw RDFXMLparseError("QName not allowed for property: "+str(qName));
@@ -499,22 +499,22 @@ class ParserRRX_StAX2_SR_aalto {
 
     private int propertyElementProcess(Node subject, QName qName,
                                        Counter listElementCounter, Location location) {
-        final Node property;
+        Node property;
 
         if ( qNameMatches(rdfContainerItem, qName) )
             property = iriDirect(rdfNS+"_"+Integer.toString(listElementCounter.value++), location());
         else
             property = qNameToIRI(qName, QNameUsage.PropertyElement, location);
 
-        final Node reify = reifyStatement(location);
-        final Emitter emitter = (reify==null) ? this::emit : (s,p,o)->emitReify(reify, s, p, o);
+        Node reify = reifyStatement(location);
+        Emitter emitter = (reify==null) ? this::emit : (s,p,o,loc)->emitReify(reify, s, p, o, loc);
 
         // If there is a blank node label, the element must be empty,
         // Check NCName if blank node created
-        final String objBlankNodeLabel = attribute(rdfNodeID);
-        final String rdfResourceStr = attribute(rdfResource);
-        final String datatype = attribute(rdfDatatype);
-        final String parseType = objectParseType();
+        String objBlankNodeLabel = attribute(rdfNodeID);
+        String rdfResourceStr = attribute(rdfResource);
+        String datatype = attribute(rdfDatatype);
+        String parseType = objectParseType();
 
         // Checking
         if ( datatype != null ) {
@@ -541,11 +541,11 @@ class ParserRRX_StAX2_SR_aalto {
             resourceObj = iriResolve(rdfResourceStr, location);
 
         if ( objBlankNodeLabel != null )
-            resourceObj = NodeFactory.createBlankNode(objBlankNodeLabel);
+            resourceObj = blankNode(objBlankNodeLabel, location);
 
-        final Node innerSubject = processPropertyAttributes(resourceObj, qName, true, location);
+        Node innerSubject = processPropertyAttributes(resourceObj, qName, true, location);
         if ( resourceObj == null && innerSubject != null ) {
-            emitter.emit(subject, property, innerSubject);
+            emitter.emit(subject, property, innerSubject, location);
             int event = nextEventAny();
             if ( ! lookingAt(event, END_ELEMENT) )
                 throw RDFXMLparseError("Expecting end element tag when using property attributes on a property element");
@@ -553,7 +553,7 @@ class ParserRRX_StAX2_SR_aalto {
         }
 
         if ( resourceObj != null ) {
-            emitter.emit(subject, property, resourceObj);
+            emitter.emit(subject, property, resourceObj, location);
             // Must be an empty element.
             int event = nextEventAny();
             if ( ! lookingAt(event, END_ELEMENT) )
@@ -577,17 +577,20 @@ class ParserRRX_StAX2_SR_aalto {
                 // Implicit <rdf:Description><rdf:Description> i.e. fresh blank node
                 if ( ReaderRDFXML_StAX2_SR_aalto.TRACE )
                     trace.println("rdfParseType=Resource");
-                return parseTypeResource(subject, property, emitter, location);
+                int event = parseTypeResource(subject, property, emitter, location);
+                return event;
             }
             case parseTypeLiteral -> {
                 if ( ReaderRDFXML_StAX2_SR_aalto.TRACE )
                     trace.println("rdfParseType=Literal");
-                return parseTypeLiteral(subject, property, emitter, location);
+                int event = parseTypeLiteral(subject, property, emitter, location);
+                return event;
             }
             case parseTypeCollection -> {
                 if ( ReaderRDFXML_StAX2_SR_aalto.TRACE )
                     trace.println("rdfParseType=Collection");
-                return parseTypeCollection(subject, property, emitter);
+                int event = parseTypeCollection(subject, property, emitter, location);
+                return event;
             }
             case parseTypePlain -> {} // The code below.
             default ->
@@ -607,29 +610,30 @@ class ParserRRX_StAX2_SR_aalto {
             accCharacters.setLength(0);
 
             while(lookingAt(event, CHARACTERS)) {
-                final String text = xmlSource.getText();
+                String text = xmlSource.getText();
                 accCharacters.append(text);
                 event = nextEventAny();
             }
             if ( lookingAt(event, START_ELEMENT) ) {
-                if ( ! StringUtils.isWhitespace(accCharacters) ) {
-                    final String msg = nonWhitespaceMsg(accCharacters.toString());
+                if ( ! isWhitespace(accCharacters) ) {
+                    String msg = nonWhitespaceMsg(accCharacters.toString());
                     throw RDFXMLparseError("Content before node element. '"+msg+"'");
                 }
                 event = processNestedNodeElement(event, subject, property, emitter);
                 return event;
             }
             if ( lookingAt(event, END_ELEMENT) ) {
-                final String lexicalForm = accCharacters.toString();
-                final Node obj;
+                String lexicalForm = accCharacters.toString();
+                Location loc = location();
+                Node obj;
                 // Characters - lexical form.
                 if ( datatype != null )
-                    obj =  NodeFactory.createLiteralDT(lexicalForm, NodeFactory.getType(datatype));
+                    obj = literalDatatype(lexicalForm, datatype, loc);
                 else if ( currentLang() != null )
-                    obj = NodeFactory.createLiteralLang(lexicalForm, currentLang);
+                    obj = literal(lexicalForm, currentLang, loc);
                 else
-                    obj = NodeFactory.createLiteralString(lexicalForm);
-                emitter.emit(subject, property, obj);
+                    obj = literal(lexicalForm, loc);
+                emitter.emit(subject, property, obj, loc);
                 return event;
             }
             throw RDFXMLparseError("Unexpected element: "+strEventType(event));
@@ -639,7 +643,7 @@ class ParserRRX_StAX2_SR_aalto {
             event = processNestedNodeElement(event, subject, property, emitter);
             return event;
         } else if (lookingAt(event, END_ELEMENT) ) {
-            emitter.emit(subject, property, NodeConst.emptyString);
+            emitter.emit(subject, property, NodeConst.emptyString, location);
         } else {
             throw RDFXMLparseError("Malformed property. "+strEventType(event));
         }
@@ -648,18 +652,18 @@ class ParserRRX_StAX2_SR_aalto {
 
     private Node processPropertyAttributes(Node resourceObj, QName qName, boolean isPropertyElement, Location location) {
         // Subject may not yet be decided.
-        final List<Integer> indexes = gatherPropertyAttributes(location);
+        List<Integer> indexes = gatherPropertyAttributes(location);
         if ( indexes.isEmpty() )
             return null;
         if ( isPropertyElement ) {
-            final String parseTypeStr = objectParseType();
+            String parseTypeStr = objectParseType();
             if ( parseTypeStr != parseTypePlain ) {
                   // rdf:parseType found.
                   throw RDFXMLparseError("The attribute rdf:parseType is not permitted with property attributes on a property element: "+str(qName), location);
             }
         }
 
-        Node innerSubject = (resourceObj==null) ? NodeFactory.createBlankNode() : resourceObj;
+        Node innerSubject = (resourceObj==null) ? blankNode(location) : resourceObj;
         outputPropertyAttributes(innerSubject, indexes, location);
         return innerSubject;
     }
@@ -670,8 +674,8 @@ class ParserRRX_StAX2_SR_aalto {
             return List.of();
         List<Integer> attributeIdx = new ArrayList<>(N);
         for ( int idx = 0 ; idx < N ; idx++ ) {
-            final QName qName =  xmlSource.getAttributeName(idx);
-            final boolean isPropertyAttribute = checkPropertyAttribute(qName, location);
+            QName qName =  xmlSource.getAttributeName(idx);
+            boolean isPropertyAttribute = checkPropertyAttribute(qName, location);
             if ( isPropertyAttribute )
                 attributeIdx.add(idx);
         }
@@ -680,17 +684,17 @@ class ParserRRX_StAX2_SR_aalto {
 
     private void outputPropertyAttributes(Node subject, List<Integer> indexes, Location location) {
         for ( int index : indexes ) {
-            final QName qName =  xmlSource.getAttributeName(index);
+            QName qName =  xmlSource.getAttributeName(index);
             if ( rdfType.equals(qName) ) {
-                final String iriStr = xmlSource.getAttributeValue(index);
-                final Node type = iriResolve(iriStr, location);
-                emit(subject, Nodes.type, type);
+                String iriStr = xmlSource.getAttributeValue(index);
+                Node type = iriResolve(iriStr, location);
+                emit(subject, Nodes.type, type, location);
                 return;
             }
-            final Node property = attributeToIRI(qName, location);
-            final String lexicalForm =  xmlSource.getAttributeValue(index);
-            final Node object =  NodeFactory.createLiteralLang(lexicalForm, currentLang);
-            emit(subject, property, object);
+            Node property = attributeToIRI(qName, location);
+            String lexicalForm =  xmlSource.getAttributeValue(index);
+            Node object = literal(lexicalForm, currentLang, location);
+            emit(subject, property, object, location);
         }
     }
 
@@ -722,8 +726,8 @@ class ParserRRX_StAX2_SR_aalto {
         }
 
         if ( StringUtils.isBlank(qName.getNamespaceURI()) ) {
-            final String localName = qName.getLocalPart();
-            final boolean valid = checkPropertyAttributeUnqualifiedTerm(localName, location);
+            String localName = qName.getLocalPart();
+            boolean valid = checkPropertyAttributeUnqualifiedTerm(localName, location);
             return valid;
         }
         return true;
@@ -733,7 +737,7 @@ class ParserRRX_StAX2_SR_aalto {
         if ( allowedUnqualifiedTerm(localName) )
             return true;
         if ( localName.length() >= 3 ) {
-            final String chars3 = localName.substring(0, 3);
+            String chars3 = localName.substring(0, 3);
             if ( chars3.equalsIgnoreCase("xml") ) {
                 // 6.1.2 Element Event
                 // "all attribute information items with [prefix] property having no value and which
@@ -750,21 +754,43 @@ class ParserRRX_StAX2_SR_aalto {
 
 
     private String objectParseType() {
-        final String parseTypeStr = attribute(rdfParseType);
+        String parseTypeStr = attribute(rdfParseType);
         return  ( parseTypeStr != null ) ? parseTypeStr : parseTypePlain;
     }
 
+    /**
+     * Accumulate text for a text element, given some characters already read.
+     * This method skips comments.
+     * This method returns up to the closing end element tag.
+     */
+    private String accumulateLexicalForm(int initialEvent, StringBuilder sBuff) {
+        String lexicalForm;
+        int eventType = initialEvent;
+        while(eventType >= 0 ) {
+            if ( lookingAt(eventType, END_ELEMENT) )
+                break;
+            if ( ! lookingAt(eventType, CHARACTERS) )
+                throw RDFXMLparseError("Unexpected element in text element: "+strEventType(eventType));
+            sBuff.append(xmlSource.getText());
+            eventType = nextEventAny();
+        }
+        lexicalForm = sBuff.toString();
+        return lexicalForm;
+    }
+
     private int parseTypeResource(Node subject, Node property, Emitter emitter, Location location) {
-        final Node innerSubject = NodeFactory.createBlankNode();
-        emitter.emit(subject, property, innerSubject);
+        Node innerSubject = blankNode(location);
+        emitter.emit(subject, property, innerSubject, location);
         // Move to first property
-        return propertyElementlLoop(innerSubject, nextEventTag());
+        int event = nextEventTag();
+        event = propertyElementlLoop(innerSubject, event);
+        return event;
     }
 
     private int parseTypeLiteral(Node subject, Node property, Emitter emitter, Location location) {
-        final String text = xmlLiteralAccumulateText();
-        final Node object = NodeFactory.createLiteralDT(text, XMLLiteralType.rdfXMLLiteral);
-        emitter.emit(subject, property, object);
+        String text = xmlLiteralAccumulateText();
+        Node object = literalDatatype(text, XMLLiteralType.rdfXMLLiteral, location);
+        emitter.emit(subject, property, object, location);
         return END_ELEMENT;
     }
 
@@ -777,14 +803,14 @@ class ParserRRX_StAX2_SR_aalto {
 
         // Map prefix -> URI
         Map<String, String> namespaces = Map.of();
-        final Deque<Map<String, String>> stackNamespaces = new ArrayDeque<>();
+        Deque<Map<String, String>> stackNamespaces = new ArrayDeque<>();
 
         // Current inscope.
         // Need to remember?
         //startElt.getNamespaceContext().
 
         accCharacters.setLength(0);
-        final StringBuilder sBuff = accCharacters;
+        StringBuilder sBuff = accCharacters;
         int event = START_ELEMENT;
         int depth = 0;
         while( event >= 0 ) {
@@ -800,7 +826,7 @@ class ParserRRX_StAX2_SR_aalto {
                 namespaces = new HashMap<>(namespaces);
 
                 sBuff.append(openStartTag);
-                final QName qname = qName();
+                QName qname = qName();
                 if ( qname.getPrefix() != null && ! XMLConstants.DEFAULT_NS_PREFIX.equals(qname.getPrefix()) ) {
                     sBuff.append(qname.getPrefix());
                     sBuff.append(":");
@@ -823,7 +849,7 @@ class ParserRRX_StAX2_SR_aalto {
                 }
                 namespaces = stackNamespaces.pop();
                 sBuff.append(openEndTag);
-                final QName qname = qName();
+                QName qname = qName();
                 if ( qname.getPrefix() != null && ! XMLConstants.DEFAULT_NS_PREFIX.equals(qname.getPrefix()) ) {
                     //sBuff.append(qname.getPrefix());
                     sBuff.append(xmlSource.getPrefix());
@@ -832,16 +858,17 @@ class ParserRRX_StAX2_SR_aalto {
                 sBuff.append(qname.getLocalPart());
                 sBuff.append(closeEndTag);
             } else if ( lookingAt(event, CHARACTERS) ) {
-                final String s = xmlLiteralEscapeText(xmlSource.getText());
+                String s = xmlSource.getText();
+                s = xmlLiteralEscapeText(s);
                 sBuff.append(s);
             } else if ( lookingAt(event, COMMENT) ) {
-                final String commentText = xmlSource.getText();
+                String commentText = xmlSource.getText();
                 sBuff.append("<!--");
                 sBuff.append(commentText);
                 sBuff.append("-->");
             } else if ( lookingAt(event, PROCESSING_INSTRUCTION) ) {
-                final String target = xmlSource.getPITarget();
-                final String data = xmlSource.getPIData();
+                String target = xmlSource.getPITarget();
+                String data = xmlSource.getPIData();
                 accCharacters.append("<?");
                 accCharacters.append(target);
                 accCharacters.append(' ');
@@ -851,25 +878,25 @@ class ParserRRX_StAX2_SR_aalto {
                 throw RDFXMLparseError("Unexpected event in rdf:XMLLiteral: "+strEventType(event));
             }
         }
-        final String x = sBuff.toString();
+        String x = sBuff.toString();
         accCharacters.setLength(0);
         return x ;
     }
 
     private void xmlLiteralAttributes(StringBuilder sBuff) {
         // Sort attributes
-        final Map<String, String> attrs = new TreeMap<>();
+        Map<String, String> attrs = new TreeMap<>();
         int N = xmlSource.getAttributeCount();
         for ( int i = 0 ; i < N ; i++ ) {
-            final String value = xmlSource.getAttributeValue(i);
-            final QName qName =  xmlSource.getAttributeName(i);
-            final String attrName = str(qName);
+            String value = xmlSource.getAttributeValue(i);
+            QName qName =  xmlSource.getAttributeName(i);
+            String attrName = str(qName);
             attrs.put(attrName, value);
         }
 
         for ( Map.Entry<String, String> e : attrs.entrySet() ) {
-            final String attrQName = e.getKey();
-            final String attrValue = e.getValue();
+            String attrQName = e.getKey();
+            String attrValue = e.getValue();
             sBuff.append(" ");
             sBuff.append(attrQName);
             sBuff.append("=\"");
@@ -882,21 +909,21 @@ class ParserRRX_StAX2_SR_aalto {
      * Process all QNames used in this element.
      */
     private void xmlLiteralNamespaces(Map<String, String> namespaces, StringBuilder sBuff) {
-        final NamespaceContext nsCxt = xmlSource.getNamespaceContext();
+        NamespaceContext nsCxt = xmlSource.getNamespaceContext();
 
         // Map prefix -> URI, sorted by prefix. This is only the required namespaces.
         // The other map, namespaces, is all the namespaces in scope.
-        final Map<String, String> outputNS = new TreeMap<>();
+        Map<String, String> outputNS = new TreeMap<>();
 
         xmlLiteralNamespaceQName(outputNS, namespaces, nsCxt, qName());
 
-        final int N = xmlSource.getAttributeCount();
+        int N = xmlSource.getAttributeCount();
         for ( int i = 0 ; i < N ; i++ ) {
             xmlLiteralNamespaceQName(outputNS, namespaces, nsCxt, xmlSource.getAttributeName(i));
         }
         // Output.
         for ( String prefix : outputNS.keySet() ) {
-            final String uri = outputNS.get(prefix);
+            String uri = outputNS.get(prefix);
             if ( uri == null )
                 // Undefined default namespace.
                 continue;
@@ -917,16 +944,18 @@ class ParserRRX_StAX2_SR_aalto {
 
     /** Process one QName - insert a namespace if the prefix is not in scope as given by the amespace mapping. */
     private void xmlLiteralNamespaceQName(Map<String, String> outputNS, Map<String, String> namespaces, NamespaceContext nsCxt, QName qName) {
-        final String prefix = qName.getPrefix();
-        final String namespaceURI = prefix == "" && qName.getNamespaceURI() != "" ? qName.getNamespaceURI() : nsCxt.getNamespaceURI(prefix);
+        String prefix = qName.getPrefix();
+        String namespaceURI = prefix == XMLConstants.DEFAULT_NS_PREFIX
+                ? qName.getNamespaceURI()
+                : nsCxt.getNamespaceURI(prefix);
         if ( namespaceURI == null ) {
             // No default in scope.
         }
 
         // Not seen this prefix or it was a different value.
-        if ( namespaceURI != ""
-                && (! namespaces.containsKey(prefix)
-                    || ( namespaceURI != null && ! namespaces.get(prefix).equals(namespaceURI)) )) {
+        if ( namespaceURI != "" &&
+                (! namespaces.containsKey(prefix) ||
+                 ( namespaceURI != null && ! namespaces.get(prefix).equals(namespaceURI)) )) {
             // Define in current XML subtree.
             outputNS.put(prefix, namespaceURI);
             namespaces.put(prefix, namespaceURI);
@@ -938,11 +967,11 @@ class ParserRRX_StAX2_SR_aalto {
      * Escapes aligned to ARP.
      */
     private String xmlLiteralEscapeText(CharSequence stringAcc) {
-        final StringBuilder sBuff = new StringBuilder();
-        final int len = stringAcc.length() ;
+        StringBuilder sBuff = new StringBuilder();
+        int len = stringAcc.length() ;
         for (int i = 0; i < len; i++) {
-            final char c = stringAcc.charAt(i);
-            final String replace = switch (c) {
+            char c = stringAcc.charAt(i);
+            String replace = switch (c) {
                 case '&' -> "&amp;";
                 case '<' -> "&lt;";
                 case '>' -> "&gt;";
@@ -963,11 +992,11 @@ class ParserRRX_StAX2_SR_aalto {
      * Escapes aligned to ARP.
      */
     private String xmlLiteralEscapeAttr(CharSequence stringAcc) {
-        final StringBuilder sBuff = new StringBuilder();
-        final int len = stringAcc.length() ;
+        StringBuilder sBuff = new StringBuilder();
+        int len = stringAcc.length() ;
         for (int i = 0; i < len; i++) {
-            final char c = stringAcc.charAt(i);
-            final String replace = switch (c) {
+            char c = stringAcc.charAt(i);
+            String replace = switch (c) {
                 case '&' -> "&amp;";
                 case '<' -> "&lt;";
                 //case '>' -> "&gt;";
@@ -985,44 +1014,45 @@ class ParserRRX_StAX2_SR_aalto {
 
     // --- RDF Collections
 
-    private int parseTypeCollection(Node subject, Node property, Emitter emitter) {
+    private int parseTypeCollection(Node subject, Node property, Emitter emitter, Location location) {
         Node lastCell = null ;
         int event = -1;
         while(true) {
             event = nextEventTag();
             if ( ! lookingAt(event, START_ELEMENT) )
                 break;
-            final Node thisCell = NodeFactory.createBlankNode();
+            location = location();
+            Node thisCell = blankNode(location);
             if ( lastCell == null ) {
                 // First list item. Link the list in.
                 lastCell = thisCell;
-                emitter.emit(subject, property, thisCell);
+                emitter.emit(subject, property, thisCell, location);
             } else {
                 // Link to the previous element. No reification.
-                emit(lastCell, NodeConst.nodeRest, thisCell);
+                emit(lastCell, NodeConst.nodeRest, thisCell, location);
             }
-            final Node itemSubject = attributesToSubjectNode();
-            emit(thisCell, Nodes.first, itemSubject);
+            Node itemSubject = attributesToSubjectNode();
+            emit(thisCell, Nodes.first, itemSubject, location);
             nodeElement(itemSubject);
             lastCell = thisCell;
         }
 
         // Finish the list.
         if ( lastCell != null ) {
-            emit(lastCell, NodeConst.nodeRest, NodeConst.nodeNil);
+            emit(lastCell, NodeConst.nodeRest, NodeConst.nodeNil, location);
         } else {
             // It was an empty list
-            emitter.emit(subject, property, NodeConst.nodeNil);
+            emitter.emit(subject, property, NodeConst.nodeNil, location);
         }
 
         return event;
     }
 
     private Node reifyStatement(Location location) {
-        final String reifyId = attribute(rdfID);
+        String reifyId = attribute(rdfID);
         if ( reifyId == null )
             return null;
-        final Node reify = iriFromID(reifyId, location);
+        Node reify = iriFromID(reifyId, location);
         return reify;
     }
 
@@ -1035,10 +1065,10 @@ class ParserRRX_StAX2_SR_aalto {
 
     private int processNestedNodeElement(int event, Node subject, Node property, Emitter emitter) {
         // Nested / RDF/XML striped syntax.
-        final boolean hasFrame = startElement();
-        final Node subjectInner = attributesToSubjectNode();
+        boolean hasFrame = startElement();
+        Node subjectInner = attributesToSubjectNode();
         // subject property INNER
-        emitter.emit(subject, property, subjectInner);
+        emitter.emit(subject, property, subjectInner, location());
 
         // Process as a node element, having decided the subject.
         nodeElement(subjectInner);
@@ -1063,11 +1093,11 @@ class ParserRRX_StAX2_SR_aalto {
         // If there is an attribute a with a.URI == rdf:nodeID, then e.subject := bnodeid(identifier:=a.string-value).
         // If there is an attribute a with a.URI == rdf:about then e.subject := uri(identifier := resolve(e, a.string-value)).
 
-        final String iriStr = attribute(rdfAbout);
+        String iriStr = attribute(rdfAbout);
         // Check NCName if URI created,
-        final String idStr = attribute(rdfID);
+        String idStr = attribute(rdfID);
         // Check NCName if blank node created
-        final String nodeId = attribute(rdfNodeID);
+        String nodeId = attribute(rdfNodeID);
 
         if ( nodeId != null && iriStr != null && nodeId != null )
             throw RDFXMLparseError("All of rdf:about, rdf:NodeId and rdf:ID found. Must be only one.");
@@ -1081,7 +1111,7 @@ class ParserRRX_StAX2_SR_aalto {
         if ( nodeId != null && idStr != null )
             throw RDFXMLparseError("Both rdf:NodeID rdf:ID found. Must be only one.");
 
-        final Location location = location();
+        Location location = location();
 
         if ( iriStr != null )
             return iriResolve(iriStr, location);
@@ -1090,19 +1120,25 @@ class ParserRRX_StAX2_SR_aalto {
             return iriFromID(idStr, location);
 
         if ( nodeId != null )
-            return NodeFactory.createBlankNode(nodeId);
+            return blankNode(nodeId, location);
 
         // None of the above. It's a fresh blank node.
-        return NodeFactory.createBlankNode();
+        return blankNode(location);
     }
 
     // ---- Nodes
+
+    private void setBase(String uriStr, Location location) {
+        Node n = iriResolve(uriStr, location);
+        parserProfile.setBaseIRI(n.getURI());
+    }
 
     /** This is the RDF rule for creating an IRI from a QName. */
     private Node qNameToIRI(QName qName, QNameUsage usage, Location location) {
         if ( StringUtils.isBlank(qName.getNamespaceURI()) )
             throw RDFXMLparseError("Unqualified "+usage.msg+" not allowed: <"+qName.getLocalPart()+">", location);
-        return iriDirect(strQNameToIRI(qName), location);
+        String uriStr = strQNameToIRI(qName);
+        return iriDirect(uriStr, location);
     }
 
     /** This is the RDF rule for creating an IRI from a QName. */
@@ -1112,7 +1148,7 @@ class ParserRRX_StAX2_SR_aalto {
 
     private Node attributeToIRI(QName qName, Location location) {
         String namespaceURI = qName.getNamespaceURI();
-        final String localName = qName.getLocalPart();
+        String localName = qName.getLocalPart();
         if ( StringUtils.isBlank(namespaceURI) ) {
             if ( allowedUnqualifiedTerm(localName) )
                 namespaceURI = rdfNS;
@@ -1120,7 +1156,7 @@ class ParserRRX_StAX2_SR_aalto {
                 // else rejected in checkPropertyAttribute
                 throw RDFXMLparseError("Unqualified property attribute not allowed: '"+localName+"'", location);
         }
-        final String uriStr = namespaceURI+localName;
+        String uriStr = namespaceURI+localName;
         return iriDirect(uriStr, location);
     }
 
@@ -1133,10 +1169,10 @@ class ParserRRX_StAX2_SR_aalto {
 
     /** XML parsing error. */
     private RiotException handleXMLStreamException(XMLStreamException ex) {
-        final String msg = xmlStreamExceptionMessage(ex);
+        String msg = xmlStreamExceptionMessage(ex);
         if ( ex.getLocation() != null ) {
-            final int line = ex.getLocation().getLineNumber();
-            final int col = ex.getLocation().getColumnNumber();
+            int line = ex.getLocation().getLineNumber();
+            int col = ex.getLocation().getColumnNumber();
             errorHandler.fatal(msg, line, col);
         } else
             errorHandler.fatal(msg, -1, -1);
@@ -1150,7 +1186,7 @@ class ParserRRX_StAX2_SR_aalto {
         if ( ex.getLocation() != null ) {
             // XMLStreamException with a location is two lines, and has the line/col in the first line.
             // Deconstruct the XMLStreamException message to get the detail part.
-            final String marker = "\nMessage: ";
+            String marker = "\nMessage: ";
             int i = msg.indexOf(marker);
             if ( i > 0 ) {
                 msg = msg.substring(i+marker.length());
@@ -1184,7 +1220,7 @@ class ParserRRX_StAX2_SR_aalto {
         // character entities and then manages the text replacement.
         try {
             while(xmlSource.hasNext()) {
-                final int evType = read();
+                int evType = read();
                 switch (evType) {
                     case START_ELEMENT, END_ELEMENT -> {
                         if ( EVENTS )
@@ -1192,8 +1228,8 @@ class ParserRRX_StAX2_SR_aalto {
                         return evType;
                     }
                     case CHARACTERS, CDATA -> {
-                        final String chars = xmlSource.getText();
-                        if ( ! StringUtils.isWhitespace(chars) ) {
+                        String chars = xmlSource.getText();
+                        if ( ! isWhitespace(chars) ) {
                             String text = nonWhitespaceMsg(chars);
                             throw RDFXMLparseError("Expecting a start or end element. Got characters '"+text+"'");
                         }
@@ -1265,7 +1301,7 @@ class ParserRRX_StAX2_SR_aalto {
     }
 
     private int read() throws XMLStreamException {
-        final int eventType = xmlSource.next();
+        int eventType = xmlSource.next();
         if ( EVENTS )
             System.out.println("-- Read: "+strEventType(eventType));
         return eventType;
@@ -1280,13 +1316,14 @@ class ParserRRX_StAX2_SR_aalto {
      * These set the context for inner elements and need a stack.
      */
     private boolean startElement() {
-        final boolean hasFrame = processBaseAndLang();
+        processNamespaces();
+        boolean hasFrame = processBaseAndLang();
         return hasFrame;
     }
 
     private boolean processBaseAndLang() {
-        final IRIx xmlBase = xmlBase();
-        final String xmlLang = xmlLang();
+        IRIx xmlBase = xmlBase();
+        String xmlLang = xmlLang();
 
         if ( ReaderRDFXML_StAX2_SR_aalto.TRACE ) {
             if ( xmlBase != null )
@@ -1294,14 +1331,13 @@ class ParserRRX_StAX2_SR_aalto {
             if ( xmlLang != null )
                 trace.printf("+ LANG @%s\n", xmlLang);
         }
-        final boolean hasFrame = (xmlBase != null || xmlLang != null);
+        boolean hasFrame = (xmlBase != null || xmlLang != null);
         if ( hasFrame ) {
-            pushFrame(xmlBase != null
-                        ? xmlBase
-                        : _currentBase,
-                    xmlLang != null
-                        ? xmlLang
-                        : currentLang);;
+            pushFrame(currentBase, currentLang);
+            if ( xmlBase != null )
+                currentBase = xmlBase;
+            if ( xmlLang != null )
+                currentLang = xmlLang;
         }
         return hasFrame;
     }
@@ -1311,38 +1347,55 @@ class ParserRRX_StAX2_SR_aalto {
             popFrame();
     }
 
+    /**
+     * XML namespaces are handled by the StAX parser.
+     * This is only for tracking.
+     * Return true if there is a namespace declaration.
+     */
+    private void processNamespaces() {
+        if ( ReaderRDFXML_StAX2_SR_aalto.TRACE ) {
+            int numNS = xmlSource.getNamespaceCount();
+            for ( int i = 0 ; i < numNS ; i++ ) {
+                String prefix = xmlSource.getNamespacePrefix(i);
+                String prefixURI = xmlSource.getNamespaceURI(i);
+                //emitPrefix(prefix, prefixURI);
+            }
+        }
+    }
+
     // ---- Parser output
 
     private void emitInitialBaseAndNamespaces() {
-        final String xmlBase = attribute(xmlQNameBase);
+        String xmlBase = attribute(xmlQNameBase);
         if ( xmlBase != null )
             emitBase(xmlBase);
-        final int numNS = xmlSource.getNamespaceCount();
+        int numNS = xmlSource.getNamespaceCount();
         for ( int i = 0 ; i < numNS ; i++ ) {
             String prefix = xmlSource.getNamespacePrefix(i);
-            final String prefixURI = xmlSource.getNamespaceURI(i);
+            String prefixURI = xmlSource.getNamespaceURI(i);
             if ( prefix == null )
                 prefix = "";
             emitPrefix(prefix, prefixURI);
         }
     }
 
-    interface Emitter { void emit(Node subject, Node property, Node object); }
+    interface Emitter { void emit(Node subject, Node property, Node object, Location location); }
 
-    private void emit(Node subject, Node property, Node object) {
+    private void emit(Node subject, Node property, Node object, Location location) {
         Objects.requireNonNull(subject);
         Objects.requireNonNull(property);
         Objects.requireNonNull(object);
+        Objects.requireNonNull(location);
         destination.triple(Triple.create(subject, property, object));
     }
 
-    private void emitReify(Node reify, Node subject, Node property, Node object) {
-        emit(subject, property, object);
+    private void emitReify(Node reify, Node subject, Node property, Node object, Location location) {
+        emit(subject, property, object, location);
         if ( reify != null ) {
-            emit(reify, NodeConst.nodeRDFType, RDF.Nodes.Statement);
-            emit(reify, RDF.Nodes.subject, subject);
-            emit(reify, RDF.Nodes.predicate, property);
-            emit(reify, RDF.Nodes.object, object);
+            emit(reify, NodeConst.nodeRDFType, Nodes.Statement, location);
+            emit(reify, Nodes.subject, subject, location);
+            emit(reify, Nodes.predicate, property, location);
+            emit(reify, Nodes.object, object, location);
         }
     }
 
@@ -1361,12 +1414,13 @@ class ParserRRX_StAX2_SR_aalto {
      * sin {@link #resolveIRIx}.
      */
     private IRIx xmlBase() {
-        final String baseStr = attribute(xmlQNameBase);
+        String baseStr = attribute(xmlQNameBase);
         if ( baseStr == null )
             return null;
-        final IRIx irix = resolveIRIxAny(baseStr);
+        Location location = location();
+        IRIx irix = resolveIRIxAny(baseStr, location);
         if ( irix.isRelative() )
-            RDFXMLparseWarning("Relative URI for base: <"+baseStr+">", location());
+            RDFXMLparseWarning("Relative URI for base: <"+baseStr+">", location);
         return irix;
     }
 
@@ -1378,22 +1432,20 @@ class ParserRRX_StAX2_SR_aalto {
 
     private Node iriFromID(String idStr, Location location) {
         checkValidNCName(idStr, location);
-        final Location prev = previousUseOfID(idStr, location);
+        Location prev = previousUseOfID(idStr, location);
         if ( prev != null )
             // Already in use
             RDFXMLparseWarning("Reuse of rdf:ID '"+idStr+"' at "+str(prev), location);
-        final Node uri = iriResolve("#"+idStr, location);
+        Node uri = iriResolve("#"+idStr, location);
         return uri;
     }
 
     /** Create a URI. The IRI is known to be resolved. */
     private Node iriDirect(String uriStr, Location location) {
         Objects.requireNonNull(uriStr);
-        final int line = location.getLineNumber();
-        final int col = location.getColumnNumber();
-        return currentUriNodeCache.get(uriStr, uri ->
-                NodeFactory.createURI(uriStr)
-        );
+        int line = location.getLineNumber();
+        int col = location.getColumnNumber();
+        return parserProfile.createURI(uriStr, line, col);
     }
 
     /**
@@ -1401,42 +1453,107 @@ class ParserRRX_StAX2_SR_aalto {
      */
     private Node iriResolve(String uriStr, Location location) {
         Objects.requireNonNull(uriStr);
-        final var iri = resolveIRI(uriStr);
-        return currentUriNodeCache.get(iri, i ->
-            NodeFactory.createURI(iri));
+        Objects.requireNonNull(location);
+        final int line = location.getLineNumber();
+        final int col = location.getColumnNumber();
+        return uriStr.startsWith("_:")
+                ?  parserProfile.createURI(uriStr, line, col) // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
+                :  parserProfile.createURI(resolveIRIx(uriStr, location), line, col);
     }
 
-    /** Resolve an IRI. */
-    private String resolveIRI(String uriStr) {
-        if ( uriStr.startsWith("_:") )
-            // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
-            return uriStr;
-        return resolveIRIx(uriStr).str();
-    }
+//    /** Resolve an IRI. */
+//    private String resolveIRI(String uriStr, Location location) {
+//        if ( uriStr.startsWith("_:") )
+//            // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
+//            return uriStr;
+//        return resolveIRIx(uriStr, location).str();
+//    }
 
-    private IRIx resolveIRIx(String uriStr) {
+    private IRIx resolveIRIx(String uriStr, Location location) {
         // This does not use the parser profile because the base stacks and unstacks in RDF/XML.
         try {
-            IRIx iri = resolveIRIxAny(uriStr);
+            IRIx iri = resolveIRIxAny(uriStr, location);
             if ( iri.isRelative() )
-                throw RDFXMLparseError("Relative URI encountered: <"+iri.str()+">" , location());
+                throw RDFXMLparseError("Relative URI encountered: <"+iri.str()+">" , location);
             return iri;
         } catch (IRIException ex) {
-            throw RDFXMLparseError(ex.getMessage(), location());
+            throw RDFXMLparseError(ex.getMessage(), location);
         }
     }
 
-    private IRIx resolveIRIxAny(String uriStr) {
-        return currentIriCache.get(uriStr, uri ->{
-            try {
-                final var iri = (_currentBase != null)
-                        ? _currentBase.resolve(uri)
-                        : IRIx.create(uri);
-                return iri;
-            } catch (IRIException ex) {
-                throw RDFXMLparseError(ex.getMessage(), location());
-            }
-        });
+    private IRIx resolveIRIxAny(String uriStr, Location location) {
+        try {
+            IRIx iri = ( currentBase != null )
+                    ? currentBase.resolve(uriStr)
+                    : IRIx.create(uriStr);
+            return iri;
+        } catch (IRIException ex) {
+            throw RDFXMLparseError(ex.getMessage(), location);
+        }
+    }
+
+    private Node blankNode(Location location) {
+        Objects.requireNonNull(location);
+        int line = location.getLineNumber();
+        int col = location.getColumnNumber();
+        return parserProfile.createBlankNode(null, line, col);
+    }
+
+    private Node blankNode(String label, Location location) {
+        Objects.requireNonNull(label);
+        Objects.requireNonNull(location);
+        checkValidNCName(label, location);
+        int line = location.getLineNumber();
+        int col = location.getColumnNumber();
+        return parserProfile.createBlankNode(null, label, line, col);
+    }
+
+//    private Node literal(String lex, String datatype, String lang, Location location) {
+//        int line = location.getLineNumber();
+//        int col = location.getColumnNumber();
+//        return parserProfile.createL
+//    }
+    // literal(lex, datatype, lang)
+
+    private Node literal(String lexical, Location location) {
+        Objects.requireNonNull(lexical);
+        Objects.requireNonNull(location);
+        int line = location.getLineNumber();
+        int col = location.getColumnNumber();
+        return parserProfile.createStringLiteral(lexical, line, col);
+    }
+
+    /**
+     * Create literal with a language (rdf:langString).
+     * If lang is null or "", create an xsd:string
+     */
+    private Node literal(String lexical, String lang, Location location) {
+        if ( lang == null )
+            return literal(lexical, location);
+        Objects.requireNonNull(lexical);
+        Objects.requireNonNull(location);
+        int line = location.getLineNumber();
+        int col = location.getColumnNumber();
+        return parserProfile.createLangLiteral(lexical, lang, line, col);
+    }
+
+    private Node literalDatatype(String lexical, String datatype, Location location) {
+        Objects.requireNonNull(lexical);
+        Objects.requireNonNull(datatype);
+        Objects.requireNonNull(location);
+        int line = location.getLineNumber();
+        int col = location.getColumnNumber();
+        RDFDatatype dt = NodeFactory.getType(datatype);
+        return parserProfile.createTypedLiteral(lexical, dt, line, col);
+    }
+
+    private Node literalDatatype(String lexical, RDFDatatype datatype, Location location) {
+        Objects.requireNonNull(lexical);
+        Objects.requireNonNull(datatype);
+        Objects.requireNonNull(location);
+        int line = location.getLineNumber();
+        int col = location.getColumnNumber();
+        return parserProfile.createTypedLiteral(lexical, datatype, line, col);
     }
 
     // ---- Functions
@@ -1448,7 +1565,9 @@ class ParserRRX_StAX2_SR_aalto {
     }
 
     private void checkValidNCName(String string, Location location) {
-        if ( ! XML11Char.isXML11ValidNCName(string) )
+        //boolean isValid = XMLChar.isValidNCName(string);
+        boolean isValid = XML11Char.isXML11ValidNCName(string);
+        if ( ! isValid )
             RDFXMLparseWarning("Not a valid XML NCName: '"+string+"'", location);
     }
 
@@ -1474,7 +1593,7 @@ class ParserRRX_StAX2_SR_aalto {
     private static boolean isMemberPropertyLocalName(String localName) {
         if ( ! localName.startsWith("_") )
             return false;
-        final String number = localName.substring(1);
+        String number = localName.substring(1);
         if (number.startsWith("-") || number.startsWith("0"))
             return false;
 
@@ -1484,7 +1603,7 @@ class ParserRRX_StAX2_SR_aalto {
         } catch (NumberFormatException e) {
             try {
                 // It might be > Integer.MAX_VALUE !!
-                final java.math.BigInteger i = new java.math.BigInteger(number);
+                java.math.BigInteger i = new java.math.BigInteger(number);
                 return true;
             } catch (NumberFormatException ee) {
                 return false;
@@ -1508,14 +1627,14 @@ class ParserRRX_StAX2_SR_aalto {
     private boolean isNotRecognizedRDFtype(QName qName) {
         if ( ! isRDF(qName) )
             return false;
-        final String ln = qName.getLocalPart();
+        String ln = qName.getLocalPart();
         return ! knownRDFTypes.contains(ln);
     }
 
     private boolean isNotRecognizedRDFproperty(QName qName) {
         if ( ! isRDF(qName) )
             return false;
-        final String ln = qName.getLocalPart();
+        String ln = qName.getLocalPart();
         if ( isMemberPropertyLocalName(ln) )
             return false;
         return ! knownRDFProperties.contains(ln);
@@ -1533,15 +1652,36 @@ class ParserRRX_StAX2_SR_aalto {
 
     // ---- XMLEvents functions
 
+//    /** Return the contents of a text-only element.*/
+//    private String nextText()
+
     private static boolean isComment(int eventType) {
         return eventType == XMLStreamReader.COMMENT;
     }
 
     private boolean isWhitespace(int eventType) {
         if ( lookingAt(eventType, CHARACTERS ) ) {
-            return StringUtils.isWhitespace(xmlSource.getText());
+            String s = xmlSource.getText();
+            return isWhitespace(s);
         }
         return false;
+    }
+
+//    private static boolean isWhitespace(char[] ch) {
+//        return isWhitespace(ch, 0, ch.length);
+//    }
+//
+    private static boolean isWhitespace(char[] ch, int start, int length) {
+        for ( int i = start ; i < start + length ; i++ ) {
+            char ich = ch[i];
+            if ( !Character.isWhitespace(ich) )
+                return false;
+        }
+        return true;
+    }
+
+    private static boolean isWhitespace(CharSequence x) {
+        return StringUtils.isWhitespace(x);
     }
 
     private static String str(Location location) {
@@ -1557,7 +1697,7 @@ class ParserRRX_StAX2_SR_aalto {
     }
 
     private static String str(QName qName) {
-        final String prefix = qName.getPrefix();
+        String prefix = qName.getPrefix();
         if ( prefix == null || prefix.isEmpty() )
             return String.format("%s", qName.getLocalPart());
         return String.format("%s:%s", qName.getPrefix(), qName.getLocalPart());
@@ -1589,7 +1729,7 @@ class ParserRRX_StAX2_SR_aalto {
         // Find the start of non-whitespace.
         // Slice, truncate if necessary.
         // Make safe.
-        final int length = string.length();
+        int length = string.length();
         for ( int i = 0 ; i < length ; i++ ) {
             if ( !Character.isWhitespace(string.charAt(i)) ) {
                 int len = Math.min(MaxLen, length - i);

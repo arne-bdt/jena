@@ -23,6 +23,7 @@ import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.atlas.lib.cache.CacheSimpleFastConcurrent;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
+import org.apache.jena.jmh.helper.TestFileInventory;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.TripleReaderReadingCGMES_2_4_15_WithTypedLiterals;
 import org.apache.jena.mem2.GraphMem2Fast;
@@ -35,54 +36,26 @@ import org.openjdk.jmh.runner.Runner;
 public class TestCaches {
 
     @Param({
-//            "cheeses-0.1.ttl",
-//            "pizza.owl.rdf",
-//            "xxx_CGMES_EQ.xml",
-//            "xxx_CGMES_SSH.xml",
-//            "xxx_CGMES_TP.xml",
-            "RealGrid_EQ.xml",
-            "RealGrid_SSH.xml",
-            "RealGrid_TP.xml",
-            "RealGrid_SV.xml",
-//            "bsbm-1m.nt.gz",
-//            "bsbm-5m.nt.gz",
-//            "bsbm-25m.nt.gz",
+//            TestFileInventory.TTL_CHEESE,
+//            TestFileInventory.RDF_PIZZA_OWL,
+//
+//            TestFileInventory.XML_XXX_CGMES_EQ,
+//            TestFileInventory.XML_XXX_CGMES_SSH,
+//            TestFileInventory.XML_XXX_CGMES_TP,
+
+            TestFileInventory.XML_REAL_GRID_V2_EQ,
+            TestFileInventory.XML_REAL_GRID_V2_SSH,
+            TestFileInventory.XML_REAL_GRID_V2_SV,
+            TestFileInventory.XML_REAL_GRID_V2_TP,
+
+            TestFileInventory.NT_GZ_BSBM_1M,
+//            TestFileInventory.NT_GZ_BSBM_5M,
+//            TestFileInventory.NT_GZ_BSBM_25M,
     })
     public String param0_GraphUri;
 
-    private static String getFilePath(String fileName) {
-        switch (fileName) {
-            case "cheeses-0.1.ttl":
-                return "../testing/cheeses-0.1.ttl";
-            case "pizza.owl.rdf":
-                return "../testing/pizza.owl.rdf";
-            case "xxx_CGMES_EQ.xml":
-                return "C:/temp/res_test/xxx_CGMES_EQ.xml";
-            case "xxx_CGMES_SSH.xml":
-                return "C:/temp/res_test/xxx_CGMES_SSH.xml";
-            case "xxx_CGMES_TP.xml":
-                return "C:/temp/res_test/xxx_CGMES_TP.xml";
-            case "RealGrid_EQ.xml":
-                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml";
-            case "RealGrid_SSH.xml":
-                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_SSH_V2.xml";
-            case "RealGrid_TP.xml":
-                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_TP_V2.xml";
-            case "RealGrid_SV.xml":
-                return "C:/rd/CGMES/TestConfigurations_packageCASv2.0/RealGrid/CGMES_v2.4.15_RealGridTestConfiguration_SV_V2.xml";
-            case "bsbm-1m.nt.gz":
-                return "../testing/BSBM/bsbm-1m.nt.gz";
-            case "bsbm-5m.nt.gz":
-                return "../testing/BSBM/bsbm-5m.nt.gz";
-            case "bsbm-25m.nt.gz":
-                return "../testing/BSBM/bsbm-25m.nt.gz";
-            default:
-                throw new IllegalArgumentException("Unknown fileName: " + fileName);
-        }
-    }
-
     @Param({
-            "Caffeine",
+//            "Caffeine",
             "Simple",
             "SimpleFast",
 //            "SimpleFastConcurrent"
@@ -204,7 +177,7 @@ public class TestCaches {
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
         this.graph = new GraphMem2Fast();
-        TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read(getFilePath(param0_GraphUri), this.graph);
+        TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read(TestFileInventory.getFilePath(param0_GraphUri), this.graph);
         this.cache = createCache(param1_Cache);
     }
 

@@ -18,8 +18,6 @@
 
 package org.apache.jena.riot.system;
 
-import java.util.Objects;
-
 import org.apache.jena.atlas.lib.Cache;
 import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.datatypes.RDFDatatype;
@@ -34,6 +32,8 @@ import org.apache.jena.riot.tokens.TokenType;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.util.Context;
 import org.apache.jena.sparql.util.FmtUtils;
+
+import java.util.Objects;
 
 /**
  * {@link ParserProfileStd} uses a {@link FactoryRDF} to create items in the parsing
@@ -197,6 +197,11 @@ public class ParserProfileStd implements ParserProfile {
             // Really is an URI!
             x = resolveIRI(x, line, col);
         return factory.createURI(x);
+    }
+
+    @Override
+    public Node createURI(IRIx iriX, long line, long col) {
+        return factory.createURI(iriX.str());
     }
 
     @Override

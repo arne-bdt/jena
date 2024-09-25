@@ -107,6 +107,7 @@ public class RRX {
 
         register(RDFXML_StAX2_ev, ReaderRDFXML_StAX2_EV.factory);
         register(RDFXML_StAX2_sr, ReaderRDFXML_StAX2_SR.factory);
+
         register(RDFXML_StAX2_ev_aalto, ReaderRDFXML_StAX2_EV_aalto.factory);
         register(RDFXML_StAX2_sr_aalto, ReaderRDFXML_StAX2_SR_aalto.factory);
 
@@ -130,6 +131,7 @@ public class RRX {
 
         unregister(RDFXML_StAX2_ev);
         unregister(RDFXML_StAX2_sr);
+
         unregister(RDFXML_StAX2_ev_aalto);
         unregister(RDFXML_StAX2_sr_aalto);
 

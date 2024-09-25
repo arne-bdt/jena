@@ -24,6 +24,7 @@ import org.apache.jena.cimxml.schema.SchemaRegistry;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.jmh.helper.TestFileInventory;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.lang.rdfxml.RRX;
@@ -50,10 +51,10 @@ public class TestCIMXMLCastingOverhead {
     private SchemaRegistry schemaRegistry;
 
     @Param({
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml",
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_SSH_V2.xml",
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_SV_V2.xml",
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_TP_V2.xml",
+            TestFileInventory.XML_REAL_GRID_V2_EQ,
+            TestFileInventory.XML_REAL_GRID_V2_SSH,
+            TestFileInventory.XML_REAL_GRID_V2_SV,
+            TestFileInventory.XML_REAL_GRID_V2_TP
 
     })
     public String param0_GraphUri;
@@ -68,7 +69,7 @@ public class TestCIMXMLCastingOverhead {
                 .get()) {
             RDFParser.source(is)
                     .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
-                    .forceLang(RRX.RDFXML_StAX2_ev_aalto)
+                    .forceLang(RRX.RDFXML_StAX2_sr_aalto)
                     .checking(false)
                     .parse(g);
         }
@@ -77,8 +78,9 @@ public class TestCIMXMLCastingOverhead {
 
     @Benchmark
     public Graph parseCIMXML() throws Exception {
-        final var profile = heuristicallyGuessProfile(param0_GraphUri);
-        final var g = schemaRegistry.parseRDFXML(profile, param0_GraphUri);
+        final var filePath = TestFileInventory.getFilePath(param0_GraphUri);
+        final var profile = heuristicallyGuessProfile(filePath);
+        final var g = schemaRegistry.parseRDFXML(profile, filePath);
         return g;
     }
 
@@ -92,13 +94,13 @@ public class TestCIMXMLCastingOverhead {
 
     private static String getPathToRDFS(Node profileAsNode) {
         if (IRI_FOR_PROFILE_EQ == profileAsNode)
-            return "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\EquipmentProfileCoreRDFSAugmented-v2_4_15-4Sep2020.rdf";
+            return TestFileInventory.getFilePath(TestFileInventory.RDF_EQUIPMENT_CORE_PROFILE_RDFS_AUGMENTED_V2_4_15_4SEP2020);
         if (IRI_FOR_PROFILE_SSH == profileAsNode)
-            return "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\SteadyStateHypothesisProfileRDFSAugmented-v2_4_15-4Sep2020.rdf";
+            return TestFileInventory.getFilePath(TestFileInventory.RDF_STEADY_STATE_HYPOTHESIS_PROFILE_RDFS_AUGMENTED_V2_4_15_4SEP2020);
         if (IRI_FOR_PROFILE_SV == profileAsNode)
-            return "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\StateVariableProfileRDFSAugmented-v2_4_15-4Sep2020.rdf";
+            return TestFileInventory.getFilePath(TestFileInventory.RDF_STATE_VARIABLE_PROFILE_RDFS_AUGMENTED_V2_4_15_4SEP2020);
         if (IRI_FOR_PROFILE_TP == profileAsNode)
-            return "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\TopologyProfileRDFSAugmented-v2_4_15-4Sep2020.rdf";
+            return TestFileInventory.getFilePath(TestFileInventory.RDF_TOPOLOGY_PROFILE_RDFS_AUGMENTED_V2_4_15_4SEP2020);
         throw new IllegalArgumentException("Unsupported profile: " + profileAsNode);
     }
 
@@ -123,8 +125,8 @@ public class TestCIMXMLCastingOverhead {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-                //.warmupIterations(0)
-                //.measurementIterations(1)
+//                .warmupIterations(5)
+//                .measurementIterations(10)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

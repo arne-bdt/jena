@@ -21,6 +21,7 @@ package org.apache.jena.cimxml;
 import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.jena.cimxml.schema.BaseURI;
 import org.apache.jena.graph.Graph;
+import org.apache.jena.jmh.helper.TestFileInventory;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;
@@ -40,17 +41,18 @@ import java.nio.file.StandardOpenOption;
 public class TestXMLParser {
 
     @Param({
-//            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\EquipmentProfileCoreRDFSAugmented-v2_4_15-4Sep2020.rdf",
-//            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\SteadyStateHypothesisProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
-//            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\StateVariableProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
-//            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\TopologyProfileRDFSAugmented-v2_4_15-4Sep2020.rdf",
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_EQ_V2.xml",
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_SSH_V2.xml",
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_SV_V2.xml",
-            "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\TestConfigurations_packageCASv2.0\\RealGrid\\CGMES_v2.4.15_RealGridTestConfiguration_v2\\CGMES_v2.4.15_RealGridTestConfiguration_TP_V2.xml",
-            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
+//            TestFileInventory.XML_XXX_CGMES_EQ,
+//            TestFileInventory.XML_XXX_CGMES_SSH,
+//            TestFileInventory.XML_XXX_CGMES_TP,
+
+            TestFileInventory.XML_REAL_GRID_V2_EQ,
+            TestFileInventory.XML_REAL_GRID_V2_SSH,
+//            TestFileInventory.XML_REAL_GRID_V2_SV,
+//            TestFileInventory.XML_REAL_GRID_V2_TP,
+
+//            TestFileInventory.XML_BSBM_5M,
+//            TestFileInventory.XML_BSBM_25M,
+//            TestFileInventory.RDF_CITATIONS,
     })
     public String param0_GraphUri;
     @Param({
@@ -59,10 +61,10 @@ public class TestXMLParser {
 //            "RRX.RDFXML_StAX_sr",
 
 //            "RRX.RDFXML_StAX2_ev",
-//            "RRX.RDFXML_StAX2_sr",
+            "RRX.RDFXML_StAX2_sr",
 
 //            "RRX.RDFXML_StAX2_ev_aalto",
-            "RRX.RDFXML_StAX2_sr_aalto",
+//            "RRX.RDFXML_StAX2_sr_aalto",
 
 //            "RRX.RDFXML_ARP0",
 //            "RRX.RDFXML_ARP1"
@@ -111,7 +113,7 @@ public class TestXMLParser {
 //    public Graph parseXMLUsingDefault() throws Exception {
 ////        final var stopWatch = StopWatch.createStarted();
 //        final var sink = GraphFactory.createGraphMem();
-//        RDFParser.source(this.param0_GraphUri)
+//        RDFParser.source(TestFileInventory.getFilePath(this.param0_GraphUri))
 //                .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
 //                .forceLang(getLang(this.param1_ParserLang))
 //                .checking(false)
@@ -127,7 +129,7 @@ public class TestXMLParser {
 //        final var stopWatch = StopWatch.createStarted();
         final var sink = GraphFactory.createGraphMem();
         try(final var is = new BufferedFileChannelInputStream.Builder()
-                .setFile(this.param0_GraphUri)
+                .setFile(TestFileInventory.getFilePath(this.param0_GraphUri))
                 .setOpenOptions(StandardOpenOption.READ)
                 .setBufferSize(64*4096)
                 .get()) {
@@ -146,8 +148,8 @@ public class TestXMLParser {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-                //.warmupIterations(0)
-                //.measurementIterations(10)
+//                .warmupIterations(3)
+//                .measurementIterations(3)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

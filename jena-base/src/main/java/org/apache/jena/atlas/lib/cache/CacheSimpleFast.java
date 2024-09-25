@@ -41,7 +41,7 @@ public class CacheSimpleFast<K, V> implements Cache<K, V> {
     private final K[] keys;
     private final V[] values;
 
-    private int sizeMinusOne;
+    private final int sizeMinusOne;
 
     private int currentSize = 0;
 

@@ -22,6 +22,7 @@ import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.irix.IRIx;
 import org.apache.jena.riot.tokens.Token;
 import org.apache.jena.sparql.core.Quad;
 
@@ -51,6 +52,8 @@ public interface ParserProfile {
 
     /** Create a URI Node */
     public Node createURI(String uriStr, long line, long col);
+
+    public Node createURI(IRIx iriX, long line, long col);
 
     /** Create a literal for a string+datatype */
     public Node createTypedLiteral(String lexical, RDFDatatype datatype, long line, long col);

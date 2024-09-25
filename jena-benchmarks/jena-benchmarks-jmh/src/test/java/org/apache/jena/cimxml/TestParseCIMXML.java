@@ -22,6 +22,7 @@ import org.apache.jena.cimxml.schema.SchemaRegistry;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.jmh.helper.TestFileInventory;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.junit.Assert;
 import org.junit.Test;
@@ -101,13 +102,13 @@ public class TestParseCIMXML {
 
     private static String getPathToRDFS(Node profileAsNode) {
         if (IRI_FOR_PROFILE_EQ == profileAsNode)
-            return "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\EquipmentProfileCoreRDFSAugmented-v2_4_15-4Sep2020.rdf";
+            return TestFileInventory.getFilePath(TestFileInventory.RDF_EQUIPMENT_CORE_PROFILE_RDFS_AUGMENTED_V2_4_15_4SEP2020);
         if (IRI_FOR_PROFILE_SSH == profileAsNode)
-            return "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\SteadyStateHypothesisProfileRDFSAugmented-v2_4_15-4Sep2020.rdf";
+            return TestFileInventory.getFilePath(TestFileInventory.RDF_STEADY_STATE_HYPOTHESIS_PROFILE_RDFS_AUGMENTED_V2_4_15_4SEP2020);
         if (IRI_FOR_PROFILE_SV == profileAsNode)
-            return "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\StateVariableProfileRDFSAugmented-v2_4_15-4Sep2020.rdf";
+            return TestFileInventory.getFilePath(TestFileInventory.RDF_STATE_VARIABLE_PROFILE_RDFS_AUGMENTED_V2_4_15_4SEP2020);
         if (IRI_FOR_PROFILE_TP == profileAsNode)
-            return "C:\\rd\\bewegungsdaten-demo\\shared\\ENTSOE_RDF\\src\\main\\resources\\CGMES\\v2.4.15\\CGMES2415_Components_2020\\RDFS\\TopologyProfileRDFSAugmented-v2_4_15-4Sep2020.rdf";
+            return TestFileInventory.getFilePath(TestFileInventory.RDF_TOPOLOGY_PROFILE_RDFS_AUGMENTED_V2_4_15_4SEP2020);
         throw new IllegalArgumentException("Unsupported profile: " + profileAsNode);
     }
 
