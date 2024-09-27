@@ -20,6 +20,8 @@ package org.apache.jena.riot.lang.rdfxml.stax2.aalto;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.atlas.io.IndentedWriter;
+import org.apache.jena.atlas.lib.Cache;
+import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.atlas.lib.EscapeStr;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.impl.XMLLiteralType;
@@ -53,44 +55,43 @@ import static org.apache.jena.riot.SysRIOT.fmtMessage;
 
 /* StAX - stream reader */
 class ParserRRX_StAX2_SR_aalto {
+    private static int IRI_CACHE_SIZE = 12_288;
     private static boolean EVENTS = false;
     private final IndentedWriter trace;
 
     private final XMLStreamReader xmlSource;
+
+    private Cache<String, IRIx> currentIriCache = CacheFactory.createSimpleFastCache(IRI_CACHE_SIZE);
+    private Map<IRIx, Cache<String, IRIx>> mapBaseIriToCache = new HashMap<>();
     // Stacks.
 
     // Constants
-    private static final String XML_PREFIX = "xml";
     private static final String rdfNS = RDF.uri;
     private static final String xmlNS = "http://www.w3.org/XML/1998/namespace";
-    private static final String ID = "ID";
-    private static final String NODE_ID = "nodeID";
-    private static final String ABOUT = "about";
-    private int blankNodeCounter  = 0 ;
     private boolean hasRDF = false;
 
     private final ParserProfile parserProfile;
     private final ErrorHandler errorHandler;
-    private final Context context;
-    private final String initialXmlBase;
-    private final String initialXmlLang;
     private final StreamRDF destination;
 
-    private record BaseLang(IRIx base, String lang) {}
+    private record BaseLang(IRIx base, String lang, Cache<String, IRIx> iriCache) {}
     private Deque<BaseLang> stack = new ArrayDeque<>();
     // Just these operations:
 
     private void pushFrame(IRIx base, String lang) {
-        BaseLang frame = new BaseLang(currentBase, currentLang);
+        BaseLang frame = new BaseLang(currentBase, currentLang, currentIriCache);
         stack.push(frame);
         currentBase = base;
         currentLang = lang;
+        currentIriCache = mapBaseIriToCache
+                .computeIfAbsent(base, b -> CacheFactory.createSimpleFastCache(IRI_CACHE_SIZE));
     }
 
     private void popFrame() {
         BaseLang frame = stack.pop();
         currentBase = frame.base;
         currentLang = frame.lang;
+        currentIriCache = frame.iriCache;
     }
 
     /** Mark the usage of a QName */
@@ -164,12 +165,10 @@ class ParserRRX_StAX2_SR_aalto {
 
         this.xmlSource = reader;
         this.parserProfile = parserProfile;
-        this.context = context;
         this.errorHandler = parserProfile.getErrorHandler();
-        this.initialXmlBase = xmlBase;
-        this.initialXmlLang = "";
         if ( xmlBase != null ) {
             this.currentBase = IRIx.create(xmlBase);
+            this.mapBaseIriToCache.put(this.currentBase, currentIriCache);
             parserProfile.setBaseIRI(currentBase.str());
         } else {
             this.currentBase = null;
@@ -184,10 +183,6 @@ class ParserRRX_StAX2_SR_aalto {
     private static final QName rdfNodeID = new QName(rdfNS, "nodeID");
     private static final QName rdfAbout = new QName(rdfNS, "about");
     private static final QName rdfType = new QName(rdfNS, "type");
-
-    private static final QName rdfSeq = new QName(rdfNS, "Seq");
-    private static final QName rdfBag = new QName(rdfNS, "Bag");
-    private static final QName rdfAlt = new QName(rdfNS, "Alt");
 
     private static final QName rdfContainerItem = new QName(rdfNS, "li");
     private static final QName rdfDatatype = new QName(rdfNS, "datatype");
@@ -1333,11 +1328,8 @@ class ParserRRX_StAX2_SR_aalto {
         }
         boolean hasFrame = (xmlBase != null || xmlLang != null);
         if ( hasFrame ) {
-            pushFrame(currentBase, currentLang);
-            if ( xmlBase != null )
-                currentBase = xmlBase;
-            if ( xmlLang != null )
-                currentLang = xmlLang;
+            pushFrame(xmlBase != null ? xmlBase : currentBase,
+                    xmlLang != null ? xmlLang : currentLang);
         }
         return hasFrame;
     }
@@ -1371,8 +1363,8 @@ class ParserRRX_StAX2_SR_aalto {
             emitBase(xmlBase);
         int numNS = xmlSource.getNamespaceCount();
         for ( int i = 0 ; i < numNS ; i++ ) {
+            final String prefixURI = xmlSource.getNamespaceURI(i);
             String prefix = xmlSource.getNamespacePrefix(i);
-            String prefixURI = xmlSource.getNamespaceURI(i);
             if ( prefix == null )
                 prefix = "";
             emitPrefix(prefix, prefixURI);
@@ -1483,10 +1475,13 @@ class ParserRRX_StAX2_SR_aalto {
 
     private IRIx resolveIRIxAny(String uriStr, Location location) {
         try {
-            IRIx iri = ( currentBase != null )
-                    ? currentBase.resolve(uriStr)
-                    : IRIx.create(uriStr);
-            return iri;
+            return currentIriCache.get(uriStr, uri -> {
+                if( currentBase != null ) {
+                    return currentBase.resolve(uri);
+                } else {
+                    return IRIx.create(uriStr);
+                }
+            });
         } catch (IRIException ex) {
             throw RDFXMLparseError(ex.getMessage(), location);
         }

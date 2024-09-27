@@ -22,6 +22,7 @@ import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.cimxml.schema.BaseURI;
 import org.apache.jena.jmh.helper.TestFileInventory;
+import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.RDFWriter;
@@ -37,15 +38,15 @@ public class ProfileXMLParser {
     @Test
     public void parseXML() throws Exception {
         var stopWatch = StopWatch.createStarted();
-        var sink = GraphFactory.createGraphMem();
+        var sink = new GraphMem2Roaring();
         try(final var is = new BufferedFileChannelInputStream.Builder()
-                .setFile(TestFileInventory.getFilePath(TestFileInventory.XML_REAL_GRID_V2_EQ))
+                .setFile(TestFileInventory.getFilePath(TestFileInventory.RDF_CITATIONS))
                 .setOpenOptions(StandardOpenOption.READ)
                 .setBufferSize(64*4096)
                 .get()) {
             RDFParser.source(is)
                     .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
-                    .forceLang(RRX.RDFXML_StAX2_sr_aalto)
+                    .forceLang(RRX.RDFXML_SAX)
                     .checking(false)
                     .parse(sink);
         }

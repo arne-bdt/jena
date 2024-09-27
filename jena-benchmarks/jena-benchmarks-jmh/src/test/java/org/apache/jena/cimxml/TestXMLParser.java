@@ -46,7 +46,7 @@ public class TestXMLParser {
 //            TestFileInventory.XML_XXX_CGMES_TP,
 
             TestFileInventory.XML_REAL_GRID_V2_EQ,
-            TestFileInventory.XML_REAL_GRID_V2_SSH,
+//            TestFileInventory.XML_REAL_GRID_V2_SSH,
 //            TestFileInventory.XML_REAL_GRID_V2_SV,
 //            TestFileInventory.XML_REAL_GRID_V2_TP,
 
@@ -58,10 +58,10 @@ public class TestXMLParser {
     @Param({
             "RRX.RDFXML_SAX",
 //            "RRX.RDFXML_StAX_ev",
-            "RRX.RDFXML_StAX_sr",
+//            "RRX.RDFXML_StAX_sr",
 
 //            "RRX.RDFXML_StAX2_ev",
-            "RRX.RDFXML_StAX2_sr",
+//            "RRX.RDFXML_StAX2_sr",
 
 //            "RRX.RDFXML_StAX2_ev_aalto",
             "RRX.RDFXML_StAX2_sr_aalto",

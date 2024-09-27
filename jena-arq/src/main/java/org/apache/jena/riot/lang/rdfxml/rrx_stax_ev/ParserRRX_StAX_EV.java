@@ -20,6 +20,8 @@ package org.apache.jena.riot.lang.rdfxml.rrx_stax_ev;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.atlas.io.IndentedWriter;
+import org.apache.jena.atlas.lib.Cache;
+import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.atlas.lib.EscapeStr;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.impl.XMLLiteralType;
@@ -50,10 +52,14 @@ import static org.apache.jena.riot.SysRIOT.fmtMessage;
 
 /** StAX events */
 class ParserRRX_StAX_EV {
+    private static int IRI_CACHE_SIZE = 12_288;
     private static boolean EVENTS = false;
     private final IndentedWriter trace;
 
     private final XMLEventReader xmlEventReader;
+
+    private Cache<String, IRIx> currentIriCache = CacheFactory.createSimpleFastCache(IRI_CACHE_SIZE);
+    private Map<IRIx, Cache<String, IRIx>> mapBaseIriToCache = new HashMap<>();
     // Stacks.
 
     // Constants
@@ -73,21 +79,24 @@ class ParserRRX_StAX_EV {
     private final String initialXmlLang;
     private final StreamRDF destination;
 
-    private record BaseLang(IRIx base, String lang) {}
+    private record BaseLang(IRIx base, String lang, Cache<String, IRIx> iriCache) {}
     private Deque<BaseLang> stack = new ArrayDeque<>();
     // Just these operations:
 
     private void pushFrame(IRIx base, String lang) {
-        BaseLang frame = new BaseLang(currentBase, currentLang);
+        BaseLang frame = new BaseLang(currentBase, currentLang, currentIriCache);
         stack.push(frame);
         currentBase = base;
         currentLang = lang;
+        currentIriCache = mapBaseIriToCache
+                .computeIfAbsent(base, b -> CacheFactory.createSimpleFastCache(IRI_CACHE_SIZE));
     }
 
     private void popFrame() {
         BaseLang frame = stack.pop();
         currentBase = frame.base;
         currentLang = frame.lang;
+        currentIriCache = frame.iriCache;
     }
 
     /** Mark the usage of a QName */
@@ -170,7 +179,8 @@ class ParserRRX_StAX_EV {
         this.initialXmlLang = "";
         if ( xmlBase != null ) {
             this.currentBase = IRIx.create(xmlBase);
-            //parserProfile.setBaseIRI(currentBase.str());
+            this.mapBaseIriToCache.put(this.currentBase, currentIriCache);
+            parserProfile.setBaseIRI(currentBase.str());
         } else {
             this.currentBase = null;
         }
@@ -984,8 +994,9 @@ class ParserRRX_StAX_EV {
         }
 
         // Not seen this prefix or it was a different value.
-        if ( ! namespaces.containsKey(prefix) ||
-                ( namespaceURI != null && ! namespaces.get(prefix).equals(namespaceURI)) ) {
+        if ( namespaceURI != "" &&
+                (! namespaces.containsKey(prefix) ||
+                 ( namespaceURI != null && ! namespaces.get(prefix).equals(namespaceURI)) )) {
             // Define in current XML subtree.
             outputNS.put(prefix, namespaceURI);
             namespaces.put(prefix, namespaceURI);
@@ -1374,11 +1385,8 @@ class ParserRRX_StAX_EV {
         }
         boolean hasFrame = (xmlBase != null || xmlLang != null);
         if ( hasFrame ) {
-            pushFrame(currentBase, currentLang);
-            if ( xmlBase != null )
-                currentBase = xmlBase;
-            if ( xmlLang != null )
-                currentLang = xmlLang;
+            pushFrame(xmlBase != null ? xmlBase : currentBase,
+                    xmlLang != null ? xmlLang : currentLang);
         }
         return hasFrame;
     }
@@ -1503,10 +1511,13 @@ class ParserRRX_StAX_EV {
 
     private IRIx resolveIRIxNoWarning(String uriStr, Location location) {
         try {
-            IRIx iri = ( currentBase != null )
-                    ? currentBase.resolve(uriStr)
-                    : IRIx.create(uriStr);
-            return iri;
+            return currentIriCache.get(uriStr, uri -> {
+                if( currentBase != null ) {
+                    return currentBase.resolve(uri);
+                } else {
+                    return IRIx.create(uriStr);
+                }
+            });
         } catch (IRIException ex) {
             throw RDFXMLparseError(ex.getMessage(), location);
         }

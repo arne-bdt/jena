@@ -20,6 +20,8 @@ package org.apache.jena.riot.lang.rdfxml.rrx;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.atlas.io.IndentedWriter;
+import org.apache.jena.atlas.lib.Cache;
+import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.atlas.lib.EscapeStr;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.impl.XMLLiteralType;
@@ -60,6 +62,7 @@ class ParserRRX_SAX
             LexicalHandler,
             DeclHandler,
             EntityResolver2 {
+    private static int IRI_CACHE_SIZE = 12_288;
     private static boolean VERBOSE = false;
     // Addition tracing for SAX events we don't care about.
     private static boolean EVENTS = false;
@@ -298,8 +301,8 @@ class ParserRRX_SAX
                                Counter containerPropertyCounter,
                                NodeHolder collectionNode,
                                Emitter emitter,
-                               ParserMode parserMode
-                               ) {}
+                               ParserMode parserMode,
+                               Cache<String, IRIx> iriCache) {}
 
     private Deque<ParserFrame> parserStack = new ArrayDeque<>();
 
@@ -319,7 +322,8 @@ class ParserRRX_SAX
                                             containerPropertyCounter,
                                             collectionNode,
                                             currentEmitter,
-                                            frameParserMode);
+                                            frameParserMode,
+                                            currentIriCache);
         parserStack.push(frame);
     }
 
@@ -339,6 +343,7 @@ class ParserRRX_SAX
         this.collectionNode = frame.collectionNode;
         this.containerPropertyCounter = frame.containerPropertyCounter;
         this.parserMode = frame.parserMode;
+        this.currentIriCache = frame.iriCache;
 
         // If this frame is ParserMode.ObjectResource , then it is an implicit frame
         // inserted for the implied node. Pop the stack again to balance the push of
@@ -381,6 +386,8 @@ class ParserRRX_SAX
     private final String initialXmlBase;
     private final String initialXmlLang;
     private final StreamRDF destination;
+    private Cache<String, IRIx> currentIriCache = CacheFactory.createSimpleFastCache(IRI_CACHE_SIZE);
+    private Map<IRIx, Cache<String, IRIx>> mapBaseIriToCache = new HashMap<>();
 
     // Tracking for ID on nodes (not reification usage)
     // We limit the number of local fragment IDs tracked because map only grows.
@@ -471,6 +478,7 @@ class ParserRRX_SAX
         this.initialXmlLang = "";
         if ( xmlBase != null ) {
             this.currentBase = IRIx.create(xmlBase);
+            this.mapBaseIriToCache.put(this.currentBase, currentIriCache);
             parserProfile.setBaseIRI(currentBase.str());
         } else {
             this.currentBase = null;
@@ -655,6 +663,8 @@ class ParserRRX_SAX
         if ( xmlBaseURI != null ) {
             emitBase(xmlBaseURI, position);
             currentBase = resolveIRIx(xmlBaseURI, position);
+            currentIriCache = mapBaseIriToCache.computeIfAbsent(currentBase,
+                    base -> CacheFactory.createSimpleFastCache(IRI_CACHE_SIZE));
         }
 
         for ( int i = 0 ; i < attributes.getLength() ; i++ ) {
@@ -963,6 +973,7 @@ class ParserRRX_SAX
         }
         if ( xmlBase != null ) {
             currentBase = xmlBase;// resolve.
+            currentIriCache = this.mapBaseIriToCache.computeIfAbsent(xmlBase, base -> CacheFactory.createSimpleFastCache(IRI_CACHE_SIZE));
         }
 
         if ( xmlLang != null )
@@ -1383,10 +1394,13 @@ class ParserRRX_SAX
     /** String to IRIx, no opinion */
     private IRIx resolveIRIxAny(String uriStr, Position position) {
         try {
-            IRIx iri = ( currentBase != null )
-                    ? currentBase.resolve(uriStr)
-                    : IRIx.create(uriStr);
-            return iri;
+            return currentIriCache.get(uriStr, uri -> {
+                if( currentBase != null ) {
+                    return currentBase.resolve(uri);
+                } else {
+                    return IRIx.create(uriStr);
+                }
+            });
         } catch (IRIException ex) {
             throw RDFXMLparseError(ex.getMessage(), position);
         }
