@@ -45,7 +45,7 @@ public class ProfileXMLParser {
                 .get()) {
             RDFParser.source(is)
                     .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
-                    .forceLang(RRX.RDFXML_SAX_woodstox)
+                    .forceLang(RRX.RDFXML_StAX2_sr_aalto)
                     .checking(false)
                     .parse(sink);
         }

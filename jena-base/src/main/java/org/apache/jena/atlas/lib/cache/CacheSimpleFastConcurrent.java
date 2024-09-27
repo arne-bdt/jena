@@ -140,7 +140,9 @@ public class CacheSimpleFastConcurrent<K, V> implements Cache<K, V> {
             return value;
         }
         final var node = callable.apply(k);
-        entries[idx] = new Entry<>(k, node);
+        if(node != null) {
+            entries[idx] = new Entry<>(k, node);
+        }
         return node;
     }
 

@@ -18,12 +18,13 @@
 
 package org.apache.jena.atlas.lib.cache;
 
+import org.apache.jena.atlas.lib.Cache;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.IntStream.rangeClosed;
 import static org.junit.Assert.*;
-
-import org.apache.jena.atlas.lib.Cache;
-import org.junit.Test;
 
 /**
  * Tests of CacheSimple
@@ -72,6 +73,133 @@ public class TestCacheSimple {
     }
 
     @Test
+    public void testPutSameHashOverridesValue() {
+        CompoundKey key1 = new CompoundKey(1, 1);
+        CompoundKey key2 = new CompoundKey(1, 2);
+        assertEquals(key1.hashCode(), key2.hashCode());
+        assertNotEquals(key1, key2);
+
+        var value1 = "value1";
+        var value2 = "value2";
+
+        Cache<CompoundKey, String> cache = new CacheSimple<>(10);
+        assertEquals(0, cache.size());
+        cache.put(key1, value1);
+        assertEquals(1, cache.size());
+        assertEquals(value1, cache.getIfPresent(key1));
+        assertNull(cache.getIfPresent(key2));
+
+        //this should override the slot
+        cache.put(key2, value2);
+        assertEquals(1, cache.size());
+        assertNull(cache.getIfPresent(key1));
+        assertEquals(value2, cache.getIfPresent(key2));
+    }
+
+    @Ignore("This test fails with CacheSimple")
+    @Test
+    public void testPutSameHashOverridesSameValue() {
+        CompoundKey key1 = new CompoundKey(1, 1);
+        CompoundKey key2 = new CompoundKey(1, 2);
+        assertEquals(key1.hashCode(), key2.hashCode());
+        assertNotEquals(key1, key2);
+
+        var value1 = "value";
+        var value2 = "value";
+
+        Cache<CompoundKey, String> cache = new CacheSimple<>(10);
+        assertEquals(0, cache.size());
+        cache.put(key1, value1);
+        assertEquals(1, cache.size());
+        assertEquals(value1, cache.getIfPresent(key1));
+        assertNull(cache.getIfPresent(key2));
+
+        //this should override the slot
+        cache.put(key2, value2);
+        assertEquals(1, cache.size());
+        assertNull(cache.getIfPresent(key1));
+        assertEquals(value2, cache.getIfPresent(key2));
+    }
+
+    @Test
+    public void testGetSameHashOverridesValue() {
+        CompoundKey key1 = new CompoundKey(1, 1);
+        CompoundKey key2 = new CompoundKey(1, 2);
+        assertEquals(key1.hashCode(), key2.hashCode());
+        assertNotEquals(key1, key2);
+
+        var value1 = "value1";
+        var value2 = "value2";
+
+        Cache<CompoundKey, String> cache = new CacheSimple<>(10);
+        assertEquals(0, cache.size());
+        cache.get(key1, k -> value1);
+        assertEquals(1, cache.size());
+        assertEquals(value1, cache.getIfPresent(key1));
+        assertNull(cache.getIfPresent(key2));
+
+        //this should override the slot
+        cache.get(key2, k -> value2);
+        assertEquals(1, cache.size());
+        assertNull(cache.getIfPresent(key1));
+        assertEquals(value2, cache.getIfPresent(key2));
+    }
+
+    @Test
+    public void removeKeyByPutingNullValue() {
+        Cache<String, String> cache = new CacheSimple<>(10);
+        assertEquals(0, cache.size());
+
+        {
+            final var key = "key0";
+            final var value = "value0";
+
+            cache.put(key, value);
+
+            assertTrue(cache.containsKey(key));
+            assertEquals(value, cache.getIfPresent(key));
+            assertEquals(1, cache.size());
+
+            //removing entry by writing null value
+            cache.put(key, null);
+
+            assertEquals(0, cache.size());
+            assertFalse(cache.containsKey(key));
+            assertNull(value, cache.getIfPresent(key));
+        }
+    }
+
+    @Test
+    public void testRemove() {
+        Cache<String, String> cache = new CacheSimple<>(10);
+        assertEquals(0, cache.size());
+
+        {
+            final var key = "key0";
+            final var value = "value0";
+
+            //trying to remove non-existing key
+            cache.remove(key);
+            assertEquals(0, cache.size());
+            assertFalse(cache.containsKey(key));
+            assertNull(value, cache.getIfPresent(key));
+
+            cache.put(key, value);
+
+            assertTrue(cache.containsKey(key));
+            assertEquals(value, cache.getIfPresent(key));
+            assertEquals(1, cache.size());
+
+            //removing entry by writing null value
+            cache.remove(key);
+
+            assertEquals(0, cache.size());
+            assertFalse(cache.containsKey(key));
+            assertNull(value, cache.getIfPresent(key));
+        }
+    }
+
+    @Test
     public void testKeyEquality() {
         CompoundKey key1 = new CompoundKey(1, 1);
         CompoundKey key2 = new CompoundKey(1, 1);
@@ -82,7 +210,89 @@ public class TestCacheSimple {
         assertTrue("Equal key, expected to be found", cache.containsKey(key2));
     }
 
-    // Compound key for tests. 
+    @Test
+    public void testGet() {
+        Cache<String, String> cache = new CacheSimple<>(10);
+        assertEquals(0, cache.size());
+
+        {
+            final var key = "key0";
+            final var value = "value0";
+
+            assertFalse(cache.containsKey(key));
+            assertNull(cache.getIfPresent(key));
+
+            assertEquals(value, cache.get(key, k -> value));
+
+            assertTrue(cache.containsKey(key));
+            assertEquals(value, cache.getIfPresent(key));
+            assertEquals(1, cache.size());
+        }
+
+        {
+            final var key = "key1";
+            final var value = "value1";
+
+            assertFalse(cache.containsKey(key));
+            assertNull(cache.getIfPresent(key));
+
+            cache.put(key, value);
+            //get with same value
+            assertEquals(value, cache.get(key, k -> value));
+
+            assertTrue(cache.containsKey(key));
+            assertEquals(value, cache.getIfPresent(key));
+            assertEquals(2, cache.size());
+        }
+
+        {
+            final var key = "key2";
+            final var value = "value2";
+            final var differentValue = "differentValue2";
+
+            assertFalse(cache.containsKey(key));
+            assertNull(cache.getIfPresent(key));
+
+            cache.put(key, value);
+            //get with different value should not override existing value
+            assertEquals(value, cache.get(key, k -> differentValue));
+
+            assertTrue(cache.containsKey(key));
+            assertEquals(value, cache.getIfPresent(key));
+            assertEquals(3, cache.size());
+        }
+
+        {
+            final var key = "key3";
+            final var value = "value3";
+            assertFalse(cache.containsKey(key));
+            assertNull(cache.getIfPresent(key));
+
+            cache.put(key, value);
+
+            assertEquals(4, cache.size());
+            //returning null should not change anyting
+            assertEquals(value, cache.get(key, k -> null));
+            assertEquals(4, cache.size());
+
+            assertTrue(cache.containsKey(key));
+            assertEquals(value, cache.getIfPresent(key));
+        }
+
+        {
+            final var key = "key4";
+
+            assertFalse(cache.containsKey(key));
+            assertNull(cache.getIfPresent(key));
+            assertEquals(4, cache.size());
+            assertNull(cache.get(key, k -> null));
+            assertEquals(4, cache.size());
+            assertFalse(cache.containsKey(key));
+            assertNull(cache.getIfPresent(key));
+        }
+    }
+
+    // Compound key for tests.
     private static final class CompoundKey {
         private final int a;
         private final int b;

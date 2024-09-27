@@ -56,15 +56,15 @@ public class TestXMLParser {
     })
     public String param0_GraphUri;
     @Param({
-//            "RRX.RDFXML_SAX",
+            "RRX.RDFXML_SAX",
 //            "RRX.RDFXML_StAX_ev",
-//            "RRX.RDFXML_StAX_sr",
+            "RRX.RDFXML_StAX_sr",
 
 //            "RRX.RDFXML_StAX2_ev",
             "RRX.RDFXML_StAX2_sr",
 
 //            "RRX.RDFXML_StAX2_ev_aalto",
-//            "RRX.RDFXML_StAX2_sr_aalto",
+            "RRX.RDFXML_StAX2_sr_aalto",
 
 //            "RRX.RDFXML_ARP0",
 //            "RRX.RDFXML_ARP1"

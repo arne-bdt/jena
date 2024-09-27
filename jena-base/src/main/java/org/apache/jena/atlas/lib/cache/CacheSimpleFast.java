@@ -31,6 +31,7 @@ import static java.util.Arrays.asList;
 /**
  * A simple fixed size cache that uses the hash code to address a slot.
  * The clash policy is to overwrite.
+ * The size is always a power of two, to be able to use optimized bit-operations.
  * <p>
  * The cache has very low overhead - there is no object creation during lookup or insert.
  * <p>
@@ -45,6 +46,16 @@ public class CacheSimpleFast<K, V> implements Cache<K, V> {
 
     private int currentSize = 0;
 
+    public int getAllocatedSize() {
+        return keys.length;
+    }
+
+    /**
+     * Constructs a fixes size cache.
+     * @param miniumSize If the size is aleady a powe of two it will be used as fixed size for the cache,
+     *                   otherwise the next larger power of two will be used.
+     *                   (e.g. minimumSize = 10 results in 16 as fixed size for the cache)
+     */
     public CacheSimpleFast(int miniumSize) {
         var size = Integer.highestOneBit(miniumSize);
         if (size < miniumSize){
@@ -52,10 +63,10 @@ public class CacheSimpleFast<K, V> implements Cache<K, V> {
         }
         this.sizeMinusOne = size-1;
         @SuppressWarnings("unchecked")
-        K[] x = (K[]) new Object[size];
+        final K[] x = (K[]) new Object[size];
         keys = x;
         @SuppressWarnings("unchecked")
-        V[] z =  (V[]) new Object[size];
+        final V[] z =  (V[]) new Object[size];
         this.values = z;
     }
 
@@ -65,13 +76,16 @@ public class CacheSimpleFast<K, V> implements Cache<K, V> {
 
     @Override
     public boolean containsKey(K k) {
-        return k.equals(keys[calcIndex(k)]);
+        final var index = calcIndex(k);
+        final var existingKey = keys[index];
+        return existingKey != null && existingKey.equals(k);
     }
 
     @Override
     public V getIfPresent(K k) {
         final int idx = calcIndex(k);
-        if (k.equals(keys[idx])) {
+        final var existingKey = keys[idx];
+        if (existingKey != null && existingKey.equals(k)) {
             return values[idx];
         }
         return null;
@@ -80,36 +94,51 @@ public class CacheSimpleFast<K, V> implements Cache<K, V> {
     @Override
     public V get(K k, Function<K, V> callable) {
         final int idx = calcIndex(k);
-        if(!k.equals(keys[idx])) {
-            if(keys[idx] == null) {
-                currentSize++;
+        final var existingKey = keys[idx];
+        if(existingKey != null && existingKey.equals(k)) {
+            return values[idx];
+        } else {
+            final var value = callable.apply(k);
+            if(value != null) {
+                values[idx] = value;
+                if(existingKey == null) {
+                    currentSize++;
+                }
+                keys[idx] = k;
             }
-            keys[idx] = k;
-            values[idx] = callable.apply(k);
+            return value;
         }
-        return values[idx];
     }
 
     @Override
     public void put(K k, V thing) {
         final int idx = calcIndex(k);
-        if(thing != null) {
-            if(keys[idx] == null) {
-                currentSize++;
+        final var existingKey = keys[idx];
+        final var existingValue = values[idx];
+        if(thing == null) {
+            if (existingKey != null) {
+                keys[idx] = null;
+                values[idx] = null;
+                currentSize--;
             }
-            keys[idx] = k;
-            values[idx] = thing;
-        } else if (keys[idx] != null) {
-            keys[idx] = null;
-            values[idx] = null;
-            currentSize--;
+        } else {
+            if(!thing.equals(existingValue)) {
+                values[idx] = thing;
+            }
+            if(existingKey == null) {
+                currentSize++;
+                keys[idx] = k;
+            } else if (!existingKey.equals(k)) {
+                keys[idx] = k;
+            }
         }
     }
 
     @Override
     public void remove(K k) {
         final int idx = calcIndex(k);
-        if (k.equals(keys[idx])) {
+        final var existingKey = keys[idx];
+        if (existingKey != null && existingKey.equals(k)) {
             keys[idx] = null;
             values[idx] = null;
             currentSize--;

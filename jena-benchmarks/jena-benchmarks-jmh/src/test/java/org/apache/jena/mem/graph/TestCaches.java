@@ -18,19 +18,24 @@
 
 package org.apache.jena.mem.graph;
 
+import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.jena.atlas.lib.Cache;
 import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.atlas.lib.cache.CacheSimpleFastConcurrent;
+import org.apache.jena.cimxml.schema.BaseURI;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.jmh.helper.TestFileInventory;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
-import org.apache.jena.mem.graph.helper.TripleReaderReadingCGMES_2_4_15_WithTypedLiterals;
-import org.apache.jena.mem2.GraphMem2Fast;
+import org.apache.jena.mem2.GraphMem2Roaring;
+import org.apache.jena.riot.RDFParser;
+import org.apache.jena.riot.lang.rdfxml.RRX;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
+
+import java.nio.file.StandardOpenOption;
 
 @State(Scope.Benchmark)
 public class TestCaches {
@@ -43,14 +48,15 @@ public class TestCaches {
 //            TestFileInventory.XML_XXX_CGMES_SSH,
 //            TestFileInventory.XML_XXX_CGMES_TP,
 
-            TestFileInventory.XML_REAL_GRID_V2_EQ,
-            TestFileInventory.XML_REAL_GRID_V2_SSH,
-            TestFileInventory.XML_REAL_GRID_V2_SV,
-            TestFileInventory.XML_REAL_GRID_V2_TP,
+//            TestFileInventory.XML_REAL_GRID_V2_EQ,
+//            TestFileInventory.XML_REAL_GRID_V2_SSH,
+//            TestFileInventory.XML_REAL_GRID_V2_SV,
+//            TestFileInventory.XML_REAL_GRID_V2_TP,
 
-            TestFileInventory.NT_GZ_BSBM_1M,
+//            TestFileInventory.NT_GZ_BSBM_1M,
 //            TestFileInventory.NT_GZ_BSBM_5M,
 //            TestFileInventory.NT_GZ_BSBM_25M,
+            TestFileInventory.RDF_CITATIONS,
     })
     public String param0_GraphUri;
 
@@ -90,7 +96,7 @@ public class TestCaches {
     }
 
     @Benchmark
-    public int updateFilledCache() {
+    public int getFromFilledCache() {
         final int[] hash = {0};
         graph.find().forEachRemaining(t -> {
             if(t.getSubject().isURI()) {
@@ -113,9 +119,41 @@ public class TestCaches {
     }
 
     @Benchmark
+    public int getIfPresentFromFilledCache() {
+        final int[] hash = {0};
+        graph.find().forEachRemaining(t -> {
+            if(t.getSubject().isURI()) {
+                final var value = cache.getIfPresent(t.getSubject().getURI());
+                if(value != null)
+                    hash[0] += value.getURI().hashCode();
+
+            }
+            if(t.getPredicate().isURI()) {
+                final var value = cache.getIfPresent(t.getPredicate().getURI());
+                if(value != null)
+                    hash[0] += value.getURI().hashCode();
+            }
+            if(t.getObject().isURI()) {
+                final var value = cache.getIfPresent(t.getObject().getURI());
+                if(value != null)
+                    hash[0] += value.getURI().hashCode();
+            }
+        });
+        return hash[0];
+    }
+
+
+    @Benchmark
     public Cache<String, Node> createAndFillCacheByGet() {
         var c = createCache(param1_Cache);
         fillCacheByGet(c, graph);
+        return c;
+    }
+
+    @Benchmark
+    public Cache<String, Node> createAndFillCacheByPut() {
+        var c = createCache(param1_Cache);
+        fillCacheByPut(c, graph);
         return c;
     }
 
@@ -129,6 +167,20 @@ public class TestCaches {
             }
             if(t.getObject().isURI()) {
                 cacheToFill.get(t.getObject().getURI(), s -> t.getObject());
+            }
+        });
+    }
+
+    private static void fillCacheByPut(Cache<String, Node> cacheToFill, Graph g) {
+        g.find().forEachRemaining(t -> {
+            if(t.getSubject().isURI()) {
+                cacheToFill.put(t.getSubject().getURI(), t.getSubject());
+            }
+            if(t.getPredicate().isURI()) {
+                cacheToFill.put(t.getPredicate().getURI(), t.getPredicate());
+            }
+            if(t.getObject().isURI()) {
+                cacheToFill.put(t.getObject().getURI(), t.getObject());
             }
         });
     }
@@ -176,8 +228,18 @@ public class TestCaches {
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {
-        this.graph = new GraphMem2Fast();
-        TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read(TestFileInventory.getFilePath(param0_GraphUri), this.graph);
+        this.graph = new GraphMem2Roaring();
+        try(final var is = new BufferedFileChannelInputStream.Builder()
+                .setFile(TestFileInventory.getFilePath(this.param0_GraphUri))
+                .setOpenOptions(StandardOpenOption.READ)
+                .setBufferSize(64*4096)
+                .get()) {
+            RDFParser.source(is)
+                    .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
+                    .forceLang(RRX.RDFXML_StAX2_sr_aalto)
+                    .checking(false)
+                    .parse(this.graph);
+        }
         this.cache = createCache(param1_Cache);
     }
 
