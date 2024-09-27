@@ -19,7 +19,7 @@
 package org.apache.jena.riot.lang.rdfxml.rrx;
 
 import org.apache.jena.riot.ReaderRIOTFactory;
-import org.apache.jena.riot.lang.rdfxml.stax2.woodstox.ReaderRDFXML_StAX2_EV;
+import org.apache.jena.riot.lang.rdfxml.rrx_stax_sr.ReaderRDFXML_StAX_SR_woodstox;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -31,12 +31,11 @@ import java.util.List;
  * Test for an error if ARP generates an error.
  * These test assume that ARP is correct!
  */
-
 @RunWith(Parameterized.class)
-public class Test_RRX_W3C_StAX2ev extends AbstractTestRDFXML_RRX {
+public class Test_RRX_W3C_StAXsr_woodstox extends AbstractTestRDFXML_RRX {
 
-    private static ReaderRIOTFactory rdfxmlStAXevFactory = ReaderRDFXML_StAX2_EV.factory;
-    private static String implLabel = "StAX2(ev)";
+    private static ReaderRIOTFactory rdfxmlStAXsrFactory = ReaderRDFXML_StAX_SR_woodstox.factory;
+    private static String implLabel = "StAX2(sr)";
 
     @Parameters(name = "{index}: {0} {1}")
     public static Iterable<Object[]> data() {
@@ -44,8 +43,7 @@ public class Test_RRX_W3C_StAX2ev extends AbstractTestRDFXML_RRX {
         return RunTestRDFXML.makeTestSetup(testfiles, implLabel);
     }
 
-    public Test_RRX_W3C_StAX2ev(String label, String filename) {
-        super(label, rdfxmlStAXevFactory, implLabel, filename);
+    public Test_RRX_W3C_StAXsr_woodstox(String label, String filename) {
+        super(label, rdfxmlStAXsrFactory, implLabel, filename);
     }
 }
-

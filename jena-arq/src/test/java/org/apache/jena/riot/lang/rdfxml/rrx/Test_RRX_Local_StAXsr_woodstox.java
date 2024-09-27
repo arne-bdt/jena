@@ -19,7 +19,7 @@
 package org.apache.jena.riot.lang.rdfxml.rrx;
 
 import org.apache.jena.riot.ReaderRIOTFactory;
-import org.apache.jena.riot.lang.rdfxml.stax2.woodstox.ReaderRDFXML_StAX2_SR;
+import org.apache.jena.riot.lang.rdfxml.rrx_stax_sr.ReaderRDFXML_StAX_SR_woodstox;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -27,23 +27,24 @@ import org.junit.runners.Parameterized.Parameters;
 import java.util.List;
 
 /**
- * Run over all files found by a deep walk of the directory tree.
- * Test for an error if ARP generates an error.
+ * Local basic testing to make sure the general parsing is OK in addition to running the W3C Test Suite.
+ *
  * These test assume that ARP is correct!
  */
-@RunWith(Parameterized.class)
-public class Test_RRX_W3C_StAX2sr extends AbstractTestRDFXML_RRX {
 
-    private static ReaderRIOTFactory rdfxmlStAXsrFactory = ReaderRDFXML_StAX2_SR.factory;
+@RunWith(Parameterized.class)
+public class Test_RRX_Local_StAXsr_woodstox extends AbstractTestRDFXML_RRX {
+
+    private static ReaderRIOTFactory rdfxmlStAXsrFactory = ReaderRDFXML_StAX_SR_woodstox.factory;
     private static String implLabel = "StAX2(sr)";
 
     @Parameters(name = "{index}: {0} {1}")
     public static Iterable<Object[]> data() {
-        List<String> testfiles = RunTestRDFXML.w3cTestFiles();
+        List<String> testfiles = RunTestRDFXML.localTestFiles();
         return RunTestRDFXML.makeTestSetup(testfiles, implLabel);
     }
 
-    public Test_RRX_W3C_StAX2sr(String label, String filename) {
+    public Test_RRX_Local_StAXsr_woodstox(String label, String filename) {
         super(label, rdfxmlStAXsrFactory, implLabel, filename);
     }
 }

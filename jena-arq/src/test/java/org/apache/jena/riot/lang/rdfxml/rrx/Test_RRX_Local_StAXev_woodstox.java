@@ -19,7 +19,7 @@
 package org.apache.jena.riot.lang.rdfxml.rrx;
 
 import org.apache.jena.riot.ReaderRIOTFactory;
-import org.apache.jena.riot.lang.rdfxml.stax2.woodstox.ReaderRDFXML_StAX2_EV;
+import org.apache.jena.riot.lang.rdfxml.rrx_stax_ev.ReaderRDFXML_StAX_EV_woodstox;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -33,9 +33,9 @@ import java.util.List;
  */
 
 @RunWith(Parameterized.class)
-public class Test_RRX_Local_StAX2ev extends AbstractTestRDFXML_RRX {
+public class Test_RRX_Local_StAXev_woodstox extends AbstractTestRDFXML_RRX {
 
-    private static ReaderRIOTFactory rdfxmlStAXevFactory = ReaderRDFXML_StAX2_EV.factory;
+    private static ReaderRIOTFactory rdfxmlStAXevFactory = ReaderRDFXML_StAX_EV_woodstox.factory;
     private static String implLabel = "StAX2(ev)";
 
     @Parameters(name = "{index}: {0} {1}")
@@ -44,7 +44,7 @@ public class Test_RRX_Local_StAX2ev extends AbstractTestRDFXML_RRX {
         return RunTestRDFXML.makeTestSetup(testfiles, implLabel);
     }
 
-    public Test_RRX_Local_StAX2ev(String label, String filename) {
+    public Test_RRX_Local_StAXev_woodstox(String label, String filename) {
         super(label, rdfxmlStAXevFactory, implLabel, filename);
     }
 }

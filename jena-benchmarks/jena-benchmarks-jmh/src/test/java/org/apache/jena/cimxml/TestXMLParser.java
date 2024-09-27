@@ -50,24 +50,24 @@ public class TestXMLParser {
             TestFileInventory.XML_REAL_GRID_V2_SV,
             TestFileInventory.XML_REAL_GRID_V2_TP,
 
-            TestFileInventory.XML_BSBM_5M,
+//            TestFileInventory.XML_BSBM_5M,
 //            TestFileInventory.XML_BSBM_25M,
-            TestFileInventory.RDF_CITATIONS,
+//            TestFileInventory.RDF_CITATIONS,
     })
     public String param0_GraphUri;
     @Param({
-//            "RRX.RDFXML_SAX",
+            "RRX.RDFXML_SAX",
             "RRX.RDFXML_StAX_ev",
             "RRX.RDFXML_StAX_sr",
 
-//            "RRX.RDFXML_StAX2_ev",
-//            "RRX.RDFXML_StAX2_sr",
+            "RRX.RDFXML_StAX_ev_woodstox",
+            "RRX.RDFXML_StAX_sr_woodstrox",
 
 //            "RRX.RDFXML_StAX2_ev_aalto",
             "RRX.RDFXML_StAX2_sr_aalto",
 
 //            "RRX.RDFXML_ARP0",
-//            "RRX.RDFXML_ARP1"
+            "RRX.RDFXML_ARP1"
     })
     public String param1_ParserLang;
 
@@ -89,10 +89,10 @@ public class TestXMLParser {
             case "RRX.RDFXML_StAX_sr":
                 return RRX.RDFXML_StAX_sr;
 
-            case "RRX.RDFXML_StAX2_ev":
-                return RRX.RDFXML_StAX2_ev;
-            case "RRX.RDFXML_StAX2_sr":
-                return RRX.RDFXML_StAX2_sr;
+            case "RRX.RDFXML_StAX_ev_woodstox":
+                return RRX.RDFXML_StAX_ev_woodstox;
+            case "RRX.RDFXML_StAX_sr_woodstrox":
+                return RRX.RDFXML_StAX_sr_woodstrox;
 
             case "RRX.RDFXML_StAX2_ev_aalto":
                 return RRX.RDFXML_StAX2_ev_aalto;
@@ -148,8 +148,8 @@ public class TestXMLParser {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-                .warmupIterations(3)
-                .measurementIterations(3)
+//                .warmupIterations(3)
+//                .measurementIterations(3)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

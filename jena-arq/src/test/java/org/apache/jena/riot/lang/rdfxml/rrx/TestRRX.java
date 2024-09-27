@@ -64,8 +64,8 @@ public class TestRRX {
         x.add(new Object[] {"SAX", RRX.RDFXML_SAX});
         x.add(new Object[] {"StAXsr", RRX.RDFXML_StAX_sr});
         x.add(new Object[] {"StAXev", RRX.RDFXML_StAX_ev});
-        x.add(new Object[] {"StAX2sr", RRX.RDFXML_StAX2_sr});
-        x.add(new Object[] {"StAX2ev", RRX.RDFXML_StAX2_ev});
+        x.add(new Object[] {"StAXsr_woodstox", RRX.RDFXML_StAX_sr_woodstrox});
+        x.add(new Object[] {"StAXev_woodstox", RRX.RDFXML_StAX_ev_woodstox});
         x.add(new Object[] {"StAX2sr_aalto", RRX.RDFXML_StAX2_sr_aalto});
         x.add(new Object[] {"StAX2ev_aalto", RRX.RDFXML_StAX2_ev_aalto});
         return x;

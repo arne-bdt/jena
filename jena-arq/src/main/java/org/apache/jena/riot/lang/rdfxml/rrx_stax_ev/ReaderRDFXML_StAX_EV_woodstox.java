@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.rdfxml.stax2.woodstox;
+package org.apache.jena.riot.lang.rdfxml.rrx_stax_ev;
 
 import org.apache.jena.atlas.web.ContentType;
 import org.apache.jena.riot.Lang;
@@ -41,20 +41,20 @@ import java.io.Reader;
  *
  * @see <a href="https://www.w3.org/TR/rdf-xml/">https://www.w3.org/TR/rdf-xml/</a>
  */
-public class ReaderRDFXML_StAX2_EV implements ReaderRIOT
+public class ReaderRDFXML_StAX_EV_woodstox implements ReaderRIOT
 {
     private static final XMLInputFactory2 xmlInputFactory = SysRRX.initAndConfigure(new com.ctc.wstx.stax.WstxInputFactory());
 
     public static ReaderRIOTFactory factory = (Lang language, ParserProfile parserProfile) -> {
         xmlInputFactory.configureForSpeed();
-        return new ReaderRDFXML_StAX2_EV(parserProfile);
+        return new ReaderRDFXML_StAX_EV_woodstox(parserProfile);
     };
 
     private final ParserProfile parserProfile;
 
     public static boolean TRACE = false;
 
-    public ReaderRDFXML_StAX2_EV(ParserProfile parserProfile) {
+    public ReaderRDFXML_StAX_EV_woodstox(ParserProfile parserProfile) {
         this.parserProfile = parserProfile;
     }
 
@@ -79,7 +79,7 @@ public class ReaderRDFXML_StAX2_EV implements ReaderRIOT
     }
 
     private void parse(XMLEventReader xmlEventReader, String xmlBase, ContentType ct, StreamRDF destination, Context context) {
-        ParserRRX_StAX2_EV parser = new ParserRRX_StAX2_EV(xmlEventReader, xmlBase, parserProfile, destination, context);
+        ParserRRX_StAX_EV parser = new ParserRRX_StAX_EV(xmlEventReader, xmlBase, parserProfile, destination, context);
         destination.start();
         try {
             parser.parse();
