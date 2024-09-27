@@ -19,7 +19,6 @@
 package org.apache.jena.riot.lang.rdfxml;
 
 import org.apache.jena.util.JenaXMLInput;
-import org.codehaus.stax2.XMLInputFactory2;
 
 import javax.xml.stream.XMLInputFactory;
 
@@ -30,34 +29,26 @@ import javax.xml.stream.XMLInputFactory;
  */
 public class SysRRX {
 
+    /**
+     * Creates and initializes a javax.xml.stream.XMLInputFactory#newDefaultFactory().
+     * @return
+     */
     public static XMLInputFactory createXMLInputFactory() {
-        XMLInputFactory xmlInputFactory = XMLInputFactory.newDefaultFactory();
-        JenaXMLInput.initXMLInputFactory(xmlInputFactory);
+        return initAndConfigure(XMLInputFactory.newDefaultFactory());
+    }
+
+    /**
+     * Configures the parser to be safe and sets necessary properties.
+     * This method should be called when another factory than javax.xml.stream.XMLInputFactory#newDefaultFactory()
+     * shall be used.
+     * @param xmlInputFactory
+     */
+    public static <E extends XMLInputFactory> E initAndConfigure(final E xmlInputFactory) {
+         JenaXMLInput.initXMLInputFactory(xmlInputFactory);
         // Additional features. Enable character entity support.
         xmlInputFactory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.TRUE);
         xmlInputFactory.setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, Boolean.TRUE);
         xmlInputFactory.setProperty(XMLInputFactory.IS_COALESCING, Boolean.FALSE);
         return xmlInputFactory;
     }
-
-    public static XMLInputFactory2 createXMLInputFactory2Woodstox() {
-        final XMLInputFactory2 xmlInputFactory = new com.ctc.wstx.stax.WstxInputFactory();
-        JenaXMLInput.initXMLInputFactory(xmlInputFactory);
-        // Additional features. Enable character entity support.
-        xmlInputFactory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.TRUE);
-        xmlInputFactory.setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, Boolean.TRUE);
-        xmlInputFactory.setProperty(XMLInputFactory.IS_COALESCING, Boolean.FALSE);
-        return xmlInputFactory;
-    }
-
-    public static XMLInputFactory2 createXMLInputFactoryAsyncAalto() {
-        final XMLInputFactory2 xmlInputFactory = new com.fasterxml.aalto.stax.InputFactoryImpl();
-        JenaXMLInput.initXMLInputFactory(xmlInputFactory);
-        // Additional features. Enable character entity support.
-        xmlInputFactory.setProperty(XMLInputFactory.SUPPORT_DTD, Boolean.TRUE);
-        xmlInputFactory.setProperty(XMLInputFactory.IS_REPLACING_ENTITY_REFERENCES, Boolean.TRUE);
-        xmlInputFactory.setProperty(XMLInputFactory.IS_COALESCING, Boolean.FALSE);
-        return xmlInputFactory;
-    }
-
 }

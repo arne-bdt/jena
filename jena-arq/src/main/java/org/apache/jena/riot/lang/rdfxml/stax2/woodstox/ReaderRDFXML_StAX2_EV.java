@@ -43,7 +43,7 @@ import java.io.Reader;
  */
 public class ReaderRDFXML_StAX2_EV implements ReaderRIOT
 {
-    private static final XMLInputFactory2 xmlInputFactory = SysRRX.createXMLInputFactory2Woodstox();
+    private static final XMLInputFactory2 xmlInputFactory = SysRRX.initAndConfigure(new com.ctc.wstx.stax.WstxInputFactory());
 
     public static ReaderRIOTFactory factory = (Lang language, ParserProfile parserProfile) -> {
         xmlInputFactory.configureForSpeed();

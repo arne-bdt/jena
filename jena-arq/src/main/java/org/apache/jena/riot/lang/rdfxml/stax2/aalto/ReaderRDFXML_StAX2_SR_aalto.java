@@ -43,7 +43,7 @@ import java.io.Reader;
  */
 public class ReaderRDFXML_StAX2_SR_aalto implements ReaderRIOT
 {
-    private static final XMLInputFactory2 xmlInputFactory = SysRRX.createXMLInputFactoryAsyncAalto();
+    private static final XMLInputFactory2 xmlInputFactory = SysRRX.initAndConfigure(new com.fasterxml.aalto.stax.InputFactoryImpl());
 
     public static ReaderRIOTFactory factory = (Lang language, ParserProfile parserProfile) -> {
         xmlInputFactory.configureForSpeed();
