@@ -52,7 +52,7 @@ public class CacheSimpleFast<K, V> implements Cache<K, V> {
 
     /**
      * Constructs a fixes size cache.
-     * @param miniumSize If the size is aleady a powe of two it will be used as fixed size for the cache,
+     * @param miniumSize If the size is already a power of two it will be used as fixed size for the cache,
      *                   otherwise the next larger power of two will be used.
      *                   (e.g. minimumSize = 10 results in 16 as fixed size for the cache)
      */
