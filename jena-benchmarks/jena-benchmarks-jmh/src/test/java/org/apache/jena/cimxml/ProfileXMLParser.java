@@ -23,7 +23,7 @@ import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.cimxml.schema.BaseURI;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.jmh.helper.TestFileInventory;
-import org.apache.jena.mem2.GraphMem2Roaring;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.RDFParser;
@@ -44,9 +44,9 @@ public class ProfileXMLParser {
     @Test
     public void parseXML() throws Exception {
         var stopWatch = StopWatch.createStarted();
-        var sink = new GraphMem2Roaring();
+        var sink = new GraphMem2Fast();
         try(final var is = new BufferedFileChannelInputStream.Builder()
-                .setFile(TestFileInventory.getFilePath(TestFileInventory.RDF_CITATIONS))
+                .setFile(TestFileInventory.getFilePath(TestFileInventory.XML_REAL_GRID_V2_EQ))
                 .setOpenOptions(StandardOpenOption.READ)
                 .setBufferSize(64*4096)
                 .get()) {
@@ -104,7 +104,7 @@ public class ProfileXMLParser {
     }
 
     private static Graph read(String inventoryFile, Lang lang) throws Exception {
-        var graph = new GraphMem2Roaring();
+        var graph = new GraphMem2Fast();
         try(final var is = new BufferedFileChannelInputStream.Builder()
                 .setFile(TestFileInventory.getFilePath(inventoryFile))
                 .setOpenOptions(StandardOpenOption.READ)

@@ -18,27 +18,12 @@
 
 package org.apache.jena.riot;
 
-import static org.apache.jena.riot.RDFLanguages.NQUADS;
-import static org.apache.jena.riot.RDFLanguages.NTRIPLES;
-import static org.apache.jena.riot.RDFLanguages.RDFJSON;
-import static org.apache.jena.riot.RDFLanguages.sameLang;
-
-import java.io.*;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-
 import org.apache.jena.atlas.io.IO;
 import org.apache.jena.atlas.lib.InternalErrorException;
 import org.apache.jena.atlas.web.ContentType;
 import org.apache.jena.atlas.web.TypedInputStream;
 import org.apache.jena.graph.Graph;
+import org.apache.jena.http.HttpEnv;
 import org.apache.jena.http.HttpLib;
 import org.apache.jena.irix.IRIs;
 import org.apache.jena.irix.IRIxResolver;
@@ -55,6 +40,18 @@ import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
 import org.apache.jena.sparql.graph.GraphFactory;
 import org.apache.jena.sparql.util.Context;
+
+import java.io.*;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+
+import static org.apache.jena.riot.RDFLanguages.*;
 
 /**
  * An {@link RDFParser} is a process that will generate triples and quads;
@@ -95,7 +92,6 @@ public class RDFParser {
     // Accept choice by the application
     private final String              appAcceptHeader;
     private final Map<String, String> httpHeaders;
-    private final HttpClient          httpClient;
     private final Lang                hintLang;
     private final Lang                forceLang;
     private final String              baseURI;
@@ -199,7 +195,7 @@ public class RDFParser {
     /* package */ RDFParser(String uri, Path path, String content, InputStream inputStream, Reader javaReader,
                             StreamManager streamManager,
                             String appAcceptHeader, Map<String, String> httpHeaders,
-                            HttpClient httpClient, Lang hintLang, Lang forceLang,
+                            Lang hintLang, Lang forceLang,
                             String parserBaseURI, boolean strict, Optional<Boolean> checking,
                             boolean canonicalLexicalValues, LangTagForm langTagForm,
                             boolean resolveURIs, IRIxResolver resolver, PrefixMap prefixMap,
@@ -221,7 +217,6 @@ public class RDFParser {
         this.streamManager = streamManager;
         this.appAcceptHeader = appAcceptHeader;
         this.httpHeaders = httpHeaders;
-        this.httpClient = httpClient;
         this.hintLang = hintLang;
         this.forceLang = forceLang;
         this.baseURI = parserBaseURI;
@@ -484,7 +479,7 @@ public class RDFParser {
                     httpHeaders.forEach(b::header);
                 b.setHeader(HttpNames.hAccept, acceptHeader);
             });
-            HttpResponse<InputStream> response = HttpLib.execute(httpClient, request);
+            HttpResponse<InputStream> response = HttpLib.execute(HttpEnv.getDftHttpClient(), request);
             in = HttpLib.handleResponseTypedInputStream(response);
         } else {
             // Already mapped.

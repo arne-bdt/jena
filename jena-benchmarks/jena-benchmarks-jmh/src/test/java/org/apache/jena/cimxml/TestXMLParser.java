@@ -23,16 +23,13 @@ import org.apache.jena.cimxml.schema.BaseURI;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.jmh.helper.TestFileInventory;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
+import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.lang.rdfxml.RRX;
-import org.apache.jena.sparql.graph.GraphFactory;
 import org.junit.Assert;
 import org.junit.Test;
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Param;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
 import java.nio.file.StandardOpenOption;
@@ -41,14 +38,14 @@ import java.nio.file.StandardOpenOption;
 public class TestXMLParser {
 
     @Param({
-            TestFileInventory.XML_XXX_CGMES_EQ,
-            TestFileInventory.XML_XXX_CGMES_SSH,
-            TestFileInventory.XML_XXX_CGMES_TP,
+//            TestFileInventory.XML_XXX_CGMES_EQ,
+//            TestFileInventory.XML_XXX_CGMES_SSH,
+//            TestFileInventory.XML_XXX_CGMES_TP,
 
             TestFileInventory.XML_REAL_GRID_V2_EQ,
             TestFileInventory.XML_REAL_GRID_V2_SSH,
-            TestFileInventory.XML_REAL_GRID_V2_SV,
-            TestFileInventory.XML_REAL_GRID_V2_TP,
+//            TestFileInventory.XML_REAL_GRID_V2_SV,
+//            TestFileInventory.XML_REAL_GRID_V2_TP,
 
 //            TestFileInventory.XML_BSBM_5M,
 //            TestFileInventory.XML_BSBM_25M,
@@ -60,11 +57,11 @@ public class TestXMLParser {
             "RRX.RDFXML_StAX_ev",
             "RRX.RDFXML_StAX_sr",
 
-            "RRX.RDFXML_StAX_ev_woodstox",
-            "RRX.RDFXML_StAX_sr_woodstrox",
+//            "RRX.RDFXML_StAX_ev_woodstox",
+//            "RRX.RDFXML_StAX_sr_woodstox",
 
 //            "RRX.RDFXML_StAX2_ev_aalto",
-            "RRX.RDFXML_StAX2_sr_aalto",
+//            "RRX.RDFXML_StAX2_sr_aalto",
 
 //            "RRX.RDFXML_ARP0",
             "RRX.RDFXML_ARP1"
@@ -91,8 +88,8 @@ public class TestXMLParser {
 
             case "RRX.RDFXML_StAX_ev_woodstox":
                 return RRX.RDFXML_StAX_ev_woodstox;
-            case "RRX.RDFXML_StAX_sr_woodstrox":
-                return RRX.RDFXML_StAX_sr_woodstrox;
+            case "RRX.RDFXML_StAX_sr_woodstox":
+                return RRX.RDFXML_StAX_sr_woodstox;
 
             case "RRX.RDFXML_StAX2_ev_aalto":
                 return RRX.RDFXML_StAX2_ev_aalto;
@@ -103,6 +100,25 @@ public class TestXMLParser {
                 return RRX.RDFXML_ARP0;
             case "RRX.RDFXML_ARP1":
                 return RRX.RDFXML_ARP1;
+
+            default:
+                throw new IllegalArgumentException("Unknown lang: " + langName);
+        }
+    }
+
+    private static org.apache.shadedJena510.riot.Lang getLangJena510(String langName) {
+        switch (langName) {
+            case "RRX.RDFXML_SAX":
+                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_SAX;
+            case "RRX.RDFXML_StAX_ev":
+                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_StAX_ev;
+            case "RRX.RDFXML_StAX_sr":
+                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_StAX_sr;
+
+            case "RRX.RDFXML_ARP0":
+                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_ARP0;
+            case "RRX.RDFXML_ARP1":
+                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_ARP1;
 
             default:
                 throw new IllegalArgumentException("Unknown lang: " + langName);
@@ -125,9 +141,9 @@ public class TestXMLParser {
 //    }
 
     @Benchmark
-    public Graph parseXMLUsingBufferedInputStream() throws Exception {
+    public Graph parseXML() throws Exception {
 //        final var stopWatch = StopWatch.createStarted();
-        final var sink = GraphFactory.createGraphMem();
+        final var sink = new GraphMem2Fast();
         try(final var is = new BufferedFileChannelInputStream.Builder()
                 .setFile(TestFileInventory.getFilePath(this.param0_GraphUri))
                 .setOpenOptions(StandardOpenOption.READ)
@@ -145,10 +161,43 @@ public class TestXMLParser {
         return sink;
     }
 
+    @Benchmark
+    public org.apache.shadedJena510.graph.Graph parseXMLJena510() throws Exception {
+//        final var stopWatch = StopWatch.createStarted();
+        final var sink = new org.apache.shadedJena510.mem2.GraphMem2Fast();
+        try(final var is = new BufferedFileChannelInputStream.Builder()
+                .setFile(TestFileInventory.getFilePath(this.param0_GraphUri))
+                .setOpenOptions(StandardOpenOption.READ)
+                .setBufferSize(64*4096)
+                .get()) {
+            org.apache.shadedJena510.riot.RDFParser.source(is)
+                    .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
+                    .forceLang(getLangJena510(this.param1_ParserLang))
+                    .checking(false)
+                    .parse(sink);
+        }
+//        stopWatch.stop();
+//        System.out.println("Triples in graph: " + sink.size());
+//        System.out.println(stopWatch);
+        return sink;
+    }
+
+//    @Test
+//    public void testParseXMLJena510() throws Exception {
+//        var factory = org.apache.shadedJena510.riot.lang.rdfxml.SysRRX.createXMLInputFactory();
+//        var name = factory.getClass().getName();
+//        int i = 0;
+//    }
+
+    @Setup(Level.Trial)
+    public void setup() {
+        org.apache.shadedJena510.riot.lang.rdfxml.RRX.register();
+    }
+
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-//                .warmupIterations(3)
+//                .warmupIterations(2)
 //                .measurementIterations(3)
                 .build();
         var results = new Runner(opt).run();

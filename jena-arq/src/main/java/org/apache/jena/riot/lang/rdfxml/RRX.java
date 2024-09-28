@@ -58,7 +58,7 @@ public class RRX {
             .build();
 
     /** <a href="http://www.w3.org/TR/rdf-xml/">RDF/XML</a> implemented by RRX-StAX2sr using woodstox */
-    public static final Lang RDFXML_StAX_sr_woodstrox = LangBuilder.create("RDFXML-StAX-SR_woodstox", "application/rdf+stax-sr_woodstox")
+    public static final Lang RDFXML_StAX_sr_woodstox = LangBuilder.create("RDFXML-StAX-SR_woodstox", "application/rdf+stax-sr_woodstox")
             .addAltNames("RRX-StAX-sr_woodstox", "rrxstaxsr_woodstox")
             .addFileExtensions("rdfstaxsr_woodstox")
             .build();
@@ -106,7 +106,7 @@ public class RRX {
         register(RDFXML_StAX_sr, ReaderRDFXML_StAX_SR.factory);
 
         register(RDFXML_StAX_ev_woodstox, ReaderRDFXML_StAX_EV_woodstox.factory);
-        register(RDFXML_StAX_sr_woodstrox, ReaderRDFXML_StAX_SR_woodstox.factory);
+        register(RDFXML_StAX_sr_woodstox, ReaderRDFXML_StAX_SR_woodstox.factory);
 
         register(RDFXML_StAX2_ev_aalto, ReaderRDFXML_StAX2_EV_aalto.factory);
         register(RDFXML_StAX2_sr_aalto, ReaderRDFXML_StAX2_SR_aalto.factory);
@@ -130,7 +130,7 @@ public class RRX {
         unregister(RDFXML_StAX_sr);
 
         unregister(RDFXML_StAX_ev_woodstox);
-        unregister(RDFXML_StAX_sr_woodstrox);
+        unregister(RDFXML_StAX_sr_woodstox);
 
         unregister(RDFXML_StAX2_ev_aalto);
         unregister(RDFXML_StAX2_sr_aalto);

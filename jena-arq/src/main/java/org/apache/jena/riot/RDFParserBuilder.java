@@ -18,18 +18,8 @@
 
 package org.apache.jena.riot;
 
-import java.io.InputStream;
-import java.io.Reader;
-import java.io.StringReader;
-import java.net.http.HttpClient;
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-
 import org.apache.jena.atlas.lib.IRILib;
 import org.apache.jena.graph.Graph;
-import org.apache.jena.http.HttpEnv;
 import org.apache.jena.irix.IRIs;
 import org.apache.jena.irix.IRIxResolver;
 import org.apache.jena.query.Dataset;
@@ -43,6 +33,15 @@ import org.apache.jena.sparql.util.Context;
 import org.apache.jena.sparql.util.ContextAccumulator;
 import org.apache.jena.sparql.util.Symbol;
 import org.apache.jena.sys.JenaSystem;
+
+import java.io.InputStream;
+import java.io.Reader;
+import java.io.StringReader;
+import java.net.http.HttpClient;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * An {@link RDFParser} is a process that will generate triples;
@@ -83,7 +82,6 @@ public class RDFParserBuilder {
     // HTTP
     private String appAcceptHeader = null;
     private Map<String, String> httpHeaders = new HashMap<>();
-    private HttpClient httpClient = null;
 
     // Syntax
     private Lang hintLang  = null;
@@ -647,8 +645,6 @@ public class RDFParserBuilder {
             throw new RiotException("No source specified");
         Context context = contextAcc.context();
 
-        // Setup the HTTP client.
-        HttpClient clientJDK = ( httpClient != null ) ? httpClient : HttpEnv.getDftHttpClient();
         FactoryRDF factory$ = buildFactoryRDF();
         ErrorHandler errorHandler$ = errorHandler;
         if ( errorHandler$ == null )
@@ -676,7 +672,6 @@ public class RDFParserBuilder {
         // Can't build the profile here as it is Lang/conneg dependent.
         return new RDFParser(uri, path, stringToParse, inputStream, javaReader, sMgr,
                              appAcceptHeader, httpHeaders,
-                             clientJDK,
                              hintLang, forceLang,
                              parserBaseURI, strict, checking,
                              canonicalValues, langTagForm,
@@ -708,7 +703,6 @@ public class RDFParserBuilder {
         builder.inputStream =       this.inputStream;
         builder.javaReader =        this.javaReader;
         builder.httpHeaders =       Map.copyOf(this.httpHeaders);
-        builder.httpClient =        this.httpClient;
         builder.hintLang =          this.hintLang;
         builder.forceLang =         this.forceLang;
         builder.baseURI =           this.baseURI;
