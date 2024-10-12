@@ -27,10 +27,10 @@ import org.apache.jena.riot.lang.rdfxml.SysRRX;
 import org.apache.jena.riot.system.ParserProfile;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.sparql.util.Context;
+import org.apache.jena.sparql.util.Symbol;
 import org.codehaus.stax2.XMLInputFactory2;
 import org.codehaus.stax2.XMLStreamReader2;
 
-import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import java.io.InputStream;
@@ -45,15 +45,14 @@ import java.io.Reader;
  */
 public class ReaderCIMXML implements ReaderRIOT
 {
-    public static ReaderRIOTFactory factory = (Lang language, ParserProfile parserProfile) -> {
-        return new ReaderCIMXML(parserProfile);
-    };
+    public static final Symbol READ_MRID_AS_UUID = Symbol.create("ReaderCIMXML_Read_mRIDs_as_UUIDs") ;
+
+    public final static ReaderRIOTFactory factory = (Lang language, ParserProfile parserProfile)
+            -> new ReaderCIMXML(parserProfile);
 
     private static final XMLInputFactory2 xmlInputFactory = SysRRX.initAndConfigure(new com.ctc.wstx.stax.WstxInputFactory());
 
     private final ParserProfile parserProfile;
-
-    public static boolean TRACE = false;
 
     public ReaderCIMXML(ParserProfile parserProfile) {
         this.parserProfile = parserProfile;
@@ -84,8 +83,6 @@ public class ReaderCIMXML implements ReaderRIOT
         destination.start();
         try {
             parser.parse();
-        } catch (RiotException ex) {
-            throw ex;
         } catch (RuntimeException ex) {
             throw ex;
         } catch (Exception ex) {

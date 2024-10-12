@@ -19,7 +19,6 @@
 package org.apache.jena.riot.lang.rdfxml.cimxml;
 
 import org.apache.jena.atlas.io.IndentedWriter;
-import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
@@ -32,29 +31,24 @@ import org.apache.jena.sparql.util.Context;
 import org.apache.jena.vocabulary.RDF;
 import org.codehaus.stax2.XMLStreamReader2;
 
-import javax.xml.XMLConstants;
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
 import java.util.*;
-
-import static org.apache.jena.riot.SysRIOT.fmtMessage;
+import java.util.function.Function;
 
 /* StAX - stream reader */
 class ParserCIMXML {
 
     private final XMLStreamReader2 xmlSource;
-
-    // Constants
-    private static final String rdfNS = RDF.uri;
-
     private final ParserProfile parserProfile;
     private final ErrorHandler errorHandler;
     private final StreamRDF destination;
 
     private final String xmlBase;
     private final String xmlBaseSharp;
+
+    private final Function<String, String> uriHandler;
 
     ParserCIMXML(XMLStreamReader2 reader, String xmlBase, ParserProfile parserProfile, StreamRDF destination, Context context) {
         // Debug
@@ -70,21 +64,21 @@ class ParserCIMXML {
         this.xmlBase = xmlBase;
         this.xmlBaseSharp = xmlBase + "#";
         this.destination = destination;
+        this.uriHandler = context.isFalseOrUndef(ReaderCIMXML.READ_MRID_AS_UUID)
+                ? this::addBaseToUriIfMissing
+                : ParserCIMXML::readMRIDAsUUIDs;
+
     }
+
+    // Constants
+    private static final String uuidPrefix = "urn:uuid:";
+    private static final String rdfNS = RDF.uri;
 
     private static final QName rdfRDF = new QName(rdfNS, "RDF");
     private static final QName rdfID = new QName(rdfNS, "ID");
     private static final QName rdfAbout = new QName(rdfNS, "about");
-
-    private static final QName rdfDatatype = new QName(rdfNS, "datatype");
     private static final QName rdfParseType = new QName(rdfNS, "parseType");
     private static final QName rdfResource = new QName(rdfNS, "resource");
-
-    private static final QName xmlQNameLang = new QName(XMLConstants.XML_NS_URI, "lang");
-
-
-    private record Frame(QName elementName, Node subject) {
-    }
 
     private String addBaseToUriIfMissing(String uri) {
         switch (uri.charAt(0)) {
@@ -97,86 +91,109 @@ class ParserCIMXML {
         }
     }
 
-    private Node getOrCreateUriNode(final String uri) {
-        return subjects.computeIfAbsent(
-                addBaseToUriIfMissing(uri),
-                u -> NodeFactory.createURI(u));
+    private static String readMRIDAsUUIDs(String uri) {
+        switch (uri.charAt(0)) {
+            case '_':
+                return uuidPrefix + getValidUUID(uri.substring(1));
+            case '#':
+                return uuidPrefix + getValidUUID(uri.substring(2));
+            default:
+                return uri;
+        }
     }
 
-    private final Map<String, Node> subjects = new HashMap<String, Node>();
+    private static String getValidUUID(final String uuid) {
+        switch (uuid.length()) {
+            case 36:
+                return uuid;
+            case 32: {
+                return new StringBuilder(36)
+                        .append(uuid.substring(0, 7))
+                        .append('_')
+                        .append(uuid.substring(8, 11))
+                        .append('_')
+                        .append(uuid.substring(12, 15))
+                        .append('_')
+                        .append(uuid.substring(16, 19))
+                        .append('_')
+                        .append(uuid.substring(20, 31))
+                        .toString();
+                }
+            default:
+                throw new IllegalArgumentException("Given value for rdf:ID, rdf:about or rdf:resource is not a valid UUID: "
+                        + uuid + " (maybe use READ_MRID_AS_UUID == false)");
+        }
+    }
+
+    private Node getOrCreateUriNode(final String uri) {
+        return subjects.computeIfAbsent(
+                uriHandler.apply(uri),
+                NodeFactory::createURI);
+    }
+
+    private final Map<String, Node> subjects = new HashMap<>();
 
 
     void parse() {
         final var typesOrPropertiesMap = new HashMap<QName, Node>();
-        final var frames = new LinkedList<Frame>();
+        Node currentSubject = null;
 
         destination.start();
         try {
             readPrefixMappingFromRDFElement();
 
             while (xmlSource.hasNext()) {
-                switch (xmlSource.next()) {
-                    case XMLStreamReader.START_ELEMENT:
-                        if (rdfNS.equals(xmlSource.getNamespaceURI())) {
-                            throw new XMLStreamException("Discovered a tag with the namespace '" + rdfNS + "', which is not supported in CIMXML. Location: " + xmlSource.getLocation());
-                        } else {
-                            final var elementName = xmlSource.getName();
-                            final var typeOrNode = typesOrPropertiesMap.computeIfAbsent(
-                                    xmlSource.getName(),
-                                    qName -> NodeFactory.createURI(qName.getNamespaceURI() + qName.getLocalPart()));
-                            var tripleCreated = false;
-                            final var attributeCount = xmlSource.getAttributeCount();
-                            for (int i = 0; i < attributeCount; i++) {
-                                var name = xmlSource.getAttributeName(i);
-                                if (rdfAbout.equals(name) || rdfID.equals(name)) {
-                                    final var subject = getOrCreateUriNode(xmlSource.getAttributeValue(i));
-                                    destination.triple(Triple.create(subject, NodeConst.nodeRDFType, typeOrNode));
-                                    frames.add(new Frame(elementName, subject));
-                                    tripleCreated = true;
+                if (xmlSource.next() == XMLStreamConstants.START_ELEMENT) {
+                    if (rdfNS.equals(xmlSource.getNamespaceURI())) {
+                        throw new XMLStreamException("Discovered a tag with the namespace '" + rdfNS + "', which is not supported in CIMXML.",
+                                xmlSource.getLocation());
+                    } else {
+                        final var typeOrNode = typesOrPropertiesMap.computeIfAbsent(
+                                xmlSource.getName(),
+                                qName -> NodeFactory.createURI(qName.getNamespaceURI() + qName.getLocalPart()));
+                        var isLiteral = true;
+                        final var attributeCount = xmlSource.getAttributeCount();
+                        for (int i = 0; i < attributeCount; i++) {
+                            var name = xmlSource.getAttributeName(i);
+                            if (rdfAbout.equals(name) || rdfID.equals(name)) {
+                                currentSubject = getOrCreateUriNode(xmlSource.getAttributeValue(i));
+                                destination.triple(Triple.create(currentSubject, NodeConst.nodeRDFType, typeOrNode));
+                                isLiteral = false;
 
-                                } else if (rdfResource.equals(name)) {
-                                    final var object = getOrCreateUriNode(xmlSource.getAttributeValue(i));
-                                    destination.triple(Triple.create(frames.getLast().subject, typeOrNode, object));
-                                    tripleCreated = true;
+                            } else if (rdfResource.equals(name)) {
+                                final var object = getOrCreateUriNode(xmlSource.getAttributeValue(i));
+                                destination.triple(Triple.create(currentSubject, typeOrNode, object));
+                                isLiteral = false;
 
-                                } else if (rdfParseType.equals(name)) {
-                                    final var parseType = xmlSource.getAttributeValue(i);
-                                    switch (parseType) {
-                                        case "Literal":
-                                        case "Statements":
-                                            break;
-                                        default:
-                                            throw new XMLStreamException("Illegal parseType: " + parseType);
-                                    }
-                                } else {
-                                    throw new XMLStreamException("Unsupported attribute for CIMXML: " + name);
+                            } else if (rdfParseType.equals(name)) {
+                                final var parseType = xmlSource.getAttributeValue(i);
+                                if (!parseType.equals("Literal")) {
+                                    throw new XMLStreamException("Illegal parseType: " + parseType,
+                                            xmlSource.getLocation());
                                 }
-                            }
-                            if (!tripleCreated) {
-                                final var lex = xmlSource.getElementText();
-                                if (lex == null) {
-                                    throw new XMLStreamException("Illegal empty literal at " + xmlSource.getLocation());
-                                }
-                                final Node node = this.parserProfile.createStringLiteral(lex,
-                                        xmlSource.getLocation().getLineNumber(),
-                                        xmlSource.getLocation().getColumnNumber());
-                                destination.triple(Triple.create(frames.getLast().subject, typeOrNode, node));
+                            } else {
+                                throw new XMLStreamException("Unsupported attribute for CIMXML: " + name,
+                                        xmlSource.getLocation());
                             }
                         }
-                        break;
-                    case XMLStreamConstants.END_ELEMENT:
-                        if (!frames.isEmpty()) {
-                            var elementName = xmlSource.getName();
-                            var lastFrame = frames.getLast();
-                            if (elementName.equals(lastFrame.elementName)) {
-                                frames.removeLast();
+                        if (isLiteral) {
+                            final var lex = xmlSource.getElementText();
+                            if (lex == null) {
+                                throw new XMLStreamException("Empty literal is not allowed.",
+                                        xmlSource.getLocation());
                             }
+                            final Node node = this.parserProfile.createStringLiteral(lex,
+                                    xmlSource.getLocation().getLineNumber(),
+                                    xmlSource.getLocation().getColumnNumber());
+                            destination.triple(Triple.create(currentSubject, typeOrNode, node));
                         }
-                        break;
+                    }
                 }
             }
         } catch (XMLStreamException e) {
             handleXMLStreamException(e);
+        } catch (Exception e) {
+            handleXMLStreamException(new XMLStreamException(e.getMessage(), xmlSource.getLocation()));
         }
         destination.finish();
     }
@@ -184,18 +201,17 @@ class ParserCIMXML {
     private void readPrefixMappingFromRDFElement() throws XMLStreamException {
         boolean didNotFindRDF = true;
         while (xmlSource.hasNext() && didNotFindRDF) {
-            if (xmlSource.next() == XMLStreamReader.START_ELEMENT) {
-                if (rdfRDF.equals(xmlSource.getName())) {
+            if (xmlSource.next() == XMLStreamConstants.START_ELEMENT
+                    && rdfRDF.equals(xmlSource.getName())) {
                     didNotFindRDF = false;
                     final var namespaceCount = xmlSource.getNamespaceCount();
                     for (int i = 0; i < namespaceCount; i++) {
                         destination.prefix(xmlSource.getNamespacePrefix(i), xmlSource.getNamespaceURI(i));
                     }
-                }
             }
         }
         if (didNotFindRDF) {
-            throw new XMLStreamException("No RDF start element found");
+            throw new XMLStreamException("No RDF start element found", xmlSource.getLocation());
         }
     }
 

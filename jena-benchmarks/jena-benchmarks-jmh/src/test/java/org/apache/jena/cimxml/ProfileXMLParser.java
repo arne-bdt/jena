@@ -29,6 +29,7 @@ import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.RDFWriter;
 import org.apache.jena.riot.lang.rdfxml.RRX;
+import org.apache.jena.riot.lang.rdfxml.cimxml.ReaderCIMXML;
 import org.apache.jena.sparql.graph.GraphFactory;
 import org.junit.Test;
 
@@ -63,14 +64,14 @@ public class ProfileXMLParser {
         System.out.println(stopWatch);
     }
 
-    @Test
-    public void justRead() throws Exception {
-        var stopWatch = StopWatch.createStarted();
-        var list = Files.lines(Path.of(TestFileInventory.getFilePath(TestFileInventory.XML_REAL_GRID_V2_EQ)))
-                .collect(Collectors.toList());
-        stopWatch.stop();
-        System.out.println(stopWatch);
-    }
+//    @Test
+//    public void justRead() throws Exception {
+//        var stopWatch = StopWatch.createStarted();
+//        var list = Files.lines(Path.of(TestFileInventory.getFilePath(TestFileInventory.XML_REAL_GRID_V2_EQ)))
+//                .collect(Collectors.toList());
+//        stopWatch.stop();
+//        System.out.println(stopWatch);
+//    }
 
     @Test
     public void testCompare() throws Exception {
@@ -98,7 +99,6 @@ public class ProfileXMLParser {
                 System.out.println(file + " -> " + lang);
                 final var graphToTest = read(file, lang);
 
-
                 referenceGraph.getPrefixMapping().getNsPrefixMap().entrySet().forEach(e ->
                         assertEquals(e.getValue(), graphToTest.getPrefixMapping().getNsPrefixURI(e.getKey()))
                 );
@@ -125,6 +125,7 @@ public class ProfileXMLParser {
                 .get()) {
             RDFParser.source(is)
                     .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
+                    .set(ReaderCIMXML.READ_MRID_AS_UUID, false)
                     .forceLang(lang)
                     .checking(false)
                     .parse(graph);

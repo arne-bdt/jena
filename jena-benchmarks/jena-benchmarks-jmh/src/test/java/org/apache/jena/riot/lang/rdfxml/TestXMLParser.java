@@ -25,6 +25,7 @@ import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;
+import org.apache.jena.riot.lang.rdfxml.cimxml.ReaderCIMXML;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -46,7 +47,7 @@ public class TestXMLParser {
     public String param0_GraphUri;
 
     @Param({
-            "RRX.RDFXML_SAX",
+//            "RRX.RDFXML_SAX",
 //            "RRX.RDFXML_StAX_ev",
 //            "RRX.RDFXML_StAX_sr",
             "RRX.CIMXML"
@@ -71,19 +72,19 @@ public class TestXMLParser {
         }
     }
 
-    private static org.apache.shadedJena510.riot.Lang getLangJena510(String langName) {
-        switch (langName) {
-            case "RRX.RDFXML_SAX":
-                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_SAX;
-            case "RRX.RDFXML_StAX_ev":
-                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_StAX_ev;
-            case "RRX.RDFXML_StAX_sr":
-                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_StAX_sr;
-
-            default:
-                throw new IllegalArgumentException("Unknown lang: " + langName);
-        }
-    }
+//    private static org.apache.shadedJena510.riot.Lang getLangJena510(String langName) {
+//        switch (langName) {
+//            case "RRX.RDFXML_SAX":
+//                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_SAX;
+//            case "RRX.RDFXML_StAX_ev":
+//                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_StAX_ev;
+//            case "RRX.RDFXML_StAX_sr":
+//                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_StAX_sr;
+//
+//            default:
+//                throw new IllegalArgumentException("Unknown lang: " + langName);
+//        }
+//    }
 
 //    @Benchmark
 //    public Graph parseCIMXML() throws Exception {
@@ -108,6 +109,7 @@ public class TestXMLParser {
                 .get()) {
             RDFParser.source(is)
                     .base("xx:")
+                    .set(ReaderCIMXML.READ_MRID_AS_UUID, false)
                     .forceLang(getLang(this.param1_ParserLang))
                     .checking(false)
                     .parse(graph);
