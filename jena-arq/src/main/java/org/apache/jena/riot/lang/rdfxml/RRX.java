@@ -19,6 +19,7 @@
 package org.apache.jena.riot.lang.rdfxml;
 
 import org.apache.jena.riot.*;
+import org.apache.jena.riot.lang.rdfxml.cimxml.ReaderCIMXML;
 import org.apache.jena.riot.lang.rdfxml.rrx.ReaderRDFXML_SAX;
 import org.apache.jena.riot.lang.rdfxml.rrx_stax_ev.ReaderRDFXML_StAX_EV;
 import org.apache.jena.riot.lang.rdfxml.rrx_stax_sr.ReaderRDFXML_StAX_SR;
@@ -45,6 +46,12 @@ public class RRX {
     public static final Lang RDFXML_StAX_sr = LangBuilder.create("RDFXML-StAX-SR", "application/rdf+stax-sr")
             .addAltNames("RRX-StAX-sr", "rrxstaxsr")
             .addFileExtensions("rdfstaxsr")
+            .build();
+
+    /** CIMXML-Reader */
+    public static final Lang CIMXML = LangBuilder.create("CIMXML", "application/cimxml")
+            .addAltNames("CIMXML", "cimxml")
+            .addFileExtensions("cimxml")
             .build();
 
     /**
@@ -77,6 +84,9 @@ public class RRX {
         register(RDFXML_StAX_ev, ReaderRDFXML_StAX_EV.factory);
         register(RDFXML_StAX_sr, ReaderRDFXML_StAX_SR.factory);
 
+        // CIMXML
+        register(CIMXML, ReaderCIMXML.factory);
+
         // Names for ARP
         register(RDFXML_ARP1,    ReaderRDFXML_ARP1.factory);
         register(RDFXML_ARP0,    ReaderRDFXML_ARP0.factory);
@@ -94,6 +104,7 @@ public class RRX {
         unregister(RDFXML_SAX);
         unregister(RDFXML_StAX_ev);
         unregister(RDFXML_StAX_sr);
+        unregister(CIMXML);
         unregister(RDFXML_ARP1);
         unregister(RDFXML_ARP0);
     }

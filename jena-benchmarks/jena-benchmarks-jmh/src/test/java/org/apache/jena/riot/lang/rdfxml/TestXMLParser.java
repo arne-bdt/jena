@@ -20,6 +20,7 @@ package org.apache.jena.riot.lang.rdfxml;
 
 import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.jena.graph.Graph;
+import org.apache.jena.jmh.helper.TestFileInventory;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.Lang;
@@ -35,20 +36,20 @@ import java.nio.file.StandardOpenOption;
 public class TestXMLParser {
 
     @Param({
-            "../testing/pizza.owl.rdf",
-//            "../testing/citations.rdf",
-//            "../testing/BSBM/bsbm-5m.xml",
+            TestFileInventory.XML_REAL_GRID_V2_EQ,
+            TestFileInventory.XML_XXX_CGMES_EQ,
+//            TestFileInventory.XML_REAL_GRID_V2_SSH,
+//            TestFileInventory.XML_REAL_GRID_V2_SV,
+//            TestFileInventory.XML_REAL_GRID_V2_TP,
 
     })
     public String param0_GraphUri;
 
     @Param({
             "RRX.RDFXML_SAX",
-            "RRX.RDFXML_StAX_ev",
-            "RRX.RDFXML_StAX_sr",
-
-//            "RRX.RDFXML_ARP0",
-            "RRX.RDFXML_ARP1"
+//            "RRX.RDFXML_StAX_ev",
+//            "RRX.RDFXML_StAX_sr",
+            "RRX.CIMXML"
     })
     public String param1_ParserLang;
 
@@ -62,10 +63,8 @@ public class TestXMLParser {
             case "RRX.RDFXML_StAX_sr":
                 return RRX.RDFXML_StAX_sr;
 
-            case "RRX.RDFXML_ARP0":
-                return RRX.RDFXML_ARP0;
-            case "RRX.RDFXML_ARP1":
-                return RRX.RDFXML_ARP1;
+            case "RRX.CIMXML":
+                return  RRX.CIMXML;
 
             default:
                 throw new IllegalArgumentException("Unknown lang: " + langName);
@@ -81,21 +80,29 @@ public class TestXMLParser {
             case "RRX.RDFXML_StAX_sr":
                 return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_StAX_sr;
 
-            case "RRX.RDFXML_ARP0":
-                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_ARP0;
-            case "RRX.RDFXML_ARP1":
-                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_ARP1;
-
             default:
                 throw new IllegalArgumentException("Unknown lang: " + langName);
         }
     }
 
+//    @Benchmark
+//    public Graph parseCIMXML() throws Exception {
+//        final var graph = new GraphMem2Fast();
+//        try(final var is = new BufferedFileChannelInputStream.Builder()
+//                .setFile(TestFileInventory.getFilePath(this.param0_GraphUri))
+//                .setOpenOptions(StandardOpenOption.READ)
+//                .setBufferSize(64*4096)
+//                .get()) {
+//            CIMXMLParser.parse(is, "xx:", graph);
+//        }
+//        return graph;
+//    }
+
     @Benchmark
     public Graph parseXML() throws Exception {
         final var graph = new GraphMem2Fast();
         try(final var is = new BufferedFileChannelInputStream.Builder()
-                .setFile(this.param0_GraphUri)
+                .setFile(TestFileInventory.getFilePath(this.param0_GraphUri))
                 .setOpenOptions(StandardOpenOption.READ)
                 .setBufferSize(64*4096)
                 .get()) {
@@ -108,22 +115,22 @@ public class TestXMLParser {
         return graph;
     }
 
-    @Benchmark
-    public org.apache.shadedJena510.graph.Graph parseXMLJena510() throws Exception {
-        final var graph = new org.apache.shadedJena510.mem2.GraphMem2Fast();
-        try(final var is = new BufferedFileChannelInputStream.Builder()
-                .setFile(this.param0_GraphUri)
-                .setOpenOptions(StandardOpenOption.READ)
-                .setBufferSize(64*4096)
-                .get()) {
-            org.apache.shadedJena510.riot.RDFParser.source(is)
-                    .base("xx:")
-                    .forceLang(getLangJena510(this.param1_ParserLang))
-                    .checking(false)
-                    .parse(graph);
-        }
-        return graph;
-    }
+//    @Benchmark
+//    public org.apache.shadedJena510.graph.Graph parseXMLJena510() throws Exception {
+//        final var graph = new org.apache.shadedJena510.mem2.GraphMem2Fast();
+//        try(final var is = new BufferedFileChannelInputStream.Builder()
+//                .setFile(this.param0_GraphUri)
+//                .setOpenOptions(StandardOpenOption.READ)
+//                .setBufferSize(64*4096)
+//                .get()) {
+//            org.apache.shadedJena510.riot.RDFParser.source(is)
+//                    .base("xx:")
+//                    .forceLang(getLangJena510(this.param1_ParserLang))
+//                    .checking(false)
+//                    .parse(graph);
+//        }
+//        return graph;
+//    }
 
     @Setup(Level.Trial)
     public void setup() {
@@ -133,8 +140,8 @@ public class TestXMLParser {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
-                .warmupIterations(2)
-                .measurementIterations(4)
+//                .warmupIterations(2)
+//                .measurementIterations(4)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);
