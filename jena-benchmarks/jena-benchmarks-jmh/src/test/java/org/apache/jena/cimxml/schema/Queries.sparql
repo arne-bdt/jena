@@ -1,0 +1,171 @@
+#Select CGMES 2.4.5 profile header information
+
+PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX uml: <http://iec.ch/TC57/NonStandard/UML#>
+
+SELECT ?profileName ?abbreviation ?profileIRI ?rdfNamespace ?cimNamespace
+WHERE {
+  # Get the profile package (ClassCategory) and its name
+  ?package rdf:type cims:ClassCategory;
+           rdfs:label ?profileName.
+  # Find the Version class that belongs to this profile package
+  ?versionClass cims:belongsToCategory ?package;
+                rdf:type rdfs:Class.
+  FILTER(STRENDS(STR(?versionClass), "Version"))
+  # Get the entsoeURI attribute with its fixed value (profile IRI)
+  ?entsoeURI rdfs:domain ?profileDomain;
+             cims:stereotype uml:attribute;
+             rdfs:label "entsoeURI"@en;
+             cims:isFixed ?profileIRI.
+  # Get the shortName attribute with its fixed value (abbreviation)
+  ?shortName rdfs:domain ?profileDomain;
+             cims:stereotype uml:attribute;
+             rdfs:label "shortName"@en;
+             cims:isFixed ?abbreviation.
+  # Get the namespaceRDF attribute with its fixed value (RDF namespace)
+  ?namespaceRDF rdfs:domain ?profileDomain;
+             	cims:stereotype uml:attribute;
+             	rdfs:label "namespaceRDF"@en;
+             	cims:isFixed ?rdfNamespace.
+  # Get the namespaceUML attribute with its fixed value (CIM namespace)
+  ?namespaceUML rdfs:domain ?profileDomain;
+             	cims:stereotype uml:attribute;
+             	rdfs:label "namespaceUML"@en;
+             	cims:isFixed ?cimNamespace.
+}
+
+
+# Lists all properties of a class, including primitive and reference types
+
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
+
+SELECT ?class ?property ?primitiveType ?referenceType
+WHERE
+{
+  {
+  	?property rdfs:domain ?class;
+      		  rdfs:range ?referenceType;
+    		  cims:AssociationUsed "Yes";
+  }
+  UNION
+  {
+    ?property rdfs:domain ?class;
+              cims:dataType ?dataType.
+    {
+      ?dataType cims:stereotype "CIMDatatype".
+      []  rdfs:domain ?dataType;
+          rdfs:label ?label;
+          #rdfs:label "value";
+          cims:dataType/cims:stereotype "Primitive";
+          cims:dataType/rdfs:label ?primitiveType.
+      FILTER (!bound(?label) ||  str(?label) = "value")
+    }
+    UNION
+    {
+      ?dataType   cims:stereotype "Primitive";
+                  rdfs:label ?primitiveType.
+    }
+  }
+}
+
+# Lists all classes in the CGMES 2.4.5 profile and their parent classes
+
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
+
+SELECT ?class ?parentClass
+WHERE
+{
+  ?class cims:stereotype <http://iec.ch/TC57/NonStandard/UML#concrete>.
+  OPTIONAL {
+    ?parentClass ^rdfs:subClassOf+ ?class.
+  }
+}
+
+
+
+
+
+
+PREFIX amps: <http://amprion.net/CIM/AMP-schema-cim1#>
+PREFIX amp: <http://amprion.net/HSLN/#>
+PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX uml: <http://iec.ch/TC57/NonStandard/UML#>
+
+SELECT ?profileName ?abbreviation ?profileIRI ?rdfNamespace ?cimNamespace
+FROM <http://amprion.net/CIM/AMP-schema-cim1>
+WHERE {  
+  # Get the profile package (ClassCategory) and its name
+  ?package rdf:type cims:ClassCategory;
+           rdfs:label ?profileName.
+  # Find the Version class that belongs to this profile package
+  ?versionClass cims:belongsToCategory ?package;
+                rdf:type rdfs:Class.
+  FILTER(STRENDS(STR(?versionClass), "Version"))
+  # Get the entsoeURI attribute with its fixed value (profile IRI)
+  ?entsoeURI rdfs:domain ?versionClass;
+             cims:stereotype uml:attribute;
+             rdfs:label "entsoeURI"@en;
+             cims:isFixed ?profileIRI.
+  # Get the shortName attribute with its fixed value (abbreviation)
+  ?shortName rdfs:domain ?versionClass;
+             cims:stereotype uml:attribute;
+             rdfs:label "shortName"@en;
+             cims:isFixed ?abbreviation.
+  # Get the namespaceRDF attribute with its fixed value (RDF namespace)
+  ?namespaceRDF rdfs:domain ?versionClass;
+             	cims:stereotype uml:attribute;
+             	rdfs:label "namespaceRDF"@en;
+             	cims:isFixed ?rdfNamespace.
+  # Get the namespaceUML attribute with its fixed value (CIM namespace)
+  ?namespaceUML rdfs:domain ?versionClass;
+             	cims:stereotype uml:attribute;
+             	rdfs:label "namespaceUML"@en;
+             	cims:isFixed ?cimNamespace.
+}
+
+
+
+
+PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX uml: <http://iec.ch/TC57/NonStandard/UML#>
+
+SELECT ?profileName ?abbreviation ?profileIRI ?rdfNamespace ?cimNamespace
+WHERE {  
+  # Get the profile package (ClassCategory) and its name
+  ?package rdf:type cims:ClassCategory;
+           rdfs:label ?profileName.
+  # Find the Version class that belongs to this profile package
+  ?versionClass cims:belongsToCategory ?package;
+                rdf:type rdfs:Class.
+  FILTER(STRENDS(STR(?versionClass), "Version"))
+  # Get the entsoeURI attribute with its fixed value (profile IRI)
+  ?entsoeURI rdfs:domain ?versionClass;
+             cims:stereotype uml:attribute;
+             rdfs:label "entsoeURI"@en;
+             cims:isFixed ?profileIRI.
+  # Get the shortName attribute with its fixed value (abbreviation)
+  ?shortName rdfs:domain ?versionClass;
+             cims:stereotype uml:attribute;
+             rdfs:label "shortName"@en;
+             cims:isFixed ?abbreviation.
+  # Get the namespaceRDF attribute with its fixed value (RDF namespace)
+  ?namespaceRDF rdfs:domain ?versionClass;
+             	cims:stereotype uml:attribute;
+             	rdfs:label "namespaceRDF"@en;
+             	cims:isFixed ?rdfNamespace.
+  # Get the namespaceUML attribute with its fixed value (CIM namespace)
+  ?namespaceUML rdfs:domain ?versionClass;
+             	cims:stereotype uml:attribute;
+             	rdfs:label "namespaceUML"@en;
+             	cims:isFixed ?cimNamespace.
+}
