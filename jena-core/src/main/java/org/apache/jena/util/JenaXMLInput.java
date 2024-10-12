@@ -49,7 +49,7 @@ import org.xml.sax.XMLReader;
 public class JenaXMLInput {
 
     // ---- SAX
-    private static SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
+    private static SAXParserFactory saxParserFactory = SAXParserFactory.newDefaultInstance();
 
     static {
         // XMLConstants.FEATURE_SECURE_PROCESSING defaults to true.
@@ -106,7 +106,7 @@ public class JenaXMLInput {
         return xmlreader;
     }
 
-    private static XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance() ;
+    private static XMLInputFactory xmlInputFactory = XMLInputFactory.newDefaultFactory();
 
     static { initXMLInputFactory(xmlInputFactory); }
 

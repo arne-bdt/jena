@@ -27,6 +27,8 @@ import org.apache.jena.riot.lang.rdfxml.SysRRX;
 import org.apache.jena.riot.system.ParserProfile;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.sparql.util.Context;
+import org.codehaus.stax2.XMLInputFactory2;
+import org.codehaus.stax2.XMLStreamReader2;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
@@ -47,7 +49,8 @@ public class ReaderCIMXML implements ReaderRIOT
         return new ReaderCIMXML(parserProfile);
     };
 
-    private static final XMLInputFactory xmlInputFactory = SysRRX.createXMLInputFactory();
+    private static final XMLInputFactory2 xmlInputFactory = SysRRX.initAndConfigure(new com.ctc.wstx.stax.WstxInputFactory());
+
     private final ParserProfile parserProfile;
 
     public static boolean TRACE = false;
@@ -59,7 +62,7 @@ public class ReaderCIMXML implements ReaderRIOT
     @Override
     public void read(InputStream input, String baseURI, ContentType ct, StreamRDF output, Context context) {
         try {
-            XMLStreamReader xmlStreamReader = xmlInputFactory.createXMLStreamReader(input);
+            XMLStreamReader2 xmlStreamReader = (XMLStreamReader2) xmlInputFactory.createXMLStreamReader(input);
             parse(xmlStreamReader, baseURI, ct, output, context);
         } catch (XMLStreamException ex) {
             throw new RiotException("Failed to create the XMLEventReader", ex);
@@ -69,14 +72,14 @@ public class ReaderCIMXML implements ReaderRIOT
     @Override
     public void read(Reader reader, String baseURI, ContentType ct, StreamRDF output, Context context) {
         try {
-            XMLStreamReader xmlStreamReader = xmlInputFactory.createXMLStreamReader(reader);
+            XMLStreamReader2 xmlStreamReader = (XMLStreamReader2) xmlInputFactory.createXMLStreamReader(reader);
             parse(xmlStreamReader, baseURI, ct, output, context);
         } catch (XMLStreamException ex) {
             throw new RiotException("Failed to create the XMLEventReader", ex);
         }
     }
 
-     private void parse(XMLStreamReader xmlStreamReader, String xmlBase, ContentType ct, StreamRDF destination, Context context) {
+     private void parse(XMLStreamReader2 xmlStreamReader, String xmlBase, ContentType ct, StreamRDF destination, Context context) {
         ParserCIMXML parser = new ParserCIMXML(xmlStreamReader, xmlBase, parserProfile, destination, context);
         destination.start();
         try {

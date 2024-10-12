@@ -30,6 +30,7 @@ import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.sparql.graph.NodeConst;
 import org.apache.jena.sparql.util.Context;
 import org.apache.jena.vocabulary.RDF;
+import org.codehaus.stax2.XMLStreamReader2;
 
 import javax.xml.XMLConstants;
 import javax.xml.namespace.QName;
@@ -43,7 +44,7 @@ import static org.apache.jena.riot.SysRIOT.fmtMessage;
 /* StAX - stream reader */
 class ParserCIMXML {
 
-    private final XMLStreamReader xmlSource;
+    private final XMLStreamReader2 xmlSource;
 
     // Constants
     private static final String rdfNS = RDF.uri;
@@ -55,7 +56,7 @@ class ParserCIMXML {
     private final String xmlBase;
     private final String xmlBaseSharp;
 
-    ParserCIMXML(XMLStreamReader reader, String xmlBase, ParserProfile parserProfile, StreamRDF destination, Context context) {
+    ParserCIMXML(XMLStreamReader2 reader, String xmlBase, ParserProfile parserProfile, StreamRDF destination, Context context) {
         // Debug
         IndentedWriter out = IndentedWriter.stdout.clone();
         out.setFlushOnNewline(true);
@@ -107,7 +108,6 @@ class ParserCIMXML {
 
     void parse() {
         final var typesOrPropertiesMap = new HashMap<QName, Node>();
-        final var dataTypes = new HashMap<String, RDFDatatype>();
         final var frames = new LinkedList<Frame>();
 
         destination.start();
@@ -118,15 +118,13 @@ class ParserCIMXML {
                 switch (xmlSource.next()) {
                     case XMLStreamReader.START_ELEMENT:
                         if (rdfNS.equals(xmlSource.getNamespaceURI())) {
-                            //TODO: read RDF-Elements
+                            throw new XMLStreamException("Discovered a tag with the namespace '" + rdfNS + "', which is not supported in CIMXML. Location: " + xmlSource.getLocation());
                         } else {
                             final var elementName = xmlSource.getName();
                             final var typeOrNode = typesOrPropertiesMap.computeIfAbsent(
                                     xmlSource.getName(),
                                     qName -> NodeFactory.createURI(qName.getNamespaceURI() + qName.getLocalPart()));
                             var tripleCreated = false;
-                            String lang = null;
-                            RDFDatatype rdfDataType = null;
                             final var attributeCount = xmlSource.getAttributeCount();
                             for (int i = 0; i < attributeCount; i++) {
                                 var name = xmlSource.getAttributeName(i);
@@ -141,15 +139,6 @@ class ParserCIMXML {
                                     destination.triple(Triple.create(frames.getLast().subject, typeOrNode, object));
                                     tripleCreated = true;
 
-                                } else if (xmlQNameLang.equals(name)) {
-                                    lang = xmlSource.getAttributeValue(i);
-
-                                } else if (rdfDatatype.equals(name)) {
-                                    final var dataType = xmlSource.getAttributeValue(i);
-                                    rdfDataType = dataTypes.computeIfAbsent(
-                                            dataType,
-                                            dtype -> NodeFactory.getType(dtype));
-
                                 } else if (rdfParseType.equals(name)) {
                                     final var parseType = xmlSource.getAttributeValue(i);
                                     switch (parseType) {
@@ -159,6 +148,8 @@ class ParserCIMXML {
                                         default:
                                             throw new XMLStreamException("Illegal parseType: " + parseType);
                                     }
+                                } else {
+                                    throw new XMLStreamException("Unsupported attribute for CIMXML: " + name);
                                 }
                             }
                             if (!tripleCreated) {
@@ -166,21 +157,9 @@ class ParserCIMXML {
                                 if (lex == null) {
                                     throw new XMLStreamException("Illegal empty literal at " + xmlSource.getLocation());
                                 }
-                                final Node node;
-                                if (rdfDataType != null) {
-                                    node = this.parserProfile.createTypedLiteral(lex, rdfDataType,
-                                            xmlSource.getLocation().getLineNumber(),
-                                            xmlSource.getLocation().getColumnNumber());
-                                } else if (lang != null) {
-                                    node = this.parserProfile.createLangLiteral(lex, lang,
-                                            xmlSource.getLocation().getLineNumber(),
-                                            xmlSource.getLocation().getColumnNumber());
-
-                                } else {
-                                    node = this.parserProfile.createStringLiteral(lex,
-                                            xmlSource.getLocation().getLineNumber(),
-                                            xmlSource.getLocation().getColumnNumber());
-                                }
+                                final Node node = this.parserProfile.createStringLiteral(lex,
+                                        xmlSource.getLocation().getLineNumber(),
+                                        xmlSource.getLocation().getColumnNumber());
                                 destination.triple(Triple.create(frames.getLast().subject, typeOrNode, node));
                             }
                         }

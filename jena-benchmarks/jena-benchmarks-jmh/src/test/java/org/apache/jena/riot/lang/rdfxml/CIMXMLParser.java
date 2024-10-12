@@ -18,19 +18,13 @@
 
 package org.apache.jena.riot.lang.rdfxml;
 
-import org.apache.commons.io.input.BufferedFileChannelInputStream;
-import org.apache.commons.lang3.time.StopWatch;
-import org.apache.jena.cimxml.ProfileXMLParser;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.jmh.helper.TestFileInventory;
-import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.util.JenaXMLInput;
 import org.apache.jena.vocabulary.RDF;
-import org.junit.Ignore;
 
 import javax.xml.XMLConstants;
 import javax.xml.namespace.QName;
@@ -38,7 +32,6 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import java.io.InputStream;
-import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.LinkedList;
 

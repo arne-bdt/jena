@@ -66,6 +66,10 @@
     <ver.titanium-json-ld>1.4.1</ver.titanium-json-ld>
     <ver.jakarta.json>2.0.1</ver.jakarta.json>
 
+    <!-- XML -->
+    <ver.stax2-api>4.2.2</ver.stax2-api>
+    <ver.woodstox>7.0.0</ver.woodstox>
+
     <!-- These two must be in-step -->
     <ver.jetty>12.0.14</ver.jetty>
     <ver.jakarta-servlet>6.1.0</ver.jakarta-servlet>
@@ -509,6 +513,20 @@
         <artifactId>collection</artifactId>
         <version>${ver.dexxcollection}</version>
       </dependency>
+
+      <!--- XML -->
+      <dependency>
+        <groupId>org.codehaus.woodstox</groupId>
+        <artifactId>stax2-api</artifactId>
+        <version>${ver.stax2-api}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.fasterxml.woodstox</groupId>
+        <artifactId>woodstox-core</artifactId>
+        <version>${ver.woodstox}</version>
+      </dependency>
+      <!--- End XML -->
       
       <!-- JSON-LD 1.1 read support -->
       <!-- Titanium JSON-LD -->
