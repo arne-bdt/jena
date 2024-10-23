@@ -68,6 +68,7 @@
 
     <!-- XML -->
     <ver.stax2-api>4.2.2</ver.stax2-api>
+    <ver.aalto-xml>1.3.3</ver.aalto-xml>
     <ver.woodstox>7.0.0</ver.woodstox>
 
     <!-- These two must be in-step -->
@@ -220,6 +221,8 @@
         <module>jena-cmds</module>
         <module>jena-geosparql</module>
         <module>jena-fuseki2</module>
+
+        <module>jena-IEC61970</module>
 
         <module>jena-integration-tests</module>
 
@@ -525,6 +528,12 @@
         <groupId>com.fasterxml.woodstox</groupId>
         <artifactId>woodstox-core</artifactId>
         <version>${ver.woodstox}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.fasterxml</groupId>
+        <artifactId>aalto-xml</artifactId>
+        <version>${ver.aalto-xml}</version>
       </dependency>
       <!--- End XML -->
       

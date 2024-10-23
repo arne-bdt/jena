@@ -31,6 +31,7 @@ import org.apache.jena.sparql.util.Context;
 import org.apache.jena.vocabulary.RDF;
 import org.codehaus.stax2.XMLStreamReader2;
 
+import javax.xml.XMLConstants;
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
@@ -72,13 +73,20 @@ class ParserCIMXML {
 
     // Constants
     private static final String uuidPrefix = "urn:uuid:";
+
     private static final String rdfNS = RDF.uri;
+    private static final String modelDescriptionNS = "http://iec.ch/TC57/61970-552/ModelDescription/1#";
 
     private static final QName rdfRDF = new QName(rdfNS, "RDF");
     private static final QName rdfID = new QName(rdfNS, "ID");
+    private static final QName rdfDescription = new QName(rdfNS, "Description");
     private static final QName rdfAbout = new QName(rdfNS, "about");
     private static final QName rdfParseType = new QName(rdfNS, "parseType");
     private static final QName rdfResource = new QName(rdfNS, "resource");
+
+    private static final QName xmlQNameLang = new QName(XMLConstants.XML_NS_URI, "lang");
+
+    private static final QName modelHeaderProfile = new QName(modelDescriptionNS, "Model.profile");
 
     private String addBaseToUriIfMissing(String uri) {
         switch (uri.charAt(0)) {
@@ -152,6 +160,7 @@ class ParserCIMXML {
                                 xmlSource.getName(),
                                 qName -> NodeFactory.createURI(qName.getNamespaceURI() + qName.getLocalPart()));
                         var isLiteral = true;
+                        String lang = null;
                         final var attributeCount = xmlSource.getAttributeCount();
                         for (int i = 0; i < attributeCount; i++) {
                             var name = xmlSource.getAttributeName(i);
@@ -171,6 +180,9 @@ class ParserCIMXML {
                                     throw new XMLStreamException("Illegal parseType: " + parseType,
                                             xmlSource.getLocation());
                                 }
+
+                            } else if (xmlQNameLang.equals(name)) {
+                                lang = xmlSource.getAttributeValue(i);
                             } else {
                                 throw new XMLStreamException("Unsupported attribute for CIMXML: " + name,
                                         xmlSource.getLocation());
@@ -182,9 +194,17 @@ class ParserCIMXML {
                                 throw new XMLStreamException("Empty literal is not allowed.",
                                         xmlSource.getLocation());
                             }
-                            final Node node = this.parserProfile.createStringLiteral(lex,
-                                    xmlSource.getLocation().getLineNumber(),
-                                    xmlSource.getLocation().getColumnNumber());
+                            final Node node;
+                            if (lang != null) {
+                                node = this.parserProfile.createLangLiteral(lex, lang,
+                                        xmlSource.getLocation().getLineNumber(),
+                                        xmlSource.getLocation().getColumnNumber());
+
+                            } else {
+                                node = this.parserProfile.createStringLiteral(lex,
+                                        xmlSource.getLocation().getLineNumber(),
+                                        xmlSource.getLocation().getColumnNumber());
+                            }
                             destination.triple(Triple.create(currentSubject, typeOrNode, node));
                         }
                     }

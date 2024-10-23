@@ -50,7 +50,7 @@ public class ReaderCIMXML implements ReaderRIOT
     public final static ReaderRIOTFactory factory = (Lang language, ParserProfile parserProfile)
             -> new ReaderCIMXML(parserProfile);
 
-    private static final XMLInputFactory2 xmlInputFactory = SysRRX.initAndConfigure(new com.ctc.wstx.stax.WstxInputFactory());
+    private static final XMLInputFactory2 xmlInputFactory = SysRRX.initAndConfigure(new com.fasterxml.aalto.stax.InputFactoryImpl()); //com.ctc.wstx.stax.WstxInputFactory());
 
     private final ParserProfile parserProfile;
 

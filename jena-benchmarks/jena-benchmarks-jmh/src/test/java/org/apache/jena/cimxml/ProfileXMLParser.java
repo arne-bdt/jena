@@ -24,6 +24,7 @@ import org.apache.jena.cimxml.schema.BaseURI;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.jmh.helper.TestFileInventory;
 import org.apache.jena.mem2.GraphMem2Fast;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.RDFParser;
@@ -31,18 +32,41 @@ import org.apache.jena.riot.RDFWriter;
 import org.apache.jena.riot.lang.rdfxml.RRX;
 import org.apache.jena.riot.lang.rdfxml.cimxml.ReaderCIMXML;
 import org.apache.jena.sparql.graph.GraphFactory;
+import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
 
 public class ProfileXMLParser {
 
+
+    @Test
+    public void testDeadlock() throws ExecutionException, InterruptedException {
+        var pool = Executors.newFixedThreadPool(8);
+
+        JenaSystem.init();
+
+        var futures = IntStream.range(0, 9)
+                .mapToObj(i -> pool.submit(() -> {
+                    if (i % 2 == 0) ModelFactory.createDefaultModel();
+                    else JenaSystem.init();
+                    return i;
+                }))
+                .toList();
+
+        for (var future : futures) {
+            System.out.println(future.get());
+        }
+    }
 
     @Test
     public void parseXML() throws Exception {

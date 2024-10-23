@@ -21,11 +21,14 @@ package org.apache.jena.cimxml;
 import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.jena.cimxml.schema.BaseURI;
 import org.apache.jena.cimxml.schema.SchemaRegistry;
+import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.graph.compose.Delta;
 import org.apache.jena.jmh.helper.TestFileInventory;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
+import org.apache.jena.query.ResultSet;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.lang.rdfxml.RRX;
 import org.apache.jena.sparql.graph.GraphFactory;
@@ -35,7 +38,9 @@ import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Collection;
 
 
 @State(Scope.Benchmark)
@@ -115,6 +120,45 @@ public class TestCIMXMLCastingOverhead {
             return IRI_FOR_PROFILE_TP;
         throw new RuntimeException("Unknown profile: " + filename);
     }
+
+    public interface ProfileRegistry {
+        void registerProfiles(Collection<Path> files);
+        boolean containsProfile(String profile);
+        ProfileProxy getProfile();
+    }
+
+    public interface CIMXMLReader {
+        void registerFileHeaderProfile();
+        void readFiles(Collection<Path> files);
+    }
+
+    public interface ProfileProxy extends GraphProxy {
+
+    }
+
+    public interface GraphProxy {
+        ResultSet query(String query);
+    }
+
+    public interface Model {
+        String getProfile();
+        GraphProxy getHeader();
+    }
+
+    public interface FullModel extends Model {
+        GraphProxy getBody();
+    }
+
+    public interface DifferenceModel extends Model {
+        GraphProxy getAdditions();
+        GraphProxy getDeletions();
+    }
+
+    @Test
+    public void UC_LoadCIMXML() {
+
+    }
+
 
     @Setup(Level.Trial)
     public void setupTrial() throws Exception {

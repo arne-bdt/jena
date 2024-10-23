@@ -22,6 +22,10 @@ import org.apache.jena.base.module.Subsystem;
 import org.apache.jena.base.module.SubsystemRegistry;
 import org.apache.jena.base.module.SubsystemRegistryServiceLoader;
 
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /** Jena "system" - simple controls for ensuring components are loaded and initialized.
  * <p>
  * All initialization should be concurrent and thread-safe.  In particular,
@@ -66,7 +70,6 @@ public class JenaSystem {
      * to avoid the risk of recursive initialization.
      */
     public static boolean DEBUG_INIT = false ;
-    private static volatile boolean initialized = false ;
 
     /** Output a debugging message if DEBUG_INIT is set */
     public static void logLifecycle(String fmt, Object ...args) {
@@ -76,21 +79,40 @@ public class JenaSystem {
         System.err.println() ;
     }
 
+
+    private static volatile boolean initialized = false ;
+    private static Semaphore initializationSemaphore = new Semaphore(1);
+    private static ThreadLocal<Boolean> isInitializing = ThreadLocal.withInitial(() -> false);
+
     public static void init() {
         // Once jena is initialized, all calls are an immediate return.
         if ( initialized )
             return ;
-        // Overlapping attempts to perform initialization will block on the synchronized.
-        synchronized(JenaSystem.class) {
-            if ( initialized )
-                return ;
-            setup();
-            if ( DEBUG_INIT )
-                singleton.debug(DEBUG_INIT);
-            singleton.initialize();
-            singleton.debug(false);
-            // Last so overlapping initialization waits on the synchronized
-            initialized = true;
+
+        // if the same thread is calling init(), while the initialization is in progress, return immediately
+        if(isInitializing.get())
+            return ;
+
+        isInitializing.set(true); // set the flag to true to indicate that the initialization is in progress
+
+        try {
+            // Only one thread can initialize Jena.
+            if(initializationSemaphore.tryAcquire(5, TimeUnit.SECONDS)) {
+                if ( initialized )
+                    return ;
+                setup();
+                if ( DEBUG_INIT )
+                    singleton.debug(DEBUG_INIT);
+                singleton.initialize();
+                singleton.debug(false);
+                // Last so overlapping initialization waits on the synchronized
+                initialized = true;
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Timeout while waiting for semaphore to initialize JenaSystem. Please call JenaSystem.init() before working with multiple threads.", e);
+        } finally {
+            initializationSemaphore.release();
+            isInitializing.remove();
         }
     }
 

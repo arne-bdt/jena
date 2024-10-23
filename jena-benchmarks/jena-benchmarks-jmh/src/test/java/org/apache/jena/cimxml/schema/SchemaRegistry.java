@@ -22,6 +22,7 @@ import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.apache.jena.datatypes.xsd.impl.RDFLangString;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -208,7 +209,7 @@ public class SchemaRegistry {
     }
 
     private final ConcurrentMap<Node, SchemaRecord> schemaMap = new java.util.concurrent.ConcurrentHashMap<>();
-    private final ConcurrentMap<Node, Map<Node, RDFDatatype>> typedProperties = new java.util.concurrent.ConcurrentHashMap<>();
+    private final ConcurrentMap<Node, Map<Node, ParsingDirective>> typedProperties = new java.util.concurrent.ConcurrentHashMap<>();
     private final static Query typedPropertiesQuery = QueryFactory.create("""
             PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
@@ -237,16 +238,22 @@ public class SchemaRegistry {
             }
             """);
 
+    public record ParsingDirective(boolean isIRI, RDFDatatype datatype) {};
 
-
-    private static Map<Node, RDFDatatype> getTypedProperties(Graph g) {
-        final var map = new HashMap<Node, RDFDatatype>();
+    private static Map<Node, ParsingDirective> getTypedProperties(Graph g) {
+        final var map = new HashMap<Node, ParsingDirective>();
         QueryExec.graph(g)
                 .query(typedPropertiesQuery)
                 .select()
                 .forEachRemaining(vars -> {
-                    map.put(vars.get("property"),
-                            getDataType(vars.get("primitiveType").getLiteralLexicalForm()));
+                    final var property = vars.get("property");
+                    final var primitiveType = vars.get("primitiveType").getLiteralLexicalForm();
+                    if("IRI".equals(primitiveType)) {
+                        map.put(property, new ParsingDirective(true, null));
+                    } else {
+                        map.put(property, new ParsingDirective(false, getDataType(primitiveType)));
+                    }
+
                 });
         return Collections.unmodifiableMap(map);
     }
@@ -283,6 +290,8 @@ public class SchemaRegistry {
                 return XSDDatatype.XSDint;
             case "Integer":
                 return XSDDatatype.XSDinteger;
+            case "LangString":
+                return RDFLangString.rdfLangString;
             case "Long":
                 return XSDDatatype.XSDlong;
             case "Month":
@@ -297,6 +306,8 @@ public class SchemaRegistry {
                 return XSDDatatype.XSDnonPositiveInteger;
             case "PositiveInteger":
                 return XSDDatatype.XSDpositiveInteger;
+            case "StringIRI":
+                return XSDDatatype.XSDstring;
             case "Time":
                 return XSDDatatype.XSDtime;
             case "UnsignedByte":
@@ -307,6 +318,8 @@ public class SchemaRegistry {
                 return XSDDatatype.XSDunsignedLong;
             case "UnsignedShort":
                 return XSDDatatype.XSDunsignedShort;
+            case "URI":
+                return XSDDatatype.XSDanyURI;
             case "Year":
                 return XSDDatatype.XSDgYear;
             case "YearMonth":
@@ -319,10 +332,10 @@ public class SchemaRegistry {
     }
 
     private static class StreamTypedTriples implements StreamRDF {
-        private final Map<Node, RDFDatatype> typedProperties;
+        private final Map<Node, ParsingDirective> typedProperties;
         private final Graph sink;
 
-        public StreamTypedTriples(Graph sink, Map<Node, RDFDatatype> typedProperties) {
+        public StreamTypedTriples(Graph sink, Map<Node, ParsingDirective> typedProperties) {
             this.sink = sink;
             this.typedProperties = typedProperties;
         }
@@ -335,18 +348,25 @@ public class SchemaRegistry {
         @Override
         public void triple(Triple triple) {
             if (triple.getObject().isLiteral()) {
-                var dType = typedProperties.get(triple.getPredicate());
-                if (dType != null) {
-                    sink.add(Triple.create(
-                            triple.getSubject(),
-                            triple.getPredicate(),
-                            NodeFactory.createLiteral(triple.getObject().getLiteralLexicalForm(), dType)));
-                } else {
-                    sink.add(triple);
+                var parsingDirective = typedProperties.get(triple.getPredicate());
+                if (parsingDirective != null) {
+                    if(parsingDirective.isIRI) {
+                        if(!triple.getObject().isURI()) {
+                            triple = Triple.create(
+                                    triple.getSubject(),
+                                    triple.getPredicate(),
+                                    NodeFactory.createURI(triple.getObject().getLiteralLexicalForm()));
+                        }
+                    } else {
+                        triple = Triple.create(
+                                triple.getSubject(),
+                                triple.getPredicate(),
+                                NodeFactory.createLiteral(triple.getObject().getLiteralLexicalForm(),
+                                        parsingDirective.datatype));
+                    }
                 }
-            } else {
-                sink.add(triple);
             }
+            sink.add(triple);
         }
 
         @Override
