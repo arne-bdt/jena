@@ -72,7 +72,7 @@ public class TestGraphBulkUpdates {
     private org.apache.shadedJena480.graph.Graph sut480;
     private List<org.apache.shadedJena480.graph.Triple> triples480;
 
-    private List<Triple> triples;
+    private TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.TriplesAndNamespaces trialData;
 
     /**
      * This method is used to get the memory consumption of the current JVM.
@@ -80,9 +80,7 @@ public class TestGraphBulkUpdates {
      * @return the memory consumption in MB
      */
     private static double runGcAndGetUsedMemoryInMB() {
-        System.runFinalization();
         System.gc();
-        Runtime.getRuntime().runFinalization();
         Runtime.getRuntime().gc();
         return BigDecimal.valueOf(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024L)).divide(BigDecimal.valueOf(1024L)).doubleValue();
     }
@@ -92,13 +90,13 @@ public class TestGraphBulkUpdates {
         var trialContext = new Context("GraphMem2Fast (current)");
         this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
 
-        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
+        var triplesAndNamespaces = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
                 .read("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
 
-        triples.forEach(this.sutCurrent::add);
+        triplesAndNamespaces.triples().forEach(this.sutCurrent::add);
 
         var doubleTriples = new ArrayList<Triple>();
-        for (var t : triples) {
+        for (var t : triplesAndNamespaces.triples()) {
             if (t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
                 doubleTriples.add(t);
             }
@@ -127,13 +125,13 @@ public class TestGraphBulkUpdates {
         var trialContext = new Context("GraphMem2Fast (current)");
         this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
 
-        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
+        var triplesAndNamespaces = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
                 .read("C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml");
 
-        triples.forEach(this.sutCurrent::add);
+        triplesAndNamespaces.triples().forEach(this.sutCurrent::add);
 
         var doubleTriples = new ArrayList<Triple>();
-        for (var t : triples) {
+        for (var t : triplesAndNamespaces.triples()) {
             if (t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
                 doubleTriples.add(t);
             }
@@ -161,7 +159,7 @@ public class TestGraphBulkUpdates {
     @Benchmark
     public Graph manySingleUpdates() {
         var doubleTriples = new ArrayList<Triple>();
-        for (var t : triples) {
+        for (var t : trialData.triples()) {
             if (t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
                 doubleTriples.add(t);
             }
@@ -185,7 +183,7 @@ public class TestGraphBulkUpdates {
     @Ignore("Don´t do it this way, it is slower than the single updates")
     public Graph bulkDeleteAndAdd() {
         var doubleTriples = new ArrayList<Triple>();
-        for (var t : triples) {
+        for (var t : trialData.triples()) {
             if (t.getObject().isLiteral() && t.getObject().getLiteralDatatype() == XSDDatatype.XSDfloat) {
                 doubleTriples.add(t);
             }
@@ -216,10 +214,10 @@ public class TestGraphBulkUpdates {
             case CURRENT: {
                 this.sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
 
-                this.triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
+                this.trialData = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals
                         .read(param0_GraphUri);
 
-                triples.forEach(this.sutCurrent::add);
+                trialData.triples().forEach(this.sutCurrent::add);
             }
             break;
             case JENA_4_8_0: {

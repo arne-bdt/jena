@@ -156,10 +156,17 @@ public class TestGraphSerialization {
 
     @Test
     public void writeGraphWithTypedLiterals() {
-        var triples = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read("c:/temp/DataWithUntypedLiterals.xml", "c:/temp/Schema.rdf", Lang.RDFXML);
+        var triplesAndNamespaces = TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.read("C:/temp/res_test/xxx_CGMES_SSH.xml");
         var g = new GraphMem2Fast();
-        triples.forEach(g::add);
-        RDFWriter.source(g).format(RDFFormat.TURTLE_PRETTY).output("c:/temp/DataWithTypedLiterals.ttl");
+        g.getPrefixMapping().setNsPrefixes(triplesAndNamespaces.prefixMapping());
+        triplesAndNamespaces.triples().forEach(g::add);
+        RDFWriter.source(g).format(RDFFormat.RDFXML).output("c:/temp/xxx_CGMES_SSH.rdf");
+    }
+
+    @Test
+    public void readGraph() {
+        var g = RDFDataMgr.loadGraph("C:\\temp\\xxx_CGMES_SSH1.rdf");
+        int i=0;
     }
 
     @Test

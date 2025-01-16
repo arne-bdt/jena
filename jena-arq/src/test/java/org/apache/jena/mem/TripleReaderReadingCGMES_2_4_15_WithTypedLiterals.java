@@ -22,6 +22,7 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMem2Fast;
@@ -31,20 +32,24 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.system.StreamRDF;
+import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sparql.core.DatasetGraphMapLink;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.exec.QueryExecDataset;
 import org.apache.jena.sparql.graph.GraphFactory;
 
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
+
+    public record TriplesAndNamespaces(Collection<Triple> triples, PrefixMapping prefixMapping) {
+        static TriplesAndNamespaces createEmpty() {
+            return new TriplesAndNamespaces(new ArrayList<>(), PrefixMapping.Factory.create());
+        }
+    };
 
     private static final ConcurrentMap<String, Map<URI, RDFDatatype>> typedPropertiesBySchemaUri = new ConcurrentHashMap<>();
 
@@ -103,32 +108,32 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
     }
 
 
-    public static List<Triple> read(String graphUri) {
+    public static TriplesAndNamespaces read(String graphUri) {
         var rdfSchemaUri = getRDFSchemaUri(graphUri);
         if (rdfSchemaUri != null) {
             return read(graphUri, rdfSchemaUri, Lang.RDFXML);
         } else {
-            var triples = new ArrayList<Triple>();
-            var loadingGraph = new GraphMem2Fast() {
+            final var triples = new ArrayList<Triple>();
+            final var loadingGraph = new GraphMem2Fast() {
                 @Override
                 public void performAdd(Triple t) {
                     triples.add(t);
                 }
             };
             RDFDataMgr.read(loadingGraph, graphUri);
-            return triples;
+            return new TriplesAndNamespaces(triples, loadingGraph.getPrefixMapping());
         }
     }
 
-    public static List<Triple> read(String graphUri, String rdfSchemaUri, Lang lang) {
+    public static TriplesAndNamespaces read(String graphUri, String rdfSchemaUri, Lang lang) {
         return read(graphUri, rdfSchemaUri, lang, true, false);
     }
 
-    public static List<Triple> read(String graphUri, String rdfSchemaUri, Lang lang, boolean checking, boolean canonicalValues) {
-        var triples = new ArrayList<Triple>();
-        var streamSink = new StreamTypedTriplesToList(triples, getOrInitTypedProperties(rdfSchemaUri));
+    public static TriplesAndNamespaces read(String graphUri, String rdfSchemaUri, Lang lang, boolean checking, boolean canonicalValues) {
+        final var triples = TriplesAndNamespaces.createEmpty();
+        final var streamSink = new StreamTypedTriplesToList(triples, getOrInitTypedProperties(rdfSchemaUri));
         parseRDF(streamSink, graphUri, lang, checking, canonicalValues);
-        return streamSink.getTriples();
+        return streamSink.getTriplesAndNamespaces();
     }
 
     public static void read(String graphUri, String rdfSchemaUri, Lang lang, Graph targetGraph) {
@@ -152,7 +157,7 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
     private static void parseRDF(StreamRDF streamSink, String graphUri, Lang lang, boolean checking, boolean canonicalValues) {
         RDFParser.create()
                 .source(graphUri)
-                .base("x:")
+                .base("xx:")
                 .forceLang(lang)
                 .checking(checking)
                 .canonicalValues(canonicalValues)
@@ -251,6 +256,7 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
         public StreamTypedTriples(Graph sink, Map<URI, RDFDatatype> typedProperties) {
             this.sink = sink;
             this.typedProperties = typedProperties;
+            this.sink.getPrefixMapping().setNsPrefix("xs", "http://www.w3.org/2001/XMLSchema#");
         }
 
         @Override
@@ -260,19 +266,38 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
 
         @Override
         public void triple(Triple triple) {
-            if (triple.getObject().isLiteral()) {
-                var dType = typedProperties.get(URI.create(triple.getPredicate().getURI()));
-                if (dType != null) {
-                    sink.add(Triple.create(
-                            triple.getSubject(),
-                            triple.getPredicate(),
-                            NodeFactory.createLiteral(triple.getObject().getLiteralLexicalForm(), dType)));
+            final Node subject;
+            if(triple.getSubject().getURI().startsWith("xx:#_")) {
+                if(triple.getSubject().getURI().length() == 37) {
+                    StringBuilder sb = new StringBuilder(45);
+                    sb.append("urn:uuid:");
+                    sb.append(triple.getSubject().getURI().substring(5, 13));
+                    sb.append("-");
+                    sb.append(triple.getSubject().getURI().substring( 13, 17));
+                    sb.append("-");
+                    sb.append(triple.getSubject().getURI().substring( 17, 21));
+                    sb.append("-");
+                    sb.append(triple.getSubject().getURI().substring( 21, 25));
+                    sb.append("-");
+                    sb.append(triple.getSubject().getURI().substring( 25, 37));
+                    subject = NodeFactory.createURI(sb.toString());
                 } else {
-                    sink.add(triple);
+                    System.err.println("Incorrect URI: " + triple.getSubject().getURI());
+                    subject = NodeFactory.createURI("urn:uuid:" + triple.getSubject().getURI().substring(5));
                 }
             } else {
-                sink.add(triple);
+                subject = triple.getSubject();
             }
+            final Node object;
+            if (triple.getObject().isLiteral()) {
+                var dType = typedProperties.get(URI.create(triple.getPredicate().getURI()));
+                object = dType != null
+                        ? NodeFactory.createLiteral(triple.getObject().getLiteralLexicalForm(), dType)
+                        : triple.getObject();
+            } else {
+                object = triple.getObject();
+            }
+            sink.add(Triple.create(subject, triple.getPredicate(), object));
         }
 
         @Override
@@ -282,12 +307,12 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
 
         @Override
         public void base(String base) {
-
+            sink.getPrefixMapping().setNsPrefix("", base);
         }
 
         @Override
         public void prefix(String prefix, String iri) {
-
+            sink.getPrefixMapping().setNsPrefix(prefix, iri);
         }
 
         @Override
@@ -298,14 +323,15 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
 
     private static class StreamTypedTriplesToList implements StreamRDF {
         private final Map<URI, RDFDatatype> typedProperties;
-        private final List<Triple> sink;
+        private final TriplesAndNamespaces sink;
 
-        public StreamTypedTriplesToList(List<Triple> sink, Map<URI, RDFDatatype> typedProperties) {
+        public StreamTypedTriplesToList(TriplesAndNamespaces sink, Map<URI, RDFDatatype> typedProperties) {
             this.sink = sink;
             this.typedProperties = typedProperties;
+            this.sink.prefixMapping.setNsPrefix("xs", "http://www.w3.org/2001/XMLSchema#");
         }
 
-        public List<Triple> getTriples() {
+        public TriplesAndNamespaces getTriplesAndNamespaces() {
             return this.sink;
         }
 
@@ -316,18 +342,38 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
 
         @Override
         public void triple(Triple triple) {
-            if (triple.getObject().isLiteral()) {
-                var dType = typedProperties.get(URI.create(triple.getPredicate().getURI()));
-                if (dType != null) {
-                    sink.add(Triple.create(triple.getSubject(),
-                            triple.getPredicate(),
-                            NodeFactory.createLiteral(triple.getObject().getLiteralLexicalForm(), triple.getObject().getLiteralLanguage(), dType)));
+            final Node subject;
+            if(triple.getSubject().getURI().startsWith("xx:#_")) {
+                if(triple.getSubject().getURI().length() == 37) {
+                    StringBuilder sb = new StringBuilder(45);
+                    sb.append("urn:uuid:");
+                    sb.append(triple.getSubject().getURI().substring(5, 13));
+                    sb.append("-");
+                    sb.append(triple.getSubject().getURI().substring( 13, 17));
+                    sb.append("-");
+                    sb.append(triple.getSubject().getURI().substring( 17, 21));
+                    sb.append("-");
+                    sb.append(triple.getSubject().getURI().substring( 21, 25));
+                    sb.append("-");
+                    sb.append(triple.getSubject().getURI().substring( 25, 37));
+                    subject = NodeFactory.createURI(sb.toString());
                 } else {
-                    sink.add(triple);
+                    System.err.println("Incorrect URI: " + triple.getSubject().getURI());
+                    subject = NodeFactory.createURI("urn:uuid:" + triple.getSubject().getURI().substring(5));
                 }
             } else {
-                sink.add(triple);
+                subject = triple.getSubject();
             }
+            final Node object;
+            if (triple.getObject().isLiteral()) {
+                var dType = typedProperties.get(URI.create(triple.getPredicate().getURI()));
+                object = dType != null
+                    ? NodeFactory.createLiteral(triple.getObject().getLiteralLexicalForm(), dType)
+                    : triple.getObject();
+            } else {
+                object = triple.getObject();
+            }
+            sink.triples.add(Triple.create(subject, triple.getPredicate(), object));
         }
 
         @Override
@@ -337,12 +383,12 @@ public class TripleReaderReadingCGMES_2_4_15_WithTypedLiterals {
 
         @Override
         public void base(String base) {
-
+            sink.prefixMapping.setNsPrefix("", base);
         }
 
         @Override
         public void prefix(String prefix, String iri) {
-
+            sink.prefixMapping.setNsPrefix(prefix, iri);
         }
 
         @Override
