@@ -71,7 +71,7 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
 
     @Override
     public List<Triple> cloneTriples(List<Triple> triples) {
-        var list = new java.util.ArrayList<Triple>(triples.size());
+        var list = new ArrayList<Triple>(triples.size());
         triples.forEach(triple -> list.add(cloneTriple(triple)));
         return list;
     }

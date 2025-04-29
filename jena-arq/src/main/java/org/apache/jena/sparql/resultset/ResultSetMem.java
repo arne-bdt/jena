@@ -153,7 +153,6 @@ public class ResultSetMem implements ResultSetRewindable, ResultSetPeekable
             rowNumber++;
             action.accept(new ResultBinding(model, binding));
         });
-
     }
 
     @Override

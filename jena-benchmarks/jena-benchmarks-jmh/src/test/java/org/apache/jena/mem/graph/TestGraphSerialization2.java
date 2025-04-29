@@ -83,22 +83,22 @@ public class TestGraphSerialization2 {
             "GraphMem2Fast (current)",
 //            "GraphMem2Legacy (current)",
 //            "GraphMem2Roaring (current)",
-            "GraphMem (Jena 4.8.0)",
+            "GraphMem (Jena 5.3.0)",
 //            "GraphWrapperTransactional (current)",
 //            "GraphTxn (current)",
     })
     public String param3_GraphImplementation;
 
     private Graph graphCurrent;
-    private org.apache.shadedJena480.graph.Graph graph480;
+    private org.apache.shadedJena530.graph.Graph graph530;
 
     private Serialization.SerializedData serializedGraphCurrent;
-    private Serialization480.SerializedData serializedGraph480;
+    private Serialization530.SerializedData serializedGraph530;
     private RDFFormat rdfFormatCurrent;
-    private org.apache.shadedJena480.riot.RDFFormat rdfFormat480;
+    private org.apache.shadedJena530.riot.RDFFormat rdfFormat530;
 
     private Supplier<Graph> graphSupplierCurrent;
-    private Supplier<org.apache.shadedJena480.graph.Graph> graphSupplier480;
+    private Supplier<org.apache.shadedJena530.graph.Graph> graphSupplier530;
 
     private Context trialContext;
 
@@ -151,46 +151,46 @@ public class TestGraphSerialization2 {
         }
     }
 
-    private static org.apache.shadedJena480.riot.RDFFormat getRDFFormat480(String rdfFormat) {
+    private static org.apache.shadedJena530.riot.RDFFormat getRDFFormat530(String rdfFormat) {
         switch (rdfFormat) {
             case "TURTLE_PRETTY":
-                return org.apache.shadedJena480.riot.RDFFormat.TURTLE_PRETTY;
+                return org.apache.shadedJena530.riot.RDFFormat.TURTLE_PRETTY;
             case "TURTLE_BLOCKS":
-                return org.apache.shadedJena480.riot.RDFFormat.TURTLE_BLOCKS;
+                return org.apache.shadedJena530.riot.RDFFormat.TURTLE_BLOCKS;
             case "TURTLE_FLAT":
-                return org.apache.shadedJena480.riot.RDFFormat.TURTLE_FLAT;
+                return org.apache.shadedJena530.riot.RDFFormat.TURTLE_FLAT;
             case "NTRIPLES_UTF8":
-                return org.apache.shadedJena480.riot.RDFFormat.NTRIPLES_UTF8;
+                return org.apache.shadedJena530.riot.RDFFormat.NTRIPLES_UTF8;
             case "NQUADS_UTF8":
-                return org.apache.shadedJena480.riot.RDFFormat.NQUADS_UTF8;
+                return org.apache.shadedJena530.riot.RDFFormat.NQUADS_UTF8;
             case "TRIG_PRETTY":
-                return org.apache.shadedJena480.riot.RDFFormat.TRIG_PRETTY;
+                return org.apache.shadedJena530.riot.RDFFormat.TRIG_PRETTY;
             case "TRIG_BLOCKS":
-                return org.apache.shadedJena480.riot.RDFFormat.TRIG_BLOCKS;
+                return org.apache.shadedJena530.riot.RDFFormat.TRIG_BLOCKS;
             case "TRIG_FLAT":
-                return org.apache.shadedJena480.riot.RDFFormat.TRIG_FLAT;
+                return org.apache.shadedJena530.riot.RDFFormat.TRIG_FLAT;
             case "JSONLD11_PRETTY":
-                return org.apache.shadedJena480.riot.RDFFormat.JSONLD11_PRETTY;
+                return org.apache.shadedJena530.riot.RDFFormat.JSONLD11_PRETTY;
             case "JSONLD11_PLAIN":
-                return org.apache.shadedJena480.riot.RDFFormat.JSONLD11_PLAIN;
+                return org.apache.shadedJena530.riot.RDFFormat.JSONLD11_PLAIN;
             case "JSONLD11_FLAT":
-                return org.apache.shadedJena480.riot.RDFFormat.JSONLD11_FLAT;
+                return org.apache.shadedJena530.riot.RDFFormat.JSONLD11_FLAT;
             case "RDFXML_PRETTY":
-                return org.apache.shadedJena480.riot.RDFFormat.RDFXML_PRETTY;
+                return org.apache.shadedJena530.riot.RDFFormat.RDFXML_PRETTY;
             case "RDFXML_PLAIN":
-                return org.apache.shadedJena480.riot.RDFFormat.RDFXML_PLAIN;
+                return org.apache.shadedJena530.riot.RDFFormat.RDFXML_PLAIN;
             case "RDFJSON":
-                return org.apache.shadedJena480.riot.RDFFormat.RDFJSON;
+                return org.apache.shadedJena530.riot.RDFFormat.RDFJSON;
             case "TRIX":
-                return org.apache.shadedJena480.riot.RDFFormat.TRIX;
+                return org.apache.shadedJena530.riot.RDFFormat.TRIX;
             case "RDF_PROTO":
-                return org.apache.shadedJena480.riot.RDFFormat.RDF_PROTO;
+                return org.apache.shadedJena530.riot.RDFFormat.RDF_PROTO;
             case "RDF_PROTO_VALUES":
-                return org.apache.shadedJena480.riot.RDFFormat.RDF_PROTO_VALUES;
+                return org.apache.shadedJena530.riot.RDFFormat.RDF_PROTO_VALUES;
             case "RDF_THRIFT":
-                return org.apache.shadedJena480.riot.RDFFormat.RDF_THRIFT;
+                return org.apache.shadedJena530.riot.RDFFormat.RDF_THRIFT;
             case "RDF_THRIFT_VALUES":
-                return org.apache.shadedJena480.riot.RDFFormat.RDF_THRIFT_VALUES;
+                return org.apache.shadedJena530.riot.RDFFormat.RDF_THRIFT_VALUES;
             default:
                 throw new IllegalArgumentException("Unknown rdfFormat: " + rdfFormat);
         }
@@ -205,8 +205,8 @@ public class TestGraphSerialization2 {
         return Serialization.serialize(graphCurrent, rdfFormatCurrent, param2_Compressor);
     }
 
-    private Serialization480.SerializedData serialize480() {
-        return Serialization480.serialize(graph480, rdfFormat480, param2_Compressor);
+    private Serialization530.SerializedData serialize530() {
+        return Serialization530.serialize(graph530, rdfFormat530, param2_Compressor);
     }
 
     @Benchmark
@@ -218,8 +218,8 @@ public class TestGraphSerialization2 {
         return Serialization.deserialize(serializedGraphCurrent, false, graphSupplierCurrent);
     }
 
-    private org.apache.shadedJena480.graph.Graph deserialize480() {
-        return Serialization480.deserialize(serializedGraph480, false, graphSupplier480);
+    private org.apache.shadedJena530.graph.Graph deserialize530() {
+        return Serialization530.deserialize(serializedGraph530, false, graphSupplier530);
     }
 
     private Supplier<Object> serializer;
@@ -245,19 +245,19 @@ public class TestGraphSerialization2 {
                 this.serializer = this::serializeCurrent;
                 this.deserializer = this::deserializeCurrent;
                 break;
-            case JENA_4_8_0:
-                this.rdfFormat480 = getRDFFormat480(param1_RDFFormat);
-                this.graphSupplier480 = Releases.v480.graphSupplier(trialContext.getGraphClass());
+            case JENA_5_3_0:
+                this.rdfFormat530 = getRDFFormat530(param1_RDFFormat);
+                this.graphSupplier530 = Releases.v530.graphSupplier(trialContext.getGraphClass());
 
-                var triples480 = Releases.v480.readTriples(param0_GraphUri);
-                this.graph480 = this.graphSupplier480.get();
-                triples480.forEach(graph480::add);
+                var triples530 = Releases.v530.readTriples(param0_GraphUri);
+                this.graph530 = this.graphSupplier530.get();
+                triples530.forEach(graph530::add);
 
-                this.serializedGraph480 = Serialization480.serialize(graph480, rdfFormat480, param2_Compressor);
-                System.out.printf("\nSize of output stream in rdfFormat %s is %.2f MB. Triple count: %d\n", rdfFormat480.toString(), serializedGraph480.bytes().length / 1024.0 / 1024.0, graph480.size());
+                this.serializedGraph530 = Serialization530.serialize(graph530, rdfFormat530, param2_Compressor);
+                System.out.printf("\nSize of output stream in rdfFormat %s is %.2f MB. Triple count: %d\n", rdfFormat530.toString(), serializedGraph530.bytes().length / 1024.0 / 1024.0, graph530.size());
 
-                this.serializer = this::serialize480;
-                this.deserializer = this::deserialize480;
+                this.serializer = this::serialize530;
+                this.deserializer = this::deserialize530;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown Jena version: " + this.trialContext.getJenaVersion());

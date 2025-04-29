@@ -56,7 +56,6 @@ public class TestGraphAdd {
 //            "GraphMem2Fast (current)",
 //            "GraphMem2Legacy (current)",
 //            "GraphMem2Roaring (current)",
-//            "GraphMem (Jena 4.8.0)",
             "GraphWrapperTransactional (current)",
             "GraphTxn (current)",
     })
@@ -64,7 +63,7 @@ public class TestGraphAdd {
     java.util.function.Supplier<Object> graphAdd;
     private Context trialContext;
     private List<Triple> triplesCurrent;
-    private List<org.apache.shadedJena480.graph.Triple> triples480;
+    private List<org.apache.shadedJena530.graph.Triple> triples530;
 
     @Benchmark
     public Object graphAdd() {
@@ -87,11 +86,11 @@ public class TestGraphAdd {
         return sutCurrent;
     }
 
-    private Object graphAdd480() {
-        var sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-        triples480.forEach(sut480::add);
-        Assert.assertEquals(triples480.size(), sut480.size());
-        return sut480;
+    private Object graphAdd530() {
+        var sut530 = Releases.v530.createGraph(trialContext.getGraphClass());
+        triples530.forEach(sut530::add);
+        Assert.assertEquals(triples530.size(), sut530.size());
+        return sut530;
     }
 
 
@@ -103,9 +102,9 @@ public class TestGraphAdd {
                 triplesCurrent = Releases.current.readTriples(param0_GraphUri);
                 this.graphAdd = this::graphAddCurrent;
                 break;
-            case JENA_4_8_0:
-                triples480 = Releases.v480.readTriples(param0_GraphUri);
-                this.graphAdd = this::graphAdd480;
+            case JENA_5_3_0:
+                triples530 = Releases.v530.readTriples(param0_GraphUri);
+                this.graphAdd = this::graphAdd530;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown Jena version: " + this.trialContext.getJenaVersion());

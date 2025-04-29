@@ -18,9 +18,18 @@
 
 package org.apache.jena.sparql.core.mem2;
 
+import org.apache.jena.datatypes.RDFDatatype;
+import org.apache.jena.datatypes.xsd.impl.XSDDouble;
+import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.graph.compose.Delta;
 import org.apache.jena.mem2.GraphMem2Fast;
+import org.apache.jena.query.DatasetFactory;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.sparql.JenaTransactionException;
+import org.apache.jena.sparql.core.DatasetGraphFactory;
+import org.apache.jena.sparql.graph.GraphFactory;
 import org.awaitility.Awaitility;
 import org.junit.Test;
 
@@ -34,6 +43,75 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.*;
 
 public class GraphMem2TxnTest {
+
+
+
+    @Test
+    public void testQuery() {
+        final var graph = GraphFactory.createGraphMem();
+        graph.add(triple("a b c"));
+        graph.add(triple("a b d"));
+        graph.add(NodeFactory.createURI("http://example.com/subject"), NodeFactory.createURI("http://example.com/predicate"), NodeFactory.createLiteral("Text"));
+        graph.add(NodeFactory.createURI("http://example.com/subject"), NodeFactory.createURI("http://example.com/predicateDouble"), NodeFactory.createLiteralByValue(47.11, XSDDouble.XSDdouble));
+
+
+        final var datasetGraph = DatasetGraphFactory.create(graph);
+
+        final var query = QueryFactory.create("SELECT ?subject ?p ?o WHERE { ?subject ?p ?o }");
+        final var queryExec = QueryExecutionFactory.create(query, datasetGraph);
+
+        var resultSet = queryExec.execSelect();
+        //print resultset
+        while (resultSet.hasNext()) {
+            //print variables once
+            if (resultSet.getRowNumber() == 0) {
+                System.out.println(resultSet.getResultVars());
+            }
+            var solution = resultSet.next();
+            resultSet.getResultVars().forEach(
+                    varName -> System.out.print(solution.get(varName) + " ")
+            );
+            System.out.println();
+        }
+    }
+
+    @Test
+    public void testDifferenceModel() {
+        final var qdmBaseGraph = GraphFactory.createGraphMem();
+        qdmBaseGraph.add(triple("subjektA hatWert 1"));
+        qdmBaseGraph.add(triple("subjektB hatWert 4711"));
+
+
+
+        final var diffGraph = new Delta(qdmBaseGraph);
+        diffGraph.add(triple("subjektA hatWert 1"));
+        diffGraph.delete(triple("subjektA hatWert 3"));
+
+
+        final var diffGraph2 = new Delta(qdmBaseGraph);
+        diffGraph2.add(triple("subjektC hatWert 69"));
+
+
+        final var datasetGraph = DatasetGraphFactory.create(diffGraph2);
+
+        final var query = QueryFactory.create("SELECT ?subject ?p ?o WHERE { ?subject ?p ?o }");
+        final var queryExec = QueryExecutionFactory.create(query, datasetGraph);
+
+        var resultSet = queryExec.execSelect();
+        //print resultset
+        while (resultSet.hasNext()) {
+            //print variables once
+            if (resultSet.getRowNumber() == 0) {
+                System.out.println(resultSet.getResultVars());
+            }
+            var solution = resultSet.next();
+            resultSet.getResultVars().forEach(
+                    varName -> System.out.print(solution.get(varName) + " ")
+            );
+            System.out.println();
+        }
+    }
+
 
     @Test
     public void testAddWithoutTransaction() {

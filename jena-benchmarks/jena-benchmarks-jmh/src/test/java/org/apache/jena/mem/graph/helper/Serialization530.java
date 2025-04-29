@@ -19,11 +19,11 @@
 package org.apache.jena.mem.graph.helper;
 
 import net.jpountz.lz4.LZ4Factory;
-import org.apache.shadedJena480.graph.Graph;
-import org.apache.shadedJena480.mem.GraphMem;
-import org.apache.shadedJena480.riot.RDFFormat;
-import org.apache.shadedJena480.riot.RDFParser;
-import org.apache.shadedJena480.riot.RDFWriter;
+import org.apache.shadedJena530.mem2.GraphMem2Fast;
+import org.apache.shadedJena530.graph.Graph;
+import org.apache.shadedJena530.riot.RDFFormat;
+import org.apache.shadedJena530.riot.RDFParser;
+import org.apache.shadedJena530.riot.RDFWriter;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -32,7 +32,7 @@ import java.util.function.Supplier;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class Serialization480 {
+public class Serialization530 {
 
     public static final String NO_COMPRESSOR = "none";
     public static final String LZ4_FASTEST = "LZ4Fastest";
@@ -89,7 +89,7 @@ public class Serialization480 {
     }
 
     public static Graph deserialize(SerializedData compressedGraph, boolean canonicalValues) {
-        return deserialize(compressedGraph, canonicalValues, GraphMem::new);
+        return deserialize(compressedGraph, canonicalValues, GraphMem2Fast::new);
     }
 
     public static Graph deserialize(SerializedData compressedGraph, boolean canonicalValues, Supplier<Graph> graphSupplier) {

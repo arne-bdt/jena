@@ -64,13 +64,13 @@ public class TestGraphBulkUpdates {
             "GraphMem2Fast (current)",
             "GraphMem2Legacy (current)",
             "GraphMem2Roaring (current)",
-//              "GraphMem (Jena 4.8.0)",
+//              "GraphMem (Jena 5.3.0)",
     })
     public String param1_GraphImplementation;
 
     private Graph sutCurrent;
-    private org.apache.shadedJena480.graph.Graph sut480;
-    private List<org.apache.shadedJena480.graph.Triple> triples480;
+    private org.apache.shadedJena530.graph.Graph sut530;
+    private List<org.apache.shadedJena530.graph.Triple> triples530;
 
     private TripleReaderReadingCGMES_2_4_15_WithTypedLiterals.TriplesAndNamespaces trialData;
 
@@ -220,14 +220,14 @@ public class TestGraphBulkUpdates {
                 trialData.triples().forEach(this.sutCurrent::add);
             }
             break;
-            case JENA_4_8_0: {
-                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
+            case JENA_5_3_0: {
+                this.sut530 = Releases.v530.createGraph(trialContext.getGraphClass());
 
-                var triples = Releases.v480.readTriples(param0_GraphUri);
-                triples.forEach(this.sut480::add);
+                var triples = Releases.v530.readTriples(param0_GraphUri);
+                triples.forEach(this.sut530::add);
 
                 /*clone the triples because they should not be the same objects*/
-                this.triples480 = Releases.v480.cloneTriples(triples);
+                this.triples530 = Releases.v530.cloneTriples(triples);
             }
             break;
             default:

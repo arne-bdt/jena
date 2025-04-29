@@ -52,7 +52,7 @@ public class TestGraphStreamByMatchAndCount {
             "GraphMem2Fast (current)",
             "GraphMem2Legacy (current)",
             "GraphMem2Roaring (current)",
-            "GraphMem (Jena 4.8.0)",
+            "GraphMem (Jena 5.3.0)",
     })
     public String param1_GraphImplementation;
 
@@ -60,9 +60,9 @@ public class TestGraphStreamByMatchAndCount {
     public int param2_sampleSize;
     Function<String, Object> graphStreamByMatchAndCount;
     private Graph sutCurrent;
-    private org.apache.shadedJena480.graph.Graph sut480;
+    private org.apache.shadedJena530.graph.Graph sut530;
     private List<Triple> triplesToFindCurrent;
-    private List<org.apache.shadedJena480.graph.Triple> triplesToFind480;
+    private List<org.apache.shadedJena530.graph.Triple> triplesToFind530;
 
     private static int count(final Stream<?> stream) {
         var actionCounter = new ActionCount<>();
@@ -109,10 +109,10 @@ public class TestGraphStreamByMatchAndCount {
         return total;
     }
 
-    private Object graphStreamByMatchAndCount480(String pattern) {
-        var streamFunction = getStreamFunctionByPattern480(pattern);
+    private Object graphStreamByMatchAndCount530(String pattern) {
+        var streamFunction = getStreamFunctionByPattern530(pattern);
         var total = 0;
-        for (org.apache.shadedJena480.graph.Triple sample : this.triplesToFind480) {
+        for (org.apache.shadedJena530.graph.Triple sample : this.triplesToFind530) {
             total += count(streamFunction.apply(sample));
         }
         return total;
@@ -137,20 +137,20 @@ public class TestGraphStreamByMatchAndCount {
         }
     }
 
-    Function<org.apache.shadedJena480.graph.Triple, Stream<org.apache.shadedJena480.graph.Triple>> getStreamFunctionByPattern480(String pattern) {
+    Function<org.apache.shadedJena530.graph.Triple, Stream<org.apache.shadedJena530.graph.Triple>> getStreamFunctionByPattern530(String pattern) {
         switch (pattern) {
             case "S__":
-                return t -> sut480.stream(t.getSubject(), null, null);
+                return t -> sut530.stream(t.getSubject(), null, null);
             case "_P_":
-                return t -> sut480.stream(null, t.getPredicate(), null);
+                return t -> sut530.stream(null, t.getPredicate(), null);
             case "__O":
-                return t -> sut480.stream(null, null, t.getObject());
+                return t -> sut530.stream(null, null, t.getObject());
             case "SP_":
-                return t -> sut480.stream(t.getSubject(), t.getPredicate(), null);
+                return t -> sut530.stream(t.getSubject(), t.getPredicate(), null);
             case "S_O":
-                return t -> sut480.stream(t.getSubject(), null, t.getObject());
+                return t -> sut530.stream(t.getSubject(), null, t.getObject());
             case "_PO":
-                return t -> sut480.stream(null, t.getPredicate(), t.getObject());
+                return t -> sut530.stream(null, t.getPredicate(), t.getObject());
             default:
                 throw new IllegalArgumentException("Unknown pattern: " + pattern);
         }
@@ -178,22 +178,22 @@ public class TestGraphStreamByMatchAndCount {
                 java.util.Collections.shuffle(this.triplesToFindCurrent, new Random(4721));
             }
             break;
-            case JENA_4_8_0: {
-                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-                this.graphStreamByMatchAndCount = this::graphStreamByMatchAndCount480;
+            case JENA_5_3_0: {
+                this.sut530 = Releases.v530.createGraph(trialContext.getGraphClass());
+                this.graphStreamByMatchAndCount = this::graphStreamByMatchAndCount530;
 
-                var triples = Releases.v480.readTriples(param0_GraphUri);
-                triples.forEach(this.sut480::add);
+                var triples = Releases.v530.readTriples(param0_GraphUri);
+                triples.forEach(this.sut530::add);
 
                 /*clone the triples because they should not be the same objects*/
-                this.triplesToFind480 = new ArrayList<>(param2_sampleSize);
+                this.triplesToFind530 = new ArrayList<>(param2_sampleSize);
                 var sampleIncrement = triples.size() / param2_sampleSize;
                 for (var i = 0; i < triples.size(); i += sampleIncrement) {
-                    this.triplesToFind480.add(Releases.v480.cloneTriple(triples.get(i)));
+                    this.triplesToFind530.add(Releases.v530.cloneTriple(triples.get(i)));
                 }
                 /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                java.util.Collections.shuffle(this.triplesToFind480, new Random(4721));
+                java.util.Collections.shuffle(this.triplesToFind530, new Random(4721));
             }
             break;
             default:

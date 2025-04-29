@@ -20,7 +20,7 @@ package org.apache.jena;
 
 public enum JenaVersion {
     CURRENT(JenaVersion.class.getPackage().getImplementationVersion()),
-    JENA_4_8_0("4.8.0");
+    JENA_5_3_0("5.3.0");
 
     private final String version;
 

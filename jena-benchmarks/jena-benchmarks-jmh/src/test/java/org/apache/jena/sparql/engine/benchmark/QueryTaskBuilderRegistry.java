@@ -23,7 +23,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.jena.atlas.lib.Creator;
-import org.apache.jena.sparql.engine.join.QueryTaskBuilder480;
+import org.apache.jena.sparql.engine.join.QueryTaskBuilder530;
 import org.apache.jena.sparql.engine.join.QueryTaskBuilderCurrent;
 
 public class QueryTaskBuilderRegistry {
@@ -31,7 +31,7 @@ public class QueryTaskBuilderRegistry {
 
     static {
         INSTANCE.put("current", () -> new QueryTaskBuilderCurrent());
-        INSTANCE.put("4.8.0", () -> new QueryTaskBuilder480());
+        INSTANCE.put("5.3.0", () -> new QueryTaskBuilder530());
     }
 
     private final Map<String, Creator<QueryTaskBuilder>> registry = new ConcurrentHashMap<>();

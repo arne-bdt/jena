@@ -48,8 +48,8 @@ public class TestCaches {
     @Param({
             "Caffeine",
             "Simple",
-            "Jena510.Caffeine",
-            "Jena510.Simple"
+            "Jena530.Caffeine",
+            "Jena530.Simple"
     })
     public String param1_Cache;
 
@@ -74,10 +74,10 @@ public class TestCaches {
                 return CacheFactory.createCache(cacheSize);
             case "Simple":
                 return CacheFactory.createSimpleCache(cacheSize);
-            case "Jena510.Caffeine":
-                return new CacheFromJena510Wrapped<>(org.apache.shadedJena510.atlas.lib.CacheFactory.createCache(cacheSize));
-            case "Jena510.Simple":
-                return new CacheFromJena510Wrapped<>(org.apache.shadedJena510.atlas.lib.CacheFactory.createSimpleCache(cacheSize));
+            case "Jena530.Caffeine":
+                return new CacheFromJena530Wrapped<>(org.apache.shadedJena530.atlas.lib.CacheFactory.createCache(cacheSize));
+            case "Jena530.Simple":
+                return new CacheFromJena530Wrapped<>(org.apache.shadedJena530.atlas.lib.CacheFactory.createSimpleCache(cacheSize));
             default:
                 throw new IllegalArgumentException("Unknown Cache: " + cacheName);
         }
@@ -172,12 +172,12 @@ public class TestCaches {
         });
     }
 
-    private static class CacheFromJena510Wrapped<K, V> implements Cache<K, V> {
+    private static class CacheFromJena530Wrapped<K, V> implements Cache<K, V> {
 
-        private final org.apache.shadedJena510.atlas.lib.Cache<K, V> wrappedCache;
+        private final org.apache.shadedJena530.atlas.lib.Cache<K, V> wrappedCache;
 
-        public CacheFromJena510Wrapped(org.apache.shadedJena510.atlas.lib.Cache<K, V> cacheFromJena510) {
-            this.wrappedCache = cacheFromJena510;
+        public CacheFromJena530Wrapped(org.apache.shadedJena530.atlas.lib.Cache<K, V> cacheFromJena530) {
+            this.wrappedCache = cacheFromJena530;
         }
 
 

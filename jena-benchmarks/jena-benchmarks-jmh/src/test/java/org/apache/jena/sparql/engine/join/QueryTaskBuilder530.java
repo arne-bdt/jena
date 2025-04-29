@@ -20,11 +20,11 @@ package org.apache.jena.sparql.engine.join;
 import org.apache.jena.sparql.engine.benchmark.QueryTask;
 import org.apache.jena.sparql.engine.benchmark.QueryTaskBuilder;
 
-public class QueryTaskBuilder480
+public class QueryTaskBuilder530
     extends QueryTaskBuilder
 {
     @Override
     public QueryTask build() {
-        return new QueryTask480(queryString, expectedResultSetSize, skipExecution, skipValidation);
+        return new QueryTask530(queryString, expectedResultSetSize, skipExecution, skipValidation);
     }
 }

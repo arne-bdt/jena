@@ -51,14 +51,14 @@ public class TestGraphFindByMatchAndGetFirst {
             "GraphMem2Fast (current)",
             "GraphMem2Legacy (current)",
             "GraphMem2Roaring (current)",
-            "GraphMem (Jena 4.8.0)",
+            "GraphMem (Jena 5.3.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Function<String, Object> graphFind;
     private Graph sutCurrent;
-    private org.apache.shadedJena480.graph.Graph sut480;
+    private org.apache.shadedJena530.graph.Graph sut530;
     private List<Triple> triplesToFindCurrent;
-    private List<org.apache.shadedJena480.graph.Triple> triplesToFind480;
+    private List<org.apache.shadedJena530.graph.Triple> triplesToFind530;
 
     @Benchmark
     public Object graphFindS__() {
@@ -102,11 +102,11 @@ public class TestGraphFindByMatchAndGetFirst {
         return t;
     }
 
-    private Object graphFindByMatchesAndGetFirst480(String pattern) {
-        var findFunction = getFindFunctionByPattern480(pattern);
-        org.apache.shadedJena480.graph.Triple t = null;
-        for (org.apache.shadedJena480.graph.Triple sample : this.triplesToFind480) {
-            final Iterator<org.apache.shadedJena480.graph.Triple> it = findFunction.apply(sample);
+    private Object graphFindByMatchesAndGetFirst530(String pattern) {
+        var findFunction = getFindFunctionByPattern530(pattern);
+        org.apache.shadedJena530.graph.Triple t = null;
+        for (org.apache.shadedJena530.graph.Triple sample : this.triplesToFind530) {
+            final Iterator<org.apache.shadedJena530.graph.Triple> it = findFunction.apply(sample);
             assertTrue(it.hasNext());
             t = it.next();
             assertNotNull(t);
@@ -133,20 +133,20 @@ public class TestGraphFindByMatchAndGetFirst {
         }
     }
 
-    Function<org.apache.shadedJena480.graph.Triple, Iterator<org.apache.shadedJena480.graph.Triple>> getFindFunctionByPattern480(String pattern) {
+    Function<org.apache.shadedJena530.graph.Triple, Iterator<org.apache.shadedJena530.graph.Triple>> getFindFunctionByPattern530(String pattern) {
         switch (pattern) {
             case "S__":
-                return t -> sut480.find(t.getSubject(), null, null);
+                return t -> sut530.find(t.getSubject(), null, null);
             case "_P_":
-                return t -> sut480.find(null, t.getPredicate(), null);
+                return t -> sut530.find(null, t.getPredicate(), null);
             case "__O":
-                return t -> sut480.find(null, null, t.getObject());
+                return t -> sut530.find(null, null, t.getObject());
             case "SP_":
-                return t -> sut480.find(t.getSubject(), t.getPredicate(), null);
+                return t -> sut530.find(t.getSubject(), t.getPredicate(), null);
             case "S_O":
-                return t -> sut480.find(t.getSubject(), null, t.getObject());
+                return t -> sut530.find(t.getSubject(), null, t.getObject());
             case "_PO":
-                return t -> sut480.find(null, t.getPredicate(), t.getObject());
+                return t -> sut530.find(null, t.getPredicate(), t.getObject());
             default:
                 throw new IllegalArgumentException("Unknown pattern: " + pattern);
         }
@@ -170,18 +170,18 @@ public class TestGraphFindByMatchAndGetFirst {
                 java.util.Collections.shuffle(this.triplesToFindCurrent, new Random(4721));
             }
             break;
-            case JENA_4_8_0: {
-                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-                this.graphFind = this::graphFindByMatchesAndGetFirst480;
+            case JENA_5_3_0: {
+                this.sut530 = Releases.v530.createGraph(trialContext.getGraphClass());
+                this.graphFind = this::graphFindByMatchesAndGetFirst530;
 
-                var triples = Releases.v480.readTriples(param0_GraphUri);
-                triples.forEach(this.sut480::add);
+                var triples = Releases.v530.readTriples(param0_GraphUri);
+                triples.forEach(this.sut530::add);
 
                 /*clone the triples because they should not be the same objects*/
-                this.triplesToFind480 = Releases.v480.cloneTriples(triples);
+                this.triplesToFind530 = Releases.v530.cloneTriples(triples);
                     /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                java.util.Collections.shuffle(this.triplesToFind480, new Random(4721));
+                java.util.Collections.shuffle(this.triplesToFind530, new Random(4721));
             }
             break;
             default:

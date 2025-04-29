@@ -46,12 +46,12 @@ public class TestGraphFindAllWithHasNextAndNext {
             "GraphMem2Fast (current)",
             "GraphMem2Legacy (current)",
             "GraphMem2Roaring (current)",
-            "GraphMem (Jena 4.8.0)",
+            "GraphMem (Jena 5.3.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Long> graphFindAll;
     private Graph sutCurrent;
-    private org.apache.shadedJena480.graph.Graph sut480;
+    private org.apache.shadedJena530.graph.Graph sut530;
 
     @Benchmark
     public Long graphFindAll() {
@@ -69,14 +69,14 @@ public class TestGraphFindAllWithHasNextAndNext {
         return actionCounter.getCount();
     }
 
-    private Long graphFindAll480() {
+    private Long graphFindAll530() {
         var actionCounter = new ActionCount<>();
-        var iter = sut480.find();
+        var iter = sut530.find();
         while (iter.hasNext()) {
             actionCounter.accept(iter.next());
         }
         iter.close();
-        assertEquals(sut480.size(), actionCounter.getCount());
+        assertEquals(sut530.size(), actionCounter.getCount());
         return actionCounter.getCount();
     }
 
@@ -92,12 +92,12 @@ public class TestGraphFindAllWithHasNextAndNext {
                 triples.forEach(this.sutCurrent::add);
             }
             break;
-            case JENA_4_8_0: {
-                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-                this.graphFindAll = this::graphFindAll480;
+            case JENA_5_3_0: {
+                this.sut530 = Releases.v530.createGraph(trialContext.getGraphClass());
+                this.graphFindAll = this::graphFindAll530;
 
-                var triples = Releases.v480.readTriples(param0_GraphUri);
-                triples.forEach(this.sut480::add);
+                var triples = Releases.v530.readTriples(param0_GraphUri);
+                triples.forEach(this.sut530::add);
             }
             break;
             default:

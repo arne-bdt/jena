@@ -21,25 +21,25 @@ import java.util.function.BiConsumer;
 
 import org.apache.jena.sparql.engine.benchmark.QueryTask;
 import org.apache.jena.sparql.engine.benchmark.QueryTaskResult;
-import org.apache.shadedJena480.query.ARQ;
-import org.apache.shadedJena480.query.ResultSet;
-import org.apache.shadedJena480.query.ResultSetFormatter;
-import org.apache.shadedJena480.sparql.ARQConstants;
-import org.apache.shadedJena480.sparql.algebra.Op;
-import org.apache.shadedJena480.sparql.algebra.optimize.Optimize;
-import org.apache.shadedJena480.sparql.algebra.optimize.Rewrite;
-import org.apache.shadedJena480.sparql.algebra.optimize.RewriteFactory;
-import org.apache.shadedJena480.sparql.core.DatasetGraphFactory;
-import org.apache.shadedJena480.sparql.exec.QueryExec;
-import org.apache.shadedJena480.sparql.util.Context;
-import org.apache.shadedJena480.sys.JenaSystem;
+import org.apache.shadedJena530.query.ARQ;
+import org.apache.shadedJena530.query.ResultSet;
+import org.apache.shadedJena530.query.ResultSetFormatter;
+import org.apache.shadedJena530.sparql.ARQConstants;
+import org.apache.shadedJena530.sparql.algebra.Op;
+import org.apache.shadedJena530.sparql.algebra.optimize.Optimize;
+import org.apache.shadedJena530.sparql.algebra.optimize.Rewrite;
+import org.apache.shadedJena530.sparql.algebra.optimize.RewriteFactory;
+import org.apache.shadedJena530.sparql.core.DatasetGraphFactory;
+import org.apache.shadedJena530.sparql.exec.QueryExec;
+import org.apache.shadedJena530.sparql.util.Context;
+import org.apache.shadedJena530.sys.JenaSystem;
 
-public class QueryTask480
+public class QueryTask530
     extends QueryTask
 {
     static { JenaSystem.init(); }
 
-    public QueryTask480(String queryString, long expectedResultSetSize, boolean skipExecution, boolean skipValidation) {
+    public QueryTask530(String queryString, long expectedResultSetSize, boolean skipExecution, boolean skipValidation) {
         super(queryString, expectedResultSetSize, skipExecution, skipValidation);
     }
 

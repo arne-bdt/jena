@@ -38,35 +38,36 @@ import java.util.List;
 public class TestGraphMemoryConsumption {
 
     @Param({
+            "C:/temp/AMP_Export.rdf",
 //            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
-            "C:/temp/res_test/xxx_CGMES_EQ.xml",
-            "C:/temp/res_test/xxx_CGMES_SSH.xml",
-            "C:/temp/res_test/xxx_CGMES_TP.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
-            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
-            "../testing/BSBM/bsbm-1m.nt.gz",
-            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "C:/temp/res_test/xxx_CGMES_EQ.xml",
+//            "C:/temp/res_test/xxx_CGMES_SSH.xml",
+//            "C:/temp/res_test/xxx_CGMES_TP.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_EQ.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SSH.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_TP.xml",
+//            "C:/rd/CGMES/ENTSO-E_Test_Configurations_v3.0/RealGrid/RealGrid_SV.xml",
+//            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/BSBM/bsbm-5m.nt.gz",
 //            "../testing/BSBM/bsbm-25m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
 //            "GraphMem (current)",
-            "GraphWrapperTransactional (current)",
-            "GraphTxn (current)",
+//            "GraphWrapperTransactional (current)",
+//            "GraphTxn (current)",
             "GraphMem2Fast (current)",
-//            "GraphMem2Legacy (current)",
-//            "GraphMem2Roaring (current)",
-//            "GraphMem (Jena 4.8.0)",
+            "GraphMem2Legacy (current)",
+            "GraphMem2Roaring (current)",
+//            "GraphMem (Jena 5.3.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Object> graphFill;
     private Context trialContext;
     private List<Triple> allTriplesCurrent;
-    private List<org.apache.shadedJena480.graph.Triple> allTriples480;
+    private List<org.apache.shadedJena530.graph.Triple> allTriples530;
 
     /**
      * This method is used to get the memory consumption of the current JVM.
@@ -113,11 +114,11 @@ public class TestGraphMemoryConsumption {
         return sut;
     }
 
-    private Object graphFill480() {
+    private Object graphFill530() {
         var memoryBefore = runGcAndGetUsedMemoryInMB();
         var stopwatch = StopWatch.createStarted();
-        var sut = Releases.v480.createGraph(trialContext.getGraphClass());
-        allTriples480.forEach(sut::add);
+        var sut = Releases.v530.createGraph(trialContext.getGraphClass());
+        allTriples530.forEach(sut::add);
         stopwatch.stop();
         var memoryAfter = runGcAndGetUsedMemoryInMB();
         System.out.printf("graphs: %d time to fill graphs: %s additional memory: %5.3f MB%n",
@@ -135,9 +136,9 @@ public class TestGraphMemoryConsumption {
                 this.allTriplesCurrent = Releases.current.readTriples(param0_GraphUri);
                 this.graphFill = this::graphFillCurrent;
                 break;
-            case JENA_4_8_0:
-                this.allTriples480 = Releases.v480.readTriples(param0_GraphUri);
-                this.graphFill = this::graphFill480;
+            case JENA_5_3_0:
+                this.allTriples530 = Releases.v530.readTriples(param0_GraphUri);
+                this.graphFill = this::graphFill530;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown Jena version: " + this.trialContext.getJenaVersion());

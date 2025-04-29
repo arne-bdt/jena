@@ -17,19 +17,19 @@
  */
 package org.apache.jena.mem.graph.helper;
 
-import org.apache.shadedJena480.graph.Graph;
-import org.apache.shadedJena480.graph.Node;
-import org.apache.shadedJena480.graph.NodeFactory;
-import org.apache.shadedJena480.graph.Triple;
-import org.apache.shadedJena480.mem.GraphMem;
-import org.apache.shadedJena480.riot.RDFDataMgr;
+import org.apache.shadedJena530.graph.Graph;
+import org.apache.shadedJena530.graph.Node;
+import org.apache.shadedJena530.graph.NodeFactory;
+import org.apache.shadedJena530.graph.Triple;
+import org.apache.shadedJena530.mem.GraphMem;
+import org.apache.shadedJena530.riot.RDFDataMgr;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
 
-public class GraphTripleNodeHelper480 implements GraphTripleNodeHelper<Graph, Triple, Node> {
+public class GraphTripleNodeHelper530 implements GraphTripleNodeHelper<Graph, Triple, Node> {
 
     @SuppressWarnings("deprecation")
     @Override
@@ -70,7 +70,7 @@ public class GraphTripleNodeHelper480 implements GraphTripleNodeHelper<Graph, Tr
     @Override
     public Node cloneNode(Node node) {
         if (node.isLiteral()) {
-            return NodeFactory.createLiteralByValue(node.getLiteralLexicalForm(), node.getLiteralLanguage(), node.getLiteralDatatype());
+            return NodeFactory.createLiteral(node.getLiteralLexicalForm(), node.getLiteralLanguage(), node.getLiteralDatatype());
         }
         if (node.isURI()) {
             return NodeFactory.createURI(node.getURI());

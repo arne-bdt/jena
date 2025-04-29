@@ -47,13 +47,13 @@ public class TestGraphStreamAll {
             "GraphMem2Fast (current)",
             "GraphMem2Legacy (current)",
             "GraphMem2Roaring (current)",
-            "GraphMem (Jena 4.8.0)",
+            "GraphMem (Jena 5.3.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Object> graphStream;
     java.util.function.Supplier<Object> graphStreamParallel;
     private Graph sutCurrent;
-    private org.apache.shadedJena480.graph.Graph sut480;
+    private org.apache.shadedJena530.graph.Graph sut530;
 
     @Benchmark
     public Object graphStream() {
@@ -71,9 +71,9 @@ public class TestGraphStreamAll {
         return list;
     }
 
-    private Object graphStream480() {
-        var list = sut480.stream().collect(Collectors.toList());
-        assertEquals(sut480.size(), list.size());
+    private Object graphStream530() {
+        var list = sut530.stream().collect(Collectors.toList());
+        assertEquals(sut530.size(), list.size());
         return list;
     }
 
@@ -83,9 +83,9 @@ public class TestGraphStreamAll {
         return list;
     }
 
-    private Object graphStreamParallel480() {
-        var list = sut480.stream().parallel().collect(Collectors.toList());
-        assertEquals(sut480.size(), list.size());
+    private Object graphStreamParallel530() {
+        var list = sut530.stream().parallel().collect(Collectors.toList());
+        assertEquals(sut530.size(), list.size());
         return list;
     }
 
@@ -102,13 +102,13 @@ public class TestGraphStreamAll {
                 triples.forEach(this.sutCurrent::add);
             }
             break;
-            case JENA_4_8_0: {
-                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-                this.graphStream = this::graphStream480;
-                this.graphStreamParallel = this::graphStreamParallel480;
+            case JENA_5_3_0: {
+                this.sut530 = Releases.v530.createGraph(trialContext.getGraphClass());
+                this.graphStream = this::graphStream530;
+                this.graphStreamParallel = this::graphStreamParallel530;
 
-                var triples = Releases.v480.readTriples(param0_GraphUri);
-                triples.forEach(this.sut480::add);
+                var triples = Releases.v530.readTriples(param0_GraphUri);
+                triples.forEach(this.sut530::add);
             }
             break;
             default:

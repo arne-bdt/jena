@@ -44,7 +44,7 @@ import org.openjdk.jmh.runner.options.TimeValue;
 public class BenchmarkHashJoin {
     @Param({
         "current",
-        "4.8.0"
+        "5.3.0"
     })
     public String param0_jenaVersion;
 

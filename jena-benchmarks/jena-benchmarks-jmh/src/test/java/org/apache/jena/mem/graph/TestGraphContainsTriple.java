@@ -56,16 +56,16 @@ public class TestGraphContainsTriple {
             "GraphMem2Fast (current)",
 //            "GraphMem2Legacy (current)",
 //            "GraphMem2Roaring (current)",
-//            "GraphMem (Jena 4.8.0)",
+//            "GraphMem (Jena 5.3.0)",
             "GraphTxn (current)",
             "GraphWrapperTransactional (current)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Boolean> graphContains;
     private Graph sutCurrent;
-    private org.apache.shadedJena480.graph.Graph sut480;
+    private org.apache.shadedJena530.graph.Graph sut530;
     private List<Triple> triplesToFindCurrent;
-    private List<org.apache.shadedJena480.graph.Triple> triplesToFind480;
+    private List<org.apache.shadedJena530.graph.Triple> triplesToFind530;
 
     @Benchmark
     public boolean graphContains() {
@@ -81,10 +81,10 @@ public class TestGraphContainsTriple {
         return found;
     }
 
-    private boolean graphContains480() {
+    private boolean graphContains530() {
         var found = false;
-        for (var t : triplesToFind480) {
-            found = sut480.contains(t);
+        for (var t : triplesToFind530) {
+            found = sut530.contains(t);
             Assert.assertTrue(found);
         }
         return found;
@@ -109,18 +109,18 @@ public class TestGraphContainsTriple {
                 java.util.Collections.shuffle(this.triplesToFindCurrent, new Random(4721));
             }
             break;
-            case JENA_4_8_0: {
-                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-                this.graphContains = this::graphContains480;
+            case JENA_5_3_0: {
+                this.sut530 = Releases.v530.createGraph(trialContext.getGraphClass());
+                this.graphContains = this::graphContains530;
 
-                var triples = Releases.v480.readTriples(param0_GraphUri);
-                triples.forEach(this.sut480::add);
+                var triples = Releases.v530.readTriples(param0_GraphUri);
+                triples.forEach(this.sut530::add);
 
                 /*clone the triples because they should not be the same objects*/
-                this.triplesToFind480 = Releases.v480.cloneTriples(triples);
+                this.triplesToFind530 = Releases.v530.cloneTriples(triples);
                     /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                java.util.Collections.shuffle(this.triplesToFind480, new Random(4721));
+                java.util.Collections.shuffle(this.triplesToFind530, new Random(4721));
             }
             break;
             default:
