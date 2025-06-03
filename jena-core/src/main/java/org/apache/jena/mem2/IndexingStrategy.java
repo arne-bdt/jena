@@ -21,13 +21,22 @@ package org.apache.jena.mem2;
 import org.apache.jena.graph.Graph;
 
 /**
- * An enumeration representing different indexing strategies for a graph.
+ * An enumeration that represents different indexing strategies for a graph.
+ * The indexing strategy determines how triples are indexed to support pattern matching.
+ * It is assumed that the graph contains a set of triples, and all operations that do not involve
+ * pattern matching are performed directly on this set, not on the indices.
+ * <br>
+ * Pattern matching refers to operations like {@link Graph#find}, {@link Graph#remove} or {@link Graph#contains}
+ * that may take a triple pattern as argument, such as "S__", "SP_", "S_O", "_P_", "_PO", or "__O",
+ * instead of a concrete triple "SPO".
+ * In the case of a concrete triple these operations should be performed directly on the set of triples
+ * and not rely on the indices.
  */
 public enum IndexingStrategy {
 
     /**
      * Starts with all indices as any other in-memory graph.
-     * {@link Graph#add}, {@link Graph#remove} and {@link Graph#clear()} update all indices immediately.
+     * {@link Graph#add}, {@link Graph#delete} and {@link Graph#clear()} update all indices immediately.
      * Clearing the indices is not possible.
      */
     EAGER,
