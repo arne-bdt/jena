@@ -18,6 +18,7 @@
 
 package org.apache.jena.mem.graph;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
@@ -34,18 +35,23 @@ import java.util.List;
 public class TestGraphAdd {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
+            "C:\\temp\\CGMES_ConformityAssessmentScheme_r3-0-2\\CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3\\v3.0\\RealGrid\\RealGrid-Merged\\RealGrid_EQ.xml",
+            "C:\\temp\\CGMES_ConformityAssessmentScheme_r3-0-2\\CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3\\v3.0\\RealGrid\\RealGrid-Merged\\RealGrid_SSH.xml",
+            "C:\\temp\\CGMES_ConformityAssessmentScheme_r3-0-2\\CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3\\v3.0\\RealGrid\\RealGrid-Merged\\RealGrid_SV.xml",
+            "C:\\temp\\CGMES_ConformityAssessmentScheme_r3-0-2\\CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3\\v3.0\\RealGrid\\RealGrid-Merged\\RealGrid_TP.xml",
+//            "../testing/BSBM/bsbm-1m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
+//            "GraphMem (current)",
             "GraphMem2Fast (current)",
-            "GraphMem2Legacy (current)",
+//            "GraphMem2Legacy (current)",
             "GraphMem2Roaring (current)",
-            "GraphMem (Jena 4.8.0)",
+            "GraphMem2RoaringLazyIndexing (current)",
+//            "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Object> graphAdd;
@@ -62,6 +68,7 @@ public class TestGraphAdd {
         var sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
         triplesCurrent.forEach(sutCurrent::add);
         Assert.assertEquals(triplesCurrent.size(), sutCurrent.size());
+        Assert.assertTrue(sutCurrent.contains(triplesCurrent.get(0).getSubject(), triplesCurrent.get(0).getPredicate(), Node.ANY));
         return sutCurrent;
     }
 
@@ -93,6 +100,8 @@ public class TestGraphAdd {
     @Test
     public void benchmark() throws Exception {
         var opt = JMHDefaultOptions.getDefaults(this.getClass())
+                .warmupIterations(3)
+                .measurementIterations(3)
                 .build();
         var results = new Runner(opt).run();
         Assert.assertNotNull(results);

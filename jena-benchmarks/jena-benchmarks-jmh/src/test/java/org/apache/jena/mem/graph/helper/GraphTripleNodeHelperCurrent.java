@@ -43,6 +43,8 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
                 return new GraphMem2Legacy();
             case GraphMem2Roaring:
                 return new GraphMem2Roaring();
+            case GraphMem2RoaringLazyIndexing:
+                return new org.apache.jena.mem2.GraphMem2RoaringLazyIndexing();
             default:
                 throw new IllegalArgumentException("Unknown graph class: " + graphClass);
         }

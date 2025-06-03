@@ -48,7 +48,7 @@ public class JMHDefaultOptions {
                 .shouldFailOnError(true)
                 .shouldDoGC(true)
                 //.jvmArgs("-XX:+UnlockDiagnosticVMOptions", "-XX:+PrintInlining")
-                .jvmArgs("-Xmx12G")
+                .jvmArgs("-Xmx12G", "-server", "-XX:NewSize=512M")
                 //.addProfiler(WinPerfAsmProfiler.class)
                 .resultFormat(ResultFormatType.JSON)
                 .result(c.getSimpleName() + "_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")) + ".json");

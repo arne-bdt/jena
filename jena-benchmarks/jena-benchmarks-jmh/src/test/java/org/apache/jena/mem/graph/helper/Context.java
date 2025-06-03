@@ -45,6 +45,10 @@ public class Context {
                 this.graphClass = GraphClass.GraphMem2Roaring;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
+            case "GraphMem2RoaringLazyIndexing (current)":
+                this.graphClass = GraphClass.GraphMem2RoaringLazyIndexing;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
             case "GraphMem (Jena 4.8.0)":
                 this.graphClass = GraphClass.GraphMem;
                 this.jenaVersion = JenaVersion.JENA_4_8_0;
@@ -68,6 +72,7 @@ public class Context {
         GraphMem2Fast,
         GraphMem2Legacy,
         GraphMem2Roaring,
+        GraphMem2RoaringLazyIndexing
     }
 
 

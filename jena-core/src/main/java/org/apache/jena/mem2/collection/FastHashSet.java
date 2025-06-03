@@ -18,6 +18,11 @@
 
 package org.apache.jena.mem2.collection;
 
+import org.apache.jena.mem2.iterator.SparseArrayIndexIterator;
+import org.apache.jena.util.iterator.ExtendedIterator;
+
+import java.util.ConcurrentModificationException;
+
 /**
  * Set which grows, if needed but never shrinks.
  * This set does not guarantee any order. Although due to the way it is implemented the elements have a certain order.
@@ -119,5 +124,21 @@ public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetH
      */
     public K getKeyAt(int i) {
         return keys[i];
+    }
+
+    /**
+     * Returns an iterator over the indizes of this set.
+     * The iterator is not thread safe.
+     * The iterator does not support remove.
+     *
+     * @return an iterator over the indices of this set
+     */
+    public ExtendedIterator<SparseArrayIndexIterator.IndexAndKey<K>> indexIterator() {
+        final var initialSize = size();
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size() != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIndexIterator<>(keys, keysPos, checkForConcurrentModification);
     }
 }

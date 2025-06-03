@@ -35,18 +35,24 @@ import java.util.List;
 public class TestGraphMemoryConsumption {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/cheeses-0.1.ttl",
+//            "../testing/pizza.owl.rdf",
+            "C:\\temp\\CGMES_ConformityAssessmentScheme_r3-0-2\\CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3\\v3.0\\RealGrid\\RealGrid-Merged\\RealGrid_EQ.xml",
+            "C:\\temp\\CGMES_ConformityAssessmentScheme_r3-0-2\\CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3\\v3.0\\RealGrid\\RealGrid-Merged\\RealGrid_SSH.xml",
+            "C:\\temp\\CGMES_ConformityAssessmentScheme_r3-0-2\\CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3\\v3.0\\RealGrid\\RealGrid-Merged\\RealGrid_SV.xml",
+            "C:\\temp\\CGMES_ConformityAssessmentScheme_r3-0-2\\CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3\\v3.0\\RealGrid\\RealGrid-Merged\\RealGrid_TP.xml",
+//            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/BSBM/bsbm-100m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
-            "GraphMem (current)",
+//            "GraphMem (current)",
             "GraphMem2Fast (current)",
-            "GraphMem2Legacy (current)",
+//            "GraphMem2Legacy (current)",
             "GraphMem2Roaring (current)",
-            "GraphMem (Jena 4.8.0)",
+            "GraphMem2RoaringLazyIndexing (current)",
+//            "GraphMem (Jena 4.8.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Object> graphFill;
