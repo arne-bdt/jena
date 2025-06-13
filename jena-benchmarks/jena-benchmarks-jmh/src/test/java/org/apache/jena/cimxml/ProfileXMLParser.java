@@ -30,7 +30,6 @@ import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.RDFWriter;
 import org.apache.jena.riot.lang.rdfxml.RRX;
-import org.apache.jena.riot.lang.rdfxml.cimxml.ReaderCIMXML;
 import org.apache.jena.sparql.graph.GraphFactory;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
@@ -147,7 +146,6 @@ public class ProfileXMLParser {
                 .get()) {
             RDFParser.source(is)
                     .base(BaseURI.DEFAULT_BASE_URI)  // base URI for the model and thus for al mRID's in the model
-                    .set(ReaderCIMXML.READ_MRID_AS_UUID, false)
                     .forceLang(lang)
                     .checking(false)
                     .parse(graph);

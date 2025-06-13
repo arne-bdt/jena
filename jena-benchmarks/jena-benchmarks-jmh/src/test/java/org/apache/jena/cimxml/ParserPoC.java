@@ -19,7 +19,6 @@
 package org.apache.jena.cimxml;
 
 import org.apache.commons.io.input.BufferedFileChannelInputStream;
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.mem2.GraphMem2Fast;
@@ -29,6 +28,7 @@ import org.apache.jena.query.QueryFactory;
 import org.apache.jena.sparql.exec.QueryExec;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.FileChannel;
@@ -41,6 +41,23 @@ import java.util.Arrays;
 import java.util.function.Supplier;
 
 public class ParserPoC {
+
+    /* Things to support:
+     * <dm:forwardDifferences parseType=\"Statements\"
+     * rdf:RDF | rdf:ID | rdf:about | rdf:parseType | rdf:resource | rdf:nodeID | rdf:datatype
+     *  rdf:langString
+     * | rdf:Description |
+     * rdf:parseType="Resource" | rdf:parseType="Statement"
+     *
+     * Things, that are not supported:
+     * <ul>
+     *  <li>Namwspace declarations are only supported in the rdf:RDF tag.
+     *  <li>rdf:parseType="Collection" is not supported.
+     *  <li>Reifying statements using rdf:ID is not supported.
+     *  <li>rdf:parseType="Literal" is not supported.
+     *  <li>rdf:li is not supported.
+     * </ul>
+     */
 
     private final String pathToGLProfile = "C:\\temp\\CGMES_v2.4.15_TestConfigurations_v4.0.3\\MicroGrid\\BaseCase_BC\\CGMES_v2.4.15_MicroGridTestConfiguration_BC_Assembled_CA_v2\\MicroGridTestConfiguration_BC_NL_GL_V2.xml";
     private final Charset charset = StandardCharsets.UTF_8;
@@ -233,7 +250,7 @@ public class ParserPoC {
         }
     }
 
-    public class CIMParser{
+    public class CIMParserPoC {
         private static final int maxBufferSize = 64 * 4096; // 256 KB
         private static final Charset charset = StandardCharsets.UTF_8;
         private static final byte[] LEFT_ANGLE_BRACKET = "<".getBytes(charset);
@@ -319,6 +336,12 @@ public class ParserPoC {
              */
             LOOKING_FOR_END_OF_SUBJECT_OPENING_TAG,
 
+            /**
+             * Looking for a property opening tag '<TAG ' after the subject opening tag.
+             * The property is identified when the next whitespace is found after the tag name.
+             * A property opening tag starts with '<rdf:' or '<cim:' or '<iri:' where 'iri' may be any IRI.
+             * The next state is {@link #LOOKING_FOR_PROPERTY_NAME}.
+             */
             LOOKING_FOR_PROPERTY,
             IN_TEXT_CONTENT,
             IN_COMMENT
@@ -326,7 +349,7 @@ public class ParserPoC {
 
 
 
-        public CIMParser() {
+        public CIMParserPoC() {
             ArrayList al = new ArrayList();
         }
 
@@ -440,7 +463,35 @@ public class ParserPoC {
     }
 
     @Test
-    public void parse() throws Exception {
+    public void testParser() throws Exception {
+        final var stopWatch = StopWatch.createStarted();
+        final var xmlString = """
+                <?xml version="1.0" encoding="utf-8"?>
+                <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                            xmlns:dc="http://purl.org/dc/elements/1.1/">
+                
+                  <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar">
+                    <dc:title>RDF 1.1 XML Syntax</dc:title>
+                    <dc:title xml:lang="en">RDF 1.1 XML Syntax</dc:title>
+                    <dc:title xml:lang="en-US">RDF 1.1 XML Syntax</dc:title>
+                  </rdf:Description>
+                
+                  <rdf:Description rdf:about="http://example.org/buecher/baum" xml:lang="de">
+                    <dc:title>Der Baum</dc:title>
+                    <dc:description>Das Buch ist außergewöhnlich</dc:description>
+                    <dc:title xml:lang="en">The Tree</dc:title>
+                  </rdf:Description>
+                
+                </rdf:RDF>
+                """;
+        final var is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
+        final var parser = new CIMParser(is);
+        parser.parse();
+        stopWatch.stop();
+        System.out.println(stopWatch);
+    }
+    @Test
+    public void testQuery() throws Exception {
         final var stopWatch = StopWatch.createStarted();
         final var filePath = java.nio.file.Paths.get(pathToGLProfile);
         final var subject = NodeFactory.createURI("cim:Location");
@@ -465,7 +516,7 @@ public class ParserPoC {
                 });
 
 
-        // Create a CIMParser instance
+        // Create a CIMParserPoC instance
         //CIMXMLParser parser = new CIMXMLParser(filePath, 64 * 4096); // 256 KB
         //CIMXMLParser.ParseResult result = parser.parse(); ByteBuffer.wrap("sadasd".getBytes(charset));
 
