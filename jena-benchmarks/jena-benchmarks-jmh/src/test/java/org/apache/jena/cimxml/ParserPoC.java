@@ -21,6 +21,8 @@ package org.apache.jena.cimxml;
 import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.iri3986.provider.IRIProvider3986;
+import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.mem2.collection.FastHashMap;
 import org.apache.jena.query.Query;
@@ -108,8 +110,6 @@ public class ParserPoC {
 
             return false;
         }
-
-        // equals/hashCode as before
     }
 
     public class ByteArrayKeyMap<E> extends FastHashMap<ByteArrayKey, E> {
