@@ -20,16 +20,24 @@ package org.apache.jena.cimxml;
 
 import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.commons.lang3.time.StopWatch;
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.graph.Triple;
 import org.apache.jena.iri3986.provider.IRIProvider3986;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Fast;
+import org.apache.jena.mem2.GraphMem2Roaring;
+import org.apache.jena.mem2.IndexingStrategy;
 import org.apache.jena.mem2.collection.FastHashMap;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryFactory;
+import org.apache.jena.riot.RDFParser;
+import org.apache.jena.riot.system.StreamRDF;
+import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.exec.QueryExec;
 import org.junit.Test;
 
+import javax.xml.XMLConstants;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,6 +49,9 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.Supplier;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class ParserPoC {
 
@@ -462,6 +473,44 @@ public class ParserPoC {
 //        }
     }
 
+    public class StreamRDFGraph implements StreamRDF {
+        private final Graph graph;
+
+        public StreamRDFGraph(Graph graph) {
+            this.graph = graph;
+        }
+
+        @Override
+        public void start() {
+
+        }
+
+        @Override
+        public void triple(Triple triple) {
+            this.graph.add(triple);
+        }
+
+        @Override
+        public void quad(Quad quad) {
+            throw new UnsupportedOperationException("Not supported.");
+        }
+
+        @Override
+        public void base(String base) {
+            this.graph.getPrefixMapping().setNsPrefix(XMLConstants.DEFAULT_NS_PREFIX, base);
+        }
+
+        @Override
+        public void prefix(String prefix, String iri) {
+            this.graph.getPrefixMapping().setNsPrefix(prefix, iri);
+        }
+
+        @Override
+        public void finish() {
+
+        }
+    }
+
     @Test
     public void testParser() throws Exception {
         final var stopWatch = StopWatch.createStarted();
@@ -485,11 +534,49 @@ public class ParserPoC {
                 </rdf:RDF>
                 """;
         final var is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
-        final var parser = new CIMParser(is);
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var parser = new CIMParser(is, new StreamRDFGraph(graph));
         parser.parse();
         stopWatch.stop();
-        System.out.println(stopWatch);
+        System.out.println("Parsed triples: " + graph.size());
+
+        stopWatch.reset();
+        stopWatch.start();
+        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        RDFParser.create()
+                .source(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)))
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .parse(new StreamRDFGraph(expectedGraph));
+        assertGraphsEqual(expectedGraph, graph);
+        stopWatch.stop();
+        System.out.println("Parsed expected triples: " + expectedGraph.size());
     }
+
+    public void assertGraphsEqual(Graph expected, Graph actual) {
+        // check graph sizes
+        assertEquals("Graphs are not equal: different sizes.",
+                expected.size(), actual.size());
+        // check that all triples in expected graph are in actual graph
+        expected.find().forEachRemaining(expectedTriple -> {
+            assertTrue("Graphs are not equal: missing triple " + expectedTriple,
+                    actual.contains(expectedTriple));
+        });
+
+        // check namespace mappings size
+        assertEquals("Graphs are not equal: different number of namespaces.",
+                expected.getPrefixMapping().numPrefixes(), actual.getPrefixMapping().numPrefixes());
+
+        // check that all namespaces in expected graph are in actual graph
+        expected.getPrefixMapping().getNsPrefixMap().forEach((prefix, uri) -> {
+            assertTrue("Graphs are not equal: missing namespace " + prefix + " -> " + uri,
+                    actual.getPrefixMapping().getNsPrefixMap().containsKey(prefix));
+            assertEquals("Graphs are not equal: different URI for namespace " + prefix,
+                    uri, actual.getPrefixMapping().getNsPrefixMap().get(prefix));
+        });
+    }
+
+
+
     @Test
     public void testQuery() throws Exception {
         final var stopWatch = StopWatch.createStarted();
