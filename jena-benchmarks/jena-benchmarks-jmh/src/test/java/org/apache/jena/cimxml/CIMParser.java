@@ -23,11 +23,10 @@ import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.iri3986.provider.IRIProvider3986;
-import org.apache.jena.irix.IRIProvider;
 import org.apache.jena.mem2.collection.FastHashMap;
 import org.apache.jena.riot.system.StreamRDF;
 
+import javax.xml.XMLConstants;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.FileChannel;
@@ -39,6 +38,7 @@ import java.util.*;
 import java.util.function.Supplier;
 
 public class CIMParser {
+    private static final String STRING_NAMESPACE_RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
     private static final int MAX_BUFFER_SIZE = 64 * 4096; // 256 KB
     private static final Charset UTF_8 = StandardCharsets.UTF_8;
@@ -56,38 +56,64 @@ public class CIMParser {
     private static final byte DOUBLE_COLON = (byte)':';
     private static final byte SHARP = (byte)'#';
     private static final byte END_OF_STREAM = -1;
+
     private static final ByteArrayKey NAMESPACE_PREFIX_RDF = new ByteArrayKey("rdf");
     private static final ByteArrayKey NAMESPACE_PREFIX_XML = new ByteArrayKey("xml");
-    private static final ByteArrayKey LOCAL_PART_RDF = new ByteArrayKey("RDF");
-    private static final ByteArrayKey ATTRIBUTE_XMLNS = new ByteArrayKey("xmlns");
-    private static final ByteArrayKey XMLNS_BASE = new ByteArrayKey("base");
+
+    private static final ByteArrayKey ATTRIBUTE_XMLNS = new ByteArrayKey(XMLConstants.XMLNS_ATTRIBUTE);
     private static final ByteArrayKey ATTRIBUTE_RDF_ID = new ByteArrayKey("ID");
     private static final ByteArrayKey ATTRIBUTE_RDF_ABOUT = new ByteArrayKey("about");
     private static final ByteArrayKey ATTRIBUTE_RDF_PARSE_TYPE = new ByteArrayKey("parseType");
     private static final ByteArrayKey ATTRIBUTE_RDF_RESOURCE = new ByteArrayKey("resource");
     private static final ByteArrayKey ATTRIBUTE_RDF_NODE_ID = new ByteArrayKey("nodeID");
     private static final ByteArrayKey ATTRIBUTE_RDF_DATATYPE = new ByteArrayKey("datatype");
-    private static final ByteArrayKey ATTRIBUTE_XML_LANG = new ByteArrayKey("lang");
-    private static final ByteArrayKey TAG_RDF_DESCRIPTION = new ByteArrayKey("Description");
-    private static final ByteArrayKey TAG_RDF_LI = new ByteArrayKey("li");
+
+    private static final ByteArrayKey ATTRIBUTE_VALUE_RDF_PARSE_TYPE_LITERAL = new ByteArrayKey("Literal");
+
+    private static final ByteArrayKey ATTRIBUTE_XML_BASE = new ByteArrayKey("xml:base");
+    private static final ByteArrayKey ATTRIBUTE_XML_LANG = new ByteArrayKey("xml:lang");
+
+    private static final ByteArrayKey TAG_RDF_RDF = new ByteArrayKey("rdf:RDF");
+    private static final ByteArrayKey TAG_RDF_DESCRIPTION = new ByteArrayKey("rdf:Description");
+    private static final ByteArrayKey TAG_RDF_LI = new ByteArrayKey("rdf:li");
+
+    private static final ByteArrayKey XMLNS_BASE = new ByteArrayKey("base");
+    private static final ByteArrayKey XML_DEFAULT_NS_PREFIX = new ByteArrayKey(XMLConstants.DEFAULT_NS_PREFIX);
+
     private static final int TAG_NAME_MAX_LENGTH = 1024; // Maximum length for tag names
     private static final int ATTRIBUTE_NAME_MAX_LENGTH = 1024; // Maximum length for attribute names
     private static final int ATTRIBUTE_VALUE_MAX_LENGTH = 1024; // Maximum length for attribute values
-    private static final ByteArrayKey NAMESPACE_RDF =  new ByteArrayKey("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
+    private static final ByteArrayKey NAMESPACE_RDF =  new ByteArrayKey(STRING_NAMESPACE_RDF);
 
+    private static final String RDF_LI_PROPERTY_START = STRING_NAMESPACE_RDF + "_";
+
+    private static final Node NODE_RDF_TYPE = NodeFactory.createURI(STRING_NAMESPACE_RDF + "type");
 
     private final Path filePath;
     private final FileChannel fileChannel;
     private final InputStream inputStream;
     private final ByteArrayMap<SpecialByteBuffer> prefixToNamespace = new ByteArrayMap<>(8, 8);
     private final ByteArrayMap<Node> attributeToPredicate = new ByteArrayMap<>(256, 8);
-    private final IRIProvider iriProvider = new IRIProvider3986();
+    //private final IRIProvider iriProvider = new IRIProvider3986();
     private final StreamRDF streamRDFSink;
 
     private final QNameFixedByteArrayBuffer fixedBufferForTagName = new QNameFixedByteArrayBuffer(TAG_NAME_MAX_LENGTH);
     private final AttributeCollection attributeCollection = new AttributeCollection();
-    private SpecialByteBuffer baseIRI = null;
-    private Node currentSubject = null;
+    private SpecialByteBuffer baseNamespace = null;
+    private SpecialByteBuffer defaultNamespace = null;
+    private final Deque<Element> elementStack = new ArrayDeque<>();
+    private final Map<SpecialByteBuffer, Node> subjectToNode = new HashMap<>();
+    private final Map<SpecialByteBuffer, Node> blankNodeToNode = new HashMap<>();
+    private final Map<Node, Integer> subjectToListIndex = new HashMap<>();
+    private final Map<Integer, Node> listIndexToProperty = new HashMap<>();
+
+    // A map to store langSet and avoid to copy SpecialByteBuffer objects unnecessarily
+    private final Map<SpecialByteBuffer, SpecialByteBuffer> langSet = new HashMap<>();
+    // A map to store baseSet and avoid to copy SpecialByteBuffer objects unnecessarily
+    private final Map<SpecialByteBuffer, SpecialByteBuffer> baseSet = new HashMap<>();
+
+
+    private record Element(Node subject, SpecialByteBuffer xmlBase, SpecialByteBuffer xmlLang) {}
 
     // Parser state
     private enum State {
@@ -185,131 +211,265 @@ public class CIMParser {
     }
 
     private State handleAtEndOfOpeningTag() throws ParserException {
+        if(TAG_RDF_RDF.equals(fixedBufferForTagName)) {
+            return handleTagRdfRdf();
+        }
+        if(TAG_RDF_DESCRIPTION.equals(fixedBufferForTagName)) {
+            return handleTagRdfDescription();
+        }
+        if(TAG_RDF_LI.equals(fixedBufferForTagName)) {
+            return handleRdfLi();
+        }
+        return handleAnyTag();
+    }
+
+    private State handleAnyTag() throws ParserException {
+        var parent = elementStack.peek();
+        SpecialByteBuffer tagNamespace;
         if(fixedBufferForTagName.hasPrefix()) {
-            final var tagPrefix = fixedBufferForTagName.getPrefix();
-            final var tagLocalPart = fixedBufferForTagName.getLocalPart();
-            if(NAMESPACE_PREFIX_RDF.equals(tagPrefix)) {
-                if(LOCAL_PART_RDF.equals(tagLocalPart)) {
-                    // if the tag is rdf:RDF, it contains the namespaces as attributes
-                    if (!attributeCollection.isEmpty()) {
-                        // expect all attributes to be namespace attributes
-                        for(int i=0; i<attributeCollection.size(); i++) {
-                            final var attribute = attributeCollection.get(i);
-                            if (!ATTRIBUTE_XMLNS.equals(attribute.name.getPrefix())) {
-                                throw new ParserException("Unexpected attribute name prefix: "
-                                        + UTF_8.decode(attribute.name.getPrefix().wrapAsByteBuffer()));
-                            }
-                            final var namespace = attribute.value.copy();
-                            final var namespacePrefix = attribute.name.getLocalPart();
-                            if(XMLNS_BASE.equals(namespacePrefix)) {
-                                this.baseIRI = namespace;
-                                this.streamRDFSink.base(namespace.decodeToString());
-                            } else if(!NAMESPACE_PREFIX_RDF.equals(namespacePrefix)) {
-                                // Ignore the rdf namespace prefix, as it is already defined
-                                // Add the namespace prefix and IRI to the prefixToNamespace map
-                                prefixToNamespace.put(
-                                        namespacePrefix.copy(),
-                                        namespace);
-                                this.streamRDFSink.prefix(
-                                        namespacePrefix.decodeToString(),
-                                        namespace.decodeToString());
-                            }
-                        }
-                    }
-                } else if(TAG_RDF_DESCRIPTION.equals(tagLocalPart)) {
-                    // Handle rdf:Description tag
-
-                    // first iteration to determine current subject by rdf:ID, rdf:about or rdf:nodeID
-                    int attributeIndexToIgnore = -1;
-                    for(int i=0; i<attributeCollection.size(); i++) {
-                        final var attribute = attributeCollection.get(i);
-                        // Check if the attribute belongs to the rdf namespace
-                        if(attribute.name.hasPrefix() && NAMESPACE_PREFIX_RDF.equals(attribute.name.getPrefix())) {
-                            final var localPart = attribute.name.getLocalPart();
-                            final var value = attribute.value;
-                            if(ATTRIBUTE_RDF_ABOUT.equals(localPart)) {
-                                // rdf:about
-                                currentSubject = NodeFactory.createURI(value.decodeToString());
-                                attributeIndexToIgnore = i; // Memorize the index of the attribute to ignore it later
-                                break; // No need to check further attributes
-                            } else if(ATTRIBUTE_RDF_ID.equals(localPart)) {
-                                // rdf:ID
-                                if(this.baseIRI == null) {
-                                    throw new ParserException("rdf:ID attribute found without base URI");
-                                }
-                                currentSubject = NodeFactory.createURI(this.baseIRI.decodeToString()
-                                        + '#' + value.decodeToString());
-                                attributeIndexToIgnore = i; // Memorize the index of the attribute to ignore it later
-                                break; // No need to check further attributes
-                            } else if(ATTRIBUTE_RDF_NODE_ID.equals(localPart)) {
-                                // rdf:nodeID
-                                currentSubject = NodeFactory.createBlankNode(value.decodeToString());
-                                attributeIndexToIgnore = i; // Memorize the index of the attribute to ignore it later
-                                break; // No need to check further attributes
-                            }
-                        }
-                    }
-                    // If no subject was found, create a blank node as the subject
-                    if(attributeIndexToIgnore == -1) {
-                        currentSubject = NodeFactory.createBlankNode();
-                    }
-                    // Now process the attributes, ignoring the one that was used to determine the subject
-                    for(int i=0; i<attributeCollection.size(); i++) {
-                        if(i == attributeIndexToIgnore) {
-                            continue; // Skip the attribute used to determine the subject
-                        }
-                        final var attribute = attributeCollection.get(i);
-                        //final var fullName =;
-                        var predicate = attributeToPredicate.get(attribute.name);
-                        if (predicate == null) {
-                            // If the attribute is not in the map, create a new node
-                            predicate = NodeFactory.createURI(resolveFullName(attribute.name));
-                            attributeToPredicate.put(attribute.name.copy(), predicate);
-                        }
-                        var object = NodeFactory.createLiteralString(attribute.value.decodeToString());
-                        streamRDFSink.triple(Triple.create(currentSubject, predicate, object));
-                    }
-
-                } else if(TAG_RDF_LI.equals(tagLocalPart)) {
-                    // Handle rdf:li tag
-                }
-
+            tagNamespace = prefixToNamespace.get(fixedBufferForTagName.getPrefix());
+            if(tagNamespace == null) {
+                throw new ParserException("Undefined namespace prefix in: "
+                        + fixedBufferForTagName.decodeToString());
             }
-        } else if(fixedBufferForTagName.hasFragment()) {
-            if(NAMESPACE_RDF.equals(fixedBufferForTagName.getLocalPart())) {
-                // TODO check Tag name is rdf:RDF
-                // If the tag is just a namespace declaration without a prefix, treat it as rdf:RDF
-                if (!attributeCollection.isEmpty()) {
-                    // expect all attributes to be namespace attributes
-                    for(int i=0; i<attributeCollection.size(); i++) {
-                        final var attribute = attributeCollection.get(i);
-                        if (!ATTRIBUTE_XMLNS.equals(attribute.name.getPrefix())) {
-                            throw new ParserException("Unexpected attribute name prefix: "
-                                    + UTF_8.decode(attribute.name.getPrefix().wrapAsByteBuffer()));
-                        }
-                        final var namespace = attribute.value.copy();
-                        final var namespacePrefix = attribute.name.getLocalPart();
-                        if(XMLNS_BASE.equals(namespacePrefix)) {
-                            this.baseIRI = namespace;
-                            this.streamRDFSink.base(namespace.decodeToString());
-                        } else if(!NAMESPACE_PREFIX_RDF.equals(namespacePrefix)) {
-                            // Ignore the rdf namespace prefix, as it is already defined
-                            // Add the namespace prefix and IRI to the prefixToNamespace map
-                            prefixToNamespace.put(
-                                    namespacePrefix.copy(),
-                                    namespace);
-                            this.streamRDFSink.prefix(
-                                    namespacePrefix.decodeToString(),
-                                    namespace.decodeToString());
-                        }
-                    }
+        } else {
+            if(defaultNamespace == null) {
+                throw new ParserException("No default namespace defined for tag: "
+                        + fixedBufferForTagName.decodeToString());
+            }
+            tagNamespace = defaultNamespace;
+        }
+        SpecialByteBuffer xmlBase;
+        SpecialByteBuffer xmlLang = null;
+        if(parent != null) {
+            // If there is a parent element, inherit its xml:base and xml:lang attributes
+            xmlBase = parent.xmlBase;
+            xmlLang = parent.xmlLang;
+        } else {
+            // If no parent, use the base namespace defined in rdf:RDF
+            xmlBase = this.baseNamespace;
+        }
+        var indexOfXmlLang = -1;
+        var indexOfXmlBase = -1;
+        // look for xml:lang and xml:base attributes
+        for (var i = 0; i < attributeCollection.size(); i++) {
+            final var attribute = attributeCollection.get(i);
+            if (ATTRIBUTE_XML_LANG.equals(attribute.name)) {
+                // If the attribute is xml:lang, set the xmlLang for the element
+                xmlLang = langSet.get(attribute.value);
+                if (xmlLang == null) {
+                    xmlLang = attribute.value.copy();
+                    langSet.put(xmlLang, xmlLang); // Store the xml:lang value to avoid copying
                 }
-            } else {
-                //TODO
+                indexOfXmlLang = i; // Memorize the index of the xml:lang attribute
+            } else if (ATTRIBUTE_XML_BASE.equals(attribute.name)) {
+                // If the attribute is xml:base, set the xmlBase for the element
+                xmlBase = baseSet.get(attribute.value);
+                if (xmlBase == null) {
+                    xmlBase = attribute.value.copy();
+                    baseSet.put(xmlBase, xmlBase); // Store the xml:base value to avoid copying
+                }
+                indexOfXmlBase = i; // Memorize the index of the xml:base attribute
             }
         }
+        // process all other attributes
+        for (var i = 0; i < attributeCollection.size(); i++) {
+            if (i == indexOfXmlLang || i == indexOfXmlBase) {
+                continue; // Skip xml:lang and xml:base attributes
+            }
+            final var attribute = attributeCollection.get(i);
 
-        return State.LOOKING_FOR_TAG; // Return to looking for next tag
+        }
+    }
+
+
+    private State handleTagRdfDescription() throws ParserException {
+        var parent = elementStack.peek();
+        SpecialByteBuffer xmlBase;
+        SpecialByteBuffer xmlLang = null;
+        if(parent != null) {
+            // If there is a parent element, inherit its xml:base and xml:lang attributes
+            xmlBase = parent.xmlBase;
+            xmlLang = parent.xmlLang;
+        } else {
+            // If no parent, use the base namespace defined in rdf:RDF
+            xmlBase = this.baseNamespace;
+        }
+        var indexOfXmlLang = -1;
+        var indexOfXmlBase = -1;
+        // look for xml:lang and xml:base attributes
+        for (var i = 0; i < attributeCollection.size(); i++) {
+            final var attribute = attributeCollection.get(i);
+            if (ATTRIBUTE_XML_LANG.equals(attribute.name)) {
+                // If the attribute is xml:lang, set the xmlLang for the element
+                xmlLang = langSet.get(attribute.value);
+                if (xmlLang == null) {
+                    xmlLang = attribute.value.copy();
+                    langSet.put(xmlLang, xmlLang); // Store the xml:lang value to avoid copying
+                }
+                indexOfXmlLang = i; // Memorize the index of the xml:lang attribute
+            } else if (ATTRIBUTE_XML_BASE.equals(attribute.name)) {
+                // If the attribute is xml:base, set the xmlBase for the element
+                xmlBase = baseSet.get(attribute.value);
+                if (xmlBase == null) {
+                    xmlBase = attribute.value.copy();
+                    baseSet.put(xmlBase, xmlBase); // Store the xml:base value to avoid copying
+                }
+                indexOfXmlBase = i; // Memorize the index of the xml:base attribute
+            }
+        }
+        // Handle rdf:Description tag
+        Node newSubject = null;
+        // first iteration to determine current subject by rdf:ID, rdf:about or rdf:nodeID
+        int indexOfRdfAboutIdOrNodeId = -1;
+        for(int i=0; i<attributeCollection.size(); i++) {
+            final var attribute = attributeCollection.get(i);
+            // Check if the attribute belongs to the rdf namespace
+            if(attribute.name.hasPrefix() && NAMESPACE_PREFIX_RDF.equals(attribute.name.getPrefix())) {
+                final var localPart = attribute.name.getLocalPart();
+                if(ATTRIBUTE_RDF_ABOUT.equals(localPart)) {
+                    // rdf:about
+                    SpecialByteBuffer value;
+                    boolean isCopyNeeded = true;
+                    if(attribute.value.isRelative()) {
+                        // If the value is relative, resolve it against the xmlBase
+                        if(xmlBase == null) {
+                            throw new ParserException("Relative value found without base URI for attribute: "
+                                    + attribute.name.decodeToString());
+                        }
+                        value = xmlBase.join(attribute.value);
+                        isCopyNeeded = false; // No need to copy if we are joining with xmlBase
+                    } else {
+                        // If the value is absolute, use it as is
+                        value = attribute.value;
+                    }
+                    newSubject = subjectToNode.get(value);
+                    if(newSubject == null) {
+                        if(isCopyNeeded) {
+                            value = value.copy();
+                        }
+                        newSubject = NodeFactory.createURI(value.decodeToString());
+                        subjectToNode.put(value, newSubject); // Store the new subject in the map
+                    }
+                    indexOfRdfAboutIdOrNodeId = i; // Memorize the index of the attribute to ignore it later
+                    break; // No need to check further attributes
+                } else if(ATTRIBUTE_RDF_ID.equals(localPart)) {
+                    // rdf:ID here the value is relative to the xmlBase
+                    if(xmlBase == null) {
+                        throw new ParserException("rdf:ID attribute found without base URI");
+                    }
+                    final SpecialByteBuffer absoluteIri = getAbsoluteIriForRdfId(xmlBase, attribute.value);
+                    newSubject = subjectToNode.get(absoluteIri);
+                    if(newSubject == null) {
+                        newSubject = NodeFactory.createURI(absoluteIri.decodeToString());
+                        subjectToNode.put(absoluteIri, newSubject); // Store the new subject in the map
+                    }
+                    indexOfRdfAboutIdOrNodeId = i; // Memorize the index of the attribute to ignore it later
+                    break; // No need to check further attributes
+                } else if(ATTRIBUTE_RDF_NODE_ID.equals(localPart)) {
+                    // rdf:nodeID
+                    newSubject = blankNodeToNode.get(attribute.value);
+                    if(newSubject == null) {
+                        var copy = attribute.value.copy();
+                        newSubject = NodeFactory.createBlankNode(copy.decodeToString());
+                        blankNodeToNode.put(copy, newSubject);
+                    }
+                    indexOfRdfAboutIdOrNodeId = i; // Memorize the index of the attribute to ignore it later
+                    break; // No need to check further attributes
+                }
+            }
+        }
+        // If no subject was found, create a blank node as the subject
+        if(newSubject == null) {
+            newSubject = NodeFactory.createBlankNode();
+        }
+        // Now process the remaining attributes, which must be literals
+        for(int i=0; i<attributeCollection.size(); i++) {
+            if(i == indexOfRdfAboutIdOrNodeId || i == indexOfXmlLang || i == indexOfXmlBase) {
+                continue; // skip
+            }
+            final var attribute = attributeCollection.get(i);
+            var predicate = attributeToPredicate.get(attribute.name);
+            if (predicate == null) {
+                // If the attribute is not in the map, create a new node
+                predicate = NodeFactory.createURI(resolveFullName(attribute.name));
+                attributeToPredicate.put(attribute.name.copy(), predicate);
+            }
+            var object = NodeFactory.createLiteralString(attribute.value.decodeToString());
+            streamRDFSink.triple(Triple.create(newSubject, predicate, object));
+        }
+        elementStack.add(new Element(newSubject, xmlBase, xmlLang));
+        return State.LOOKING_FOR_TAG;
+    }
+
+    private static SpecialByteBuffer getAbsoluteIriForRdfId(SpecialByteBuffer xmlBas,
+                                                            SpecialByteBuffer rdfId) {
+        final byte[] combinedData = new byte[xmlBas.length() + 1 + rdfId.length()];
+        combinedData[xmlBas.length()] = SHARP; // Use '#' as the separator
+        System.arraycopy(xmlBas.getData(), xmlBas.offset(), combinedData, 0, xmlBas.length());
+        System.arraycopy(rdfId.getData(), rdfId.offset(), combinedData, xmlBas.length()+1, rdfId.length());
+        return new ByteArrayKey(combinedData);
+    })
+
+    private State handleTagRdfRdf() throws ParserException {
+        // if the tag is rdf:RDF, it contains only the namespaces as attributes and nothing else
+        if (!attributeCollection.isEmpty()) {
+            // expect all attributes to be namespace attributes
+            for(int i=0; i<attributeCollection.size(); i++) {
+                final var attribute = attributeCollection.get(i);
+                if(attribute.name.hasPrefix()) {
+                    if (!ATTRIBUTE_XMLNS.equals(attribute.name.getPrefix())) {
+                        throw new ParserException("Expected attribute 'xmlns:' in rdf:RDF tag but got: "
+                                + attribute.name.decodeToString());
+                    }
+                    final var prefix = attribute.name.getLocalPart().copy();
+                    // Ignore the rdf namespace prefix, as it is already defined
+                    if (!NAMESPACE_PREFIX_RDF.equals(prefix)) {
+                        final var namespace = attribute.value.copy();
+                        // Add the namespace prefix and IRI to the prefixToNamespace map
+                        prefixToNamespace.put(
+                                prefix,
+                                namespace);
+                        this.streamRDFSink.prefix(
+                                prefix.decodeToString(),
+                                namespace.decodeToString());
+                        if(XMLNS_BASE.equals(prefix)) {
+                            this.baseNamespace = namespace;
+                            this.streamRDFSink.base(baseNamespace.decodeToString());
+                        }
+                    }
+                } else {
+                    if (!ATTRIBUTE_XMLNS.equals(attribute.name)) {
+                        throw new ParserException("Expected attribute 'xmlns:' in rdf:RDF tag but got: "
+                                + attribute.name.decodeToString());
+                    }
+                    defaultNamespace = XML_DEFAULT_NS_PREFIX; // Default namespace prefix
+                }
+            }
+        }
+        return State.LOOKING_FOR_TAG;
+    }
+
+    private State handleRdfLi() throws ParserException {
+        // Handle rdf:li tag
+        final var parent = elementStack.peek();
+        if(parent == null) {
+            throw new ParserException("rdf:li tag found without a parent in the stack.");
+        }
+        var listIndex = subjectToListIndex.get(parent);
+        if(listIndex == null) {
+            listIndex = 1; // Start with index 0 if not found
+        } else {
+            listIndex++; // Increment the index for the next rdf:li element
+        }
+        subjectToListIndex.put(parent.subject, listIndex);
+        var property = listIndexToProperty.get(listIndex);
+        if(property == null) {
+            // If the property for this index does not exist, create a new one
+            property = NodeFactory.createURI(RDF_LI_PROPERTY_START+ listIndex);
+            listIndexToProperty.put(listIndex, property);
+        }
+        throw new ParserException("rdf:li tag is not supported yet.");
     }
 
     private String resolveFullName(QNameFixedByteArrayBuffer name) {
@@ -438,6 +598,28 @@ public class CIMParser {
             final byte[] combinedData = new byte[this.length() + other.length()];
             System.arraycopy(this.getData(), this.offset(), combinedData, 0, this.length());
             System.arraycopy(other.getData(), other.offset(), combinedData, this.length(), other.length());
+            return new ByteArrayKey(combinedData);
+        }
+
+        default SpecialByteBuffer join(SpecialByteBuffer... other) {
+            if (other == null || other.length == 0) {
+                return this.copy();
+            }
+            int totalLength = this.length();
+            for (SpecialByteBuffer buf : other) {
+                if (buf != null) {
+                    totalLength += buf.length();
+                }
+            }
+            final byte[] combinedData = new byte[totalLength];
+            System.arraycopy(this.getData(), this.offset(), combinedData, 0, this.length());
+            int offset = this.length();
+            for (SpecialByteBuffer buf : other) {
+                if (buf != null && buf.length() > 0) {
+                    System.arraycopy(buf.getData(), buf.offset(), combinedData, offset, buf.length());
+                    offset += buf.length();
+                }
+            }
             return new ByteArrayKey(combinedData);
         }
 
@@ -651,6 +833,14 @@ public class CIMParser {
             }
         }
 
+        public void append(SpecialByteBuffer buffer) {
+            if (position + buffer.length() > data.length) {
+                throw new IllegalStateException("Buffer overflow when appending: " + buffer.decodeToString());
+            }
+            System.arraycopy(buffer.getData(), buffer.offset(), data, position, buffer.length());
+            position += buffer.length();
+        }
+
         @Override
         public int hashCode() {
             return this.defaultHashCode();
@@ -724,37 +914,33 @@ public class CIMParser {
 
     private static class QNameFixedByteArrayBuffer extends FixedByteArrayBuffer {
         private int startOfLocalPart = 0; // Index where the local part starts
-        private int startOfFragment = 0; // Index where the fragment starts
-
 
         public QNameFixedByteArrayBuffer(int bufferSize) {
             super(bufferSize);
+        }
+
+        public boolean isRelative() {
+            if(position == 0) {
+                return false;
+            }
+            return SHARP == data[0]; // If the first byte is a sharp, it is a relative QName
         }
 
         public boolean hasPrefix() {
             return startOfLocalPart != 0; // If local part starts after the first byte, it has a prefix
         }
 
-        public boolean hasFragment() {
-            return startOfFragment != 0; // If fragment starts after the first byte, it has a fragment
-        }
-
         public ReadonlyByteArrayBuffer getPrefix() {
-            return new ReadonlyByteArrayBuffer(data, 0, startOfLocalPart);
+            return new ReadonlyByteArrayBuffer(data, 0, startOfLocalPart-1); // Exclude the colon
         }
 
         public ReadonlyByteArrayBuffer getLocalPart() {
             return new ReadonlyByteArrayBuffer(data, startOfLocalPart, position - startOfLocalPart);
         }
 
-        public ReadonlyByteArrayBuffer getFragment() {
-            return new ReadonlyByteArrayBuffer(data, startOfFragment, position - startOfFragment);
-        }
-
         public void reset() {
             super.reset();
             startOfLocalPart = 0;
-            startOfFragment = 0;
         }
 
         public void append(byte b) {
