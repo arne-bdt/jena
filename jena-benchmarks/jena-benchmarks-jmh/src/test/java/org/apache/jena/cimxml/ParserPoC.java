@@ -23,8 +23,6 @@ import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.iri3986.provider.IRIProvider3986;
-import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
@@ -73,7 +71,9 @@ public class ParserPoC {
      * </ul>
      */
 
-    private final String pathToGLProfile = "C:\\temp\\CGMES_v2.4.15_TestConfigurations_v4.0.3\\MicroGrid\\BaseCase_BC\\CGMES_v2.4.15_MicroGridTestConfiguration_BC_Assembled_CA_v2\\MicroGridTestConfiguration_BC_NL_GL_V2.xml";
+    //private final String file = "C:\\temp\\CGMES_v2.4.15_TestConfigurations_v4.0.3\\MicroGrid\\BaseCase_BC\\CGMES_v2.4.15_MicroGridTestConfiguration_BC_Assembled_CA_v2\\MicroGridTestConfiguration_BC_NL_GL_V2.xml";
+    private final String file = "C:\\temp\\v59_3\\AMP_Export_s82_v58_H69.xml";
+
     private final Charset charset = StandardCharsets.UTF_8;
 
 
@@ -622,9 +622,54 @@ public class ParserPoC {
     }
 
     @Test
+    public void testRdfId() throws Exception {
+        JenaSystem.init();
+        final var xmlString = """
+               <?xml version="1.0"?>
+               <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                           xmlns:ex="http://example.org/stuff/1.0/"
+                           xml:base="http://example.org/here/">
+    
+                 <rdf:Description rdf:ID="snack">
+                   <ex:prop rdf:resource="fruit/apple"/>
+                 </rdf:Description>
+    
+               </rdf:RDF>
+                """;
+        final var is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var parser = new CIMParser(is, new StreamRDFGraph(graph));
+
+        final var stopWatch = StopWatch.createStarted();
+        parser.setBaseNamespace("urn:uuid");
+        parser.doNotHandleCimUuidsWithMissingPrefix();
+        parser.treatRdfIdStandardConformant();
+        parser.parse();
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
+
+        stopWatch.reset();
+        stopWatch.start();
+        RDFParser.create()
+                .source(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)))
+                .base("urn:uuid")
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .checking(false)
+                .parse(new StreamRDFGraph(expectedGraph));
+        stopWatch.stop();
+
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
+
+        assertGraphsEqual(expectedGraph, graph);
+    }
+
+    @Test
     public void testFileParser() throws Exception {
         JenaSystem.init();
-        final var filePath = java.nio.file.Paths.get(pathToGLProfile);
+        final var filePath = java.nio.file.Paths.get(file);
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var parser = new CIMParser(filePath, new StreamRDFGraph(graph));
@@ -677,7 +722,7 @@ public class ParserPoC {
     @Test
     public void testQuery() throws Exception {
         final var stopWatch = StopWatch.createStarted();
-        final var filePath = java.nio.file.Paths.get(pathToGLProfile);
+        final var filePath = java.nio.file.Paths.get(file);
         final var subject = NodeFactory.createURI("cim:Location");
         final var predicate = NodeFactory.createURI("cim:Location.name");
         final var object = NodeFactory.createLiteralString("Test Location");
