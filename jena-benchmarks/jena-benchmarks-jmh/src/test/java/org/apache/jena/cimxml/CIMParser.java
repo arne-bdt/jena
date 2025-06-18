@@ -27,6 +27,7 @@ import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.iri3986.provider.IRIProvider3986;
 import org.apache.jena.irix.IRIProvider;
+import org.apache.jena.irix.IRIx;
 import org.apache.jena.mem2.collection.FastHashMap;
 import org.apache.jena.riot.system.StreamRDF;
 
@@ -42,6 +43,7 @@ import java.util.*;
 import java.util.function.Supplier;
 
 public class CIMParser {
+    private static final char CHAR_SHARP = '#';
     private static final String STRING_EMPTY = "";
     private static final String STRING_NAMESPACE_RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
@@ -100,7 +102,7 @@ public class CIMParser {
     private final Path filePath;
     private final FileChannel fileChannel;
     private final InputStream inputStream;
-    private final ByteArrayMap<SpecialByteBuffer, NamespaceFixedByteArrayBuffer> prefixToNamespace
+    private final ByteArrayMap<SpecialByteBuffer, NamespaceIriPair> prefixToNamespace
             = new ByteArrayMap<>(8, 8);
     private final ByteArrayMap<SpecialByteBuffer, Node> tagOrAttributeNameToUriNode
             = new ByteArrayMap<>(256, 8);
@@ -109,17 +111,22 @@ public class CIMParser {
     private final QNameFixedByteArrayBuffer currentTag = new QNameFixedByteArrayBuffer(MAX_LENGTH_OF_TAG_NAME);
     private final AttributeCollection currentAttributes = new AttributeCollection();
     private final FixedByteArrayBuffer currentTextContent = new FixedByteArrayBuffer(MAX_LENGTH_OF_TEXT_CONTENT);
-    private NamespaceFixedByteArrayBuffer baseNamespace = null;
-    private NamespaceFixedByteArrayBuffer defaultNamespace = null;
+    private NamespaceIriPair baseNamespace = null;
+    private NamespaceIriPair defaultNamespace = null;
     private final Deque<Element> elementStack = new ArrayDeque<>();
-    private final Map<SpecialByteBuffer, Node> iriToNode = new HashMap<>();
-    private final Map<SpecialByteBuffer, RDFDatatype> iriToDatatype = new HashMap<>();
+    //private final Map<SpecialByteBuffer, Node> iriToNode = new HashMap<>();
+    private final Map<NamespaceAndQName, RDFDatatype> iriToDatatype = new HashMap<>();
     private final Map<SpecialByteBuffer, Node> blankNodeToNode = new HashMap<>();
 
     // A map to store langSet and avoid to copy SpecialByteBuffer objects unnecessarily
     private final Map<SpecialByteBuffer, SpecialByteBuffer> langSet = new HashMap<>();
     // A map to store baseSet and avoid to copy NamespaceFixedByteArrayBuffer objects unnecessarily
-    private final Map<NamespaceFixedByteArrayBuffer, NamespaceFixedByteArrayBuffer> baseSet = new HashMap<>();
+    private final Map<NamespaceFixedByteArrayBuffer, NamespaceIriPair> baseSet = new HashMap<>();
+    private final Map<NamespaceAndQName, Node> iriNodeCache = new HashMap<>();
+    private final Map<SpecialByteBuffer, IRIx> cacheForIrisWithoutBase = new HashMap<>();
+
+    private record NamespaceIriPair(NamespaceFixedByteArrayBuffer namespace, IRIx iri) {}
+    private record NamespaceAndQName(NamespaceFixedByteArrayBuffer namespace, QNameFixedByteArrayBuffer qname) {}
 
     private final IRIProvider iriProvider = new IRIProvider3986();
 
@@ -152,7 +159,9 @@ public class CIMParser {
     }
 
     public void setBaseNamespace(String base) {
-        baseNamespace = new NamespaceFixedByteArrayBuffer(base);
+        baseNamespace = new NamespaceIriPair(
+                new NamespaceFixedByteArrayBuffer(base),
+                iriProvider.create(base));
     }
 
     private static class Element {
@@ -160,10 +169,10 @@ public class CIMParser {
         public Node predicate = null;
         //public Node graph = null;
         public RDFDatatype datatype = null;
-        public NamespaceFixedByteArrayBuffer xmlBase = null;
+        public NamespaceIriPair xmlBase = null;
         public SpecialByteBuffer xmlLang = null;
 
-        public Element(NamespaceFixedByteArrayBuffer xmlBase, SpecialByteBuffer xmlLang) {
+        public Element(NamespaceIriPair xmlBase, SpecialByteBuffer xmlLang) {
             this.xmlBase = xmlBase;
             this.xmlLang = xmlLang;
         }
@@ -335,20 +344,6 @@ public class CIMParser {
 
     private State handleOtherTag() throws ParserException {
         final var parent = elementStack.peek();
-        SpecialByteBuffer tagNamespace;
-        if(currentTag.hasPrefix()) {
-            tagNamespace = prefixToNamespace.get(currentTag.getPrefix());
-            if(tagNamespace == null) {
-                throw new ParserException("Undefined namespace prefix in: "
-                        + currentTag.decodeToString());
-            }
-        } else {
-            if(defaultNamespace == null) {
-                throw new ParserException("No default namespace defined for tag: "
-                        + currentTag.decodeToString());
-            }
-            tagNamespace = defaultNamespace;
-        }
         final var current = initElementWithBaseAndLang(parent);
 
         current.subject = tryFindSubjectNodeInAttributes(current.xmlBase);
@@ -441,7 +436,7 @@ public class CIMParser {
 
 
     private Element initElementWithBaseAndLang(Element parent) {
-        NamespaceFixedByteArrayBuffer xmlBase = null;
+        NamespaceIriPair xmlBase = null;
         SpecialByteBuffer xmlLang = null;
         // look for xml:lang and xml:base attributes
         for (var i = 0; i < currentAttributes.size(); i++) {
@@ -460,8 +455,11 @@ public class CIMParser {
                 var namespace = attribute.value.asNamespace();
                 xmlBase = baseSet.get(namespace);
                 if (xmlBase == null) {
-                    xmlBase = namespace.copy();
-                    baseSet.put(xmlBase, xmlBase); // Store the xml:base value to avoid copying
+                    var nsCopy = namespace.copy();
+                    xmlBase = new NamespaceIriPair(
+                            nsCopy,
+                            iriProvider.create(nsCopy.decodeToString()));
+                    baseSet.put(nsCopy, xmlBase); // Store the xml:base value to avoid copying
                 }
             }
         }
@@ -470,68 +468,66 @@ public class CIMParser {
                 xmlLang != null ? xmlLang : parent.xmlLang);
     }
 
-    private RDFDatatype getOrCreateDatatypeForIri(final NamespaceFixedByteArrayBuffer xmlBase, final QNameFixedByteArrayBuffer iri) throws ParserException {
-        SpecialByteBuffer value;
-        boolean isCopyNeeded = true;
-        if(iri.isRelative()) {
-            // If the value is relative, resolve it against the xmlBase
-            if(xmlBase == null) {
-                throw new ParserException("Relative rdf:datatype found without base URI for IRI: "
-                        + iri.decodeToString());
+    private RDFDatatype getOrCreateDatatypeForIri(final NamespaceIriPair xmlBase, final QNameFixedByteArrayBuffer iriQName) throws ParserException {
+        if(xmlBase == null) {
+            var cacheKey = new NamespaceAndQName(null,iriQName);
+            var datatype = iriToDatatype.get(cacheKey);
+            if(datatype != null) {
+                return datatype; // Return cached datatype if available
             }
-            value = xmlBase.creatFullIri(iri);
-            isCopyNeeded = false; // No need to copy if we are joining with xmlBase
+            // Use a copy of the QName to ensure immutability in the cache key
+            cacheKey = new NamespaceAndQName(null, iriQName.copy());
+            final IRIx iri = iriProvider.create(iriQName.decodeToString());
+            datatype = TypeMapper.getInstance().getSafeTypeByName(iri.str());
+            iriToDatatype.put(cacheKey, datatype);
+            return datatype;
         } else {
-            // If the value is absolute, use it as is
-            value = iri;
-        }
-        var datatype = iriToDatatype.get(value);
-        if(datatype == null) {
-            if(isCopyNeeded) {
-                value = value.copy();
+            var cacheKey = new NamespaceAndQName(xmlBase.namespace, iriQName);
+            var datatype = iriToDatatype.get(cacheKey);
+            if (datatype != null) {
+                return datatype; // Return cached datatype if available
             }
-            datatype = TypeMapper.getInstance().getSafeTypeByName(value.decodeToString());
-            iriToDatatype.put(value, datatype); // Store the new subject in the map
+            // Use a copy of the QName to ensure immutability in the cache key
+            cacheKey = new NamespaceAndQName(xmlBase.namespace, iriQName.copy());
+            final IRIx iri = xmlBase.iri.resolve(iriQName.decodeToString());
+            datatype = TypeMapper.getInstance().getSafeTypeByName(iri.str());
+            iriToDatatype.put(cacheKey, datatype);
+            return datatype;
         }
-        return datatype;
     }
 
-    private Node getOrCreateNodeForIri(final NamespaceFixedByteArrayBuffer xmlBase, final QNameFixedByteArrayBuffer iri) throws ParserException {
-        SpecialByteBuffer value;
-        boolean isCopyNeeded = true;
-        if(iri.isRelative()) {
-            // If the value is relative, resolve it against the xmlBase
-            if(xmlBase == null) {
-                if(handleCimUuidsWithMissingPrefix && iri.isProbablyCimUuid()) {
-                    //TODO: UUID-Treatment
-                    value = new ReadonlyByteArrayBuffer(iri.data, 1, iri.length()-1); // Remove the first character '#'
-                } else {
-                    throw new ParserException("Relative value found without base URI for IRI: "
-                            + iri.decodeToString());
-                }
-            } else {
-                value = xmlBase.creatFullIri(iri);
-                isCopyNeeded = false; // No need to copy if we are joining with xmlBase
+    private Node getOrCreateNodeForIri(final NamespaceIriPair xmlBase, final QNameFixedByteArrayBuffer iriQName) throws ParserException {
+        if(xmlBase == null) {
+            var cacheKey = new NamespaceAndQName(null, iriQName);
+            var node = iriNodeCache.get(cacheKey);
+            if(node != null) {
+                return node;
             }
+            // Use a copy of the QName to ensure immutability in the cache key
+            cacheKey = new NamespaceAndQName(null, iriQName.copy());
+            final IRIx iri = iriProvider.create(iriQName.decodeToString());
+            node = NodeFactory.createURI(iri.str());
+            iriNodeCache.put(cacheKey, node);
+            return node;
         } else {
-            // If the value is absolute, use it as is
-            value = iri;
-        }
-        var uriNode = iriToNode.get(value);
-        if(uriNode == null) {
-            if(isCopyNeeded) {
-                value = value.copy();
+            var cacheKey = new NamespaceAndQName(xmlBase.namespace, iriQName);
+            var node = iriNodeCache.get(cacheKey);
+            if(node != null) {
+                return node;
             }
-            uriNode = NodeFactory.createURI(value.decodeToString());
-            iriToNode.put(value, uriNode); // Store the new subject in the map
+            // Use a copy of the QName to ensure immutability in the cache key
+            cacheKey = new NamespaceAndQName(xmlBase.namespace, iriQName.copy());
+            final IRIx iri = xmlBase.iri.resolve(iriQName.decodeToString());
+            node = NodeFactory.createURI(iri.str());
+            iriNodeCache.put(cacheKey, node);
+            return node;
         }
-        return uriNode;
     }
 
     private Node getOrCreateNodeForTagOrAttributeName(final QNameFixedByteArrayBuffer tagOrAttributeName) throws ParserException {
         var uriNode = tagOrAttributeNameToUriNode.get(tagOrAttributeName);
         if(uriNode == null) {
-            final SpecialByteBuffer namespace;
+            final NamespaceIriPair namespace;
             if(tagOrAttributeName.hasPrefix()) {
                 // If the name has a prefix, resolve it against the prefixToNamespace map
                 namespace = prefixToNamespace.get(tagOrAttributeName.getPrefix());
@@ -546,27 +542,30 @@ public class CIMParser {
                 }
                 namespace = defaultNamespace;
             }
-            uriNode = NodeFactory.createURI(
-                    namespace.decodeToString() + tagOrAttributeName.getLocalPart().decodeToString());
+            uriNode = NodeFactory.createURI(namespace.namespace.join(tagOrAttributeName.getLocalPart()).decodeToString());
             tagOrAttributeNameToUriNode.put(tagOrAttributeName, uriNode);
         }
         return uriNode;
     }
 
-    private Node getOrCreateNodeForRdfId(NamespaceFixedByteArrayBuffer xmlBase, final QNameFixedByteArrayBuffer rdfId) throws ParserException {
+    private Node getOrCreateNodeForRdfId(NamespaceIriPair xmlBase, final QNameFixedByteArrayBuffer rdfId) throws ParserException {
         if(isRdfIdTreatedLikeRdfAbout) {
             return getOrCreateNodeForIri(xmlBase, rdfId);
         }
         if(xmlBase == null) {
             throw new ParserException("rdf:ID attribute found without base URI");
         }
-        final SpecialByteBuffer uri = xmlBase.join(SEPARATOR_SHARP, rdfId);
-        var uriNode = iriToNode.get(uri);
-        if(uriNode== null) {
-            uriNode = NodeFactory.createURI(uri.decodeToString());
-            iriToNode.put(uri, uriNode); // Store the new subject in the map
+        var cacheKey = new NamespaceAndQName(xmlBase.namespace, rdfId);
+        var node = iriNodeCache.get(cacheKey);
+        if(node != null) {
+            return node;
         }
-        return uriNode;
+        // Use a copy of the QName to ensure immutability in the cache key
+        cacheKey = new NamespaceAndQName(xmlBase.namespace, rdfId.copy());
+        final IRIx iri = xmlBase.iri.resolve(CHAR_SHARP + rdfId.decodeToString()); // adding a # here
+        node = NodeFactory.createURI(iri.str());
+        iriNodeCache.put(cacheKey, node);
+        return node;
     }
 
     private Node getOrCreateBlankNodeWithIdentifier(final SpecialByteBuffer identifier) {
@@ -579,7 +578,7 @@ public class CIMParser {
         return blankNode;
     }
 
-    private Node tryFindSubjectNodeInAttributes(NamespaceFixedByteArrayBuffer xmlBase) throws ParserException {
+    private Node tryFindSubjectNodeInAttributes(NamespaceIriPair xmlBase) throws ParserException {
         for (int i = 0; i < currentAttributes.size(); i++) {
             if (currentAttributes.isConsumed(i)) {
                 continue; // Skip already consumed attributes
@@ -646,8 +645,11 @@ public class CIMParser {
             for(int i = 0; i< currentAttributes.size(); i++) {
                 final var attribute = currentAttributes.get(i);
                 if(ATTRIBUTE_XML_BASE.equals(attribute.name)) {
-                    this.baseNamespace = attribute.value.asNamespaceCopy();
-                    this.streamRDFSink.base(baseNamespace.decodeToString());
+                    final var namespace = attribute.value.asNamespaceCopy();
+                    this.baseNamespace = new NamespaceIriPair(
+                            namespace,
+                            iriProvider.create(namespace.decodeToString()));
+                    this.streamRDFSink.base(baseNamespace.iri.str());
                     continue;
                 }
                 if(attribute.name.hasPrefix()) {
@@ -657,22 +659,25 @@ public class CIMParser {
                     }
                     final var prefix = attribute.name.getLocalPart().copy();
                     final var namespace = attribute.value.asNamespaceCopy();
+                    final var iri = iriProvider.create(namespace.decodeToString());
                     // Add the namespace prefix and IRI to the prefixToNamespace map
                     prefixToNamespace.put(
                             prefix,
-                            namespace);
+                            new NamespaceIriPair(namespace, iri));
                     this.streamRDFSink.prefix(
                             prefix.decodeToString(),
-                            namespace.decodeToString());
+                            iri.str());
                 } else {
                     if (!ATTRIBUTE_XMLNS.equals(attribute.name)) {
                         throw new ParserException("Expected attribute 'xmlns:' in rdf:RDF tag but got: "
                                 + attribute.name.decodeToString());
                     }
+                    final var namespace =  attribute.value.asNamespaceCopy();
+                    final var iri = iriProvider.create(namespace.decodeToString());
                     this.streamRDFSink.prefix(
                             XML_DEFAULT_NS_PREFIX.decodeToString(),
-                            attribute.value.decodeToString());
-                    defaultNamespace = attribute.value.asNamespaceCopy();
+                            iri.str());
+                    defaultNamespace = new NamespaceIriPair(namespace, iri);
                     prefixToNamespace.put(
                             XML_DEFAULT_NS_PREFIX,
                             defaultNamespace);
@@ -794,14 +799,18 @@ public class CIMParser {
             return new ByteArrayKey(this.copyToByteArray());
         }
 
-        default SpecialByteBuffer join(SpecialByteBuffer other) {
+        default byte [] joinedData(SpecialByteBuffer other) {
             if (other == null || other.length() == 0) {
-                return this.copy();
+                return this.copyToByteArray();
             }
             final byte[] combinedData = new byte[this.length() + other.length()];
             System.arraycopy(this.getData(), this.offset(), combinedData, 0, this.length());
             System.arraycopy(other.getData(), other.offset(), combinedData, this.length(), other.length());
-            return new ByteArrayKey(combinedData);
+            return combinedData;
+        }
+
+        default SpecialByteBuffer join(SpecialByteBuffer other) {
+            return new ByteArrayKey(joinedData(other));
         }
 
         default SpecialByteBuffer join(SpecialByteBuffer... other) {
@@ -1220,10 +1229,6 @@ public class CIMParser {
             newData[position] = SHARP; // Add the trailing sharp
             return new NamespaceFixedByteArrayBuffer(newData);
         }
-
-        public SpecialByteBuffer creatFullIri(QNameFixedByteArrayBuffer iri) {
-            return this.join(iri.getLocalPart());
-        }
     }
 
     private static class QNameFixedByteArrayBuffer extends FixedByteArrayBuffer {
@@ -1233,11 +1238,15 @@ public class CIMParser {
             super(bufferSize);
         }
 
-        public boolean isRelative() {
-            if(position == 0) {
-                return false;
-            }
-            return SHARP == data[0]; // If the first byte is a sharp, it is a relative QName
+        private QNameFixedByteArrayBuffer(byte[] data) {
+            super(data);
+        }
+
+        @Override
+        public QNameFixedByteArrayBuffer copy() {
+            var copy = new QNameFixedByteArrayBuffer(this.copyToByteArray());
+            copy.startOfLocalPart = this.startOfLocalPart;
+            return copy;
         }
 
         public boolean hasPrefix() {
@@ -1250,13 +1259,6 @@ public class CIMParser {
 
         public ReadonlyByteArrayBuffer getLocalPart() {
             return new ReadonlyByteArrayBuffer(data, startOfLocalPart, position - startOfLocalPart);
-        }
-
-        public ReadonlyByteArrayBuffer getLocalPartExcludingSharp() {
-            if(isRelative()) {
-                return new ReadonlyByteArrayBuffer(data, startOfLocalPart+1, position - startOfLocalPart-1);
-            }
-            return getLocalPart();
         }
 
         public NamespaceFixedByteArrayBuffer asNamespace() {

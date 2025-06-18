@@ -700,6 +700,9 @@ public class ParserPoC {
                 expected.size(), actual.size());
         // check that all triples in expected graph are in actual graph
         expected.find().forEachRemaining(expectedTriple -> {
+            if(!actual.contains(expectedTriple)) {
+                int i= 0;
+            }
             assertTrue("Graphs are not equal: missing triple " + expectedTriple,
                     actual.contains(expectedTriple));
         });
