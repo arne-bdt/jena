@@ -35,6 +35,7 @@ import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.exec.QueryExec;
+import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
 import javax.xml.XMLConstants;
@@ -512,8 +513,8 @@ public class ParserPoC {
     }
 
     @Test
-    public void testParser() throws Exception {
-        final var stopWatch = StopWatch.createStarted();
+    public void testTextParser() throws Exception {
+        JenaSystem.init();
         final var xmlString = """
                 <?xml version="1.0" encoding="utf-8"?>
                 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -535,21 +536,117 @@ public class ParserPoC {
                 """;
         final var is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var parser = new CIMParser(is, new StreamRDFGraph(graph));
+
+        final var stopWatch = StopWatch.createStarted();
         parser.parse();
         stopWatch.stop();
-        System.out.println("Parsed triples: " + graph.size());
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
 
         stopWatch.reset();
         stopWatch.start();
-        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         RDFParser.create()
                 .source(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)))
                 .lang(org.apache.jena.riot.Lang.RDFXML)
                 .parse(new StreamRDFGraph(expectedGraph));
-        assertGraphsEqual(expectedGraph, graph);
         stopWatch.stop();
-        System.out.println("Parsed expected triples: " + expectedGraph.size());
+
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
+
+        assertGraphsEqual(expectedGraph, graph);
+    }
+
+    @Test
+    public void testCimXml() throws Exception {
+        JenaSystem.init();
+        final var xmlString = """
+               <?xml version="1.0" encoding="utf-8"?>
+               <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:cim="http://iec.ch/TC57/2013/CIM-schema-cim16#" xmlns:entsoe="http://entsoe.eu/CIM/SchemaExtension/3/1#" xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#">
+                 <md:FullModel rdf:about="urn:uuid:4528b685-6ddc-471a-b8a2-8e77e6ec15f8">
+                   <md:Model.created>2014-10-24T11:56:40</md:Model.created>
+                   <md:Model.scenarioTime>2014-06-01T10:30:00</md:Model.scenarioTime>
+                   <md:Model.version>2</md:Model.version>
+                   <md:Model.DependentOn rdf:resource="urn:uuid:77b55f87-fc1e-4046-9599-6c6b4f991a86"/>
+                   <md:Model.DependentOn rdf:resource="urn:uuid:2399cbd0-9a39-11e0-aa80-0800200c9a66"/>
+                   <md:Model.description>CGMES Conformity Assessment: 'MicroGridTestConfiguration....BC (Assembled)Test Configuration. The model is owned by ENTSO-E and is provided by ENTSO-E “as it is”. To the fullest extent permitted by law, ENTSO-E shall not be liable for any damages of any kind arising out of the use of the model (including any of its subsequent modifications). ENTSO-E neither warrants, nor represents that the use of the model will not infringe the rights of third parties. Any use of the model shall  include a reference to ENTSO-E. ENTSO-E web site is the only official source of information related to the model.</md:Model.description>
+                   <md:Model.modelingAuthoritySet>http://tennet.nl/CGMES/2.4.15</md:Model.modelingAuthoritySet>
+                   <md:Model.profile>http://entsoe.eu/CIM/GeographicalLocation/2/1</md:Model.profile>
+                 </md:FullModel>
+                 <cim:CoordinateSystem rdf:ID="_50a38719-492c-4622-bba3-e99f0847be1c">
+                   <cim:IdentifiedObject.name>WGS84</cim:IdentifiedObject.name>
+                   <cim:CoordinateSystem.crsUrn>urn:ogc:def:crs:EPSG::4326</cim:CoordinateSystem.crsUrn>
+                 </cim:CoordinateSystem>
+                 <cim:Location rdf:ID="_37c3f6d0-1deb-48a8-92dd-18c80617073f">
+                   <cim:Location.PowerSystemResources rdf:resource="#_c49942d6-8b01-4b01-b5e8-f1180f84906c"/>
+                   <cim:Location.CoordinateSystem rdf:resource="#_50a38719-492c-4622-bba3-e99f0847be1c"/>
+                 </cim:Location>
+                 <cim:PositionPoint rdf:ID="_ed286b99-f37c-4677-8555-f8489d953cfa">
+                   <cim:PositionPoint.sequenceNumber>1</cim:PositionPoint.sequenceNumber>
+                   <cim:PositionPoint.Location rdf:resource="#_37c3f6d0-1deb-48a8-92dd-18c80617073f"/>
+                   <cim:PositionPoint.xPosition>4.846580</cim:PositionPoint.xPosition>
+                   <cim:PositionPoint.yPosition>52.404700</cim:PositionPoint.yPosition>
+                 </cim:PositionPoint>
+                </rdf:RDF>
+                """;
+        final var is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var parser = new CIMParser(is, new StreamRDFGraph(graph));
+
+        final var stopWatch = StopWatch.createStarted();
+        parser.setBaseNamespace("urn:uuid");
+        parser.doNotHandleCimUuidsWithMissingPrefix();
+        parser.treatRdfIdStandardConformant();
+        parser.parse();
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
+
+        stopWatch.reset();
+        stopWatch.start();
+        RDFParser.create()
+                .source(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)))
+                .base("urn:uuid")
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .checking(false)
+                .parse(new StreamRDFGraph(expectedGraph));
+        stopWatch.stop();
+
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
+
+        assertGraphsEqual(expectedGraph, graph);
+    }
+
+    @Test
+    public void testFileParser() throws Exception {
+        JenaSystem.init();
+        final var filePath = java.nio.file.Paths.get(pathToGLProfile);
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var parser = new CIMParser(filePath, new StreamRDFGraph(graph));
+
+        final var stopWatch = StopWatch.createStarted();
+        parser.parse();
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
+
+        stopWatch.reset();
+        stopWatch.start();
+        RDFParser.create()
+                .source(filePath)
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .parse(new StreamRDFGraph(expectedGraph));
+        stopWatch.stop();
+
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
+
+        assertGraphsEqual(expectedGraph, graph);
     }
 
     public void assertGraphsEqual(Graph expected, Graph actual) {
