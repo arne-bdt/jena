@@ -18,6 +18,7 @@
 
 package org.apache.jena.cimxml;
 
+import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
@@ -35,8 +36,13 @@ import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
 import javax.xml.XMLConstants;
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.PushbackInputStream;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -62,7 +68,7 @@ public class ParserPoC {
 
     //private final String file = "C:\\temp\\CGMES_v2.4.15_TestConfigurations_v4.0.3\\MicroGrid\\BaseCase_BC\\CGMES_v2.4.15_MicroGridTestConfiguration_BC_Assembled_CA_v2\\MicroGridTestConfiguration_BC_NL_GL_V2.xml";
     private final String file = "C:\\temp\\v59_3\\AMP_Export_s82_v58_H69.xml";
-
+    //private final String file ="C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml";
 
 
     public class StreamRDFGraph implements StreamRDF {
@@ -111,7 +117,7 @@ public class ParserPoC {
                 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
                             xmlns:dc="http://purl.org/dc/elements/1.1/">
                 
-                  <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar">
+                  <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar" dc:Author="Henry Ford &amp; &quot; &gt; &lt; &apos;">
                     <dc:title>RDF 1.1 XML Syntax</dc:title>
                     <dc:title xml:lang="en">RDF 1.1 XML Syntax</dc:title>
                     <dc:title xml:lang="en-US">RDF 1.1 XML Syntax</dc:title>
@@ -119,7 +125,7 @@ public class ParserPoC {
                 
                   <rdf:Description rdf:about="http://example.org/buecher/baum" xml:lang="de">
                     <dc:title>Der Baum</dc:title>
-                    <dc:description>Das Buch ist außergewöhnlich</dc:description>
+                    <dc:description>Das Buch ist außergewöhnlich  &amp; &quot; &gt; &lt; &apos; </dc:description>
                     <dc:title xml:lang="en">The Tree</dc:title>
                   </rdf:Description>
                 
@@ -283,6 +289,126 @@ public class ParserPoC {
         stopWatch.stop();
         // print number of triples parsed and the time taken
         System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
+    }
+
+    @Test
+    public void consumeFileLines() throws Exception {
+        JenaSystem.init();
+        final var filePath = java.nio.file.Paths.get(file);
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var stopWatch = StopWatch.createStarted();
+        int checksum = 0;
+        int lines = 0;
+        try(var file = java.nio.file.Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
+            var i = "";
+            while((i = file.readLine()) != null) {
+                checksum = checksum | i.hashCode();
+                lines++;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
+        }
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch + " calc:" + checksum + " lines:" + lines);
+    }
+
+    @Test
+    public void consumeFileBytewise() throws Exception {
+        JenaSystem.init();
+        final var filePath = java.nio.file.Paths.get(file);
+        final var fileSize = java.nio.file.Files.size(filePath);
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var stopWatch = StopWatch.createStarted();
+        int checksum = 0;
+        //try(var channel = FileChannel.open(filePath, StandardOpenOption.READ)) {
+            final int BUF_SIZE = 256*4096; // 256 KB
+            try(final var is = new BufferedFileChannelInputStream.Builder()
+                    .setFile(filePath.toFile())
+                    .setBufferSize((fileSize < BUF_SIZE) ? (int) fileSize : BUF_SIZE)
+                    .get()) {
+                var b = 0;
+                while ((b = is.read()) != -1) {
+                    if (b < 0) {
+                        b += 256; // convert to unsigned byte
+                    }
+                    checksum = checksum | b;
+                }
+            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            throw e;
+//        }
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch + " calc:" + checksum);
+    }
+
+    @Test
+    public void consumeFileUsingBufferedInputStream() throws Exception {
+        JenaSystem.init();
+        final var filePath = java.nio.file.Paths.get(file);
+        final var fileSize = java.nio.file.Files.size(filePath);
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var stopWatch = StopWatch.createStarted();
+        int checksum = 0;
+        //try(var channel = FileChannel.open(filePath, StandardOpenOption.READ)) {
+        final int BUF_SIZE = 256*4096; // 256 KB
+        try(final var fcis = new BufferedFileChannelInputStream.Builder()
+                .setFile(filePath.toFile())
+                .setBufferSize((fileSize < BUF_SIZE) ? (int) fileSize : BUF_SIZE)
+                .get()) {
+            var buffer = new byte[1024];
+            try(var is = new BufferedInputStream(fcis, 1024)) {
+                var bytesRead = 0;
+                while ((bytesRead = is.read(buffer)) != -1) {
+                    for (int j = 0; j < bytesRead; j++) {
+                        int i = buffer[j];
+                        if (i < 0) {
+                            i += 256; // convert to unsigned byte
+                        }
+                        checksum = checksum | i;
+                    }
+                }
+            }
+        }
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch + " calc:" + checksum);
+    }
+
+    @Test
+    public void consumeFileUsingPushbackInputStream() throws Exception {
+        JenaSystem.init();
+        final var filePath = java.nio.file.Paths.get(file);
+        final var fileSize = java.nio.file.Files.size(filePath);
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var stopWatch = StopWatch.createStarted();
+        int checksum = 0;
+        //try(var channel = FileChannel.open(filePath, StandardOpenOption.READ)) {
+        final int BUF_SIZE = 256*4096; // 256 KB
+        try(final var fcis = new BufferedFileChannelInputStream.Builder()
+                .setFile(filePath.toFile())
+                .setBufferSize((fileSize < BUF_SIZE) ? (int) fileSize : BUF_SIZE)
+                .get()) {
+            var buffer = new byte[1024];
+            try(var is = new PushbackInputStream(fcis, 1024)) {
+                var bytesRead = 0;
+                while ((bytesRead = is.read(buffer)) != -1) {
+                    for (int j = 0; j < bytesRead; j++) {
+                        int i = buffer[j];
+                        if (i < 0) {
+                            i += 256; // convert to unsigned byte
+                        }
+                        checksum = checksum | i;
+                    }
+                }
+            }
+        }
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch + " calc:" + checksum);
     }
 
     @Test

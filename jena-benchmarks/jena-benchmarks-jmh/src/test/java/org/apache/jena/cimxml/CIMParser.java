@@ -33,6 +33,7 @@ import org.apache.jena.mem2.collection.FastHashSet;
 import org.apache.jena.riot.system.StreamRDF;
 
 import javax.xml.XMLConstants;
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.FileChannel;
@@ -48,7 +49,7 @@ public class CIMParser {
     private static final String STRING_EMPTY = "";
     private static final String STRING_NAMESPACE_RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
-    private static final int MAX_BUFFER_SIZE = 4096 * 4096; // 4 MB buffer size for reading files
+    private static final int MAX_BUFFER_SIZE = 256*4096; // 256 KB
     private static final Charset UTF_8 = StandardCharsets.UTF_8;
     private static final byte LEFT_ANGLE_BRACKET = (byte)'<';
     private static final byte RIGHT_ANGLE_BRACKET = (byte) '>';
@@ -114,7 +115,7 @@ public class CIMParser {
 
     private final QNameFixedByteArrayBuffer currentTag = new QNameFixedByteArrayBuffer(MAX_LENGTH_OF_TAG_NAME);
     private final AttributeCollection currentAttributes = new AttributeCollection();
-    private final FixedByteArrayBuffer currentTextContent = new FixedByteArrayBuffer(MAX_LENGTH_OF_TEXT_CONTENT);
+    private final DecodingTextArrayByteBuffer currentTextContent = new DecodingTextArrayByteBuffer(MAX_LENGTH_OF_TEXT_CONTENT);
     private final Deque<Element> elementStack = new ArrayDeque<>();
     //private final Map<SpecialByteBuffer, Node> iriToNode = new HashMap<>();
     private final Map<NamespaceAndQName, RDFDatatype> iriToDatatype = new HashMap<>();
@@ -127,7 +128,7 @@ public class CIMParser {
     private final Map<NamespaceAndQName, Node> iriNodeCache = new HashMap<>();
 
     private record NamespaceIriPair(NamespaceFixedByteArrayBuffer namespace, IRIx iri) {}
-    private record NamespaceAndQName(NamespaceFixedByteArrayBuffer namespace, QNameFixedByteArrayBuffer qname) {}
+    private record NamespaceAndQName(NamespaceFixedByteArrayBuffer namespace, DecodingTextArrayByteBuffer qname) {}
 
     private final IRIProvider iriProvider = new IRIProvider3986();
 
@@ -173,8 +174,8 @@ public class CIMParser {
         public Node predicate = null;
         //public Node graph = null;
         public RDFDatatype datatype = null;
-        public NamespaceIriPair xmlBase = null;
-        public SpecialByteBuffer xmlLang = null;
+        public NamespaceIriPair xmlBase;
+        public SpecialByteBuffer xmlLang;
 
         public Element(NamespaceIriPair xmlBase, SpecialByteBuffer xmlLang) {
             this.xmlBase = xmlBase;
@@ -217,7 +218,7 @@ public class CIMParser {
         this(null, null, inputStream, streamRDFSink);
     }
 
-    private static class ParserException extends Exception {
+    public static class ParserException extends Exception {
         public ParserException(String message) {
             super(message);
         }
@@ -256,51 +257,55 @@ public class CIMParser {
     }
 
     private void parse(InputStream inputStream) throws IOException, ParserException {
-        try {
+        try (inputStream; var is = new BufferedInputStream(inputStream, MAX_LENGTH_OF_TEXT_CONTENT*2)) {
             var state = State.LOOKING_FOR_TAG;
             while (state != State.END) {
                 state = switch (state) {
-                    case LOOKING_FOR_TAG -> handleLookingForTag(inputStream);
-                    case LOOKING_FOR_TAG_NAME -> handleLookingForTagName(inputStream);
-                    case LOOKING_FOR_ATTRIBUTE_NAME -> handleLookingForAttributeName(inputStream);
-                    case LOOKING_FOR_ATTRIBUTE_VALUE -> handleLookingForAttributeValue(inputStream);
+                    case LOOKING_FOR_TAG -> handleLookingForTag(is);
+                    case LOOKING_FOR_TAG_NAME -> handleLookingForTagName(is);
+                    case LOOKING_FOR_ATTRIBUTE_NAME -> handleLookingForAttributeName(is);
+                    case LOOKING_FOR_ATTRIBUTE_VALUE -> handleLookingForAttributeValue(is);
                     case AT_END_OF_OPENING_TAG -> handleAtEndOfOpeningTag();
                     case AT_END_OF_SELF_CLOSING_TAG -> handleSelfClosingTag();
                     case IN_CLOSING_TAG -> handleClosingTag();
-                    case IN_TEXT_CONTENT -> handleTextContent(inputStream);
+                    case IN_TEXT_CONTENT -> handleTextContent(is);
                     case END -> State.END;
                 };
             }
-            if(this.elementStack.size() > 0) {
+            if (!this.elementStack.isEmpty()) {
                 throw new ParserException("Parser ended with unclosed elements in the stack: "
                         + this.elementStack.size() + " elements left.");
             }
         }
-        finally {
-            inputStream.close();
-        }
     }
 
     private State handleTextContent(final InputStream inputStream) throws IOException, ParserException {
-        currentTextContent.reset();
-        byte b;
-        while ((b = (byte) inputStream.read()) != END_OF_STREAM) {
-            if (LEFT_ANGLE_BRACKET == b) {
-                var parent = elementStack.peek();
-                if (parent == null || parent.subject == null || parent.predicate == null) {
-                    throw new ParserException("Text content found without subject or predicate: "
-                            + currentTextContent.decodeToString());
-                }
-                final var object = NodeFactory.createLiteral(
-                        currentTextContent.decodeToString(),
-                        parent.xmlLang != null ? parent.xmlLang.decodeToString(): null,
-                        parent.datatype);
-                streamRDFSink.triple(Triple.create(parent.subject, parent.predicate, object));
-                return State.LOOKING_FOR_TAG_NAME;
-            }
-            currentTextContent.append(b);
+        var parent = elementStack.peek();
+        if (parent == null || parent.subject == null || parent.predicate == null) {
+            throw new ParserException("Text content found without subject or predicate: "
+                    + currentTextContent.decodeToString());
         }
-        return State.END;
+
+        currentTextContent.reset();
+
+        inputStream.mark(currentTextContent.data.length);
+
+        var bytesRead = inputStream.read(currentTextContent.data);
+        if (bytesRead == -1) {
+            throw new ParserException("Unexpected end of stream while in text content: "
+                    + currentTextContent.decodeToString());
+        }
+        var bytesConsumed = currentTextContent.consumeToLeftAngleBracket(bytesRead);
+
+        inputStream.reset();
+        inputStream.skipNBytes(bytesConsumed);
+
+        final var object = NodeFactory.createLiteral(
+                currentTextContent.decodeToString(),
+                parent.xmlLang != null ? parent.xmlLang.decodeToString(): null,
+                parent.datatype);
+        streamRDFSink.triple(Triple.create(parent.subject, parent.predicate, object));
+        return State.LOOKING_FOR_TAG_NAME;
     }
 
     private State handleClosingTag() {
@@ -472,7 +477,7 @@ public class CIMParser {
                 xmlLang != null ? xmlLang : parent.xmlLang);
     }
 
-    private RDFDatatype getOrCreateDatatypeForIri(final NamespaceIriPair xmlBase, final QNameFixedByteArrayBuffer iriQName) throws ParserException {
+    private RDFDatatype getOrCreateDatatypeForIri(final NamespaceIriPair xmlBase, final DecodingTextArrayByteBuffer iriQName) {
         if(xmlBase == null) {
             var cacheKey = new NamespaceAndQName(null,iriQName);
             var datatype = iriToDatatype.get(cacheKey);
@@ -500,7 +505,7 @@ public class CIMParser {
         }
     }
 
-    private Node getOrCreateNodeForIri(final NamespaceIriPair xmlBase, final QNameFixedByteArrayBuffer iriQName) throws ParserException {
+    private Node getOrCreateNodeForIri(final NamespaceIriPair xmlBase, final DecodingTextArrayByteBuffer iriQName) {
         if(xmlBase == null) {
             var cacheKey = new NamespaceAndQName(null, iriQName);
             var node = iriNodeCache.get(cacheKey);
@@ -552,7 +557,7 @@ public class CIMParser {
         return uriNode;
     }
 
-    private Node getOrCreateNodeForRdfId(NamespaceIriPair xmlBase, final QNameFixedByteArrayBuffer rdfId) throws ParserException {
+    private Node getOrCreateNodeForRdfId(NamespaceIriPair xmlBase, final DecodingTextArrayByteBuffer rdfId) throws ParserException {
         if(isRdfIdTreatedLikeRdfAbout) {
             return getOrCreateNodeForIri(xmlBase, rdfId);
         }
@@ -696,24 +701,6 @@ public class CIMParser {
 
     private State handleRdfLi() throws ParserException {
         throw new ParserException("rdf:li tag is not supported yet.");
-//        // Handle rdf:li tag
-//        final var parent = elementStack.peek();
-//        if(parent == null) {
-//            throw new ParserException("rdf:li tag found without a parent in the stack.");
-//        }
-//        var listIndex = subjectToListIndex.get(parent);
-//        if(listIndex == null) {
-//            listIndex = 1; // Start with index 0 if not found
-//        } else {
-//            listIndex++; // Increment the index for the next rdf:li element
-//        }
-//        subjectToListIndex.put(parent.subject, listIndex);
-//        var property = listIndexToProperty.get(listIndex);
-//        if(property == null) {
-//            // If the property for this index does not exist, create a new one
-//            property = NodeFactory.createURI(RDF_LI_PROPERTY_START+ listIndex);
-//            listIndexToProperty.put(listIndex, property);
-//        }
     }
 
     private static final byte WHITESPACE_BLOOM_FILTER = WHITESPACE_SPACE | WHITESPACE_TAB | WHITESPACE_NEWLINE | WHITESPACE_CARRIAGE_RETURN;
@@ -1081,7 +1068,6 @@ public class CIMParser {
     private static class FixedByteArrayBuffer implements SpecialByteBuffer {
         protected final byte[] data;
         protected int position;
-        protected int lastAmpersandPosition = -1; // Position of the last '&' character, used for decoding
 
         public FixedByteArrayBuffer(String text) {
             var buffer = UTF_8.encode(text);
@@ -1110,72 +1096,18 @@ public class CIMParser {
 
         public void append(byte b) {
             if (position < data.length) {
-                if (b == AMPERSAND) {
-                    lastAmpersandPosition = position; // Store the position of the last '&'
-                } else if (b == SEMICOLON) {
-                    var charsBetweenAmpersandAndSemicolon = position - lastAmpersandPosition - 1;
-                    switch (charsBetweenAmpersandAndSemicolon) {
-                        case 2: {
-                            if (data[lastAmpersandPosition+2] == 't') {
-                                if (data[lastAmpersandPosition+1] == 'l') {
-                                    data[lastAmpersandPosition] = LEFT_ANGLE_BRACKET; // &lt;
-                                    position = lastAmpersandPosition + 1;
-                                    lastAmpersandPosition = -1; // Reset last ampersand position
-                                    return;
-                                } else if (data[lastAmpersandPosition+1] == 'g') {
-                                    data[lastAmpersandPosition] = RIGHT_ANGLE_BRACKET; // &gt;
-                                    position = lastAmpersandPosition + 1;
-                                    lastAmpersandPosition = -1; // Reset last ampersand position
-                                    return;
-                                }
-                            }
-                            break;
-                        }
-                        case 3: {
-                            if  (data[lastAmpersandPosition+3] == 'p'
-                                && data[lastAmpersandPosition+2] == 'm'
-                                && data[lastAmpersandPosition+1] == 'a') {
-                                data[lastAmpersandPosition] = AMPERSAND; // &amp;
-                                position = lastAmpersandPosition + 1;
-                                lastAmpersandPosition = -1; // Reset last ampersand position
-                                return;
-                            }
-                            break;
-                        }
-                        case 4: {
-                            if (data[lastAmpersandPosition+3] == 'o') {
-                                if(data[lastAmpersandPosition+1] == 'q'
-                                    && data[lastAmpersandPosition+2] == 'u'
-                                    && data[lastAmpersandPosition+4] == 't') {
-                                    data[lastAmpersandPosition] = DOUBLE_QUOTE; // &quot;
-                                    position = lastAmpersandPosition + 1;
-                                    lastAmpersandPosition = -1; // Reset last ampersand position
-                                    return;
-                                } else if (data[lastAmpersandPosition+2] == 'p'
-                                        && data[lastAmpersandPosition+4] == 's'
-                                        && data[lastAmpersandPosition+1] == 'a') {
-                                    data[lastAmpersandPosition] = SINGLE_QUOTE; // &apos;
-                                    position = lastAmpersandPosition + 1;
-                                    lastAmpersandPosition = -1; // Reset last ampersand position
-                                    return;
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
                 data[position++] = b;
             } else {
                 throw new IllegalStateException("Buffer overflow");
             }
         }
 
-        public void append(SpecialByteBuffer buffer) {
-            if (position + buffer.length() > data.length) {
-                throw new IllegalStateException("Buffer overflow when appending: " + buffer.decodeToString());
-            }
-            System.arraycopy(buffer.getData(), buffer.offset(), data, position, buffer.length());
-            position += buffer.length();
+        public NamespaceFixedByteArrayBuffer asNamespace() {
+            return new NamespaceFixedByteArrayBuffer(this.data, this.position);
+        }
+
+        public NamespaceFixedByteArrayBuffer asNamespaceCopy() {
+            return new NamespaceFixedByteArrayBuffer(this.copyToByteArray());
         }
 
         @Override
@@ -1208,11 +1140,210 @@ public class CIMParser {
 
         @Override
         public String toString() {
-            return "ByteArrayKey [" + this.decodeToString()  + "]";
+            return "FixedByteArrayBuffer [" + this.decodeToString()  + "]";
         }
 
         public boolean isFull() {
             return position == data.length;
+        }
+    }
+
+    private static class DecodingTextArrayByteBuffer extends FixedByteArrayBuffer {
+        protected int lastAmpersandPosition = -1; // Position of the last '&' character, used for decoding
+
+        public DecodingTextArrayByteBuffer(int size) {
+            super(size);
+        }
+
+        private DecodingTextArrayByteBuffer(byte[] data, int position) {
+            super(data, position);
+        }
+
+        private DecodingTextArrayByteBuffer(byte[] data) {
+            super(data);
+        }
+
+        @Override
+        public void reset() {
+            super.reset();
+            lastAmpersandPosition = -1;
+        }
+
+        public int consumeToLeftAngleBracket(int bytesRead) {
+            position = 0; // Reset position to start
+            if (bytesRead == 0) {
+                return 0;
+            }
+            var bytesConsumed = 0;
+            for ( ; position < bytesRead; position++) {
+                bytesConsumed++;
+                switch (data[position]) {
+                    case LEFT_ANGLE_BRACKET -> {
+                        return bytesConsumed; // Stop at the first '<'
+                    }
+                    case AMPERSAND ->
+                        lastAmpersandPosition = position; // Store the position of the last '&'
+
+                    case  SEMICOLON -> {
+                        var charsBetweenAmpersandAndSemicolon = position - lastAmpersandPosition - 1;
+                        switch (charsBetweenAmpersandAndSemicolon) {
+                            case 2 -> {
+                                if (data[lastAmpersandPosition+2] == 't') {
+                                    if (data[lastAmpersandPosition+1] == 'l') {
+                                        data[lastAmpersandPosition] = LEFT_ANGLE_BRACKET; // &lt;
+
+                                        bytesRead -= 3; // Reduce bytes read by 3 for &lt;
+                                        bytesConsumed++;
+                                        // move remaining data to the left
+                                        System.arraycopy(data, position+1,
+                                                data, lastAmpersandPosition + 1,
+                                                bytesRead-position);
+
+                                        position = lastAmpersandPosition + 1;
+                                        lastAmpersandPosition = -1; // Reset last ampersand position
+                                    } else if (data[lastAmpersandPosition+1] == 'g') {
+                                        data[lastAmpersandPosition] = RIGHT_ANGLE_BRACKET; // &gt;
+
+                                        bytesRead -= 3; // Reduce bytes read by 3 for &gt;
+                                        bytesConsumed++;
+                                        // move remaining data to the left
+                                        System.arraycopy(data, position+1,
+                                                data, lastAmpersandPosition + 1,
+                                                bytesRead-position);
+
+                                        position = lastAmpersandPosition + 1;
+                                        lastAmpersandPosition = -1; // Reset last ampersand position
+                                    }
+                                }
+                            }
+                            case 3 -> {
+                                if  (data[lastAmpersandPosition+3] == 'p'
+                                        && data[lastAmpersandPosition+2] == 'm'
+                                        && data[lastAmpersandPosition+1] == 'a') {
+                                    data[lastAmpersandPosition] = AMPERSAND; // &amp;
+
+                                    bytesRead -= 4; // Reduce bytes read by 4 for &amp;
+                                    bytesConsumed++;
+                                    // move remaining data to the left
+                                    System.arraycopy(data, position+1,
+                                            data, lastAmpersandPosition + 1,
+                                            bytesRead-position);
+
+                                    position = lastAmpersandPosition + 1;
+                                    lastAmpersandPosition = -1; // Reset last ampersand position
+                                }
+                            }
+                            case 4 -> {
+                                if (data[lastAmpersandPosition+3] == 'o') {
+                                    if(data[lastAmpersandPosition+1] == 'q'
+                                            && data[lastAmpersandPosition+2] == 'u'
+                                            && data[lastAmpersandPosition+4] == 't') {
+                                        data[lastAmpersandPosition] = DOUBLE_QUOTE; // &quot;
+
+                                        bytesRead -= 5; // Reduce bytes read by 5 for &quot;
+                                        bytesConsumed++;
+                                        // move remaining data to the left
+                                        System.arraycopy(data, position+1,
+                                                data, lastAmpersandPosition + 1,
+                                                bytesRead-position);
+
+                                        position = lastAmpersandPosition + 1;
+                                        lastAmpersandPosition = -1; // Reset last ampersand position
+                                    } else if (data[lastAmpersandPosition+2] == 'p'
+                                            && data[lastAmpersandPosition+4] == 's'
+                                            && data[lastAmpersandPosition+1] == 'a') {
+                                        data[lastAmpersandPosition] = SINGLE_QUOTE; // &apos;
+
+                                        bytesRead -= 5; // Reduce bytes read by 5 for &apos;
+                                        bytesConsumed++;
+                                        // move remaining data to the left
+                                        System.arraycopy(data, position+1,
+                                                data, lastAmpersandPosition + 1,
+                                                bytesRead-position);
+
+                                        position = lastAmpersandPosition + 1;
+                                        lastAmpersandPosition = -1; // Reset last ampersand position
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return bytesConsumed;
+        }
+
+        @Override
+        public void append(byte b) {
+            if (position < data.length) {
+                if (b == AMPERSAND) {
+                    lastAmpersandPosition = position; // Store the position of the last '&'
+                } else if (b == SEMICOLON) {
+                    var charsBetweenAmpersandAndSemicolon = position - lastAmpersandPosition - 1;
+                    switch (charsBetweenAmpersandAndSemicolon) {
+                        case 2: {
+                            if (data[lastAmpersandPosition+2] == 't') {
+                                if (data[lastAmpersandPosition+1] == 'l') {
+                                    data[lastAmpersandPosition] = LEFT_ANGLE_BRACKET; // &lt;
+                                    position = lastAmpersandPosition + 1;
+                                    lastAmpersandPosition = -1; // Reset last ampersand position
+                                    return;
+                                } else if (data[lastAmpersandPosition+1] == 'g') {
+                                    data[lastAmpersandPosition] = RIGHT_ANGLE_BRACKET; // &gt;
+                                    position = lastAmpersandPosition + 1;
+                                    lastAmpersandPosition = -1; // Reset last ampersand position
+                                    return;
+                                }
+                            }
+                            break;
+                        }
+                        case 3: {
+                            if  (data[lastAmpersandPosition+3] == 'p'
+                                    && data[lastAmpersandPosition+2] == 'm'
+                                    && data[lastAmpersandPosition+1] == 'a') {
+                                data[lastAmpersandPosition] = AMPERSAND; // &amp;
+                                position = lastAmpersandPosition + 1;
+                                lastAmpersandPosition = -1; // Reset last ampersand position
+                                return;
+                            }
+                            break;
+                        }
+                        case 4: {
+                            if (data[lastAmpersandPosition+3] == 'o') {
+                                if(data[lastAmpersandPosition+1] == 'q'
+                                        && data[lastAmpersandPosition+2] == 'u'
+                                        && data[lastAmpersandPosition+4] == 't') {
+                                    data[lastAmpersandPosition] = DOUBLE_QUOTE; // &quot;
+                                    position = lastAmpersandPosition + 1;
+                                    lastAmpersandPosition = -1; // Reset last ampersand position
+                                    return;
+                                } else if (data[lastAmpersandPosition+2] == 'p'
+                                        && data[lastAmpersandPosition+4] == 's'
+                                        && data[lastAmpersandPosition+1] == 'a') {
+                                    data[lastAmpersandPosition] = SINGLE_QUOTE; // &apos;
+                                    position = lastAmpersandPosition + 1;
+                                    lastAmpersandPosition = -1; // Reset last ampersand position
+                                    return;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                data[position++] = b;
+            } else {
+                throw new IllegalStateException("Buffer overflow");
+            }
+        }
+
+        @Override
+        public String toString() {
+            return "DecodingTextArrayByteBuffer [" + this.decodeToString()  + "]";
+        }
+
+        @Override
+        public DecodingTextArrayByteBuffer copy() {
+            return new DecodingTextArrayByteBuffer(this.copyToByteArray());
         }
     }
 
@@ -1265,7 +1396,6 @@ public class CIMParser {
     }
 
     private static class NamespaceFixedByteArrayBuffer extends FixedByteArrayBuffer {
-        private static final int MAX_LENGTH_OF_NAMESPACE = 1024; // Arbitrary limit for namespace length
 
         public NamespaceFixedByteArrayBuffer(String namespace) {
            super(namespace);
@@ -1286,11 +1416,9 @@ public class CIMParser {
 
         @Override
         public String toString() {
-            StringBuilder sb = new StringBuilder();
-            sb.append("NamespaceFixedByteArrayBuffer [");
-            sb.append(this.decodeToString());
-            sb.append("]");
-            return sb.toString();
+            return "NamespaceFixedByteArrayBuffer [" +
+                    this.decodeToString() +
+                    "]";
         }
     }
 
@@ -1324,14 +1452,6 @@ public class CIMParser {
             return new ReadonlyByteArrayBuffer(data, startOfLocalPart, position - startOfLocalPart);
         }
 
-        public NamespaceFixedByteArrayBuffer asNamespace() {
-            return new NamespaceFixedByteArrayBuffer(this.data, this.position);
-        }
-
-        public NamespaceFixedByteArrayBuffer asNamespaceCopy() {
-            return new NamespaceFixedByteArrayBuffer(this.copyToByteArray());
-        }
-
         public void reset() {
             super.reset();
             startOfLocalPart = 0;
@@ -1346,17 +1466,13 @@ public class CIMParser {
 
         @Override
         public String toString() {
-            StringBuilder sb = new StringBuilder();
-            sb.append("QNameFixedByteArrayBuffer [");
-            sb.append(this.decodeToString());
-            sb.append("]");
-            return sb.toString();
+            return "QNameFixedByteArrayBuffer [" +
+                    this.decodeToString() +
+                    "]";
         }
     }
 
-
-
-    private record AttributeFixedBuffer(QNameFixedByteArrayBuffer name, QNameFixedByteArrayBuffer value) {};
+    private record AttributeFixedBuffer(QNameFixedByteArrayBuffer name, DecodingTextArrayByteBuffer value) {}
 
     private static class AttributeCollection {
         private final List<AttributeFixedBuffer> attributeFixedBuffers = new ArrayList<>();
@@ -1374,7 +1490,7 @@ public class CIMParser {
             if (currentAttributeIndex == attributeFixedBuffers.size()) {
                 buffer = new AttributeFixedBuffer(
                         new QNameFixedByteArrayBuffer(MAX_LENGTH_OF_ATTRIBUTE_NAME),
-                        new QNameFixedByteArrayBuffer(MAX_LENGTH_OF_ATTRIBUTE_VALUE));
+                        new DecodingTextArrayByteBuffer(MAX_LENGTH_OF_ATTRIBUTE_VALUE));
                 attributeFixedBuffers.add(buffer);
             } else {
                 buffer = attributeFixedBuffers.get(currentAttributeIndex);
@@ -1533,13 +1649,21 @@ public class CIMParser {
         throw new ParserException("Unexpected end of stream while looking for attribute name");
     }
 
-    private State handleLookingForTag(InputStream inputStream) throws IOException, ParserException {
-        byte b;
-        while ((b = (byte) inputStream.read()) != END_OF_STREAM) {
-            if (LEFT_ANGLE_BRACKET == b) {
-                return State.LOOKING_FOR_TAG_NAME;
+    private State handleLookingForTag(InputStream inputStream) throws IOException {
+        final var buffer = new byte[64];
+        while ( true ) {
+            inputStream.mark(buffer.length);
+            int bytesRead = inputStream.read(buffer);
+            if (bytesRead == -1) {
+                return State.END; // End of stream
+            }
+            for (int i = 0; i < bytesRead; i++) {
+                if(buffer[i] == LEFT_ANGLE_BRACKET) {
+                    inputStream.reset(); // Reset the stream to the marked position
+                    inputStream.skipNBytes(i + 1); // Skip to the position after the '<'
+                    return State.LOOKING_FOR_TAG_NAME;
+                }
             }
         }
-        return State.END;
     }
 }
