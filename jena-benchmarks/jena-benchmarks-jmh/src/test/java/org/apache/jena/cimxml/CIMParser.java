@@ -42,6 +42,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class CIMParser {
@@ -1065,6 +1066,355 @@ public class CIMParser {
 
     }
 
+    public static class StreamBufferRoot {
+        /**
+         * Input stream from which the data is read.
+         * This stream is expected to be used by the child buffers to read data.
+         */
+        InputStream inputStream;
+        /**
+         * The current buffer that is being filled with data.
+         * This is used to handover remaining bytes from one child to the next.
+         */
+        StreamBufferChild lastUsedChildBuffer;
+
+        public StreamBufferRoot() {
+
+        }
+    }
+
+    public static class StreamBufferChild implements SpecialByteBuffer {
+        /**
+         * The root buffer that this child belongs to.
+         * This is used to access the input stream for reading data.
+         * It also holds the last used buffer, which is used to handover remaining bytes.
+         */
+        protected final StreamBufferRoot root;
+        /**
+         * The byte array buffer that holds the data read from the input stream.
+         */
+        protected final byte[] buffer;
+        /**
+         * The offset in the buffer where the data starts.
+         */
+        protected int start = -1;
+        /**
+         * Marks the end of relevant data in the buffer.
+         */
+        protected int endExclusive = -1;
+        /**
+         * This marks the position to which the buffer is filled.
+         */
+        protected int filledToExclusive = 0;
+
+        /**
+         * The position in the buffer where the next byte will be read.
+         */
+        protected int position = 0;
+
+        protected boolean abort = false;
+
+        public StreamBufferChild(StreamBufferRoot parent, int size) {
+            if (parent == null) {
+                throw new IllegalArgumentException("Parent buffer cannot be null");
+            }
+            this.root = parent;
+            this.buffer = new byte[size];
+        }
+
+        public void reset() {
+            this.start = -1;
+            this.endExclusive = -1;
+            this.filledToExclusive = 0;
+        }
+
+        public void abort() {
+            this.abort = true;
+        }
+
+        public void setStartPositon() {
+            this.start = this.position;
+        }
+
+        public boolean trySeekStartPosition(byte byteToSeek) throws IOException {
+            boolean[] found = {false};
+            this.consumeBytes(b -> {
+                if (b == byteToSeek) {
+                    setStartPositon();
+                    abort();
+                    found[0] = true;
+                }
+            });
+            return found[0];
+        }
+
+        public boolean trySeekEndPositionExclusive(byte byteToSeek) throws IOException {
+            boolean[] found = {false};
+            this.consumeBytes(b -> {
+                if (b == byteToSeek) {
+                    setEndPositionExclusive();
+                    abort();
+                    found[0] = true;
+                }
+            });
+            return found[0];
+        }
+
+        public void setEndPositionExclusive() {
+            this.endExclusive = this.position;
+        }
+
+
+        public boolean hasRemainingCapacity() {
+            return filledToExclusive < buffer.length;
+        }
+
+        /**
+         * Copies remaining bytes from the last used child buffer of the parent.
+         * This is used to handover remaining bytes from one child buffer to the next.         *
+         */
+        public void copyRemainingBytesFromPredecessor() {
+            reset();
+            if (root.lastUsedChildBuffer == null) {
+                return; // Nothing to copy
+            }
+            var predecessor = root.lastUsedChildBuffer;
+            var remainingBytes = predecessor.filledToExclusive - predecessor.endExclusive;
+            if(remainingBytes == 0) {
+                return; // No remaining bytes to copy
+            }
+            System.arraycopy(predecessor.buffer, predecessor.endExclusive,
+                    this.buffer, this.start, remainingBytes);
+            this.filledToExclusive = remainingBytes;
+        }
+
+        public void consumeBytes(Consumer<Byte> byteConsumer) throws IOException {
+            abort = false;
+            position = 0;
+            if(position == filledToExclusive) {
+                if (!tryFillFromInputStream()) {
+                    byteConsumer.accept(END_OF_STREAM);
+                    return; // No more data to read
+                }
+            }
+            while(position < filledToExclusive) {
+                byteConsumer.accept(buffer[position]);
+                if(abort) {
+                    return;
+                }
+                if(++position == filledToExclusive) {
+                    if (!tryFillFromInputStream()) {
+                        byteConsumer.accept(END_OF_STREAM);
+                        return; // No more data to read
+                    }
+                }
+            }
+            byteConsumer.accept(END_OF_STREAM);
+        }
+
+        private boolean tryFillFromInputStream() throws IOException {
+            if (hasRemainingCapacity()) {
+                var bytesRead = root.inputStream.read(this.buffer, filledToExclusive,
+                        buffer.length - filledToExclusive);
+                if (bytesRead == -1) {
+                    return false;
+                }
+                filledToExclusive += bytesRead;
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public int offset() {
+            return start;
+        }
+
+        @Override
+        public int length() {
+            return endExclusive - start;
+        }
+
+        @Override
+        public byte[] getData() {
+            return this.buffer;
+        }
+
+        @Override
+        public String toString() {
+            return "StreamBufferChild [" + this.decodeToString()  + "]";
+        }
+    }
+
+    public static class QNameByteBuffer extends StreamBufferChild {
+        private int startOfLocalPart = 0; // Index where the local part starts
+
+        public QNameByteBuffer(StreamBufferRoot parent, int size) {
+            super(parent, size);
+        }
+
+        @Override
+        public void reset() {
+            super.reset();
+            this.startOfLocalPart = 0;
+        }
+
+        public boolean hasPrefix() {
+            return startOfLocalPart != 0; // If local part starts after the first byte, it has a prefix
+        }
+
+        public ReadonlyByteArrayBuffer getPrefix() {
+            return new ReadonlyByteArrayBuffer(buffer, start, length()); // Exclude the colon
+        }
+
+        public ReadonlyByteArrayBuffer getLocalPart() {
+            return new ReadonlyByteArrayBuffer(buffer, startOfLocalPart, length() - startOfLocalPart);
+        }
+
+        @Override
+        public void consumeBytes(Consumer<Byte> byteConsumer) throws IOException {
+            var c = byteConsumer.andThen((b) -> {
+                if (b == DOUBLE_COLON) {
+                    startOfLocalPart = position + 1; // Set the start of local part after the colon
+                }
+            });
+            super.consumeBytes(c);
+        }
+
+        @Override
+        public String toString() {
+            return "QNameByteBuffer [" +
+                    this.decodeToString() +
+                    "]";
+        }
+    }
+
+    public static class DecodingTextByteBuffer extends StreamBufferChild {
+        protected int lastAmpersandPosition = -1; // Position of the last '&' character, used for decoding
+
+        public DecodingTextByteBuffer(StreamBufferRoot parent, int size) {
+            super(parent, size);
+        }
+
+        @Override
+        public void reset() {
+            super.reset();
+            this.lastAmpersandPosition = -1;
+        }
+
+
+        @Override
+        public void consumeBytes(Consumer<Byte> byteConsumer) throws IOException {
+            var c = byteConsumer.andThen((b) -> {
+                if(start == -1 || endExclusive != -1 ) {
+                    // If start is not set --> ignore the byte as it is not part of the content.
+                    // If endExclusive is set, it means the other consumer has already set an end position.
+                    return;
+                }
+                switch (b) {
+                    case AMPERSAND -> lastAmpersandPosition = position; // Store the position of the last '&'
+                    case SEMICOLON -> {
+                        var charsBetweenAmpersandAndSemicolon = position - lastAmpersandPosition - 1;
+                        switch (charsBetweenAmpersandAndSemicolon) {
+                            case 2: {
+                                if (buffer[lastAmpersandPosition+2] == 't') {
+                                    if (buffer[lastAmpersandPosition+1] == 'l') {
+                                        buffer[lastAmpersandPosition] = LEFT_ANGLE_BRACKET; // &lt;
+
+                                        // move remaining data to the left
+                                        System.arraycopy(buffer, position+1,
+                                                buffer, lastAmpersandPosition + 1,
+                                                filledToExclusive-position);
+
+                                        filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &lt;
+                                        position = lastAmpersandPosition + 1;
+                                        lastAmpersandPosition = -1; // Reset last ampersand position
+                                        return;
+                                    } else if (buffer[lastAmpersandPosition+1] == 'g') {
+                                        buffer[lastAmpersandPosition] = RIGHT_ANGLE_BRACKET; // &gt;
+
+                                        // move remaining data to the left
+                                        System.arraycopy(buffer, position+1,
+                                                buffer, lastAmpersandPosition + 1,
+                                                filledToExclusive-position);
+
+                                        filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &gt;
+                                        position = lastAmpersandPosition + 1;
+                                        lastAmpersandPosition = -1; // Reset last ampersand position
+                                        return;
+                                    }
+                                }
+                                break;
+                            }
+                            case 3: {
+                                if  (buffer[lastAmpersandPosition+3] == 'p'
+                                        && buffer[lastAmpersandPosition+2] == 'm'
+                                        && buffer[lastAmpersandPosition+1] == 'a') {
+                                    buffer[lastAmpersandPosition] = AMPERSAND; // &amp;
+
+                                    // move remaining data to the left
+                                    System.arraycopy(buffer, position+1,
+                                            buffer, lastAmpersandPosition + 1,
+                                            filledToExclusive-position);
+
+                                    filledToExclusive -= 4; // Reduce filledToExclusive by 4 for &amp;
+                                    position = lastAmpersandPosition + 1;
+                                    lastAmpersandPosition = -1; // Reset last ampersand position
+                                    return;
+                                }
+                                break;
+                            }
+                            case 4: {
+                                if (buffer[lastAmpersandPosition+3] == 'o') {
+                                    if(buffer[lastAmpersandPosition+1] == 'q'
+                                            && buffer[lastAmpersandPosition+2] == 'u'
+                                            && buffer[lastAmpersandPosition+4] == 't') {
+                                        buffer[lastAmpersandPosition] = DOUBLE_QUOTE; // &quot;
+
+                                        // move remaining data to the left
+                                        System.arraycopy(buffer, position+1,
+                                                buffer, lastAmpersandPosition + 1,
+                                                filledToExclusive-position);
+
+                                        filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &quot;
+                                        position = lastAmpersandPosition + 1;
+                                        lastAmpersandPosition = -1; // Reset last ampersand position
+                                        return;
+                                    } else if (buffer[lastAmpersandPosition+2] == 'p'
+                                            && buffer[lastAmpersandPosition+4] == 's'
+                                            && buffer[lastAmpersandPosition+1] == 'a') {
+                                        buffer[lastAmpersandPosition] = SINGLE_QUOTE; // &apos;
+
+                                        // move remaining data to the left
+                                        System.arraycopy(buffer, position+1,
+                                                buffer, lastAmpersandPosition + 1,
+                                                filledToExclusive-position);
+
+                                        filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &apos;
+                                        position = lastAmpersandPosition + 1;
+                                        lastAmpersandPosition = -1; // Reset last ampersand position
+                                        return;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            });
+            super.consumeBytes(c);
+        }
+
+        @Override
+        public String toString() {
+            return "DecodingTextByteBuffer [" +
+                    this.decodeToString() +
+                    "]";
+        }
+    }
+
+
+
     private static class FixedByteArrayBuffer implements SpecialByteBuffer {
         protected final byte[] data;
         protected int position;
@@ -1347,7 +1697,7 @@ public class CIMParser {
         }
     }
 
-    private static class ReadonlyByteArrayBuffer implements SpecialByteBuffer {
+    public static class ReadonlyByteArrayBuffer implements SpecialByteBuffer {
 
         private final byte[] data;
         private final int offset;
@@ -1666,4 +2016,6 @@ public class CIMParser {
             }
         }
     }
+
+
 }
