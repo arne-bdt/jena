@@ -59,10 +59,13 @@ public class CIMParser {
     private static final byte EXCLAMATION_MARK = (byte)'!';
     private static final byte EQUALITY_SIGN = (byte)'=';
     private static final byte DOUBLE_QUOTE = (byte)'"';
+    private static final byte SINGLE_QUOTE = (byte)'\'';
     private static final byte SLASH = (byte)'/';
     private static final byte DOUBLE_COLON = (byte)':';
     private static final byte SHARP = (byte)'#';
     private static final byte UNDERSCORE = (byte)'_';
+    private static final byte SEMICOLON = (byte)';';
+    private static final byte AMPERSAND = (byte)'&';
     private static final byte END_OF_STREAM = -1;
 
 
@@ -111,8 +114,6 @@ public class CIMParser {
     private final QNameFixedByteArrayBuffer currentTag = new QNameFixedByteArrayBuffer(MAX_LENGTH_OF_TAG_NAME);
     private final AttributeCollection currentAttributes = new AttributeCollection();
     private final FixedByteArrayBuffer currentTextContent = new FixedByteArrayBuffer(MAX_LENGTH_OF_TEXT_CONTENT);
-    private NamespaceIriPair baseNamespace = null;
-    private NamespaceIriPair defaultNamespace = null;
     private final Deque<Element> elementStack = new ArrayDeque<>();
     //private final Map<SpecialByteBuffer, Node> iriToNode = new HashMap<>();
     private final Map<NamespaceAndQName, RDFDatatype> iriToDatatype = new HashMap<>();
@@ -129,6 +130,9 @@ public class CIMParser {
     private record NamespaceAndQName(NamespaceFixedByteArrayBuffer namespace, QNameFixedByteArrayBuffer qname) {}
 
     private final IRIProvider iriProvider = new IRIProvider3986();
+
+    private NamespaceIriPair baseNamespace = null;
+    private NamespaceIriPair defaultNamespace = null;
 
     private boolean isRdfIdTreatedLikeRdfAbout = true; // If true, treat rdf:ID like rdf:about
     private boolean handleCimUuidsWithMissingPrefix = true;
@@ -1063,6 +1067,7 @@ public class CIMParser {
     private static class FixedByteArrayBuffer implements SpecialByteBuffer {
         protected final byte[] data;
         protected int position;
+        protected int lastAmpersandPosition = -1; // Position of the last '&' character, used for decoding
 
         public FixedByteArrayBuffer(String text) {
             var buffer = UTF_8.encode(text);
@@ -1091,6 +1096,60 @@ public class CIMParser {
 
         public void append(byte b) {
             if (position < data.length) {
+                if (b == AMPERSAND) {
+                    lastAmpersandPosition = position; // Store the position of the last '&'
+                } else if (b == SEMICOLON) {
+                    var charsBetweenAmpersandAndSemicolon = position - lastAmpersandPosition - 1;
+                    switch (charsBetweenAmpersandAndSemicolon) {
+                        case 2: {
+                            if (data[lastAmpersandPosition+2] == 't') {
+                                if (data[lastAmpersandPosition+1] == 'l') {
+                                    data[lastAmpersandPosition] = LEFT_ANGLE_BRACKET; // &lt;
+                                    position = lastAmpersandPosition + 1;
+                                    lastAmpersandPosition = -1; // Reset last ampersand position
+                                    return;
+                                } else if (data[lastAmpersandPosition+1] == 'g') {
+                                    data[lastAmpersandPosition] = RIGHT_ANGLE_BRACKET; // &gt;
+                                    position = lastAmpersandPosition + 1;
+                                    lastAmpersandPosition = -1; // Reset last ampersand position
+                                    return;
+                                }
+                            }
+                            break;
+                        }
+                        case 3: {
+                            if  (data[lastAmpersandPosition+3] == 'p'
+                                && data[lastAmpersandPosition+2] == 'm'
+                                && data[lastAmpersandPosition+1] == 'a') {
+                                data[lastAmpersandPosition] = AMPERSAND; // &amp;
+                                position = lastAmpersandPosition + 1;
+                                lastAmpersandPosition = -1; // Reset last ampersand position
+                                return;
+                            }
+                            break;
+                        }
+                        case 4: {
+                            if (data[lastAmpersandPosition+3] == 'o') {
+                                if(data[lastAmpersandPosition+1] == 'q'
+                                    && data[lastAmpersandPosition+2] == 'u'
+                                    && data[lastAmpersandPosition+4] == 't') {
+                                    data[lastAmpersandPosition] = DOUBLE_QUOTE; // &quot;
+                                    position = lastAmpersandPosition + 1;
+                                    lastAmpersandPosition = -1; // Reset last ampersand position
+                                    return;
+                                } else if (data[lastAmpersandPosition+2] == 'p'
+                                        && data[lastAmpersandPosition+4] == 's'
+                                        && data[lastAmpersandPosition+1] == 'a') {
+                                    data[lastAmpersandPosition] = SINGLE_QUOTE; // &apos;
+                                    position = lastAmpersandPosition + 1;
+                                    lastAmpersandPosition = -1; // Reset last ampersand position
+                                    return;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
                 data[position++] = b;
             } else {
                 throw new IllegalStateException("Buffer overflow");
@@ -1218,16 +1277,6 @@ public class CIMParser {
             sb.append(this.decodeToString());
             sb.append("]");
             return sb.toString();
-        }
-
-        public NamespaceFixedByteArrayBuffer withTailingSharp() {
-            if (data[position - 1] == SHARP) {
-                return this; // Already has a trailing sharp
-            }
-            byte[] newData = new byte[position + 1];
-            System.arraycopy(data, 0, newData, 0, position);
-            newData[position] = SHARP; // Add the trailing sharp
-            return new NamespaceFixedByteArrayBuffer(newData);
         }
     }
 
