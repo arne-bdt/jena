@@ -18,7 +18,6 @@
 
 package org.apache.jena.cimxml;
 
-import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
@@ -26,7 +25,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
-import org.apache.jena.mem2.collection.FastHashMap;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryFactory;
 import org.apache.jena.riot.RDFParser;
@@ -38,16 +36,7 @@ import org.junit.Test;
 
 import javax.xml.XMLConstants;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -63,7 +52,7 @@ public class ParserPoC {
      *
      * Things, that are not supported:
      * <ul>
-     *  <li>Namwspace declarations are only supported in the rdf:RDF tag.
+     *  <li>Namespace declarations are only supported in the rdf:RDF tag.
      *  <li>rdf:parseType="Collection" is not supported.
      *  <li>Reifying statements using rdf:ID is not supported.
      *  <li>rdf:parseType="Literal" is not supported.
@@ -74,405 +63,7 @@ public class ParserPoC {
     //private final String file = "C:\\temp\\CGMES_v2.4.15_TestConfigurations_v4.0.3\\MicroGrid\\BaseCase_BC\\CGMES_v2.4.15_MicroGridTestConfiguration_BC_Assembled_CA_v2\\MicroGridTestConfiguration_BC_NL_GL_V2.xml";
     private final String file = "C:\\temp\\v59_3\\AMP_Export_s82_v58_H69.xml";
 
-    private final Charset charset = StandardCharsets.UTF_8;
 
-
-    /**
-     * A simple key class for byte arrays, using the first and last byte for hash code calculation.
-     * This is a simplified version for demonstration purposes.
-     */
-    public static class ByteArrayKey {
-        private final byte[] data;
-        private final int hashCode;
-
-        public ByteArrayKey(final byte[] data) {
-            this.data = data;
-
-            this.hashCode = calculateHashCode();
-        }
-
-        public byte[] getData() {
-            return this.data;
-        }
-
-        /**
-         * Returns a hash code based on the first and last byte of the array.
-         * This is a simplified version for demonstration purposes.
-         */
-        private int calculateHashCode() {
-            int result = 31 + (int)this.data[0];
-            if(this.data.length > 1) {
-                result = 31 * result + this.data[this.data.length - 1];
-            }
-            return result;
-        }
-
-        @Override
-        public int hashCode() {
-            return hashCode;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) return true;
-
-            if (obj instanceof ByteArrayKey other
-                && Arrays.equals(this.data, other.data))
-                return true;
-
-            return false;
-        }
-    }
-
-    public class ByteArrayKeyMap<E> extends FastHashMap<ByteArrayKey, E> {
-
-        public ByteArrayKeyMap(int initialSize) {
-            super(initialSize);
-        }
-
-        @Override
-        protected ByteArrayKey[] newKeysArray(int size) {
-            return new ByteArrayKey[size];
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        protected E[] newValuesArray(int size) {
-            return (E[]) new Object[size];
-        }
-    }
-
-    public class ByteArrayMap<E> {
-        private static final int DEFAULT_INITIAL_SIZE = 64;
-        private ByteArrayKeyMap<E>[] entriesWithSameLength;
-
-        public ByteArrayMap(int expectedMaxByteLength) {
-            var positionsSize = Integer.highestOneBit(expectedMaxByteLength << 1);
-            if (positionsSize < expectedMaxByteLength << 1) {
-                positionsSize <<= 1;
-            }
-            this.entriesWithSameLength = new ByteArrayKeyMap[positionsSize];
-        }
-
-        private void grow(final int minimumLength) {
-            var newLength = entriesWithSameLength.length << 1;
-            while (newLength < minimumLength) {
-                newLength = minimumLength << 1;
-            }
-            final var oldValues = entriesWithSameLength;
-            entriesWithSameLength = new ByteArrayKeyMap[newLength];
-            System.arraycopy(oldValues, 0, entriesWithSameLength, 0, oldValues.length);
-        }
-
-        private static byte[] copy(byte[] original, int bytesInKey) {
-            final var copy = new byte[bytesInKey];
-            System.arraycopy(original, 0, copy, 0, bytesInKey);
-            return copy;
-        }
-
-        public void putCopy(final byte[] keyToCopy, final int bytesInKey, final E value) {
-            putReference(copy(keyToCopy, bytesInKey), value);
-        }
-
-        public void putReference(byte[] key, E value) {
-            final ByteArrayKeyMap<E> map;
-            // Ensure the array is large enough
-            if (entriesWithSameLength.length < key.length) {
-                grow(key.length);
-                map = new ByteArrayKeyMap<>(DEFAULT_INITIAL_SIZE);
-                entriesWithSameLength[key.length] = map;
-                map.put(new ByteArrayKey(key), value);
-                return;
-            }
-            if (entriesWithSameLength[key.length] == null) {
-                map = new ByteArrayKeyMap<>(DEFAULT_INITIAL_SIZE);
-                entriesWithSameLength[key.length] = map;
-            } else {
-                map = entriesWithSameLength[key.length];
-            }
-            map.put(new ByteArrayKey(key), value);
-        }
-
-        public boolean TryPutCopy(byte[] keyToCopy, int bytesInKey, E value) {
-            return tryPutReference(copy(keyToCopy, bytesInKey), value);
-        }
-
-        public boolean tryPutReference(byte[] key, E value) {
-            final ByteArrayKeyMap<E> map;
-            // Ensure the array is large enough
-            if (entriesWithSameLength.length < key.length) {
-                grow(key.length);
-                map = new ByteArrayKeyMap<>(DEFAULT_INITIAL_SIZE);
-                entriesWithSameLength[key.length] = map;
-                map.put(new ByteArrayKey(key), value);
-                return true;
-            }
-            if (entriesWithSameLength[key.length] == null) {
-                map = new ByteArrayKeyMap<>(DEFAULT_INITIAL_SIZE);
-                entriesWithSameLength[key.length] = map;
-            } else {
-                map = entriesWithSameLength[key.length];
-            }
-            return map.tryPut(new ByteArrayKey(key), value);
-        }
-
-        public E computeIfAbsentReferential(byte[] key, Supplier<E> mappingFunction) {
-            final ByteArrayKeyMap<E> map;
-            // Ensure the array is large enough
-            if (entriesWithSameLength.length < key.length) {
-                grow(key.length);
-                map = new ByteArrayKeyMap<>(DEFAULT_INITIAL_SIZE);
-                entriesWithSameLength[key.length] = map;
-                final var value = mappingFunction.get();
-                map.put(new ByteArrayKey(key), value);
-                return value;
-            }
-            if (entriesWithSameLength[key.length] == null) {
-                map = new ByteArrayKeyMap<>(DEFAULT_INITIAL_SIZE);
-                entriesWithSameLength[key.length] = map;
-            } else {
-                map = entriesWithSameLength[key.length];
-            }
-            return map.computeIfAbsent(new ByteArrayKey(key), mappingFunction);
-        }
-
-        public E computeIfAbsentCopy(byte[] keyToCopy, int bytesInKey, Supplier<E> mappingFunction) {
-            return computeIfAbsentReferential(copy(keyToCopy, bytesInKey), mappingFunction);
-        }
-
-        public E get(byte[] key) {
-            if (entriesWithSameLength.length < key.length || entriesWithSameLength[key.length] == null) {
-                return null;
-            }
-            return entriesWithSameLength[key.length].get(new ByteArrayKey(key));
-        }
-
-        public boolean containsKey(byte[] key) {
-            if (entriesWithSameLength.length < key.length || entriesWithSameLength[key.length] == null) {
-                return false;
-            }
-            return entriesWithSameLength[key.length].containsKey(new ByteArrayKey(key));
-        }
-
-    }
-
-    public record CIMClass(String name, String namespace, String type) {
-        public CIMClass(String name, String namespace) {
-            this(name, namespace, "class");
-        }
-    }
-
-    public class CIMParserPoC {
-        private static final int maxBufferSize = 64 * 4096; // 256 KB
-        private static final Charset charset = StandardCharsets.UTF_8;
-        private static final byte[] LEFT_ANGLE_BRACKET = "<".getBytes(charset);
-        private static final byte[] RIGHT_ANGLE_BRACKET = ">".getBytes(charset);
-        private static final byte[] XML_DECL_START = "<?xml".getBytes(StandardCharsets.UTF_8);
-        private static final byte[] XML_DECL_END = "?>".getBytes(StandardCharsets.UTF_8);
-        private static final byte[] RDF_RDF = "<rdf:RDF".getBytes(StandardCharsets.UTF_8);
-        private static final byte[] XMLNS = "xmlns".getBytes(StandardCharsets.UTF_8);
-        private static final byte[] COMMENT_START = "<!--".getBytes(StandardCharsets.UTF_8);
-        private static final byte[] COMMENT_END = "-->".getBytes(StandardCharsets.UTF_8);
-        private static final int MARK_SIZE = 16; // Size of the mark buffer for input stream
-        private static final int MAX_TAG_LENGTH = 64; // Maximum length of a tag name
-        private final ByteArrayMap<String> tagMap = new ByteArrayMap<>(MAX_TAG_LENGTH);
-
-        // Parser state
-        private enum State {
-            /**
-             * Initial state, looking for the XML declaration '&lt;?xml ' plus a single whitespace character.
-             * Ignoring whitespace and comments.
-             * Next state is {@link #LOOKING_FOR_RDF_RDF}.
-             */
-            LOOKING_FOR_XML_DECLARATION,
-
-            /**
-             * Looking for the end of the XML declaration '?>', ignoring anything else.
-             * Next state is {@link #LOOKING_FOR_RDF_RDF}.
-             */
-            LOOKING_FOR_END_OF_XML_DECLARATION,
-
-            /**
-             * Looking for the '&lt;rdf:RDF ' opening tag after the XML declaration, plus a single whitespace character.
-             * This lookup ignores anything but the '<rdf:RDF' tag.
-             * Next state is {@link #LOOKING_FOR_XMLNS_IN_RDF_RDF}.
-             */
-            LOOKING_FOR_RDF_RDF,
-
-            /**
-             * Looking for the 'xmlns:' attribute in the 'rdf:RDF' tag until the closing '>'.
-             * If closing '>' has been found, the next state is {@link #LOOKING_FOR_SUBJECT},
-             * if closing '/>' has been found, the next state is {@link #LOOKING_FOR_RDF_RDF}
-             * else the next state is {@link #LOOKING_FOR_XMLNS_PREFIX}.
-             */
-            LOOKING_FOR_XMLNS_IN_RDF_RDF,
-
-            /**
-             * Looking for a 'prefix:"' the 'xmlns:' attributes of the 'rdf:RDF' tag.
-             * The prefix ends with ':"'.
-             * The next state is {@link #LOOKING_FOR_XMLNS_IRI}.
-             */
-            LOOKING_FOR_XMLNS_PREFIX,
-            /**
-             * Looking for the namespace IRI in the 'xmlns:prefix="namespace"' attribute of the 'rdf:RDF' tag.
-             * Namespace must end with double quotes '"' and it must be an IRI.
-             * The next state is {@link #LOOKING_FOR_XMLNS_IN_RDF_RDF}.
-             */
-            LOOKING_FOR_XMLNS_IRI,
-            /**
-             * Looking for the next opening tag '<TAG ', which must be a subject opening tag.
-             * The subject is identified when the next whitespace is found after the tag name.
-             * A subject opening tag either starts with <rdf:Description or '<IRI' or '<cim:Class',
-             * where 'IRI' may be any IRI, 'cim' may be any namespace prefix and 'Class' is the class name.
-             * The subject needs to contain either 'rdf:about' or rdf:ID' as only attribute.
-             * Ten next state is {@link #LOOKING_FOR_RDF_ID_OR_ABOUT}.
-             */
-            LOOKING_FOR_SUBJECT,
-            /**
-             * Looking for the 'rdf:ID="' or 'rdf:about="' attribute in the subject opening tag.
-             * Finding '&gt;' or '&lt;' is considered an error.
-             * The next state is {@link #LOOKING_FOR_RDF_ID_OR_ABOUT_VALUE}.
-             */
-            LOOKING_FOR_RDF_ID_OR_ABOUT,
-            /**
-             * Looking for the value of the 'rdf:ID' or 'rdf:about' attribute.
-             * The value must end with a double quote '"' and it must be an IRI.
-             * If it starts with "_" it is a UUID and the underscore needs to be replaced by "urn:uuid:".
-             * The next state is {@link #LOOKING_FOR_END_OF_SUBJECT_OPENING_TAG}.
-             */
-            LOOKING_FOR_RDF_ID_OR_ABOUT_VALUE,
-            /**
-             * Looking for the end of the subject opening tag, which is either '>' or '/>'.
-             * If it is '>', the next state is {@link #LOOKING_FOR_PROPERTY}.
-             * If it is '/>', the next state is {@link #LOOKING_FOR_SUBJECT}.
-             */
-            LOOKING_FOR_END_OF_SUBJECT_OPENING_TAG,
-
-            /**
-             * Looking for a property opening tag '<TAG ' after the subject opening tag.
-             * The property is identified when the next whitespace is found after the tag name.
-             * A property opening tag starts with '<rdf:' or '<cim:' or '<iri:' where 'iri' may be any IRI.
-             * The next state is {@link #LOOKING_FOR_PROPERTY_NAME}.
-             */
-            LOOKING_FOR_PROPERTY,
-            IN_TEXT_CONTENT,
-            IN_COMMENT
-        }
-
-
-
-        public CIMParserPoC() {
-            ArrayList al = new ArrayList();
-        }
-
-        public void parse(Path filePath) throws Exception {
-            try (var channel = FileChannel.open(filePath, StandardOpenOption.READ)) {
-                parse(channel);
-            }
-        }
-
-        public void parse(FileChannel channel) throws Exception {
-            final long fileSize = channel.size();
-            try(final var is = new BufferedFileChannelInputStream.Builder()
-                    .setFileChannel(channel)
-                    .setOpenOptions(StandardOpenOption.READ)
-                    .setBufferSize((fileSize < maxBufferSize) ? (int) fileSize : maxBufferSize)
-                    .get()) {
-                parse(is);
-            }
-        }
-
-        public void parse(InputStream inputStream) throws Exception {
-            byte b = skipWhitespace(inputStream);
-            b = expectXMLDeclaration(b, inputStream);
-            if(-1 < b) {
-                b = skipWhitespace(inputStream);
-                expectRDF_RDF(b, inputStream);
-            }
-        }
-
-        private static void expectRDF_RDF(byte b, InputStream inputStream) throws IOException {
-            if (matchesByteArray(b, inputStream, RDF_RDF)) {
-                // TODO: readNamespaces()
-                if (!skipUntil(inputStream, RIGHT_ANGLE_BRACKET)) {
-                    throw new IOException("Expected 'xmlns' after 'rdf:RDF'");
-                }
-            } else {
-                throw new IOException("Expected 'rdf:RDF' at the start of the document");
-            }
-        }
-
-        private static byte expectXMLDeclaration(byte b, InputStream inputStream) throws IOException {
-            if (matchesByteArray(b, inputStream, XML_DECL_START)) {
-                if (!skipUntil(inputStream, XML_DECL_END)) {
-                    throw new IOException("Expected '?>' to close XML declaration");
-                }
-            } else {
-                throw new IOException("Expected '<?xml' for XML declaration");
-            }
-            return b;
-        }
-
-        private static boolean matchesByteArray(byte b, final InputStream inputStream, final byte[] match) throws IOException {
-            if(b != match[0]) {
-                return false; // Not a match
-            }
-            for (int i = 1; i < match.length; i++) {
-                if ((b = (byte) inputStream.read()) != match[i]) {
-                    return false; // Not a match
-                }
-            }
-            return true;
-        }
-
-        private static boolean skipUntil(InputStream inputStream, byte[] match) throws IOException {
-            byte b;
-            int matchIndex = 0;
-            while ((b = (byte) inputStream.read()) != -1) {
-                if (b == match[matchIndex]) {
-                    matchIndex++;
-                    if (matchIndex == match.length) {
-                        return true; // Match found
-                    }
-                } else {
-                    matchIndex = 0; // Reset match index
-                }
-            }
-            return false; // No match found
-        }
-
-        private byte skipWhitespace(InputStream inputStream) throws IOException {
-            byte b;
-            while ((b = (byte) inputStream.read()) != -1) {
-                if (!isWhitespace(b)) {
-                    return b;
-                }
-            }
-            return b;
-        }
-
-
-
-        private static boolean isWhitespace(byte b) {
-            return b == ' ' || b == '\t' || b == '\n' || b == '\r';
-        }
-//
-//        public void parse(ByteBuffer buffer) throws IOException {
-//            while (buffer.hasRemaining() || fillBufferStrategy.fillBuffer()) {
-//                byte b = buffer.get();
-//                if (b == OPEN_TAG) {
-//                    StringBuilder tagName = new StringBuilder();
-//                    while (buffer.hasRemaining() && (b = buffer.get()) != CLOSE_TAG) {
-//                        tagName.append((char) b);
-//                    }
-//                    if (tagName.length() > 0) {
-//                        String tag = tagName.toString().trim();
-//                        tagMap.computeIfAbsent(tag.getBytes(charset), () -> tag);
-//                    }
-//                }
-//            }
-//        }
-    }
 
     public class StreamRDFGraph implements StreamRDF {
         private final Graph graph;
@@ -597,7 +188,7 @@ public class ParserPoC {
         final var parser = new CIMParser(is, new StreamRDFGraph(graph));
 
         final var stopWatch = StopWatch.createStarted();
-        parser.setBaseNamespace("urn:uuid");
+        parser.setBaseNamespace("urn:uuid:");
         parser.doNotHandleCimUuidsWithMissingPrefix();
         parser.treatRdfIdStandardConformant();
         parser.parse();
@@ -609,7 +200,7 @@ public class ParserPoC {
         stopWatch.start();
         RDFParser.create()
                 .source(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)))
-                .base("urn:uuid")
+                .base("urn:uuid:")
                 .lang(org.apache.jena.riot.Lang.RDFXML)
                 .checking(false)
                 .parse(new StreamRDFGraph(expectedGraph));
@@ -664,6 +255,34 @@ public class ParserPoC {
         System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
 
         assertGraphsEqual(expectedGraph, graph);
+    }
+
+    @Test
+    public void profileFileParser() throws Exception {
+        JenaSystem.init();
+        final var filePath = java.nio.file.Paths.get(file);
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var parser = new CIMParser(filePath, new StreamRDFGraph(graph));
+        final var stopWatch = StopWatch.createStarted();
+        parser.parse();
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
+    }
+
+    @Test
+    public void profileFileDefaultParser() throws Exception {
+        JenaSystem.init();
+        final var filePath = java.nio.file.Paths.get(file);
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var stopWatch = StopWatch.createStarted();
+        RDFParser.create()
+                .source(filePath)
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .parse(new StreamRDFGraph(graph));
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
     }
 
     @Test
