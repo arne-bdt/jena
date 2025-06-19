@@ -29,6 +29,7 @@ import org.apache.jena.iri3986.provider.IRIProvider3986;
 import org.apache.jena.irix.IRIProvider;
 import org.apache.jena.irix.IRIx;
 import org.apache.jena.mem2.collection.FastHashMap;
+import org.apache.jena.mem2.collection.FastHashSet;
 import org.apache.jena.riot.system.StreamRDF;
 
 import javax.xml.XMLConstants;
@@ -47,7 +48,7 @@ public class CIMParser {
     private static final String STRING_EMPTY = "";
     private static final String STRING_NAMESPACE_RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
-    private static final int MAX_BUFFER_SIZE = 64 * 4096; // 256 KB
+    private static final int MAX_BUFFER_SIZE = 4096 * 4096; // 4 MB buffer size for reading files
     private static final Charset UTF_8 = StandardCharsets.UTF_8;
     private static final byte LEFT_ANGLE_BRACKET = (byte)'<';
     private static final byte RIGHT_ANGLE_BRACKET = (byte) '>';
@@ -124,7 +125,6 @@ public class CIMParser {
     // A map to store baseSet and avoid to copy NamespaceFixedByteArrayBuffer objects unnecessarily
     private final Map<NamespaceFixedByteArrayBuffer, NamespaceIriPair> baseSet = new HashMap<>();
     private final Map<NamespaceAndQName, Node> iriNodeCache = new HashMap<>();
-    private final Map<SpecialByteBuffer, IRIx> cacheForIrisWithoutBase = new HashMap<>();
 
     private record NamespaceIriPair(NamespaceFixedByteArrayBuffer namespace, IRIx iri) {}
     private record NamespaceAndQName(NamespaceFixedByteArrayBuffer namespace, QNameFixedByteArrayBuffer qname) {}
@@ -948,9 +948,23 @@ public class CIMParser {
         }
     }
 
-    public static class ByteArrayKeyMap<K, V> extends FastHashMap<K, V> {
+    public static class JenaHashSet<E> extends FastHashSet<E> {
 
-        public ByteArrayKeyMap(int initialSize) {
+        public JenaHashSet(int initialSize) {
+            super(initialSize);
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        protected E[] newKeysArray(int size) {
+            return (E[]) new Object[size];
+        }
+
+    }
+
+    public static class JenaHashMap<K, V> extends FastHashMap<K, V> {
+
+        public JenaHashMap(int initialSize) {
             super(initialSize);
         }
 
@@ -969,14 +983,14 @@ public class CIMParser {
 
     public static class ByteArrayMap<K extends SpecialByteBuffer, V> {
         private final int expectedMaxEntriesWithSameLength;
-        private ByteArrayKeyMap<K, V>[] entriesWithSameLength;
+        private JenaHashMap<K, V>[] entriesWithSameLength;
 
         public ByteArrayMap(int expectedMaxByteLength, int expectedEntriesWithSameLength) {
             var positionsSize = Integer.highestOneBit(expectedMaxByteLength << 1);
             if (positionsSize < expectedMaxByteLength << 1) {
                 positionsSize <<= 1;
             }
-            this.entriesWithSameLength = new ByteArrayKeyMap[positionsSize];
+            this.entriesWithSameLength = new JenaHashMap[positionsSize];
             this.expectedMaxEntriesWithSameLength = expectedEntriesWithSameLength;
         }
 
@@ -986,22 +1000,22 @@ public class CIMParser {
                 newLength = minimumLength << 1;
             }
             final var oldValues = entriesWithSameLength;
-            entriesWithSameLength = new ByteArrayKeyMap[newLength];
+            entriesWithSameLength = new JenaHashMap[newLength];
             System.arraycopy(oldValues, 0, entriesWithSameLength, 0, oldValues.length);
         }
 
         public void put(K key, V value) {
-            final ByteArrayKeyMap<K, V> map;
+            final JenaHashMap<K, V> map;
             // Ensure the array is large enough
             if (entriesWithSameLength.length < key.length()) {
                 grow(key.length());
-                map = new ByteArrayKeyMap<>(expectedMaxEntriesWithSameLength);
+                map = new JenaHashMap<>(expectedMaxEntriesWithSameLength);
                 entriesWithSameLength[key.length()] = map;
                 map.put(key, value);
                 return;
             }
             if (entriesWithSameLength[key.length()] == null) {
-                map = new ByteArrayKeyMap<>(expectedMaxEntriesWithSameLength);
+                map = new JenaHashMap<>(expectedMaxEntriesWithSameLength);
                 entriesWithSameLength[key.length()] = map;
             } else {
                 map = entriesWithSameLength[key.length()];
@@ -1010,17 +1024,17 @@ public class CIMParser {
         }
 
         public boolean tryPut(K key, V value) {
-            final ByteArrayKeyMap<K, V> map;
+            final JenaHashMap<K, V> map;
             // Ensure the array is large enough
             if (entriesWithSameLength.length < key.length()) {
                 grow(key.length());
-                map = new ByteArrayKeyMap<>(expectedMaxEntriesWithSameLength);
+                map = new JenaHashMap<>(expectedMaxEntriesWithSameLength);
                 entriesWithSameLength[key.length()] = map;
                 map.put(key, value);
                 return true;
             }
             if (entriesWithSameLength[key.length()] == null) {
-                map = new ByteArrayKeyMap<>(expectedMaxEntriesWithSameLength);
+                map = new JenaHashMap<>(expectedMaxEntriesWithSameLength);
                 entriesWithSameLength[key.length()] = map;
             } else {
                 map = entriesWithSameLength[key.length()];
@@ -1029,18 +1043,18 @@ public class CIMParser {
         }
 
         public V computeIfAbsent(K key, Supplier<V> mappingFunction) {
-            final ByteArrayKeyMap<K, V> map;
+            final JenaHashMap<K, V> map;
             // Ensure the array is large enough
             if (entriesWithSameLength.length < key.length()) {
                 grow(key.length());
-                map = new ByteArrayKeyMap<>(expectedMaxEntriesWithSameLength);
+                map = new JenaHashMap<>(expectedMaxEntriesWithSameLength);
                 entriesWithSameLength[key.length()] = map;
                 final var value = mappingFunction.get();
                 map.put(key, value);
                 return value;
             }
             if (entriesWithSameLength[key.length()] == null) {
-                map = new ByteArrayKeyMap<>(expectedMaxEntriesWithSameLength);
+                map = new JenaHashMap<>(expectedMaxEntriesWithSameLength);
                 entriesWithSameLength[key.length()] = map;
             } else {
                 map = entriesWithSameLength[key.length()];
@@ -1346,7 +1360,7 @@ public class CIMParser {
 
     private static class AttributeCollection {
         private final List<AttributeFixedBuffer> attributeFixedBuffers = new ArrayList<>();
-        private final Set<Integer> alreadyConsumed = new HashSet<>();
+        private final JenaHashSet<Integer> alreadyConsumed = new JenaHashSet<>(16);
         private int currentAttributeIndex = -1;
 
         private void newTag() {
@@ -1387,11 +1401,11 @@ public class CIMParser {
         }
 
         public boolean isConsumed(int index) {
-            return alreadyConsumed.contains(index);
+            return alreadyConsumed.containsKey(index);
         }
 
         public void setAsConsumed(int index) {
-            this.alreadyConsumed.add(index);
+            this.alreadyConsumed.tryAdd(index);
         }
     }
 
@@ -1464,9 +1478,6 @@ public class CIMParser {
                         return State.LOOKING_FOR_ATTRIBUTE_NAME; // Return to looking for next attribute name
                     }
                     fixedBufferForAttributeValue.append(b);
-                    if (fixedBufferForAttributeValue.isFull()) {
-                        throw new ParserException("Attribute value exceeds maximum length of " + fixedBufferForAttributeValue.length() + " characters");
-                    }
                 }
                 throw new ParserException("Unexpected end of stream while looking for end of attribute value");
             } else {
