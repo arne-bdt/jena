@@ -8,6 +8,19 @@ public class JenaHashSet<E> extends FastHashSet<E> {
         super(initialSize);
     }
 
+    public JenaHashSet() {
+        super();
+    }
+
+    public E getMatchingKey(E key) {
+        final var pIndex = findPosition(key, key.hashCode());
+        if (pIndex < 0) {
+            return null;
+        } else {
+            return keys[positions[pIndex]];
+        }
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     protected E[] newKeysArray(int size) {

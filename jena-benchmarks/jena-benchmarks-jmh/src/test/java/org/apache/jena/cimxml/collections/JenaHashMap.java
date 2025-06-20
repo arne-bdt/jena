@@ -8,6 +8,10 @@ public class JenaHashMap<K, V> extends FastHashMap<K, V> {
         super(initialSize);
     }
 
+    public JenaHashMap() {
+        super();
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     protected K[] newKeysArray(int size) {
