@@ -19,6 +19,8 @@
 package org.apache.jena.cimxml;
 
 import org.apache.commons.io.input.BufferedFileChannelInputStream;
+import org.apache.jena.cimxml.collections.JenaHashMap;
+import org.apache.jena.cimxml.collections.JenaHashSet;
 import org.apache.jena.cimxml.utils.*;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
@@ -98,14 +100,14 @@ public class CIMParser {
     private final Deque<Element> elementStack = new ArrayDeque<>();
 
     //private final Map<SpecialByteBuffer, Node> iriToNode = new HashMap<>();
-    private final Map<NamespaceAndQName, RDFDatatype> iriToDatatype = new HashMap<>();
-    private final Map<SpecialByteBuffer, Node> blankNodeToNode = new HashMap<>();
+    private final JenaHashMap<NamespaceAndQName, RDFDatatype> iriToDatatype = new JenaHashMap<>();
+    private final JenaHashMap<SpecialByteBuffer, Node> blankNodeToNode = new JenaHashMap<>();
     // A map to store langSet and avoid to copy SpecialByteBuffer objects unnecessarily
-    private final Map<SpecialByteBuffer, SpecialByteBuffer> langSet = new HashMap<>();
+    private final JenaHashSet<SpecialByteBuffer> langSet = new JenaHashSet<>();
     // A map to store baseSet and avoid to copy NamespaceFixedByteArrayBuffer objects unnecessarily
-    private final Map<SpecialByteBuffer, NamespaceIriPair> baseSet = new HashMap<>();
-    private final Map<NamespaceAndQName, Node> iriNodeCacheWithNamespace = new HashMap<>();
-    private final Map<SpecialByteBuffer, Node> iriNodeCacheWithoutNamespace = new HashMap<>();
+    private final JenaHashMap<SpecialByteBuffer, NamespaceIriPair> baseSet = new JenaHashMap<>();
+    private final JenaHashMap<NamespaceAndQName, Node> iriNodeCacheWithNamespace = new JenaHashMap<>();
+    private final JenaHashMap<SpecialByteBuffer, Node> iriNodeCacheWithoutNamespace = new JenaHashMap<>();
 
     private record NamespaceIriPair(SpecialByteBuffer namespace, IRIx iri) {}
     private record NamespaceAndQName(SpecialByteBuffer namespace, SpecialByteBuffer qname) {}
@@ -409,10 +411,10 @@ public class CIMParser {
             if (ATTRIBUTE_XML_LANG.equals(attribute.name())) {
                 currentAttributes.setAsConsumed(i);
                 // If the attribute is xml:lang, set the xmlLang for the element
-                xmlLang = langSet.get(attribute.value());
+                xmlLang = langSet.getMatchingKey(attribute.value());
                 if (xmlLang == null) {
                     xmlLang = attribute.value().copy();
-                    langSet.put(xmlLang, xmlLang); // Store the xml:lang value to avoid copying
+                    langSet.tryAdd(xmlLang); // Store the xml:lang value to avoid copying
                 }
             } else if (ATTRIBUTE_XML_BASE.equals(attribute.name())) {
                 currentAttributes.setAsConsumed(i);
