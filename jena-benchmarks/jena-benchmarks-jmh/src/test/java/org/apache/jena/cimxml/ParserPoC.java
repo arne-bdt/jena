@@ -33,6 +33,7 @@ import org.apache.jena.riot.system.StreamRDF;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.exec.QueryExec;
 import org.apache.jena.sys.JenaSystem;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import javax.xml.XMLConstants;
@@ -67,43 +68,47 @@ public class ParserPoC {
     private final String file = "C:\\temp\\v59_3\\AMP_Export_s82_v58_H69.xml";
     //private final String file ="C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml";
 
+    @Test
+    public void testRdfId() throws Exception {
+        JenaSystem.init();
+        final var xmlString = """
+               <?xml version="1.0"?>
+               <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                           xmlns:ex="http://example.org/stuff/1.0/"
+                           xml:base="http://example.org/here/">
+    
+                 <rdf:Description rdf:ID="snack">
+                   <ex:prop rdf:resource="fruit/apple"/>
+                 </rdf:Description>
+    
+               </rdf:RDF>
+                """;
+        final var is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var parser = new CIMParser(is, new StreamRDFGraph(graph));
 
-    public class StreamRDFGraph implements StreamRDF {
-        private final Graph graph;
+        final var stopWatch = StopWatch.createStarted();
+        parser.setBaseNamespace("urn:uuid");
+        parser.parse();
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
 
-        public StreamRDFGraph(Graph graph) {
-            this.graph = graph;
-        }
+        stopWatch.reset();
+        stopWatch.start();
+        RDFParser.create()
+                .source(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)))
+                .base("urn:uuid")
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .checking(false)
+                .parse(new StreamRDFGraph(expectedGraph));
+        stopWatch.stop();
 
-        @Override
-        public void start() {
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
 
-        }
-
-        @Override
-        public void triple(Triple triple) {
-            this.graph.add(triple);
-        }
-
-        @Override
-        public void quad(Quad quad) {
-            throw new UnsupportedOperationException("Not supported.");
-        }
-
-        @Override
-        public void base(String base) {
-            this.graph.getPrefixMapping().setNsPrefix(XMLConstants.DEFAULT_NS_PREFIX, base);
-        }
-
-        @Override
-        public void prefix(String prefix, String iri) {
-            this.graph.getPrefixMapping().setNsPrefix(prefix, iri);
-        }
-
-        @Override
-        public void finish() {
-
-        }
+        assertGraphsEqual(expectedGraph, graph);
     }
 
     @Test
@@ -252,27 +257,14 @@ public class ParserPoC {
     }
 
     @Test
-    public void testRdfId() throws Exception {
+    public void testFileParser() throws Exception {
         JenaSystem.init();
-        final var xmlString = """
-               <?xml version="1.0"?>
-               <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                           xmlns:ex="http://example.org/stuff/1.0/"
-                           xml:base="http://example.org/here/">
-    
-                 <rdf:Description rdf:ID="snack">
-                   <ex:prop rdf:resource="fruit/apple"/>
-                 </rdf:Description>
-    
-               </rdf:RDF>
-                """;
-        final var is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
+        final var filePath = java.nio.file.Paths.get(file);
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
-        final var parser = new CIMParser(is, new StreamRDFGraph(graph));
+        final var parser = new CIMParser(filePath, new StreamRDFGraph(graph));
 
         final var stopWatch = StopWatch.createStarted();
-        parser.setBaseNamespace("urn:uuid");
         parser.parse();
         stopWatch.stop();
         // print number of triples parsed and the time taken
@@ -281,10 +273,8 @@ public class ParserPoC {
         stopWatch.reset();
         stopWatch.start();
         RDFParser.create()
-                .source(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)))
-                .base("urn:uuid")
+                .source(filePath)
                 .lang(org.apache.jena.riot.Lang.RDFXML)
-                .checking(false)
                 .parse(new StreamRDFGraph(expectedGraph));
         stopWatch.stop();
 
@@ -295,6 +285,7 @@ public class ParserPoC {
     }
 
     @Test
+    @Ignore
     public void profileFileParser() throws Exception {
         JenaSystem.init();
         final var filePath = java.nio.file.Paths.get(file);
@@ -308,6 +299,7 @@ public class ParserPoC {
     }
 
     @Test
+    @Ignore
     public void profileFileDefaultParser() throws Exception {
         JenaSystem.init();
         final var filePath = java.nio.file.Paths.get(file);
@@ -323,6 +315,7 @@ public class ParserPoC {
     }
 
     @Test
+    @Ignore
     public void consumeFileLines() throws Exception {
         JenaSystem.init();
         final var filePath = java.nio.file.Paths.get(file);
@@ -346,6 +339,7 @@ public class ParserPoC {
     }
 
     @Test
+    @Ignore
     public void consumeFileBytewise() throws Exception {
         JenaSystem.init();
         final var filePath = java.nio.file.Paths.get(file);
@@ -377,6 +371,7 @@ public class ParserPoC {
     }
 
     @Test
+    @Ignore
     public void consumeFileUsingBufferedInputStream() throws Exception {
         JenaSystem.init();
         final var filePath = java.nio.file.Paths.get(file);
@@ -410,6 +405,7 @@ public class ParserPoC {
     }
 
     @Test
+    @Ignore
     public void consumeFileUsingPushbackInputStream() throws Exception {
         JenaSystem.init();
         final var filePath = java.nio.file.Paths.get(file);
@@ -443,6 +439,7 @@ public class ParserPoC {
     }
 
     @Test
+    @Ignore
     public void testArrayCopyFromSelfToSelf() {
         int[] array = {1, 2, 3, 4, 5, 6};
         System.arraycopy(array, 3, array, 0, 3);
@@ -456,34 +453,6 @@ public class ParserPoC {
         for (int i = 0; i < array.length; i++) {
             System.out.print(array[i] + " ");
         }
-    }
-
-    @Test
-    public void testFileParser() throws Exception {
-        JenaSystem.init();
-        final var filePath = java.nio.file.Paths.get(file);
-        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
-        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
-        final var parser = new CIMParser(filePath, new StreamRDFGraph(graph));
-
-        final var stopWatch = StopWatch.createStarted();
-        parser.parse();
-        stopWatch.stop();
-        // print number of triples parsed and the time taken
-        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
-
-        stopWatch.reset();
-        stopWatch.start();
-        RDFParser.create()
-                .source(filePath)
-                .lang(org.apache.jena.riot.Lang.RDFXML)
-                .parse(new StreamRDFGraph(expectedGraph));
-        stopWatch.stop();
-
-        // print number of triples parsed and the time taken
-        System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
-
-        assertGraphsEqual(expectedGraph, graph);
     }
 
     public void assertGraphsEqual(Graph expected, Graph actual) {
@@ -515,6 +484,7 @@ public class ParserPoC {
 
 
     @Test
+    @Ignore
     public void testQuery() throws Exception {
         final var stopWatch = StopWatch.createStarted();
         final var filePath = java.nio.file.Paths.get(file);
@@ -552,5 +522,43 @@ public class ParserPoC {
         //result.printSummary();
         stopWatch.stop();
         System.out.println(stopWatch);
+    }
+
+    public class StreamRDFGraph implements StreamRDF {
+        private final Graph graph;
+
+        public StreamRDFGraph(Graph graph) {
+            this.graph = graph;
+        }
+
+        @Override
+        public void start() {
+
+        }
+
+        @Override
+        public void triple(Triple triple) {
+            this.graph.add(triple);
+        }
+
+        @Override
+        public void quad(Quad quad) {
+            throw new UnsupportedOperationException("Not supported.");
+        }
+
+        @Override
+        public void base(String base) {
+            this.graph.getPrefixMapping().setNsPrefix(XMLConstants.DEFAULT_NS_PREFIX, base);
+        }
+
+        @Override
+        public void prefix(String prefix, String iri) {
+            this.graph.getPrefixMapping().setNsPrefix(prefix, iri);
+        }
+
+        @Override
+        public void finish() {
+
+        }
     }
 }
