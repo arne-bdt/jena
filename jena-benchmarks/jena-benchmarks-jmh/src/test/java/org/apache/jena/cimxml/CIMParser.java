@@ -36,6 +36,7 @@ import javax.xml.XMLConstants;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -114,55 +115,30 @@ public class CIMParser {
             = new ByteArrayMap<>(256, 8);
     private final StreamRDF streamRDFSink;
 
-    private final QNameFixedByteArrayBuffer currentTag = new QNameFixedByteArrayBuffer(MAX_LENGTH_OF_TAG_NAME);
-    private final AttributeCollection currentAttributes = new AttributeCollection();
-    private final DecodingTextArrayByteBuffer currentTextContent = new DecodingTextArrayByteBuffer(MAX_LENGTH_OF_TEXT_CONTENT);
+    private final StreamBufferRoot root = new StreamBufferRoot();
+    private final QNameByteBuffer currentTag = new QNameByteBuffer(root, MAX_LENGTH_OF_TAG_NAME);
+    private final AttributeCollection currentAttributes = new AttributeCollection(root);
+    private final DecodingTextByteBuffer currentTextContent = new DecodingTextByteBuffer(root, MAX_LENGTH_OF_TEXT_CONTENT);
+
     private final Deque<Element> elementStack = new ArrayDeque<>();
+
     //private final Map<SpecialByteBuffer, Node> iriToNode = new HashMap<>();
     private final Map<NamespaceAndQName, RDFDatatype> iriToDatatype = new HashMap<>();
     private final Map<SpecialByteBuffer, Node> blankNodeToNode = new HashMap<>();
-
     // A map to store langSet and avoid to copy SpecialByteBuffer objects unnecessarily
     private final Map<SpecialByteBuffer, SpecialByteBuffer> langSet = new HashMap<>();
     // A map to store baseSet and avoid to copy NamespaceFixedByteArrayBuffer objects unnecessarily
-    private final Map<NamespaceFixedByteArrayBuffer, NamespaceIriPair> baseSet = new HashMap<>();
-    private final Map<NamespaceAndQName, Node> iriNodeCache = new HashMap<>();
+    private final Map<SpecialByteBuffer, NamespaceIriPair> baseSet = new HashMap<>();
+    private final Map<NamespaceAndQName, Node> iriNodeCacheWithNamespace = new HashMap<>();
+    private final Map<SpecialByteBuffer, Node> iriNodeCacheWithoutNamespace = new HashMap<>();
 
-    private record NamespaceIriPair(NamespaceFixedByteArrayBuffer namespace, IRIx iri) {}
-    private record NamespaceAndQName(NamespaceFixedByteArrayBuffer namespace, DecodingTextArrayByteBuffer qname) {}
+    private record NamespaceIriPair(SpecialByteBuffer namespace, IRIx iri) {}
+    private record NamespaceAndQName(SpecialByteBuffer namespace, SpecialByteBuffer qname) {}
 
     private final IRIProvider iriProvider = new IRIProvider3986();
 
     private NamespaceIriPair baseNamespace = null;
     private NamespaceIriPair defaultNamespace = null;
-
-    private boolean isRdfIdTreatedLikeRdfAbout = true; // If true, treat rdf:ID like rdf:about
-    private boolean handleCimUuidsWithMissingPrefix = true;
-
-    public boolean areCimUuidsHandledWithMissingPrefix() {
-        return handleCimUuidsWithMissingPrefix;
-    }
-
-    public void handleCimUuidsWithMissingPrefix() {
-        this.handleCimUuidsWithMissingPrefix = true;
-
-    }
-
-    public void doNotHandleCimUuidsWithMissingPrefix() {
-        this.handleCimUuidsWithMissingPrefix = false;
-    }
-
-    public boolean isRdfIdTreatedLikeRdfAbout() {
-        return isRdfIdTreatedLikeRdfAbout;
-    }
-
-    public void treatRdfIdLikeRdfAboutForCim() {
-        this.isRdfIdTreatedLikeRdfAbout = true;
-    }
-
-    public void treatRdfIdStandardConformant() {
-        this.isRdfIdTreatedLikeRdfAbout = false;
-    }
 
     public void setBaseNamespace(String base) {
         baseNamespace = new NamespaceIriPair(
@@ -258,18 +234,19 @@ public class CIMParser {
     }
 
     private void parse(InputStream inputStream) throws IOException, ParserException {
-        try (inputStream; var is = new BufferedInputStream(inputStream, MAX_LENGTH_OF_TEXT_CONTENT*2)) {
+        try (inputStream; var is = new BufferedInputStream(inputStream, MAX_LENGTH_OF_TEXT_CONTENT)) {
+            root.setInputStream(is);;
             var state = State.LOOKING_FOR_TAG;
             while (state != State.END) {
                 state = switch (state) {
-                    case LOOKING_FOR_TAG -> handleLookingForTag(is);
-                    case LOOKING_FOR_TAG_NAME -> handleLookingForTagName(is);
-                    case LOOKING_FOR_ATTRIBUTE_NAME -> handleLookingForAttributeName(is);
-                    case LOOKING_FOR_ATTRIBUTE_VALUE -> handleLookingForAttributeValue(is);
+                    case LOOKING_FOR_TAG -> handleLookingForTag();
+                    case LOOKING_FOR_TAG_NAME -> handleLookingForTagName();
+                    case LOOKING_FOR_ATTRIBUTE_NAME -> handleLookingForAttributeName();
+                    case LOOKING_FOR_ATTRIBUTE_VALUE -> handleLookingForAttributeValue();
                     case AT_END_OF_OPENING_TAG -> handleAtEndOfOpeningTag();
                     case AT_END_OF_SELF_CLOSING_TAG -> handleSelfClosingTag();
                     case IN_CLOSING_TAG -> handleClosingTag();
-                    case IN_TEXT_CONTENT -> handleTextContent(is);
+                    case IN_TEXT_CONTENT -> handleTextContent();
                     case END -> State.END;
                 };
             }
@@ -280,41 +257,42 @@ public class CIMParser {
         }
     }
 
-    private State handleTextContent(final InputStream inputStream) throws IOException, ParserException {
+    private State handleTextContent() throws IOException, ParserException {
         var parent = elementStack.peek();
         if (parent == null || parent.subject == null || parent.predicate == null) {
             throw new ParserException("Text content found without subject or predicate: "
                     + currentTextContent.decodeToString());
         }
-
-        currentTextContent.reset();
-
-        inputStream.mark(currentTextContent.data.length);
-
-        var bytesRead = inputStream.read(currentTextContent.data);
-        if (bytesRead == -1) {
-            throw new ParserException("Unexpected end of stream while in text content: "
+        currentTextContent.copyRemainingBytesFromPredecessor();
+        currentTextContent.setCurrentByteAsStartPositon();
+        if(!currentTextContent.tryForwardAndSetEndPositionExclusive(LEFT_ANGLE_BRACKET)) {
+            throw new ParserException("Unexpected end of stream while looking for opening tag after text content: "
                     + currentTextContent.decodeToString());
         }
-        var bytesConsumed = currentTextContent.consumeToLeftAngleBracket(bytesRead);
-
-        inputStream.reset();
-        inputStream.skipNBytes(bytesConsumed);
+        currentTextContent.skip(); // Skip the LEFT_ANGLE_BRACKET
 
         final var object = NodeFactory.createLiteral(
                 currentTextContent.decodeToString(),
                 parent.xmlLang != null ? parent.xmlLang.decodeToString(): null,
                 parent.datatype);
         streamRDFSink.triple(Triple.create(parent.subject, parent.predicate, object));
+
+        //refresh currentTag --> this is a shortcut to avoid LOOKING_FOR_TAG status, which would refresh currentTag
+        currentTag.copyRemainingBytesFromPredecessor();
         return State.LOOKING_FOR_TAG_NAME;
     }
 
-    private State handleClosingTag() {
-        this.elementStack.pop();
-        return State.LOOKING_FOR_TAG;
+    private State handleClosingTag() throws IOException, ParserException {
+        if (currentTag.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
+            this.elementStack.pop();
+            return State.LOOKING_FOR_TAG;
+        }
+        // If we reach here, it means we didn't find the closing tag properly
+        throw new ParserException("Unexpected end of stream while looking for closing tag: "
+                + currentTag.decodeToString());
     }
 
-    private State handleSelfClosingTag() throws ParserException {
+    private State handleSelfClosingTag() throws ParserException, IOException {
         switch (handleAtEndOfOpeningTag()) {
             case LOOKING_FOR_TAG:
                 // everything is fine, we are back to looking for a new tag
@@ -339,17 +317,23 @@ public class CIMParser {
         return State.LOOKING_FOR_TAG;
     }
 
-    private State handleAtEndOfOpeningTag() throws ParserException {
+    private State handleAtEndOfOpeningTag() throws ParserException, IOException {
+        State state;
         if(TAG_RDF_RDF.equals(currentTag)) {
-            return handleTagRdfRdf();
+            state = handleTagRdfRdf();
+        } else if(TAG_RDF_DESCRIPTION.equals(currentTag)) {
+            state = handleTagRdfDescription();
+        } else if (TAG_RDF_LI.equals(currentTag)) {
+            state = handleRdfLi();
+        } else {
+            state = handleOtherTag();
         }
-        if(TAG_RDF_DESCRIPTION.equals(currentTag)) {
-            return handleTagRdfDescription();
+        if(!currentTag.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
+            // If we reach here, it means we didn't find the closing tag properly
+            throw new ParserException("Unexpected end of stream while looking for closing angle bracket in tag: "
+                    + currentTag.decodeToString());
         }
-        if(TAG_RDF_LI.equals(currentTag)) {
-            return handleRdfLi();
-        }
-        return handleOtherTag();
+        return state;
     }
 
     private State handleOtherTag() throws ParserException {
@@ -462,7 +446,7 @@ public class CIMParser {
             } else if (ATTRIBUTE_XML_BASE.equals(attribute.name)) {
                 currentAttributes.setAsConsumed(i);
                 // If the attribute is xml:base, set the xmlBase for the element
-                var namespace = attribute.value.asNamespace();
+                var namespace = attribute.value.copy();
                 xmlBase = baseSet.get(namespace);
                 if (xmlBase == null) {
                     var nsCopy = namespace.copy();
@@ -478,7 +462,7 @@ public class CIMParser {
                 xmlLang != null ? xmlLang : parent.xmlLang);
     }
 
-    private RDFDatatype getOrCreateDatatypeForIri(final NamespaceIriPair xmlBase, final DecodingTextArrayByteBuffer iriQName) {
+    private RDFDatatype getOrCreateDatatypeForIri(final NamespaceIriPair xmlBase, final DecodingTextByteBuffer iriQName) {
         if(xmlBase == null) {
             var cacheKey = new NamespaceAndQName(null,iriQName);
             var datatype = iriToDatatype.get(cacheKey);
@@ -506,22 +490,21 @@ public class CIMParser {
         }
     }
 
-    private Node getOrCreateNodeForIri(final NamespaceIriPair xmlBase, final DecodingTextArrayByteBuffer iriQName) {
+    private Node getOrCreateNodeForIri(final NamespaceIriPair xmlBase, final DecodingTextByteBuffer iriQName) {
         if(xmlBase == null) {
-            var cacheKey = new NamespaceAndQName(null, iriQName);
-            var node = iriNodeCache.get(cacheKey);
+            var node = iriNodeCacheWithoutNamespace.get(iriQName);
             if(node != null) {
                 return node;
             }
             // Use a copy of the QName to ensure immutability in the cache key
-            cacheKey = new NamespaceAndQName(null, iriQName.copy());
-            final IRIx iri = iriProvider.create(iriQName.decodeToString());
+            var copy = iriQName.copy();
+            final IRIx iri = iriProvider.create(copy.decodeToString());
             node = NodeFactory.createURI(iri.str());
-            iriNodeCache.put(cacheKey, node);
+            iriNodeCacheWithoutNamespace.put(copy, node);
             return node;
         } else {
             var cacheKey = new NamespaceAndQName(xmlBase.namespace, iriQName);
-            var node = iriNodeCache.get(cacheKey);
+            var node = iriNodeCacheWithNamespace.get(cacheKey);
             if(node != null) {
                 return node;
             }
@@ -529,12 +512,12 @@ public class CIMParser {
             cacheKey = new NamespaceAndQName(xmlBase.namespace, iriQName.copy());
             final IRIx iri = xmlBase.iri.resolve(iriQName.decodeToString());
             node = NodeFactory.createURI(iri.str());
-            iriNodeCache.put(cacheKey, node);
+            iriNodeCacheWithNamespace.put(cacheKey, node);
             return node;
         }
     }
 
-    private Node getOrCreateNodeForTagOrAttributeName(final QNameFixedByteArrayBuffer tagOrAttributeName) throws ParserException {
+    private Node getOrCreateNodeForTagOrAttributeName(final QNameByteBuffer tagOrAttributeName) throws ParserException {
         var uriNode = tagOrAttributeNameToUriNode.get(tagOrAttributeName);
         if(uriNode == null) {
             final NamespaceIriPair namespace;
@@ -553,20 +536,17 @@ public class CIMParser {
                 namespace = defaultNamespace;
             }
             uriNode = NodeFactory.createURI(namespace.namespace.join(tagOrAttributeName.getLocalPart()).decodeToString());
-            tagOrAttributeNameToUriNode.put(tagOrAttributeName, uriNode);
+            tagOrAttributeNameToUriNode.put(tagOrAttributeName.copy(), uriNode);
         }
         return uriNode;
     }
 
-    private Node getOrCreateNodeForRdfId(NamespaceIriPair xmlBase, final DecodingTextArrayByteBuffer rdfId) throws ParserException {
-        if(isRdfIdTreatedLikeRdfAbout) {
-            return getOrCreateNodeForIri(xmlBase, rdfId);
-        }
+    private Node getOrCreateNodeForRdfId(NamespaceIriPair xmlBase, final DecodingTextByteBuffer rdfId) throws ParserException {
         if(xmlBase == null) {
             throw new ParserException("rdf:ID attribute found without base URI");
         }
         var cacheKey = new NamespaceAndQName(xmlBase.namespace, rdfId);
-        var node = iriNodeCache.get(cacheKey);
+        var node = iriNodeCacheWithNamespace.get(cacheKey);
         if(node != null) {
             return node;
         }
@@ -574,7 +554,7 @@ public class CIMParser {
         cacheKey = new NamespaceAndQName(xmlBase.namespace, rdfId.copy());
         final IRIx iri = xmlBase.iri.resolve(CHAR_SHARP + rdfId.decodeToString()); // adding a # here
         node = NodeFactory.createURI(iri.str());
-        iriNodeCache.put(cacheKey, node);
+        iriNodeCacheWithNamespace.put(cacheKey, node);
         return node;
     }
 
@@ -655,7 +635,7 @@ public class CIMParser {
             for(int i = 0; i< currentAttributes.size(); i++) {
                 final var attribute = currentAttributes.get(i);
                 if(ATTRIBUTE_XML_BASE.equals(attribute.name)) {
-                    final var namespace = attribute.value.asNamespaceCopy();
+                    final var namespace = attribute.value.copy();
                     this.baseNamespace = new NamespaceIriPair(
                             namespace,
                             iriProvider.create(namespace.decodeToString()));
@@ -668,7 +648,7 @@ public class CIMParser {
                                 + attribute.name.decodeToString());
                     }
                     final var prefix = attribute.name.getLocalPart().copy();
-                    final var namespace = attribute.value.asNamespaceCopy();
+                    final var namespace = attribute.value.copy();
                     final var iri = iriProvider.create(namespace.decodeToString());
                     // Add the namespace prefix and IRI to the prefixToNamespace map
                     prefixToNamespace.put(
@@ -682,7 +662,7 @@ public class CIMParser {
                         throw new ParserException("Expected attribute 'xmlns:' in rdf:RDF tag but got: "
                                 + attribute.name.decodeToString());
                     }
-                    final var namespace =  attribute.value.asNamespaceCopy();
+                    final var namespace =  attribute.value.copy();
                     final var iri = iriProvider.create(namespace.decodeToString());
                     this.streamRDFSink.prefix(
                             XML_DEFAULT_NS_PREFIX.decodeToString(),
@@ -1067,6 +1047,7 @@ public class CIMParser {
     }
 
     public static class StreamBufferRoot {
+
         /**
          * Input stream from which the data is read.
          * This stream is expected to be used by the child buffers to read data.
@@ -1080,6 +1061,22 @@ public class CIMParser {
 
         public StreamBufferRoot() {
 
+        }
+
+        public InputStream getInputStream() {
+            return inputStream;
+        }
+
+        public void setInputStream(InputStream inputStream) {
+            this.inputStream = inputStream;
+        }
+
+        public StreamBufferChild getLastUsedChildBuffer() {
+            return lastUsedChildBuffer;
+        }
+
+        public void setLastUsedChildBuffer(StreamBufferChild lastUsedChildBuffer) {
+            this.lastUsedChildBuffer = lastUsedChildBuffer;
         }
     }
 
@@ -1097,11 +1094,11 @@ public class CIMParser {
         /**
          * The offset in the buffer where the data starts.
          */
-        protected int start = -1;
+        protected int start = 0;
         /**
          * Marks the end of relevant data in the buffer.
          */
-        protected int endExclusive = -1;
+        protected int endExclusive = 0;
         /**
          * This marks the position to which the buffer is filled.
          */
@@ -1123,24 +1120,37 @@ public class CIMParser {
         }
 
         public void reset() {
-            this.start = -1;
-            this.endExclusive = -1;
+            this.start = 0;
+            this.endExclusive = 0;
             this.filledToExclusive = 0;
+            this.position = 0;
         }
 
         public void abort() {
             this.abort = true;
         }
 
-        public void setStartPositon() {
+        public void setCurrentByteAsStartPositon() {
             this.start = this.position;
         }
 
-        public boolean trySeekStartPosition(byte byteToSeek) throws IOException {
+        public void setNextByteAsStartPositon() {
+            this.start = this.position+1;
+        }
+
+        public void setEndPositionExclusive() {
+            this.endExclusive = this.position;
+        }
+
+        public boolean hasRemainingCapacity() {
+            return filledToExclusive < buffer.length;
+        }
+
+        public boolean tryForwardAndSetStartPositionAfter(byte byteToSeek) throws IOException {
             boolean[] found = {false};
             this.consumeBytes(b -> {
                 if (b == byteToSeek) {
-                    setStartPositon();
+                    setNextByteAsStartPositon();
                     abort();
                     found[0] = true;
                 }
@@ -1148,7 +1158,8 @@ public class CIMParser {
             return found[0];
         }
 
-        public boolean trySeekEndPositionExclusive(byte byteToSeek) throws IOException {
+        public boolean tryForwardAndSetEndPositionExclusive(byte byteToSeek) throws IOException {
+            var abortBefore = this.abort; // memoize the current abort state to avoid side effects
             boolean[] found = {false};
             this.consumeBytes(b -> {
                 if (b == byteToSeek) {
@@ -1157,41 +1168,92 @@ public class CIMParser {
                     found[0] = true;
                 }
             });
+            if(abortBefore) {
+                this.abort = true; // Restore the abort state if it was set before
+            }
             return found[0];
         }
 
-        public void setEndPositionExclusive() {
-            this.endExclusive = this.position;
+        public boolean tryForwardToByte(byte byteToSeek) throws IOException {
+            var abortBefore = this.abort; // memoize the current abort state to avoid side effects
+            boolean[] found = {false};
+            this.consumeBytes(b -> {
+                if (b == byteToSeek) {
+                    abort();
+                    found[0] = true;
+                }
+            });
+            if(abortBefore) {
+                this.abort = true; // Restore the abort state if it was set before
+            }
+            return found[0];
         }
 
-
-        public boolean hasRemainingCapacity() {
-            return filledToExclusive < buffer.length;
+        public boolean tryForwardToByteAfter(byte byteToSeek) throws IOException {
+            boolean found = tryForwardToByte(byteToSeek);
+            position++;
+            return found;
         }
 
         /**
          * Copies remaining bytes from the last used child buffer of the parent.
-         * This is used to handover remaining bytes from one child buffer to the next.         *
+         * This is used to handover remaining bytes from one child buffer to the next.
+         * Attention: The predecessor may be identical to this child buffer.
+         * In that case, the remaining bytes are copied to the beginning of this buffer
          */
         public void copyRemainingBytesFromPredecessor() {
-            reset();
             if (root.lastUsedChildBuffer == null) {
+                root.lastUsedChildBuffer = this;
+                reset();
                 return; // Nothing to copy
             }
             var predecessor = root.lastUsedChildBuffer;
-            var remainingBytes = predecessor.filledToExclusive - predecessor.endExclusive;
+            var remainingBytes = predecessor.filledToExclusive - predecessor.position;
             if(remainingBytes == 0) {
+                root.lastUsedChildBuffer = this;
+                reset();
                 return; // No remaining bytes to copy
             }
-            System.arraycopy(predecessor.buffer, predecessor.endExclusive,
-                    this.buffer, this.start, remainingBytes);
+            System.arraycopy(predecessor.buffer, predecessor.position,
+                    this.buffer, 0, remainingBytes);
+            reset();
             this.filledToExclusive = remainingBytes;
+            root.lastUsedChildBuffer = this;
+        }
+
+        public byte peek() throws IOException {
+            if(position >= filledToExclusive) {
+                if (!tryFillFromInputStream()) {
+                    return END_OF_STREAM;
+                }
+            }
+            return buffer[position];
+        }
+
+        /**
+         * Reads the next byte from the buffer and advances the position.
+         * @return the next byte in the buffer
+         * @throws IOException if an I/O error occurs while reading from the input stream
+         */
+        public byte next() throws IOException {
+            position++;
+            return peek();
+        }
+
+        /**
+         * Skips the current byte and moves to the next one.
+         * This does not change the start or end positions.
+         * @throws IOException if an I/O error occurs while reading from the input stream
+         */
+        public void skip() throws IOException {
+            position++;
+            peek();
         }
 
         public void consumeBytes(Consumer<Byte> byteConsumer) throws IOException {
+            var abortBefore = this.abort; // memoize the current abort state to avoid side effects
             abort = false;
-            position = 0;
-            if(position == filledToExclusive) {
+            if(position >= filledToExclusive) {
                 if (!tryFillFromInputStream()) {
                     byteConsumer.accept(END_OF_STREAM);
                     return; // No more data to read
@@ -1202,7 +1264,7 @@ public class CIMParser {
                 if(abort) {
                     return;
                 }
-                if(++position == filledToExclusive) {
+                if(++position >= filledToExclusive) {
                     if (!tryFillFromInputStream()) {
                         byteConsumer.accept(END_OF_STREAM);
                         return; // No more data to read
@@ -1210,6 +1272,9 @@ public class CIMParser {
                 }
             }
             byteConsumer.accept(END_OF_STREAM);
+            if(abortBefore) {
+                this.abort = true; // Restore the abort state if it was set before
+            }
         }
 
         private boolean tryFillFromInputStream() throws IOException {
@@ -1232,7 +1297,7 @@ public class CIMParser {
 
         @Override
         public int length() {
-            return endExclusive - start;
+            return endExclusive-start;
         }
 
         @Override
@@ -1242,7 +1307,32 @@ public class CIMParser {
 
         @Override
         public String toString() {
-            return "StreamBufferChild [" + this.decodeToString()  + "]";
+            String text;
+            if (start == 0 && endExclusive == 0) {
+                text = "Start at 0:[" +
+                        UTF_8.decode(java.nio.ByteBuffer.wrap(this.buffer, start,
+                        position-start+1))
+                        + "]--> end not defined yet";
+            } else if (start > endExclusive) {
+                if(start < position) {
+                    text = UTF_8.decode(java.nio.ByteBuffer.wrap(this.buffer, start,
+                            position-start+1)) + "][--> end not defined yet";
+                } else {
+                    text = UTF_8.decode(java.nio.ByteBuffer.wrap(this.buffer, start,
+                            1)) + "][--> end not defined yet";
+                }
+            } else {
+                text = this.decodeToString();
+            }
+            return "StreamBufferChild [" + text + "]";
+        }
+
+        public String wholeBufferToString() {
+            return UTF_8.decode(java.nio.ByteBuffer.wrap(this.buffer, 0, this.filledToExclusive)).toString();
+        }
+
+        public String remainingBufferToString() {
+            return UTF_8.decode(java.nio.ByteBuffer.wrap(this.buffer, position, filledToExclusive - position)).toString();
         }
     }
 
@@ -1264,11 +1354,11 @@ public class CIMParser {
         }
 
         public ReadonlyByteArrayBuffer getPrefix() {
-            return new ReadonlyByteArrayBuffer(buffer, start, length()); // Exclude the colon
+            return new ReadonlyByteArrayBuffer(buffer, start, startOfLocalPart-start-1); // Exclude the colon
         }
 
         public ReadonlyByteArrayBuffer getLocalPart() {
-            return new ReadonlyByteArrayBuffer(buffer, startOfLocalPart, length() - startOfLocalPart);
+            return new ReadonlyByteArrayBuffer(buffer, startOfLocalPart, endExclusive - startOfLocalPart);
         }
 
         @Override
@@ -1279,13 +1369,6 @@ public class CIMParser {
                 }
             });
             super.consumeBytes(c);
-        }
-
-        @Override
-        public String toString() {
-            return "QNameByteBuffer [" +
-                    this.decodeToString() +
-                    "]";
         }
     }
 
@@ -1306,11 +1389,6 @@ public class CIMParser {
         @Override
         public void consumeBytes(Consumer<Byte> byteConsumer) throws IOException {
             var c = byteConsumer.andThen((b) -> {
-                if(start == -1 || endExclusive != -1 ) {
-                    // If start is not set --> ignore the byte as it is not part of the content.
-                    // If endExclusive is set, it means the other consumer has already set an end position.
-                    return;
-                }
                 switch (b) {
                     case AMPERSAND -> lastAmpersandPosition = position; // Store the position of the last '&'
                     case SEMICOLON -> {
@@ -1327,7 +1405,7 @@ public class CIMParser {
                                                 filledToExclusive-position);
 
                                         filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &lt;
-                                        position = lastAmpersandPosition + 1;
+                                        position = lastAmpersandPosition;
                                         lastAmpersandPosition = -1; // Reset last ampersand position
                                         return;
                                     } else if (buffer[lastAmpersandPosition+1] == 'g') {
@@ -1339,7 +1417,7 @@ public class CIMParser {
                                                 filledToExclusive-position);
 
                                         filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &gt;
-                                        position = lastAmpersandPosition + 1;
+                                        position = lastAmpersandPosition;
                                         lastAmpersandPosition = -1; // Reset last ampersand position
                                         return;
                                     }
@@ -1358,7 +1436,7 @@ public class CIMParser {
                                             filledToExclusive-position);
 
                                     filledToExclusive -= 4; // Reduce filledToExclusive by 4 for &amp;
-                                    position = lastAmpersandPosition + 1;
+                                    position = lastAmpersandPosition;
                                     lastAmpersandPosition = -1; // Reset last ampersand position
                                     return;
                                 }
@@ -1377,7 +1455,7 @@ public class CIMParser {
                                                 filledToExclusive-position);
 
                                         filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &quot;
-                                        position = lastAmpersandPosition + 1;
+                                        position = lastAmpersandPosition;
                                         lastAmpersandPosition = -1; // Reset last ampersand position
                                         return;
                                     } else if (buffer[lastAmpersandPosition+2] == 'p'
@@ -1391,7 +1469,7 @@ public class CIMParser {
                                                 filledToExclusive-position);
 
                                         filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &apos;
-                                        position = lastAmpersandPosition + 1;
+                                        position = lastAmpersandPosition;
                                         lastAmpersandPosition = -1; // Reset last ampersand position
                                         return;
                                     }
@@ -1403,13 +1481,6 @@ public class CIMParser {
                 }
             });
             super.consumeBytes(c);
-        }
-
-        @Override
-        public String toString() {
-            return "DecodingTextByteBuffer [" +
-                    this.decodeToString() +
-                    "]";
         }
     }
 
@@ -1822,35 +1893,42 @@ public class CIMParser {
         }
     }
 
-    private record AttributeFixedBuffer(QNameFixedByteArrayBuffer name, DecodingTextArrayByteBuffer value) {}
+    private record AttributeFixedBuffer(QNameByteBuffer name, DecodingTextByteBuffer value) {}
 
     private static class AttributeCollection {
+        private final StreamBufferRoot streamingBufferRoot;
         private final List<AttributeFixedBuffer> attributeFixedBuffers = new ArrayList<>();
         private final JenaHashSet<Integer> alreadyConsumed = new JenaHashSet<>(16);
         private int currentAttributeIndex = -1;
+
+        private AttributeCollection(StreamBufferRoot streamingBufferRoot) {
+            this.streamingBufferRoot = streamingBufferRoot;
+        }
 
         private void newTag() {
             currentAttributeIndex = -1;
             alreadyConsumed.clear();
         }
 
-        private QNameFixedByteArrayBuffer newAttribute() {
+        private QNameByteBuffer newAttribute() {
             final AttributeFixedBuffer buffer;
             currentAttributeIndex++;
             if (currentAttributeIndex == attributeFixedBuffers.size()) {
                 buffer = new AttributeFixedBuffer(
-                        new QNameFixedByteArrayBuffer(MAX_LENGTH_OF_ATTRIBUTE_NAME),
-                        new DecodingTextArrayByteBuffer(MAX_LENGTH_OF_ATTRIBUTE_VALUE));
+                        new QNameByteBuffer(streamingBufferRoot, MAX_LENGTH_OF_ATTRIBUTE_NAME),
+                        new DecodingTextByteBuffer(streamingBufferRoot, MAX_LENGTH_OF_ATTRIBUTE_VALUE));
                 attributeFixedBuffers.add(buffer);
             } else {
                 buffer = attributeFixedBuffers.get(currentAttributeIndex);
-                buffer.name.reset();
-                buffer.value.reset();
             }
             return buffer.name;
         }
 
-        public FixedByteArrayBuffer currentAttributeValue() {
+        private void discardCurrentAttribute() {
+            currentAttributeIndex--;
+        }
+
+        public DecodingTextByteBuffer currentAttributeValue() {
             return attributeFixedBuffers.get(currentAttributeIndex).value;
         }
 
@@ -1876,146 +1954,208 @@ public class CIMParser {
     }
 
 
-    private State handleLookingForTagName(InputStream inputStream) throws IOException, ParserException {
-        byte b = (byte) inputStream.read();
-        if(SLASH == b) {
-            // If we encounter a slash right after the left angle bracket, it means we are in a closing tag
-            return State.IN_CLOSING_TAG;
-        }
-        if(isEndOfTagName(b)) {
-            // If the first byte is not a valid start of tag name, we throw an exception
-            throw new ParserException("Unexpected character at the start of tag name: " + (char) b);
-        }
-        // If the first char is a '?' or '!', we skip the tag and look for the next one
-        // This is typically used for XML declarations or comments
-        if(isTagToBeIgnoredDueToFirstChar(b)) {
-            // If the first byte is a special character, we skip the tag
-            while ((b = (byte) inputStream.read()) != END_OF_STREAM) {
-                if (b == RIGHT_ANGLE_BRACKET) {
+    private State handleLookingForTagName() throws IOException, ParserException {
+        {
+            final var b = currentTag.peek();
+            if (SLASH == b) {
+                // If we encounter a slash right after the left angle bracket, it means we are in a closing tag
+                return State.IN_CLOSING_TAG;
+            }
+            if (isEndOfTagName(b)) {
+                // If the first byte is not a valid start of tag name, we throw an exception
+                throw new ParserException("Unexpected character at the start of tag name: " + byteToSting(b));
+            }
+            // If the first char is a '?' or '!', we skip the tag and look for the next one
+            // This is typically used for XML declarations or comments
+            if (isTagToBeIgnoredDueToFirstChar(b)) {
+                // If the first byte is a special character, we skip the tag
+                if (currentTag.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
                     return State.LOOKING_FOR_TAG; // Return to looking for next tag
                 }
+                throw new ParserException("Unexpected end of stream while skipping tag");
             }
-            throw new ParserException("Unexpected end of stream while skipping tag");
         }
         currentAttributes.newTag(); // Reset attributes for the new tag
-        currentTag.reset();
-        currentTag.append(b);
-        while ((b = (byte) inputStream.read()) != END_OF_STREAM) {
-            if(isEndOfTagName(b)) {
-                return switch (b) {
-                    case RIGHT_ANGLE_BRACKET -> State.AT_END_OF_OPENING_TAG;
-                    case SLASH -> afterSlashExpectClosingTag(inputStream);
-                    default -> State.LOOKING_FOR_ATTRIBUTE_NAME;
-                };
-            }
-            currentTag.append(b);
-            if(currentTag.isFull()) {
-                throw new ParserException("Tag name exceeds maximum length of " + currentTag.length() + " characters");
-            }
-        }
-        throw new ParserException("Unexpected end of stream while looking for tag name");
-    }
 
-    private State afterSlashExpectClosingTag(InputStream inputStream) throws IOException, ParserException {
-        // If we encounter a slash, it means we are at the end of the opening tag
-        // read the next byte to check if it's a right angle bracket
-        final byte b = (byte) inputStream.read();
-        if (RIGHT_ANGLE_BRACKET != b) {
-            if(END_OF_STREAM == b) {
-                throw  new ParserException("Unexpected end of stream while looking right angle bracket in self-closing tag");
-            }
-            throw new ParserException("Unexpected character '" + (char) b + "' after '/' in opening tag");
-        }
-        return State.AT_END_OF_SELF_CLOSING_TAG; // End of tag
-    }
-
-    private State handleLookingForAttributeValue(InputStream inputStream) throws IOException, ParserException {
-        final var fixedBufferForAttributeValue = currentAttributes.currentAttributeValue();
-        byte b;
-        while ((b = (byte) inputStream.read()) != END_OF_STREAM) {
-            if (isWhitespace(b)) {
-                continue; // Skip whitespace
-            }
-            if (b == DOUBLE_QUOTE) {
-                // Start reading attribute value
-                while ((b = (byte) inputStream.read()) != END_OF_STREAM) {
-                    if (b == DOUBLE_QUOTE) {
-                        // End of attribute value
-                        return State.LOOKING_FOR_ATTRIBUTE_NAME; // Return to looking for next attribute name
-                    }
-                    fixedBufferForAttributeValue.append(b);
+        State[] state = {State.END};
+        currentTag.setCurrentByteAsStartPositon();
+        currentTag.consumeBytes(b -> {
+            try {
+                if (b == END_OF_STREAM) {
+                    throw new RuntimeException(
+                            new ParserException("Unexpected end of stream while looking for tag name"));
                 }
-                throw new ParserException("Unexpected end of stream while looking for end of attribute value");
-            } else {
-                throw new ParserException("Expected '\"' to start attribute value, but found '" + (char) b + "'");
+                if (isEndOfTagName(b)) {
+                    currentTag.setEndPositionExclusive();
+                    currentTag.abort();
+                    switch (b) {
+                        case RIGHT_ANGLE_BRACKET -> {
+                            state[0] = State.AT_END_OF_OPENING_TAG;
+                        }
+                        case SLASH -> {
+                            if(currentTag.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
+                                state[0] = State.AT_END_OF_SELF_CLOSING_TAG;
+                            } else {
+                                throw new ParserException("Unexpected end of stream while looking for right angle bracket in self-closing tag");
+                            }
+                        }
+                        default -> state[0] = State.LOOKING_FOR_ATTRIBUTE_NAME;
+                    }
+                }
+            }catch (Exception e) {
+                throw new RuntimeException(e);
             }
-        }
-        throw new ParserException("Unexpected end of stream while looking for attribute value");
+        });
+        return state[0];
     }
 
-    private State handleLookingForAttributeName(InputStream inputStream) throws IOException, ParserException {
-        byte b;
-        while ((b = (byte) inputStream.read()) != END_OF_STREAM) {
-            if (isWhitespace(b)) {
-                continue; // Skip whitespace
-            }
-            switch (b) {
-                case SLASH:
-                    return afterSlashExpectClosingTag(inputStream);
-                case RIGHT_ANGLE_BRACKET:
-                    return State.AT_END_OF_OPENING_TAG; // End of tag
-                case LEFT_ANGLE_BRACKET, EQUALITY_SIGN:
-                    throw new ParserException("Unexpected character '" + (char) b + "' while looking for attribute name");
-            }
-            // Start reading attribute name
-            final var fixedBufferForAttributeName = currentAttributes.newAttribute();
-            fixedBufferForAttributeName.append(b);
-            while ((b = (byte) inputStream.read()) != END_OF_STREAM) {
-                if(isAngleBrackets(b)) {
-                    throw new ParserException("Unexpected character in attribute name: " + (char) b);
+    private State handleLookingForAttributeValue() throws IOException, ParserException {
+        State[] state = {State.END};
+        final var attributeValue = currentAttributes.currentAttributeValue();
+        attributeValue.copyRemainingBytesFromPredecessor();
+        attributeValue.consumeBytes(b -> {
+            try {
+                if (b == DOUBLE_QUOTE) {
+                    attributeValue.skip(); // Move to the next byte after the double quote
+                    attributeValue.setCurrentByteAsStartPositon();
+                    attributeValue.abort();
+                    if (attributeValue.tryForwardAndSetEndPositionExclusive(DOUBLE_QUOTE)) {
+                        attributeValue.setEndPositionExclusive();
+                        attributeValue.skip();
+                        state[0] = State.LOOKING_FOR_ATTRIBUTE_NAME;
+                        return;
+                    }
+                    throw new ParserException("Unexpected end of stream while looking for double quote as end of value");
                 }
                 if (isWhitespace(b)) {
-                    //look for equality sign, while ignoring whitespace
-                    while ((b = (byte) inputStream.read()) != END_OF_STREAM) {
-                        if (b == EQUALITY_SIGN) {
-                            // Found equality sign, we can return to looking for attribute value
-                            return State.LOOKING_FOR_ATTRIBUTE_VALUE;
-                        } else if (!isWhitespace(b)) {
-                            throw new ParserException("Unexpected character '" + (char) b + "' while looking for equality sign after attribute name.");
+                    return; // Skip whitespace
+                }
+                if (b == END_OF_STREAM) {
+                    throw new ParserException("Unexpected end of stream while looking for attribute value");
+                }
+                throw new ParserException("Expected '\"' to start attribute value, but found '" + byteToSting(b) + "'");
+            }
+            catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        return state[0];
+    }
+
+    private State handleLookingForAttributeName() throws IOException {
+        State[] state = {State.END};
+
+        final var attributeName = currentAttributes.newAttribute();
+        attributeName.copyRemainingBytesFromPredecessor();
+
+        // read to the start of the attribute name
+        attributeName.consumeBytes(b -> {
+            try {
+                if (b == END_OF_STREAM) {
+                    throw new ParserException("Unexpected end of stream while looking for attribute name");
+                }
+                if (isWhitespace(b)) {
+                    return; // Skip whitespace
+                }
+                switch (b) {
+                    case SLASH -> {
+                        if(attributeName.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
+                            state[0] = State.AT_END_OF_SELF_CLOSING_TAG;
+                            attributeName.abort();
+                            return;
+                        } else {
+                            throw new ParserException("Unexpected end of stream while looking for right angle bracket in self-closing tag");
                         }
                     }
-                    throw new ParserException("Unexpected end of stream while looking for equality sign after attribute name");
+                    case RIGHT_ANGLE_BRACKET -> {
+                        attributeName.skip();
+                        state[0] = State.AT_END_OF_OPENING_TAG; // End of tag
+                        attributeName.abort();
+                        return;
+
+                    }
+
+                    case LEFT_ANGLE_BRACKET, EQUALITY_SIGN ->
+                            throw new ParserException("Unexpected character '" + byteToSting(b) + "' while looking for attribute name");
+                }
+                attributeName.abort();
+                state[0] = State.LOOKING_FOR_ATTRIBUTE_NAME;
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        // If we are not in the state of looking for attribute name, we return the current state
+        if(state[0] != State.LOOKING_FOR_ATTRIBUTE_NAME) {
+            currentAttributes.discardCurrentAttribute();
+            return state[0];
+        }
+        state[0] = State.END;
+        attributeName.setCurrentByteAsStartPositon();
+        // Now we are at the start of the attribute name, we can read it
+        attributeName.consumeBytes(b -> {
+            try {
+                if (isAngleBrackets(b)) {
+                    throw new ParserException("Unexpected character in attribute name: " + byteToSting(b));
                 }
                 if (EQUALITY_SIGN == b) {
                     // Found equality sign, we can return to looking for attribute value
-                    return State.LOOKING_FOR_ATTRIBUTE_VALUE;
+                    attributeName.abort(); // If we encounter whitespace, we stop reading the attribute name
+                    attributeName.setEndPositionExclusive();
+                    attributeName.skip(); // Move to the next byte after the equality sign
+                    state[0] = State.LOOKING_FOR_ATTRIBUTE_VALUE;
+                    return;
                 }
-                fixedBufferForAttributeName.append(b);
-                if (fixedBufferForAttributeName.isFull()) {
-                    throw new ParserException("Attribute name exceeds maximum length of " + fixedBufferForAttributeName.length() + " characters");
+                if (isWhitespace(b)) {
+                    attributeName.setEndPositionExclusive();
+                    attributeName.abort(); // If we encounter whitespace, we stop reading the attribute name
+                    //look for equality sign, while ignoring whitespace
+                    attributeName.consumeBytes(b1 -> {
+                        try {
+                            if (b1 == EQUALITY_SIGN) {
+                                // Found equality sign, we can return to looking for attribute value
+                                attributeName.abort();
+                                attributeName.skip(); // Move to the next byte after the equality sign
+                                state[0] = State.LOOKING_FOR_ATTRIBUTE_VALUE;
+                                return;
+                            }
+                            if (!isWhitespace(b1)) {
+                                if (b1 == END_OF_STREAM) {
+                                    throw new RuntimeException(
+                                            new ParserException("Unexpected end of stream while looking for equality sign after attribute name"));
+                                }
+
+                                throw new RuntimeException(
+                                        new ParserException("Unexpected character '" + byteToSting(b1) + "' while looking for equality sign after attribute name."));
+                            }
+                        }
+                        catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
                 }
             }
-        }
-        throw new ParserException("Unexpected end of stream while looking for attribute name");
+            catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+        return state[0];
     }
 
-    private State handleLookingForTag(InputStream inputStream) throws IOException {
-        final var buffer = new byte[64];
-        while ( true ) {
-            inputStream.mark(buffer.length);
-            int bytesRead = inputStream.read(buffer);
-            if (bytesRead == -1) {
-                return State.END; // End of stream
-            }
-            for (int i = 0; i < bytesRead; i++) {
-                if(buffer[i] == LEFT_ANGLE_BRACKET) {
-                    inputStream.reset(); // Reset the stream to the marked position
-                    inputStream.skipNBytes(i + 1); // Skip to the position after the '<'
-                    return State.LOOKING_FOR_TAG_NAME;
-                }
-            }
+    private State handleLookingForTag() throws IOException {
+        currentTag.copyRemainingBytesFromPredecessor();
+        if(currentTag.tryForwardToByteAfter(LEFT_ANGLE_BRACKET)){
+            return State.LOOKING_FOR_TAG_NAME;
         }
+        return State.END;
     }
 
-
+    public static String byteToSting(Byte b) {
+        if (b == null) {
+            return "null";
+        }
+        if (b == END_OF_STREAM) {
+            return "END_OF_STREAM";
+        }
+        return UTF_8.decode(ByteBuffer.wrap(new byte[]{b})).toString();
+    }
 }
