@@ -73,31 +73,19 @@ public class StreamBufferChild implements SpecialByteBuffer {
     }
 
     public boolean tryForwardAndSetStartPositionAfter(byte byteToSeek) throws IOException {
-        boolean[] found = {false};
-        this.consumeBytes(b -> {
-            if (b == byteToSeek) {
-                setNextByteAsStartPositon();
-                abort();
-                found[0] = true;
-            }
-        });
-        return found[0];
+        if(tryForwardToByte(byteToSeek)) {
+            setNextByteAsStartPositon();
+            return  true;
+        }
+        return false;
     }
 
     public boolean tryForwardAndSetEndPositionExclusive(byte byteToSeek) throws IOException {
-        var abortBefore = this.abort; // memoize the current abort state to avoid side effects
-        boolean[] found = {false};
-        this.consumeBytes(b -> {
-            if (b == byteToSeek) {
-                setEndPositionExclusive();
-                abort();
-                found[0] = true;
-            }
-        });
-        if (abortBefore) {
-            this.abort = true; // Restore the abort state if it was set before
+        if(tryForwardToByte(byteToSeek)) {
+            setEndPositionExclusive();
+            return  true;
         }
-        return found[0];
+        return false;
     }
 
     public boolean tryForwardToByte(byte byteToSeek) throws IOException {

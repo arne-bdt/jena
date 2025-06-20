@@ -137,6 +137,24 @@ public class CIMParser {
         }
     }
 
+    private static class Fragment {
+        final StreamBufferRoot root;
+        final QNameByteBuffer tag;
+        final DecodingTextByteBuffer textContent;
+        final AttributeCollection attributes;
+        private Fragment(StreamBufferRoot root) {
+            this.root = root;
+            this.tag = new QNameByteBuffer(root, MAX_LENGTH_OF_FRAGMENT);
+            this.textContent = new DecodingTextByteBuffer(root, MAX_LENGTH_OF_FRAGMENT);
+            this.attributes = new AttributeCollection(root);
+        }
+        public void reset() {
+            tag.reset();
+            textContent.reset();
+            attributes.reset();
+        }
+    }
+
     // Parser state
     private enum State {
         LOOKING_FOR_TAG,
@@ -324,10 +342,10 @@ public class CIMParser {
 
             // Now process the remaining attributes, which must be literals
             for(int i = 0; i< currentAttributes.size(); i++) {
-                if (currentAttributes.isConsumed(i)) {
+                final var attribute = currentAttributes.get(i);
+                if (attribute.isConsumed()) {
                     continue; // skip
                 }
-                final var attribute = currentAttributes.get(i);
                 var predicate = getOrCreateNodeForTagOrAttributeName(attribute.name());
                 var object = NodeFactory.createLiteralString(attribute.value().decodeToString());
                 streamRDFSink.triple(Triple.create(current.subject, predicate, object));
@@ -344,13 +362,13 @@ public class CIMParser {
 
         // process rdf:resource, rdf:datatype, and rdf:parseType attributes
         for (var i = 0; i < currentAttributes.size(); i++) {
-            if (currentAttributes.isConsumed(i)) {
+            final var attribute = currentAttributes.get(i);
+            if (attribute.isConsumed()) {
                 continue; // Skip already consumed attributes
             }
-            final var attribute = currentAttributes.get(i);
             if (ATTRIBUTE_RDF_RESOURCE.equals(attribute.name())) {
                 // rdf:resource
-                currentAttributes.setAsConsumed(i);
+                attribute.setConsumed();
                 var predicate = getOrCreateNodeForTagOrAttributeName(currentTag);
                 var object = getOrCreateNodeForIri(current.xmlBase, attribute.value());
                 streamRDFSink.triple(Triple.create(current.subject, predicate, object));
@@ -359,7 +377,7 @@ public class CIMParser {
             }
             if (ATTRIBUTE_RDF_DATATYPE.equals(attribute.name())) {
                 // rdf:datatype
-                currentAttributes.setAsConsumed(i);
+                attribute.setConsumed();
                 current.predicate = getOrCreateNodeForTagOrAttributeName(currentTag);
                 current.datatype = getOrCreateDatatypeForIri(current.xmlBase, attribute.value());
                 elementStack.push(current);
@@ -367,7 +385,7 @@ public class CIMParser {
             }
             if (ATTRIBUTE_RDF_PARSE_TYPE.equals(attribute.name())) {
                 // rdf:parseType
-                currentAttributes.setAsConsumed(i);
+                attribute.setConsumed();
                 final var parseType = attribute.value();
                 if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_LITERAL.equals(parseType)) {
                     throw new ParserException("rdf:parseType='Literal' is not supported in CIM/XML");
@@ -387,10 +405,10 @@ public class CIMParser {
         }
         // process remaining attributes as literals
         for (var i = 0; i < currentAttributes.size(); i++) {
-            if (currentAttributes.isConsumed(i)) {
+            final var attribute = currentAttributes.get(i);
+            if (attribute.isConsumed()) {
                 continue; // Skip already consumed attributes
             }
-            final var attribute = currentAttributes.get(i);
             var predicate = getOrCreateNodeForTagOrAttributeName(attribute.name());
             var object = NodeFactory.createLiteralString(attribute.value().decodeToString());
             streamRDFSink.triple(Triple.create(current.subject, predicate, object));
@@ -409,7 +427,7 @@ public class CIMParser {
         for (var i = 0; i < currentAttributes.size(); i++) {
             final var attribute = currentAttributes.get(i);
             if (ATTRIBUTE_XML_LANG.equals(attribute.name())) {
-                currentAttributes.setAsConsumed(i);
+                attribute.setConsumed();
                 // If the attribute is xml:lang, set the xmlLang for the element
                 xmlLang = langSet.getMatchingKey(attribute.value());
                 if (xmlLang == null) {
@@ -417,7 +435,7 @@ public class CIMParser {
                     langSet.tryAdd(xmlLang); // Store the xml:lang value to avoid copying
                 }
             } else if (ATTRIBUTE_XML_BASE.equals(attribute.name())) {
-                currentAttributes.setAsConsumed(i);
+                attribute.setConsumed();
                 // If the attribute is xml:base, set the xmlBase for the element
                 var namespace = attribute.value().copy();
                 xmlBase = baseSet.get(namespace);
@@ -543,23 +561,23 @@ public class CIMParser {
 
     private Node tryFindSubjectNodeInAttributes(NamespaceIriPair xmlBase) throws ParserException {
         for (int i = 0; i < currentAttributes.size(); i++) {
-            if (currentAttributes.isConsumed(i)) {
+            final var attribute = currentAttributes.get(i);
+            if (attribute.isConsumed()) {
                 continue; // Skip already consumed attributes
             }
-            final var attribute = currentAttributes.get(i);
             if (ATTRIBUTE_RDF_ABOUT.equals(attribute.name())) {
                 // rdf:about
-                currentAttributes.setAsConsumed(i);
+                attribute.setConsumed();
                 return getOrCreateNodeForIri(xmlBase, attribute.value());
             }
             if (ATTRIBUTE_RDF_ID.equals(attribute.name())) {
                 // rdf:ID here the value is relative to the xmlBase
-                currentAttributes.setAsConsumed(i);
+                attribute.setConsumed();
                 return getOrCreateNodeForRdfId(xmlBase, attribute.value());
             }
             if (ATTRIBUTE_RDF_NODE_ID.equals(attribute.name())) {
                 // rdf:nodeID
-                currentAttributes.setAsConsumed(i);
+                attribute.setConsumed();
                 return getOrCreateBlankNodeWithIdentifier(attribute.value());
             }
         }
@@ -580,10 +598,10 @@ public class CIMParser {
 
         // Now process the remaining attributes, which must be literals
         for(int i = 0; i< currentAttributes.size(); i++) {
-            if (currentAttributes.isConsumed(i)) {
+            final var attribute = currentAttributes.get(i);
+            if (attribute.isConsumed()) {
                 continue; // skip
             }
-            final var attribute = currentAttributes.get(i);
             var predicate = getOrCreateNodeForTagOrAttributeName(attribute.name());
             var object = NodeFactory.createLiteralString(attribute.value().decodeToString());
             streamRDFSink.triple(Triple.create(current.subject, predicate, object));
@@ -671,7 +689,7 @@ public class CIMParser {
                 throw new ParserException("Unexpected end of stream while skipping tag");
             }
         }
-        currentAttributes.newTag(); // Reset attributes for the new tag
+        currentAttributes.reset(); // Reset attributes for the new tag
 
         State[] state = {State.END};
         currentTag.setCurrentByteAsStartPositon();

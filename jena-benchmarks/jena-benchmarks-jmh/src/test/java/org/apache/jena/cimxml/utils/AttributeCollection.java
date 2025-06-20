@@ -1,6 +1,5 @@
 package org.apache.jena.cimxml.utils;
 
-import org.apache.jena.cimxml.CIMParser;
 import org.apache.jena.cimxml.collections.JenaHashSet;
 
 import java.util.ArrayList;
@@ -16,7 +15,7 @@ public class AttributeCollection {
         this.streamingBufferRoot = streamingBufferRoot;
     }
 
-    public void newTag() {
+    public void reset() {
         currentAttributeIndex = -1;
         alreadyConsumed.clear();
     }
@@ -31,6 +30,7 @@ public class AttributeCollection {
             attributeFixedBuffers.add(buffer);
         } else {
             buffer = attributeFixedBuffers.get(currentAttributeIndex);
+            buffer.resetToUnconsumed();
         }
         return buffer.name();
     }
@@ -53,13 +53,5 @@ public class AttributeCollection {
 
     public AttributeFixedBuffer get(int index) {
         return attributeFixedBuffers.get(index);
-    }
-
-    public boolean isConsumed(int index) {
-        return alreadyConsumed.containsKey(index);
-    }
-
-    public void setAsConsumed(int index) {
-        this.alreadyConsumed.tryAdd(index);
     }
 }
