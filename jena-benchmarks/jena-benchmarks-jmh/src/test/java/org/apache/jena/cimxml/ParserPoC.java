@@ -39,10 +39,7 @@ import javax.xml.XMLConstants;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.PushbackInputStream;
-import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -107,6 +104,44 @@ public class ParserPoC {
         public void finish() {
 
         }
+    }
+
+    @Test
+    public void testTextParserSimple() throws Exception {
+        JenaSystem.init();
+        final var xmlString = """
+                <?xml version="1.0" encoding="utf-8"?>
+                <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                            xmlns:dc="http://purl.org/dc/elements/1.1/">
+                
+                  <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar" dc:Author="Henry Ford &amp; &quot; &gt; &lt; &apos;">
+                    <dc:title>RDF 1.1 XML Syntax</dc:title>
+                  </rdf:Description>
+                </rdf:RDF>
+                """;
+        final var is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var parser = new CIMParser(is, new StreamRDFGraph(graph));
+
+        final var stopWatch = StopWatch.createStarted();
+        parser.parse();
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
+
+        stopWatch.reset();
+        stopWatch.start();
+        RDFParser.create()
+                .source(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)))
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .parse(new StreamRDFGraph(expectedGraph));
+        stopWatch.stop();
+
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
+
+        assertGraphsEqual(expectedGraph, graph);
     }
 
     @Test
@@ -195,8 +230,6 @@ public class ParserPoC {
 
         final var stopWatch = StopWatch.createStarted();
         parser.setBaseNamespace("urn:uuid:");
-        parser.doNotHandleCimUuidsWithMissingPrefix();
-        parser.treatRdfIdStandardConformant();
         parser.parse();
         stopWatch.stop();
         // print number of triples parsed and the time taken
@@ -240,8 +273,6 @@ public class ParserPoC {
 
         final var stopWatch = StopWatch.createStarted();
         parser.setBaseNamespace("urn:uuid");
-        parser.doNotHandleCimUuidsWithMissingPrefix();
-        parser.treatRdfIdStandardConformant();
         parser.parse();
         stopWatch.stop();
         // print number of triples parsed and the time taken
@@ -409,6 +440,22 @@ public class ParserPoC {
         stopWatch.stop();
         // print number of triples parsed and the time taken
         System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch + " calc:" + checksum);
+    }
+
+    @Test
+    public void testArrayCopyFromSelfToSelf() {
+        int[] array = {1, 2, 3, 4, 5, 6};
+        System.arraycopy(array, 3, array, 0, 3);
+        // the array should now contain {4, 5, 6, 4, 5, 6}
+        for (int i = 0; i < array.length; i++) {
+            System.out.print(array[i] + " ");
+        }
+        System.out.println();
+        System.arraycopy(array, 1, array, 0, 4);
+        // the array should now contain {5, 6, 4, 5, 5, 6}
+        for (int i = 0; i < array.length; i++) {
+            System.out.print(array[i] + " ");
+        }
     }
 
     @Test
