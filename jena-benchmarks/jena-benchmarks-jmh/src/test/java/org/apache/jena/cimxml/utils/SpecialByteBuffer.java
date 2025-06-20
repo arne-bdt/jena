@@ -2,6 +2,8 @@ package org.apache.jena.cimxml.utils;
 
 import com.github.jsonldjava.shaded.com.google.common.hash.Hashing;
 
+import java.nio.ByteBuffer;
+
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.jena.cimxml.utils.ParserConstants.*;
 
@@ -59,6 +61,10 @@ public interface SpecialByteBuffer {
 
     default ByteArrayKey join(SpecialByteBuffer other) {
         return new ByteArrayKey(joinedData(other));
+    }
+
+    default String joinToString(SpecialByteBuffer other) {
+        return UTF_8.decode(ByteBuffer.wrap(joinedData(other))).toString();
     }
 
     default ByteArrayKey join(SpecialByteBuffer... other) {
