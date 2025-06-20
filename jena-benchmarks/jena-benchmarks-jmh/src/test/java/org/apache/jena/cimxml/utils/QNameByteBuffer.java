@@ -33,12 +33,9 @@ public class QNameByteBuffer extends StreamBufferChild {
     }
 
     @Override
-    public void consumeBytes(Consumer<Byte> byteConsumer) throws IOException {
-        var c = byteConsumer.andThen((b) -> {
-            if (b == DOUBLE_COLON) {
-                startOfLocalPart = position + 1; // Set the start of local part after the colon
-            }
-        });
-        super.consumeBytes(c);
+    protected void afterConsumeCurrent() {
+        if (buffer[position] == DOUBLE_COLON) {
+            startOfLocalPart = position + 1; // Set the start of local part after the colon
+        }
     }
 }

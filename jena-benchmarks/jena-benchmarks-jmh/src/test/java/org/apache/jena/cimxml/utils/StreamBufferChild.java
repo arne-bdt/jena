@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.jena.cimxml.utils.ParserConstants.END_OF_STREAM;
 
-public class StreamBufferChild implements SpecialByteBuffer {
+public abstract class StreamBufferChild implements SpecialByteBuffer {
     /**
      * The root buffer that this child belongs to.
      * This is used to access the input stream for reading data.
@@ -88,19 +88,41 @@ public class StreamBufferChild implements SpecialByteBuffer {
         return false;
     }
 
+    protected abstract void afterConsumeCurrent();
+
+//    public boolean tryForwardToByte(byte byteToSeek) throws IOException {
+//        var abortBefore = this.abort; // memoize the current abort state to avoid side effects
+//        boolean[] found = {false};
+//        this.consumeBytes(b -> {
+//            if (b == byteToSeek) {
+//                abort();
+//                found[0] = true;
+//            }
+//        });
+//        if (abortBefore) {
+//            this.abort = true; // Restore the abort state if it was set before
+//        }
+//        return found[0];
+//    }
+
     public boolean tryForwardToByte(byte byteToSeek) throws IOException {
-        var abortBefore = this.abort; // memoize the current abort state to avoid side effects
-        boolean[] found = {false};
-        this.consumeBytes(b -> {
-            if (b == byteToSeek) {
-                abort();
-                found[0] = true;
+        if (position >= filledToExclusive) {
+            if (!tryFillFromInputStream()) {
+                return false; // No more data to read
             }
-        });
-        if (abortBefore) {
-            this.abort = true; // Restore the abort state if it was set before
         }
-        return found[0];
+        while (position < filledToExclusive) {
+            if (buffer[position] == byteToSeek) {
+                return true;
+            }
+            afterConsumeCurrent();
+            if (++position == filledToExclusive) {
+                if (!tryFillFromInputStream()) {
+                    return false; // No more data to read
+                }
+            }
+        }
+        return false; // Byte not found
     }
 
     public boolean tryForwardToByteAfter(byte byteToSeek) throws IOException {
@@ -167,7 +189,7 @@ public class StreamBufferChild implements SpecialByteBuffer {
     }
 
     public void consumeBytes(Consumer<Byte> byteConsumer) throws IOException {
-        var abortBefore = this.abort; // memoize the current abort state to avoid side effects
+        var abortBefore = this.abort; // memorize the current abort state to avoid side effects
         abort = false;
         if (position >= filledToExclusive) {
             if (!tryFillFromInputStream()) {
@@ -180,6 +202,7 @@ public class StreamBufferChild implements SpecialByteBuffer {
             if (abort) {
                 return;
             }
+            afterConsumeCurrent();
             if (++position >= filledToExclusive) {
                 if (!tryFillFromInputStream()) {
                     byteConsumer.accept(END_OF_STREAM);
