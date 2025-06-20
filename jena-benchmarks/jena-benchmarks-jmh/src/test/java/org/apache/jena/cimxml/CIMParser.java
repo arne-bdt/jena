@@ -679,7 +679,7 @@ public class CIMParser {
             }
             if (isEndOfTagName(b)) {
                 // If the first byte is not a valid start of tag name, we throw an exception
-                throw new ParserException("Unexpected character at the start of tag name: " + byteToSting(b));
+                throw new ParserException("Unexpected character at the start of tag name: " + byteToString(b));
             }
             // If the first char is a '?' or '!', we skip the tag and look for the next one
             // This is typically used for XML declarations or comments
@@ -736,60 +736,41 @@ public class CIMParser {
         }
     }
 
-    private State handleLookingForAttributeName() throws IOException {
-        State[] state = {State.END};
-
+    private State handleLookingForAttributeName() throws IOException, ParserException {
         final var attributeName = currentAttributes.newAttribute(MAX_LENGTH_OF_FRAGMENT);
         attributeName.copyRemainingBytesFromPredecessor();
 
         // read to the start of the attribute name
-        attributeName.consumeBytes(b -> {
-            try {
-                if (b == END_OF_STREAM) {
-                    throw new ParserException("Unexpected end of stream while looking for attribute name");
-                }
-                if (isWhitespace(b)) {
-                    return; // Skip whitespace
-                }
-                switch (b) {
-                    case SLASH -> {
-                        if(attributeName.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
-                            state[0] = State.AT_END_OF_SELF_CLOSING_TAG;
-                            attributeName.abort();
-                            return;
-                        } else {
-                            throw new ParserException("Unexpected end of stream while looking for right angle bracket in self-closing tag");
-                        }
+        if (attributeName.tryConsumeUntilNonWhitespace()) {
+            // let's check the current byte
+            switch (attributeName.peek()) {
+                case SLASH -> { // self-closing tag
+                    if(attributeName.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
+                        currentAttributes.discardCurrentAttribute();
+                        return State.AT_END_OF_SELF_CLOSING_TAG;
+                    } else {
+                        throw new ParserException("Unexpected end of stream while looking for right angle bracket in self-closing tag");
                     }
-                    case RIGHT_ANGLE_BRACKET -> {
-                        attributeName.skip();
-                        state[0] = State.AT_END_OF_OPENING_TAG; // End of tag
-                        attributeName.abort();
-                        return;
-
-                    }
-
-                    case LEFT_ANGLE_BRACKET, EQUALITY_SIGN ->
-                            throw new ParserException("Unexpected character '" + byteToSting(b) + "' while looking for attribute name");
                 }
-                attributeName.abort();
-                state[0] = State.LOOKING_FOR_ATTRIBUTE_NAME;
-            } catch (Exception e) {
-                throw new RuntimeException(e);
+                case RIGHT_ANGLE_BRACKET -> { // end of opening tag
+                    attributeName.skip();
+                    currentAttributes.discardCurrentAttribute();
+                    return State.AT_END_OF_OPENING_TAG; // End of tag
+                }
+
+                case LEFT_ANGLE_BRACKET, EQUALITY_SIGN -> // Invalid characters for attribute name
+                        throw new ParserException("Unexpected character '" + byteToString(attributeName.peek()) + "' while looking for attribute name");
             }
-        });
-        // If we are not in the state of looking for attribute name, we return the current state
-        if(state[0] != State.LOOKING_FOR_ATTRIBUTE_NAME) {
-            currentAttributes.discardCurrentAttribute();
-            return state[0];
+        } else {
+            throw new ParserException("Unexpected end of stream while looking for attribute name");
         }
-        state[0] = State.END;
+        State[] state = {State.END};
         attributeName.setCurrentByteAsStartPositon();
         // Now we are at the start of the attribute name, we can read it
         attributeName.consumeBytes(b -> {
             try {
                 if (isAngleBrackets(b)) {
-                    throw new ParserException("Unexpected character in attribute name: " + byteToSting(b));
+                    throw new ParserException("Unexpected character in attribute name: " + byteToString(b));
                 }
                 if (EQUALITY_SIGN == b) {
                     // Found equality sign, we can return to looking for attribute value
@@ -819,7 +800,7 @@ public class CIMParser {
                                 }
 
                                 throw new RuntimeException(
-                                        new ParserException("Unexpected character '" + byteToSting(b1) + "' while looking for equality sign after attribute name."));
+                                        new ParserException("Unexpected character '" + byteToString(b1) + "' while looking for equality sign after attribute name."));
                             }
                         }
                         catch (Exception e) {
@@ -843,7 +824,7 @@ public class CIMParser {
         return State.END;
     }
 
-    public static String byteToSting(Byte b) {
+    public static String byteToString(Byte b) {
         if (b == null) {
             return "null";
         }

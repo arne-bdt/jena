@@ -5,8 +5,7 @@ import org.apache.jena.cimxml.CIMParser;
 import java.io.IOException;
 import java.util.function.Consumer;
 
-import static org.apache.jena.cimxml.utils.ParserConstants.DOUBLE_COLON;
-import static org.apache.jena.cimxml.utils.ParserConstants.isEndOfTagName;
+import static org.apache.jena.cimxml.utils.ParserConstants.*;
 
 public class QNameByteBuffer extends StreamBufferChild {
     private int startOfLocalPart = 0; // Index where the local part starts
@@ -51,6 +50,27 @@ public class QNameByteBuffer extends StreamBufferChild {
                 return true;
             }
             afterConsumeCurrent();
+            if (++position == filledToExclusive) {
+                if (!tryFillFromInputStream()) {
+                    return false; // No more data to read
+                }
+            }
+        }
+        return false; // Byte not found
+    }
+
+    public boolean tryConsumeUntilNonWhitespace() throws IOException {
+        if (position >= filledToExclusive) {
+            if (!tryFillFromInputStream()) {
+                return false; // No more data to read
+            }
+        }
+        while (position < filledToExclusive) {
+            if (!isWhitespace(buffer[position])) {
+                afterConsumeCurrent();
+                return true;
+            }
+            // no need to call afterConsumeCurrent here, as we are skipping whitespace
             if (++position == filledToExclusive) {
                 if (!tryFillFromInputStream()) {
                     return false; // No more data to read
