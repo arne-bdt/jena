@@ -693,34 +693,25 @@ public class CIMParser {
 
         State[] state = {State.END};
         currentTag.setCurrentByteAsStartPositon();
-        currentTag.consumeBytes(b -> {
-            try {
-                if (b == END_OF_STREAM) {
-                    throw new RuntimeException(
-                            new ParserException("Unexpected end of stream while looking for tag name"));
+        if (currentTag.tryConsumeToEndOfTagName()) {
+            currentTag.setEndPositionExclusive();
+            switch (currentTag.peek()) {
+                case RIGHT_ANGLE_BRACKET -> {
+                    currentTag.skip(); // Move to the next byte after the right angle bracket
+                    state[0] = State.AT_END_OF_OPENING_TAG;
                 }
-                if (isEndOfTagName(b)) {
-                    currentTag.setEndPositionExclusive();
-                    currentTag.abort();
-                    switch (b) {
-                        case RIGHT_ANGLE_BRACKET -> {
-                            currentTag.skip(); // Move to the next byte after the right angle bracket
-                            state[0] = State.AT_END_OF_OPENING_TAG;
-                        }
-                        case SLASH -> {
-                            if(currentTag.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
-                                state[0] = State.AT_END_OF_SELF_CLOSING_TAG;
-                            } else {
-                                throw new ParserException("Unexpected end of stream while looking for right angle bracket in self-closing tag");
-                            }
-                        }
-                        default -> state[0] = State.LOOKING_FOR_ATTRIBUTE_NAME;
+                case SLASH -> {
+                    if(currentTag.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
+                        state[0] = State.AT_END_OF_SELF_CLOSING_TAG;
+                    } else {
+                        throw new ParserException("Unexpected end of stream while looking for right angle bracket in self-closing tag");
                     }
                 }
-            }catch (Exception e) {
-                throw new RuntimeException(e);
+                default -> state[0] = State.LOOKING_FOR_ATTRIBUTE_NAME;
             }
-        });
+        } else {
+            throw new ParserException("Unexpected end of stream while looking for tag name");
+        }
         return state[0];
     }
 

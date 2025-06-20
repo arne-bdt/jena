@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.function.Consumer;
 
 import static org.apache.jena.cimxml.utils.ParserConstants.DOUBLE_COLON;
+import static org.apache.jena.cimxml.utils.ParserConstants.isEndOfTagName;
 
 public class QNameByteBuffer extends StreamBufferChild {
     private int startOfLocalPart = 0; // Index where the local part starts
@@ -37,5 +38,25 @@ public class QNameByteBuffer extends StreamBufferChild {
         if (buffer[position] == DOUBLE_COLON) {
             startOfLocalPart = position + 1; // Set the start of local part after the colon
         }
+    }
+
+    public boolean tryConsumeToEndOfTagName() throws IOException {
+        if (position >= filledToExclusive) {
+            if (!tryFillFromInputStream()) {
+                return false; // No more data to read
+            }
+        }
+        while (position < filledToExclusive) {
+            if (isEndOfTagName(buffer[position])) {
+                return true;
+            }
+            afterConsumeCurrent();
+            if (++position == filledToExclusive) {
+                if (!tryFillFromInputStream()) {
+                    return false; // No more data to read
+                }
+            }
+        }
+        return false; // Byte not found
     }
 }

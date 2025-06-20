@@ -216,7 +216,7 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
         }
     }
 
-    private boolean tryFillFromInputStream() throws IOException {
+    protected boolean tryFillFromInputStream() throws IOException {
         if (hasRemainingCapacity()) {
             var bytesRead = root.inputStream.read(this.buffer, filledToExclusive,
                     buffer.length - filledToExclusive);
