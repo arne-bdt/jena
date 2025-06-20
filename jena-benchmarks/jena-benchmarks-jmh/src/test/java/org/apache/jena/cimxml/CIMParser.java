@@ -234,7 +234,7 @@ public class CIMParser {
     }
 
     private void parse(InputStream inputStream) throws IOException, ParserException {
-        try (inputStream; var is = new BufferedInputStream(inputStream, MAX_LENGTH_OF_TEXT_CONTENT)) {
+        try (inputStream; var is = new BufferedInputStream(inputStream, MAX_BUFFER_SIZE)) {
             root.setInputStream(is);;
             var state = State.LOOKING_FOR_TAG;
             while (state != State.END) {
@@ -283,6 +283,7 @@ public class CIMParser {
     }
 
     private State handleClosingTag() throws IOException, ParserException {
+        currentTag.copyRemainingBytesFromPredecessor();
         if (currentTag.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
             this.elementStack.pop();
             return State.LOOKING_FOR_TAG;
@@ -327,11 +328,6 @@ public class CIMParser {
             state = handleRdfLi();
         } else {
             state = handleOtherTag();
-        }
-        if(!currentTag.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
-            // If we reach here, it means we didn't find the closing tag properly
-            throw new ParserException("Unexpected end of stream while looking for closing angle bracket in tag: "
-                    + currentTag.decodeToString());
         }
         return state;
     }
@@ -1955,6 +1951,7 @@ public class CIMParser {
 
 
     private State handleLookingForTagName() throws IOException, ParserException {
+        currentTag.copyRemainingBytesFromPredecessor();
         {
             final var b = currentTag.peek();
             if (SLASH == b) {
@@ -1990,6 +1987,7 @@ public class CIMParser {
                     currentTag.abort();
                     switch (b) {
                         case RIGHT_ANGLE_BRACKET -> {
+                            currentTag.skip(); // Move to the next byte after the right angle bracket
                             state[0] = State.AT_END_OF_OPENING_TAG;
                         }
                         case SLASH -> {
