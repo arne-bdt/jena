@@ -45,6 +45,7 @@ import java.util.*;
 import static org.apache.jena.cimxml.utils.ParserConstants.*;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.jena.cimxml.utils.ParserConstants.isEndOfTagName;
 
 public class CIMParser {
     private static final char CHAR_SHARP = '#';
@@ -109,8 +110,8 @@ public class CIMParser {
     private final JenaHashMap<NamespaceAndQName, Node> iriNodeCacheWithNamespace = new JenaHashMap<>();
     private final JenaHashMap<SpecialByteBuffer, Node> iriNodeCacheWithoutNamespace = new JenaHashMap<>();
 
-    private record NamespaceIriPair(SpecialByteBuffer namespace, IRIx iri) {}
-    private record NamespaceAndQName(SpecialByteBuffer namespace, SpecialByteBuffer qname) {}
+    private record NamespaceIriPair(ByteArrayKey namespace, IRIx iri) {}
+    private record NamespaceAndQName(ByteArrayKey namespace, SpecialByteBuffer qname) {}
 
     private final IRIProvider iriProvider = new IRIProvider3986();
 
@@ -526,7 +527,8 @@ public class CIMParser {
                 }
                 namespace = defaultNamespace;
             }
-            uriNode = NodeFactory.createURI(namespace.namespace.join(tagOrAttributeName.getLocalPart()).decodeToString());
+            uriNode = NodeFactory.createURI(
+                    namespace.namespace.decodeToString() + tagOrAttributeName.getLocalPart().decodeToString());
             tagOrAttributeNameToUriNode.put(tagOrAttributeName.copy(), uriNode);
         }
         return uriNode;
@@ -691,61 +693,47 @@ public class CIMParser {
         }
         currentAttributes.reset(); // Reset attributes for the new tag
 
-        State[] state = {State.END};
+        State state;
         currentTag.setCurrentByteAsStartPositon();
         if (currentTag.tryConsumeToEndOfTagName()) {
             currentTag.setEndPositionExclusive();
             switch (currentTag.peek()) {
                 case RIGHT_ANGLE_BRACKET -> {
                     currentTag.skip(); // Move to the next byte after the right angle bracket
-                    state[0] = State.AT_END_OF_OPENING_TAG;
+                    state = State.AT_END_OF_OPENING_TAG;
                 }
                 case SLASH -> {
                     if(currentTag.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
-                        state[0] = State.AT_END_OF_SELF_CLOSING_TAG;
+                        state = State.AT_END_OF_SELF_CLOSING_TAG;
                     } else {
                         throw new ParserException("Unexpected end of stream while looking for right angle bracket in self-closing tag");
                     }
                 }
-                default -> state[0] = State.LOOKING_FOR_ATTRIBUTE_NAME;
+                default -> state = State.LOOKING_FOR_ATTRIBUTE_NAME;
             }
         } else {
             throw new ParserException("Unexpected end of stream while looking for tag name");
         }
-        return state[0];
+        return state;
     }
 
     private State handleLookingForAttributeValue() throws IOException, ParserException {
-        State[] state = {State.END};
         final var attributeValue = currentAttributes.currentAttributeValue();
         attributeValue.copyRemainingBytesFromPredecessor();
-        attributeValue.consumeBytes(b -> {
-            try {
-                if (b == DOUBLE_QUOTE) {
-                    attributeValue.skip(); // Move to the next byte after the double quote
-                    attributeValue.setCurrentByteAsStartPositon();
-                    attributeValue.abort();
-                    if (attributeValue.tryForwardAndSetEndPositionExclusive(DOUBLE_QUOTE)) {
-                        attributeValue.setEndPositionExclusive();
-                        attributeValue.skip();
-                        state[0] = State.LOOKING_FOR_ATTRIBUTE_NAME;
-                        return;
-                    }
-                    throw new ParserException("Unexpected end of stream while looking for double quote as end of value");
-                }
-                if (isWhitespace(b)) {
-                    return; // Skip whitespace
-                }
-                if (b == END_OF_STREAM) {
-                    throw new ParserException("Unexpected end of stream while looking for attribute value");
-                }
-                throw new ParserException("Expected '\"' to start attribute value, but found '" + byteToSting(b) + "'");
+        if(attributeValue.tryConsumeToStartOfAttributeValue()) {
+            attributeValue.skip(); // Move to the next byte after the double quote
+            attributeValue.setCurrentByteAsStartPositon();
+            attributeValue.abort();
+            if (attributeValue.tryForwardAndSetEndPositionExclusive(DOUBLE_QUOTE)) {
+                attributeValue.setEndPositionExclusive();
+                attributeValue.skip();
+                return State.LOOKING_FOR_ATTRIBUTE_NAME;
+            } else {
+                throw new ParserException("Unexpected end of stream while looking for double quote as end of value");
             }
-            catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-        return state[0];
+        } else {
+            throw new ParserException("Unexpected end of stream or non whitespace character while looking for double quote as start of attribute value");
+        }
     }
 
     private State handleLookingForAttributeName() throws IOException {
