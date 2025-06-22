@@ -14,10 +14,6 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
      */
     protected final StreamBufferRoot root;
     /**
-     * The byte array buffer that holds the data read from the input stream.
-     */
-    protected final byte[] buffer;
-    /**
      * The offset in the buffer where the data starts.
      */
     protected int start = 0;
@@ -25,51 +21,28 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
      * Marks the end of relevant data in the buffer.
      */
     protected int endExclusive = 0;
-    /**
-     * This marks the position to which the buffer is filled.
-     */
-    protected int filledToExclusive = 0;
 
-    /**
-     * The position in the buffer where the next byte will be read.
-     */
-    protected int position = 0;
-
-    protected boolean abort = false;
-
-    public StreamBufferChild(StreamBufferRoot parent, int size) {
+    public StreamBufferChild(StreamBufferRoot parent) {
         if (parent == null) {
             throw new IllegalArgumentException("Parent buffer cannot be null");
         }
         this.root = parent;
-        this.buffer = new byte[size];
     }
 
     public void reset() {
         this.start = 0;
-        this.endExclusive = 0;
-        this.filledToExclusive = 0;
-        this.position = 0;
-    }
-
-    public void abort() {
-        this.abort = true;
     }
 
     public void setCurrentByteAsStartPositon() {
-        this.start = this.position;
+        this.start = this.root.position;
     }
 
     public void setNextByteAsStartPositon() {
-        this.start = this.position + 1;
+        this.start = this.root.position + 1;
     }
 
     public void setEndPositionExclusive() {
-        this.endExclusive = this.position;
-    }
-
-    public boolean hasRemainingCapacity() {
-        return filledToExclusive < buffer.length;
+        this.endExclusive = this.root.position;
     }
 
     public boolean tryForwardAndSetStartPositionAfter(byte byteToSeek) throws IOException {
@@ -91,18 +64,18 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
     protected abstract void afterConsumeCurrent();
 
     public boolean tryForwardToByte(byte byteToSeek) throws IOException {
-        if (position >= filledToExclusive) {
-            if (!tryFillFromInputStream()) {
+        if (root.position >= root.filledToExclusive) {
+            if (!root.tryFillFromInputStream()) {
                 return false; // No more data to read
             }
         }
-        while (position < filledToExclusive) {
-            if (buffer[position] == byteToSeek) {
+        while (root.position < root.filledToExclusive) {
+            if (root.buffer[root.position] == byteToSeek) {
                 return true;
             }
             afterConsumeCurrent();
-            if (++position == filledToExclusive) {
-                if (!tryFillFromInputStream()) {
+            if (++root.position == root.filledToExclusive) {
+                if (!root.tryFillFromInputStream()) {
                     return false; // No more data to read
                 }
             }
@@ -112,43 +85,19 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
 
     public boolean tryForwardToByteAfter(byte byteToSeek) throws IOException {
         boolean found = tryForwardToByte(byteToSeek);
-        position++;
+        root.position++;
         return found;
     }
 
-    /**
-     * Copies remaining bytes from the last used child buffer of the parent.
-     * This is used to handover remaining bytes from one child buffer to the next.
-     * Attention: The predecessor may be identical to this child buffer.
-     * In that case, the remaining bytes are copied to the beginning of this buffer
-     */
-    public void copyRemainingBytesFromPredecessor() {
-        if (root.lastUsedChildBuffer == null) {
-            root.lastUsedChildBuffer = this;
-            reset();
-            return; // Nothing to copy
-        }
-        var predecessor = root.lastUsedChildBuffer;
-        var remainingBytes = predecessor.filledToExclusive - predecessor.position;
-        if (remainingBytes == 0) {
-            root.lastUsedChildBuffer = this;
-            reset();
-            return; // No remaining bytes to copy
-        }
-        System.arraycopy(predecessor.buffer, predecessor.position,
-                this.buffer, 0, remainingBytes);
-        reset();
-        this.filledToExclusive = remainingBytes;
-        root.lastUsedChildBuffer = this;
-    }
+
 
     public byte peek() throws IOException {
-        if (position >= filledToExclusive) {
-            if (!tryFillFromInputStream()) {
+        if (root.position >= root.filledToExclusive) {
+            if (!root.tryFillFromInputStream()) {
                 return END_OF_STREAM;
             }
         }
-        return buffer[position];
+        return root.buffer[root.position];
     }
 
     /**
@@ -158,7 +107,7 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
      * @throws IOException if an I/O error occurs while reading from the input stream
      */
     public byte next() throws IOException {
-        position++;
+        root.position++;
         return peek();
     }
 
@@ -169,21 +118,8 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
      * @throws IOException if an I/O error occurs while reading from the input stream
      */
     public void skip() throws IOException {
-        position++;
+        root.position++;
         peek();
-    }
-
-    protected boolean tryFillFromInputStream() throws IOException {
-        if (hasRemainingCapacity()) {
-            var bytesRead = root.inputStream.read(this.buffer, filledToExclusive,
-                    buffer.length - filledToExclusive);
-            if (bytesRead == -1) {
-                return false;
-            }
-            filledToExclusive += bytesRead;
-            return true;
-        }
-        return false;
     }
 
     @Override
@@ -198,7 +134,7 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
 
     @Override
     public byte[] getData() {
-        return this.buffer;
+        return this.root.buffer;
     }
 
     @Override
@@ -206,14 +142,14 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
         String text;
         if (start == 0 && endExclusive == 0) {
             text = "Start at 0:[" +
-                    new String(buffer, start, position - start + 1, UTF_8)
+                    new String(root.buffer, start, root.position - start + 1, UTF_8)
                     + "]--> end not defined yet";
         } else if (start > endExclusive) {
-            if (start < position) {
-                text = new String(buffer, start, position - start + 1, UTF_8)
+            if (start < root.position) {
+                text = new String(root.buffer, start, root.position - start + 1, UTF_8)
                         + "][--> end not defined yet";
             } else {
-                text = new String(buffer, start, 1, UTF_8)
+                text = new String(root.buffer, start, 1, UTF_8)
                         + "][--> end not defined yet";
             }
         } else {
@@ -223,10 +159,10 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
     }
 
     public String wholeBufferToString() {
-        return new String(this.buffer, 0, this.filledToExclusive, UTF_8);
+        return new String(this.root.buffer, 0, this.root.filledToExclusive, UTF_8);
     }
 
     public String remainingBufferToString() {
-        return new String(this.buffer, position, filledToExclusive - position, UTF_8);
+        return new String(this.root.buffer, root.position, root.filledToExclusive - root.position, UTF_8);
     }
 }

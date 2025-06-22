@@ -66,7 +66,7 @@ public class ParserPoC {
 
     //private final String file = "C:\\temp\\CGMES_v2.4.15_TestConfigurations_v4.0.3\\MicroGrid\\BaseCase_BC\\CGMES_v2.4.15_MicroGridTestConfiguration_BC_Assembled_CA_v2\\MicroGridTestConfiguration_BC_NL_GL_V2.xml";
     private final String file = "C:\\temp\\v59_3\\AMP_Export_s82_v58_H69.xml";
-    //private final String file ="C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml";
+//    private final String file ="C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml";
 
     @Test
     public void testRdfId() throws Exception {
@@ -456,10 +456,7 @@ public class ParserPoC {
     }
 
     public void assertGraphsEqual(Graph expected, Graph actual) {
-        // check graph sizes
-        assertEquals("Graphs are not equal: different sizes.",
-                expected.size(), actual.size());
-        // check that all triples in expected graph are in actual graph
+       // check that all triples in expected graph are in actual graph
         expected.find().forEachRemaining(expectedTriple -> {
             if(!actual.contains(expectedTriple)) {
                 int i= 0;
@@ -467,6 +464,11 @@ public class ParserPoC {
             assertTrue("Graphs are not equal: missing triple " + expectedTriple,
                     actual.contains(expectedTriple));
         });
+
+        // check graph sizes
+        assertEquals("Graphs are not equal: different sizes.",
+                expected.size(), actual.size());
+
 
         // check namespace mappings size
         assertEquals("Graphs are not equal: different number of namespaces.",

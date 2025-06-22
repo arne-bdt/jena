@@ -37,14 +37,15 @@ public abstract class ParserConstants {
     }
 
     public static boolean isWhitespace(byte b) {
-        if(b == (WHITESPACE_BLOOM_FILTER & b)) {
-            switch (b) {
-                case WHITESPACE_SPACE, WHITESPACE_TAB, WHITESPACE_NEWLINE, WHITESPACE_CARRIAGE_RETURN -> {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return Character.isWhitespace(b);
+//        if(b == (WHITESPACE_BLOOM_FILTER & b)) {
+//            switch (b) {
+//                case WHITESPACE_SPACE, WHITESPACE_TAB, WHITESPACE_NEWLINE, WHITESPACE_CARRIAGE_RETURN -> {
+//                    return true;
+//                }
+//            }
+//        }
+//        return false;
     }
 
     public static boolean isEndOfTagName(byte b) {

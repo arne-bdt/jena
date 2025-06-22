@@ -20,13 +20,13 @@ public class AttributeCollection {
         alreadyConsumed.clear();
     }
 
-    public QNameByteBuffer newAttribute(final int maxBufferSize) {
+    public QNameByteBuffer newAttribute() {
         final AttributeFixedBuffer buffer;
         currentAttributeIndex++;
         if (currentAttributeIndex == attributeFixedBuffers.size()) {
             buffer = new AttributeFixedBuffer(
-                    new QNameByteBuffer(streamingBufferRoot, maxBufferSize),
-                    new DecodingTextByteBuffer(streamingBufferRoot, maxBufferSize));
+                    new QNameByteBuffer(streamingBufferRoot),
+                    new DecodingTextByteBuffer(streamingBufferRoot));
             attributeFixedBuffers.add(buffer);
         } else {
             buffer = attributeFixedBuffers.get(currentAttributeIndex);

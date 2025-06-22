@@ -36,15 +36,12 @@ import javax.xml.XMLConstants;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
 import static org.apache.jena.cimxml.utils.ParserConstants.*;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.jena.cimxml.utils.ParserConstants.isEndOfTagName;
 
 public class CIMParser {
@@ -53,6 +50,7 @@ public class CIMParser {
     private static final String STRING_NAMESPACE_RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
     private static final int MAX_BUFFER_SIZE = 256*4096; // 256 KB
+    private static final int MAX_LENGTH_OF_FRAGMENT = 4096; // Maximum length for tag names
 
     private static final ByteArrayKey ATTRIBUTE_XMLNS = new ByteArrayKey(XMLConstants.XMLNS_ATTRIBUTE);
 
@@ -80,7 +78,6 @@ public class CIMParser {
 
     private static final ByteArrayKey XML_DEFAULT_NS_PREFIX = new ByteArrayKey(XMLConstants.DEFAULT_NS_PREFIX);
 
-    private static final int MAX_LENGTH_OF_FRAGMENT = 1024; // Maximum length for tag names
 
     private static final Node NODE_RDF_TYPE = NodeFactory.createURI(STRING_NAMESPACE_RDF + "type");
 
@@ -93,10 +90,10 @@ public class CIMParser {
             = new ByteArrayMap<>(256, 8);
     private final StreamRDF streamRDFSink;
 
-    private final StreamBufferRoot root = new StreamBufferRoot();
-    private final QNameByteBuffer currentTag = new QNameByteBuffer(root, MAX_LENGTH_OF_FRAGMENT);
+    private final StreamBufferRoot root = new StreamBufferRoot(MAX_LENGTH_OF_FRAGMENT);
+    private final QNameByteBuffer currentTag = new QNameByteBuffer(root);
     private final AttributeCollection currentAttributes = new AttributeCollection(root);
-    private final DecodingTextByteBuffer currentTextContent = new DecodingTextByteBuffer(root, MAX_LENGTH_OF_FRAGMENT);
+    private final DecodingTextByteBuffer currentTextContent = new DecodingTextByteBuffer(root);
 
     private final Deque<Element> elementStack = new ArrayDeque<>();
 
@@ -145,8 +142,8 @@ public class CIMParser {
         final AttributeCollection attributes;
         private Fragment(StreamBufferRoot root) {
             this.root = root;
-            this.tag = new QNameByteBuffer(root, MAX_LENGTH_OF_FRAGMENT);
-            this.textContent = new DecodingTextByteBuffer(root, MAX_LENGTH_OF_FRAGMENT);
+            this.tag = new QNameByteBuffer(root);
+            this.textContent = new DecodingTextByteBuffer(root);
             this.attributes = new AttributeCollection(root);
         }
         public void reset() {
@@ -259,7 +256,6 @@ public class CIMParser {
             throw new ParserException("Text content found without subject or predicate: "
                     + currentTextContent.decodeToString());
         }
-        currentTextContent.copyRemainingBytesFromPredecessor();
         currentTextContent.setCurrentByteAsStartPositon();
         if(!currentTextContent.tryForwardAndSetEndPositionExclusive(LEFT_ANGLE_BRACKET)) {
             throw new ParserException("Unexpected end of stream while looking for opening tag after text content: "
@@ -274,12 +270,11 @@ public class CIMParser {
         streamRDFSink.triple(Triple.create(parent.subject, parent.predicate, object));
 
         //refresh currentTag --> this is a shortcut to avoid LOOKING_FOR_TAG status, which would refresh currentTag
-        currentTag.copyRemainingBytesFromPredecessor();
+        root.copyRemainingBytesToStart();
         return State.LOOKING_FOR_TAG_NAME;
     }
 
     private State handleClosingTag() throws IOException, ParserException {
-        currentTag.copyRemainingBytesFromPredecessor();
         if (currentTag.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
             this.elementStack.pop();
             return State.LOOKING_FOR_TAG;
@@ -670,7 +665,7 @@ public class CIMParser {
 
 
     private State handleLookingForTagName() throws IOException, ParserException {
-        currentTag.copyRemainingBytesFromPredecessor();
+        root.copyRemainingBytesToStart();
         {
             final var b = currentTag.peek();
             if (SLASH == b) {
@@ -719,11 +714,9 @@ public class CIMParser {
 
     private State handleLookingForAttributeValue() throws IOException, ParserException {
         final var attributeValue = currentAttributes.currentAttributeValue();
-        attributeValue.copyRemainingBytesFromPredecessor();
         if(attributeValue.tryConsumeToStartOfAttributeValue()) {
             attributeValue.skip(); // Move to the next byte after the double quote
             attributeValue.setCurrentByteAsStartPositon();
-            attributeValue.abort();
             if (attributeValue.tryForwardAndSetEndPositionExclusive(DOUBLE_QUOTE)) {
                 attributeValue.setEndPositionExclusive();
                 attributeValue.skip();
@@ -737,8 +730,7 @@ public class CIMParser {
     }
 
     private State handleLookingForAttributeName() throws IOException, ParserException {
-        final var attributeName = currentAttributes.newAttribute(MAX_LENGTH_OF_FRAGMENT);
-        attributeName.copyRemainingBytesFromPredecessor();
+        final var attributeName = currentAttributes.newAttribute();
 
         // read to the start of the attribute name
         if (attributeName.tryConsumeUntilNonWhitespace()) {
@@ -781,7 +773,6 @@ public class CIMParser {
     }
 
     private State handleLookingForTag() throws IOException {
-        currentTag.copyRemainingBytesFromPredecessor();
         if(currentTag.tryForwardToByteAfter(LEFT_ANGLE_BRACKET)){
             return State.LOOKING_FOR_TAG_NAME;
         }

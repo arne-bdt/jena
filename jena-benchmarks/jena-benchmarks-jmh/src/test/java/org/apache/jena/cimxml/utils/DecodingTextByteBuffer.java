@@ -8,8 +8,8 @@ import static org.apache.jena.cimxml.utils.ParserConstants.*;
 public class DecodingTextByteBuffer extends StreamBufferChild {
     protected int lastAmpersandPosition = -1; // Position of the last '&' character, used for decoding
 
-    public DecodingTextByteBuffer(StreamBufferRoot parent, int size) {
-        super(parent, size);
+    public DecodingTextByteBuffer(StreamBufferRoot parent) {
+        super(parent);
     }
 
     @Override
@@ -20,35 +20,35 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
 
     @Override
     protected void afterConsumeCurrent() {
-        switch (buffer[position]) {
-            case AMPERSAND -> lastAmpersandPosition = position; // Store the position of the last '&'
+        switch (root.buffer[root.position]) {
+            case AMPERSAND -> lastAmpersandPosition = root.position; // Store the position of the last '&'
             case SEMICOLON -> {
-                var charsBetweenAmpersandAndSemicolon = position - lastAmpersandPosition - 1;
+                var charsBetweenAmpersandAndSemicolon = root.position - lastAmpersandPosition - 1;
                 switch (charsBetweenAmpersandAndSemicolon) {
                     case 2: {
-                        if (buffer[lastAmpersandPosition + 2] == 't') {
-                            if (buffer[lastAmpersandPosition + 1] == 'l') {
-                                buffer[lastAmpersandPosition] = LEFT_ANGLE_BRACKET; // &lt;
+                        if (root.buffer[lastAmpersandPosition + 2] == 't') {
+                            if (root.buffer[lastAmpersandPosition + 1] == 'l') {
+                                root.buffer[lastAmpersandPosition] = LEFT_ANGLE_BRACKET; // &lt;
 
                                 // move remaining data to the left
-                                System.arraycopy(buffer, position + 1,
-                                        buffer, lastAmpersandPosition + 1,
-                                        filledToExclusive - position);
+                                System.arraycopy(root.buffer, root.position + 1,
+                                        root.buffer, lastAmpersandPosition + 1,
+                                        root.filledToExclusive - root.position);
 
-                                filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &lt;
-                                position = lastAmpersandPosition;
+                                root.filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &lt;
+                                root.position = lastAmpersandPosition;
                                 lastAmpersandPosition = -1; // Reset last ampersand position
                                 return;
-                            } else if (buffer[lastAmpersandPosition + 1] == 'g') {
-                                buffer[lastAmpersandPosition] = RIGHT_ANGLE_BRACKET; // &gt;
+                            } else if (root.buffer[lastAmpersandPosition + 1] == 'g') {
+                                root.buffer[lastAmpersandPosition] = RIGHT_ANGLE_BRACKET; // &gt;
 
                                 // move remaining data to the left
-                                System.arraycopy(buffer, position + 1,
-                                        buffer, lastAmpersandPosition + 1,
-                                        filledToExclusive - position);
+                                System.arraycopy(root.buffer, root.position + 1,
+                                        root.buffer, lastAmpersandPosition + 1,
+                                        root.filledToExclusive - root.position);
 
-                                filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &gt;
-                                position = lastAmpersandPosition;
+                                root.filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &gt;
+                                root.position = lastAmpersandPosition;
                                 lastAmpersandPosition = -1; // Reset last ampersand position
                                 return;
                             }
@@ -56,51 +56,51 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                         break;
                     }
                     case 3: {
-                        if (buffer[lastAmpersandPosition + 3] == 'p'
-                                && buffer[lastAmpersandPosition + 2] == 'm'
-                                && buffer[lastAmpersandPosition + 1] == 'a') {
-                            buffer[lastAmpersandPosition] = AMPERSAND; // &amp;
+                        if (root.buffer[lastAmpersandPosition + 3] == 'p'
+                                && root.buffer[lastAmpersandPosition + 2] == 'm'
+                                && root.buffer[lastAmpersandPosition + 1] == 'a') {
+                            root.buffer[lastAmpersandPosition] = AMPERSAND; // &amp;
 
                             // move remaining data to the left
-                            System.arraycopy(buffer, position + 1,
-                                    buffer, lastAmpersandPosition + 1,
-                                    filledToExclusive - position);
+                            System.arraycopy(root.buffer, root.position + 1,
+                                    root.buffer, lastAmpersandPosition + 1,
+                                    root.filledToExclusive - root.position);
 
-                            filledToExclusive -= 4; // Reduce filledToExclusive by 4 for &amp;
-                            position = lastAmpersandPosition;
+                            root.filledToExclusive -= 4; // Reduce filledToExclusive by 4 for &amp;
+                            root.position = lastAmpersandPosition;
                             lastAmpersandPosition = -1; // Reset last ampersand position
                             return;
                         }
                         break;
                     }
                     case 4: {
-                        if (buffer[lastAmpersandPosition + 3] == 'o') {
-                            if (buffer[lastAmpersandPosition + 1] == 'q'
-                                    && buffer[lastAmpersandPosition + 2] == 'u'
-                                    && buffer[lastAmpersandPosition + 4] == 't') {
-                                buffer[lastAmpersandPosition] = DOUBLE_QUOTE; // &quot;
+                        if (root.buffer[lastAmpersandPosition + 3] == 'o') {
+                            if (root.buffer[lastAmpersandPosition + 1] == 'q'
+                                    && root.buffer[lastAmpersandPosition + 2] == 'u'
+                                    && root.buffer[lastAmpersandPosition + 4] == 't') {
+                                root.buffer[lastAmpersandPosition] = DOUBLE_QUOTE; // &quot;
 
                                 // move remaining data to the left
-                                System.arraycopy(buffer, position + 1,
-                                        buffer, lastAmpersandPosition + 1,
-                                        filledToExclusive - position);
+                                System.arraycopy(root.buffer, root.position + 1,
+                                        root.buffer, lastAmpersandPosition + 1,
+                                        root.filledToExclusive - root.position);
 
-                                filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &quot;
-                                position = lastAmpersandPosition;
+                                root.filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &quot;
+                                root.position = lastAmpersandPosition;
                                 lastAmpersandPosition = -1; // Reset last ampersand position
                                 return;
-                            } else if (buffer[lastAmpersandPosition + 2] == 'p'
-                                    && buffer[lastAmpersandPosition + 4] == 's'
-                                    && buffer[lastAmpersandPosition + 1] == 'a') {
-                                buffer[lastAmpersandPosition] = SINGLE_QUOTE; // &apos;
+                            } else if (root.buffer[lastAmpersandPosition + 2] == 'p'
+                                    && root.buffer[lastAmpersandPosition + 4] == 's'
+                                    && root.buffer[lastAmpersandPosition + 1] == 'a') {
+                                root.buffer[lastAmpersandPosition] = SINGLE_QUOTE; // &apos;
 
                                 // move remaining data to the left
-                                System.arraycopy(buffer, position + 1,
-                                        buffer, lastAmpersandPosition + 1,
-                                        filledToExclusive - position);
+                                System.arraycopy(root.buffer, root.position + 1,
+                                        root.buffer, lastAmpersandPosition + 1,
+                                        root.filledToExclusive - root.position);
 
-                                filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &apos;
-                                position = lastAmpersandPosition;
+                                root.filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &apos;
+                                root.position = lastAmpersandPosition;
                                 lastAmpersandPosition = -1; // Reset last ampersand position
                                 return;
                             }
@@ -113,23 +113,23 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
     }
 
     public boolean tryConsumeToStartOfAttributeValue() throws IOException {
-        if (position >= filledToExclusive) {
-            if (!tryFillFromInputStream()) {
+        if (root.position >= root.filledToExclusive) {
+            if (!root.tryFillFromInputStream()) {
                 return false; // No more data to read
             }
         }
-        while (position < filledToExclusive) {
-            if (buffer[position] == DOUBLE_QUOTE) {
+        while (root.position < root.filledToExclusive) {
+            if (root.buffer[root.position] == DOUBLE_QUOTE) {
                 return true;
             }
-            if(!isWhitespace(buffer[position])) {
+            if(!isWhitespace(root.buffer[root.position])) {
                 // If we encounter a non-whitespace character before the quote, we stop
                 // there is no need to call afterConsumeCurrent since we are not decoding here
                 return false;
             }
             // do not consume whitespace, just skip it
-            if (++position == filledToExclusive) {
-                if (!tryFillFromInputStream()) {
+            if (++root.position == root.filledToExclusive) {
+                if (!root.tryFillFromInputStream()) {
                     return false; // No more data to read
                 }
             }
