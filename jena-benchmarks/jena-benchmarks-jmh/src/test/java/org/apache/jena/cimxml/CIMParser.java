@@ -764,56 +764,20 @@ public class CIMParser {
         } else {
             throw new ParserException("Unexpected end of stream while looking for attribute name");
         }
-        State[] state = {State.END};
         attributeName.setCurrentByteAsStartPositon();
-        // Now we are at the start of the attribute name, we can read it
-        attributeName.consumeBytes(b -> {
-            try {
-                if (isAngleBrackets(b)) {
-                    throw new ParserException("Unexpected character in attribute name: " + byteToString(b));
-                }
-                if (EQUALITY_SIGN == b) {
-                    // Found equality sign, we can return to looking for attribute value
-                    attributeName.abort(); // If we encounter whitespace, we stop reading the attribute name
-                    attributeName.setEndPositionExclusive();
-                    attributeName.skip(); // Move to the next byte after the equality sign
-                    state[0] = State.LOOKING_FOR_ATTRIBUTE_VALUE;
-                    return;
-                }
-                if (isWhitespace(b)) {
-                    attributeName.setEndPositionExclusive();
-                    attributeName.abort(); // If we encounter whitespace, we stop reading the attribute name
-                    //look for equality sign, while ignoring whitespace
-                    attributeName.consumeBytes(b1 -> {
-                        try {
-                            if (b1 == EQUALITY_SIGN) {
-                                // Found equality sign, we can return to looking for attribute value
-                                attributeName.abort();
-                                attributeName.skip(); // Move to the next byte after the equality sign
-                                state[0] = State.LOOKING_FOR_ATTRIBUTE_VALUE;
-                                return;
-                            }
-                            if (!isWhitespace(b1)) {
-                                if (b1 == END_OF_STREAM) {
-                                    throw new RuntimeException(
-                                            new ParserException("Unexpected end of stream while looking for equality sign after attribute name"));
-                                }
-
-                                throw new RuntimeException(
-                                        new ParserException("Unexpected character '" + byteToString(b1) + "' while looking for equality sign after attribute name."));
-                            }
-                        }
-                        catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-                }
+        if (attributeName.tryConsumeUntilEndOfQName()) {
+            attributeName.setEndPositionExclusive();
+            if(attributeName.peek() == EQUALITY_SIGN) {
+                attributeName.skip(); // Move to the next byte after the equality sign
+                return State.LOOKING_FOR_ATTRIBUTE_VALUE;
             }
-            catch (Exception e) {
-                throw new RuntimeException(e);
+            if (attributeName.tryForwardToByteAfter(EQUALITY_SIGN)) {
+                return State.LOOKING_FOR_ATTRIBUTE_VALUE;
             }
-        });
-        return state[0];
+            throw new ParserException("Unexpected end of stream while looking for equality sign after attribute name: "
+                    + attributeName);
+        }
+        throw new ParserException("Unexpected end of stream while looking for end of attribute name");
     }
 
     private State handleLookingForTag() throws IOException {

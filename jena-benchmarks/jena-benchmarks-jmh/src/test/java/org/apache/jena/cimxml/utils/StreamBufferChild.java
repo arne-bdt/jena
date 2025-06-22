@@ -90,21 +90,6 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
 
     protected abstract void afterConsumeCurrent();
 
-//    public boolean tryForwardToByte(byte byteToSeek) throws IOException {
-//        var abortBefore = this.abort; // memoize the current abort state to avoid side effects
-//        boolean[] found = {false};
-//        this.consumeBytes(b -> {
-//            if (b == byteToSeek) {
-//                abort();
-//                found[0] = true;
-//            }
-//        });
-//        if (abortBefore) {
-//            this.abort = true; // Restore the abort state if it was set before
-//        }
-//        return found[0];
-//    }
-
     public boolean tryForwardToByte(byte byteToSeek) throws IOException {
         if (position >= filledToExclusive) {
             if (!tryFillFromInputStream()) {
@@ -186,34 +171,6 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
     public void skip() throws IOException {
         position++;
         peek();
-    }
-
-    public void consumeBytes(Consumer<Byte> byteConsumer) throws IOException {
-        var abortBefore = this.abort; // memorize the current abort state to avoid side effects
-        abort = false;
-        if (position >= filledToExclusive) {
-            if (!tryFillFromInputStream()) {
-                byteConsumer.accept(END_OF_STREAM);
-                return; // No more data to read
-            }
-        }
-        while (position < filledToExclusive) {
-            byteConsumer.accept(buffer[position]);
-            if (abort) {
-                return;
-            }
-            afterConsumeCurrent();
-            if (++position >= filledToExclusive) {
-                if (!tryFillFromInputStream()) {
-                    byteConsumer.accept(END_OF_STREAM);
-                    return; // No more data to read
-                }
-            }
-        }
-        byteConsumer.accept(END_OF_STREAM);
-        if (abortBefore) {
-            this.abort = true; // Restore the abort state if it was set before
-        }
     }
 
     protected boolean tryFillFromInputStream() throws IOException {

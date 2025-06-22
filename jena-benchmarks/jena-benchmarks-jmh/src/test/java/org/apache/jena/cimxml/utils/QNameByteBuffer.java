@@ -67,10 +67,37 @@ public class QNameByteBuffer extends StreamBufferChild {
         }
         while (position < filledToExclusive) {
             if (!isWhitespace(buffer[position])) {
-                afterConsumeCurrent();
+                // no need to call afterConsumeCurrent here, as we are skipping whitespace
                 return true;
             }
-            // no need to call afterConsumeCurrent here, as we are skipping whitespace
+            afterConsumeCurrent(); // Consume the current byte
+            if (++position == filledToExclusive) {
+                if (!tryFillFromInputStream()) {
+                    return false; // No more data to read
+                }
+            }
+        }
+        return false; // Byte not found
+    }
+
+    /**
+     * Tries to consume until the end of the QName, which is defined as
+     * the first whitespace or the equality sign ('=').
+     * @return
+     * @throws IOException
+     */
+    public boolean tryConsumeUntilEndOfQName() throws IOException {
+        if (position >= filledToExclusive) {
+            if (!tryFillFromInputStream()) {
+                return false; // No more data to read
+            }
+        }
+        while (position < filledToExclusive) {
+            if (isWhitespace(buffer[position]) || buffer[position] == EQUALITY_SIGN) {
+                // no need to call afterConsumeCurrent here, as we are skipping whitespace and equality sign
+                return true;
+            }
+            afterConsumeCurrent();
             if (++position == filledToExclusive) {
                 if (!tryFillFromInputStream()) {
                     return false; // No more data to read
