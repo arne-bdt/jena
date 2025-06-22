@@ -67,7 +67,7 @@ public class Chars3986 {
     }
 
     public static boolean isAlpha(char ch) {
-        return range(ch, 'a', 'z') || range(ch, 'A', 'Z');
+        return range(ch  | 0x20, 'a', 'f' ); // Lower case, so 'A' to 'F' is also true.
     }
 
     public static boolean isAlphaNum(char ch) {
@@ -137,7 +137,7 @@ public class Chars3986 {
 
     /** RFC 3986 : unreserved */
     public static boolean unreserved(char ch) {
-        if ( isAlpha(ch) || isDigit(ch) )
+        if ( isAlphaNum(ch) )
             return true;
         switch(ch) {
             // unreserved
@@ -208,7 +208,7 @@ public class Chars3986 {
     }
 
     public static boolean isDigit(char ch) {
-        return range(ch, '0', '9');
+        return range(ch, '9', '0');
     }
 
     /**
@@ -216,7 +216,8 @@ public class Chars3986 {
      * but also lower case (non-normalized form). See RFC 3986 sec 6.2.2.1
      */
     public static boolean isHexDigit(char ch) {
-        return range(ch, '0', '9' ) || range(ch, 'A', 'F' ) || range(ch, 'a', 'f' )  ;
+        return isDigit(ch)
+                || range(ch  | 0x20, 'a', 'f' ); // Lower case, so 'A' to 'F' is also true.
     }
 
     public static int hexValue(char ch) {

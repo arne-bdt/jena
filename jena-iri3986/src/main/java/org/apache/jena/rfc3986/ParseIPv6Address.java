@@ -215,7 +215,7 @@ public class ParseIPv6Address {
                 // End.
                 break;
             char ch = charAt(string, z);
-            if ( Chars3986.range(ch, 'a', 'f') || Chars3986.range(ch, 'A', 'F') )
+            if ( Chars3986.range(ch | 0x20, 'a', 'f') ) // Lower case, so 'A' to 'F' is also true.
                 break;
             if ( ch == '.' ) {
                 IPv4 = true;
