@@ -262,7 +262,8 @@ public class CIMParser {
                     + currentTextContent.decodeToString());
         }
         currentTextContent.skip(); // Skip the LEFT_ANGLE_BRACKET
-
+        /*idea for improvements: have cached literals for some datatypes
+          --> this is only possible in CIM/XML if we have a schema with the datatypes*/
         final var object = NodeFactory.createLiteral(
                 currentTextContent.decodeToString(),
                 parent.xmlLang != null ? parent.xmlLang.decodeToString(): null,

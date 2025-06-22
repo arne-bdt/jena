@@ -8,7 +8,6 @@ import java.util.List;
 public class AttributeCollection {
     private final StreamBufferRoot streamingBufferRoot;
     private final List<AttributeFixedBuffer> attributeFixedBuffers = new ArrayList<>();
-    private final JenaHashSet<Integer> alreadyConsumed = new JenaHashSet<>(16);
     private int currentAttributeIndex = -1;
 
     public AttributeCollection(StreamBufferRoot streamingBufferRoot) {
@@ -17,7 +16,6 @@ public class AttributeCollection {
 
     public void reset() {
         currentAttributeIndex = -1;
-        alreadyConsumed.clear();
     }
 
     public QNameByteBuffer newAttribute() {
