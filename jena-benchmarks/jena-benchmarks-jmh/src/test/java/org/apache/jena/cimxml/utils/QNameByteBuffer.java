@@ -10,8 +10,8 @@ import static org.apache.jena.cimxml.utils.ParserConstants.*;
 public class QNameByteBuffer extends StreamBufferChild {
     private int startOfLocalPart = 0; // Index where the local part starts
 
-    public QNameByteBuffer(StreamBufferRoot parent, int size) {
-        super(parent, size);
+    public QNameByteBuffer(StreamBufferRoot parent) {
+        super(parent);
     }
 
     @Override
@@ -25,33 +25,33 @@ public class QNameByteBuffer extends StreamBufferChild {
     }
 
     public WrappedByteArray getPrefix() {
-        return new WrappedByteArray(buffer, start, startOfLocalPart - start - 1); // Exclude the colon
+        return new WrappedByteArray(root.buffer, start, startOfLocalPart - start - 1); // Exclude the colon
     }
 
     public WrappedByteArray getLocalPart() {
-        return new WrappedByteArray(buffer, startOfLocalPart, endExclusive - startOfLocalPart);
+        return new WrappedByteArray(root.buffer, startOfLocalPart, endExclusive - startOfLocalPart);
     }
 
     @Override
     protected void afterConsumeCurrent() {
-        if (buffer[position] == DOUBLE_COLON) {
-            startOfLocalPart = position + 1; // Set the start of local part after the colon
+        if (root.buffer[root.position] == DOUBLE_COLON) {
+            startOfLocalPart = root.position + 1; // Set the start of local part after the colon
         }
     }
 
     public boolean tryConsumeToEndOfTagName() throws IOException {
-        if (position >= filledToExclusive) {
-            if (!tryFillFromInputStream()) {
+        if (root.position >= root.filledToExclusive) {
+            if (!root.tryFillFromInputStream()) {
                 return false; // No more data to read
             }
         }
-        while (position < filledToExclusive) {
-            if (isEndOfTagName(buffer[position])) {
+        while (root.position < root.filledToExclusive) {
+            if (isEndOfTagName(root.buffer[root.position])) {
                 return true;
             }
             afterConsumeCurrent();
-            if (++position == filledToExclusive) {
-                if (!tryFillFromInputStream()) {
+            if (++root.position == root.filledToExclusive) {
+                if (!root.tryFillFromInputStream()) {
                     return false; // No more data to read
                 }
             }
@@ -60,19 +60,19 @@ public class QNameByteBuffer extends StreamBufferChild {
     }
 
     public boolean tryConsumeUntilNonWhitespace() throws IOException {
-        if (position >= filledToExclusive) {
-            if (!tryFillFromInputStream()) {
+        if (root.position >= root.filledToExclusive) {
+            if (!root.tryFillFromInputStream()) {
                 return false; // No more data to read
             }
         }
-        while (position < filledToExclusive) {
-            if (!isWhitespace(buffer[position])) {
+        while (root.position < root.filledToExclusive) {
+            if (!isWhitespace(root.buffer[root.position])) {
                 // no need to call afterConsumeCurrent here, as we are skipping whitespace
                 return true;
             }
             afterConsumeCurrent(); // Consume the current byte
-            if (++position == filledToExclusive) {
-                if (!tryFillFromInputStream()) {
+            if (++root.position == root.filledToExclusive) {
+                if (!root.tryFillFromInputStream()) {
                     return false; // No more data to read
                 }
             }
@@ -87,19 +87,19 @@ public class QNameByteBuffer extends StreamBufferChild {
      * @throws IOException
      */
     public boolean tryConsumeUntilEndOfQName() throws IOException {
-        if (position >= filledToExclusive) {
-            if (!tryFillFromInputStream()) {
+        if (root.position >= root.filledToExclusive) {
+            if (!root.tryFillFromInputStream()) {
                 return false; // No more data to read
             }
         }
-        while (position < filledToExclusive) {
-            if (isWhitespace(buffer[position]) || buffer[position] == EQUALITY_SIGN) {
+        while (root.position < root.filledToExclusive) {
+            if (isWhitespace(root.buffer[root.position]) || root.buffer[root.position] == EQUALITY_SIGN) {
                 // no need to call afterConsumeCurrent here, as we are skipping whitespace and equality sign
                 return true;
             }
             afterConsumeCurrent();
-            if (++position == filledToExclusive) {
-                if (!tryFillFromInputStream()) {
+            if (++root.position == root.filledToExclusive) {
+                if (!root.tryFillFromInputStream()) {
                     return false; // No more data to read
                 }
             }
