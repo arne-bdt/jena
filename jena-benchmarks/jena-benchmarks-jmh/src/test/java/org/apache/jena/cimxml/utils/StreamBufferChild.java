@@ -206,16 +206,15 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
         String text;
         if (start == 0 && endExclusive == 0) {
             text = "Start at 0:[" +
-                    UTF_8.decode(java.nio.ByteBuffer.wrap(this.buffer, start,
-                            position - start + 1))
+                    new String(buffer, start, position - start + 1, UTF_8)
                     + "]--> end not defined yet";
         } else if (start > endExclusive) {
             if (start < position) {
-                text = UTF_8.decode(java.nio.ByteBuffer.wrap(this.buffer, start,
-                        position - start + 1)) + "][--> end not defined yet";
+                text = new String(buffer, start, position - start + 1, UTF_8)
+                        + "][--> end not defined yet";
             } else {
-                text = UTF_8.decode(java.nio.ByteBuffer.wrap(this.buffer, start,
-                        1)) + "][--> end not defined yet";
+                text = new String(buffer, start, 1, UTF_8)
+                        + "][--> end not defined yet";
             }
         } else {
             text = this.decodeToString();
@@ -224,10 +223,10 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
     }
 
     public String wholeBufferToString() {
-        return UTF_8.decode(java.nio.ByteBuffer.wrap(this.buffer, 0, this.filledToExclusive)).toString();
+        return new String(this.buffer, 0, this.filledToExclusive, UTF_8);
     }
 
     public String remainingBufferToString() {
-        return UTF_8.decode(java.nio.ByteBuffer.wrap(this.buffer, position, filledToExclusive - position)).toString();
+        return new String(this.buffer, position, filledToExclusive - position, UTF_8);
     }
 }

@@ -795,6 +795,6 @@ public class CIMParser {
         if (b == END_OF_STREAM) {
             return "END_OF_STREAM";
         }
-        return UTF_8.decode(ByteBuffer.wrap(new byte[]{b})).toString();
+        return String.valueOf(b);
     }
 }

@@ -41,10 +41,6 @@ public interface SpecialByteBuffer {
         return true; // Same content
     }
 
-    default java.nio.ByteBuffer wrapAsByteBuffer() {
-        return java.nio.ByteBuffer.wrap(this.getData(), this.offset(), this.length());
-    }
-
     default ByteArrayKey copy() {
         return new ByteArrayKey(this.copyToByteArray());
     }
@@ -99,7 +95,7 @@ public interface SpecialByteBuffer {
     }
 
     default String decodeToString() {
-        return UTF_8.decode(this.wrapAsByteBuffer()).toString();
+        return new String(this.getData(), this.offset(), this.length(), UTF_8);
     }
 
     /// A heuristic to check if the content is probably a CIM uuid.

@@ -10,7 +10,7 @@ public class ByteArrayKey implements SpecialByteBuffer {
     private final byte[] data;
     private final int length;
     private final int hashCode;
-    private String decodedString = null;
+    private final String decodedString;
 
 
     public ByteArrayKey(String string) {
@@ -25,12 +25,14 @@ public class ByteArrayKey implements SpecialByteBuffer {
         this.data = data;
         this.length = data.length;
         this.hashCode = this.defaultHashCode();
+        this.decodedString = new String(data, UTF_8);
     }
 
     public ByteArrayKey(final byte b) {
         this.data = new byte[]{b};
         this.length = 1;
         this.hashCode = b;
+        this.decodedString = String.valueOf((char) b);
     }
 
     public byte[] getData() {
@@ -62,9 +64,6 @@ public class ByteArrayKey implements SpecialByteBuffer {
 
     @Override
     public String decodeToString() {
-        if (this.decodedString == null) {
-            this.decodedString = UTF_8.decode(this.wrapAsByteBuffer()).toString();
-        }
         return this.decodedString;
     }
 
