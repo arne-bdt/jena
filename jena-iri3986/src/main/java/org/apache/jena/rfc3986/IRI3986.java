@@ -186,8 +186,9 @@ public class IRI3986 implements IRI {
      */
     private static IRI3986 newAndParseAndCheck(String iristr) {
         IRI3986 iri = new IRI3986(iristr);
-        iri.parse();
-        iri.schemeSpecificRulesInternal();
+        final var iriChars = iristr.toCharArray();
+        iri.parse(iriChars);
+        iri.schemeSpecificRulesInternal(iriChars);
         return iri;
     }
 
@@ -205,8 +206,9 @@ public class IRI3986 implements IRI {
         // and later components are not recorded.
         IRI3986 iri = new IRI3986(iriStr);
         try {
-            iri.parse();
-            iri.schemeSpecificRulesInternal();
+            final var iriChars = iriStr.toCharArray();
+            iri.parse(iriChars);
+            iri.schemeSpecificRulesInternal(iriChars);
         } catch (IRIParseException ex) {
             String msg = ex.getMessage();
             addReportParseError(iri, iriStr, ex.getMessage());
@@ -549,13 +551,13 @@ public class IRI3986 implements IRI {
             return EOF;
         if ( x0 > x1 )
             return EOF;
-        return charAt(x0);
+        return iriStrCharAt(x0);
     }
 
     /** Test whether the IRI is RFC 3986 compatible;that is, has only ASCII characters. */
     public boolean isRFC3986() {
         // The URI is valid syntax so we just need to test for non-ASCII characters.
-        return isASCII(iriStr, 0, iriStr.length());
+        return isASCII(iriStr);
     }
 
     /**
@@ -959,19 +961,23 @@ public class IRI3986 implements IRI {
     // ----------------------------------------------------------------------
     // ==== Parsing
 
-    /** Parse (i.e. check) or create an IRI object. */
     private IRI3986 parse() {
-        int x = scheme(0);
+        return parse(iriStr.toCharArray());
+    }
+
+    /** Parse (i.e. check) or create an IRI object. */
+    private IRI3986 parse(final char[] iriChars) {
+        int x = scheme(iriChars, 0);
         if ( x > 0 ) {
             // URI = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
             // absolute-URI = scheme ":" hier-part [ "?" query ]
             scheme0 = 0;
             scheme1 = x;
             // and move over ':'
-            x = withScheme(x + 1);
+            x = withScheme(iriChars, x + 1);
         } else {
             // relative-ref = relative-part [ "?" query ] [ "#" fragment ]
-            x = withoutScheme(0);
+            x = withoutScheme(iriChars, 0);
         }
 
         // Did the process consume the whole string?
@@ -984,17 +990,17 @@ public class IRI3986 implements IRI {
             else
                 label = "path";
             // System.err.printf("(x3=%d, length=%d)\n", x, length);
-            throw parseError(iriStr, "Bad character in " + label + " component: " + displayChar(charAt(x)));
+            throw parseError(iriStr, "Bad character in " + label + " component: " + displayChar(charAt(iriChars, x)));
         }
         return this;
     }
 
     // scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
-    private int scheme(int start) {
+    private int scheme(char[] iriChars, int start) {
         int p = start;
         int end = length;
         while (p < end) {
-            char c = charAt(p);
+            char c = charAt(iriChars, p);
             if ( c == ':' )
                 return p;
             if ( !Chars3986.isAlpha(c) ) {
@@ -1012,7 +1018,7 @@ public class IRI3986 implements IRI {
     }
 
     /** Parse any scheme RFC 3986/3987 URI/IRI string. */
-    private int withScheme(int start) {
+    private int withScheme(char[] iriChars, int start) {
         // @formatter:off
         //
         // URI = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
@@ -1030,11 +1036,11 @@ public class IRI3986 implements IRI {
         // Note that errors in scheme-specific schemes will need to be checked by the general code.
         // General code can throw IRIParseException or record scheme-specific violations.
 
-        int p = maybeAuthority(start);
-        return pathQueryFragment(p, true);
+        int p = maybeAuthority(iriChars, start);
+        return pathQueryFragment(iriChars, p, true);
     }
 
-    private int withoutScheme(int start) {
+    private int withoutScheme(char[] iriChars, int start) {
         // @formatter:off
         //
         // relative-ref = relative-part [ "?" query ] [ "#" fragment ]
@@ -1046,23 +1052,23 @@ public class IRI3986 implements IRI {
         // @formatter:on
         // Check not starting with ':' then path-noscheme is the same as
         // path-rootless.
-        char ch = charAt(start);
+        char ch = charAt(iriChars, start);
         if ( ch == ':' )
             throw parseError(iriStr, "A URI without a scheme can't start with a ':'");
-        int p = maybeAuthority(start);
-        return pathQueryFragment(p, false);
+        int p = maybeAuthority(iriChars, start);
+        return pathQueryFragment(iriChars, p, false);
     }
 
     // ---- Authority
 
-    private int maybeAuthority(int start) {
+    private int maybeAuthority(char[] iriChars, int start) {
         // "//" authority
         int p = start;
-        char ch1 = charAt(p);
-        char ch2 = charAt(p + 1);
+        char ch1 = charAt(iriChars, p);
+        char ch2 = charAt(iriChars, p + 1);
         if ( ch1 == '/' && ch2 == '/' ) {
             p += 2;
-            p = authority(p);
+            p = authority(iriChars, p);
         }
         return p;
     }
@@ -1092,7 +1098,7 @@ public class IRI3986 implements IRI {
      * RFC 5890, RFC 5891, RFC 5892, RFC 5893
      */
     // @formatter:on
-    private int authority(int start) {
+    private int authority(char[] iriChars, int start) {
         int end = length;
         int p = start;
         // Indexes for userinfo@host:port
@@ -1105,7 +1111,7 @@ public class IRI3986 implements IRI {
         // Scan for whole authority then do some checking.
         // We need to know e.g. whether there is a userinfo section to check colons.
         while (p < end) {
-            char ch = charAt(p);
+            char ch = charAt(iriChars, p);
             if ( ch == ':' ) {
                 countColon++;
                 lastColon = p;
@@ -1140,7 +1146,7 @@ public class IRI3986 implements IRI {
                 // Reset port colon tracking.
                 countColon = 0;
                 lastColon = -1;
-            } else if ( !isIPChar(ch, p) ) {
+            } else if ( !isIPChar(iriChars, ch, p) ) {
                 break;
             }
             p++;
@@ -1181,7 +1187,7 @@ public class IRI3986 implements IRI {
             int x = port0;
             // check digits in port.
             while (x < port1) {
-                char ch = charAt(x);
+                char ch = charAt(iriChars, x);
                 if ( !Chars3986.isDigit(ch) )
                     break;
                 x++;
@@ -1195,7 +1201,7 @@ public class IRI3986 implements IRI {
 
     // ---- hier-part :: /path?query#fragment
 
-    private int pathQueryFragment(int start, boolean withScheme) {
+    private int pathQueryFragment(char[] iriChars, int start, boolean withScheme) {
         // hier-part [ "?" query ] [ "#" fragment ]
         // relative-ref = relative-part [ "?" query ] [ "#" fragment ]
 
@@ -1206,23 +1212,23 @@ public class IRI3986 implements IRI {
         //               / path-empty
         // then [ "?" query ] [ "#" fragment ]
 
-        int x1 = path(start, withScheme);
+        int x1 = path(iriChars, start, withScheme);
 
         if ( x1 < 0 ) {
             x1 = start;
         }
 
-        int x2 = query(x1);
+        int x2 = query(iriChars, x1);
         if ( x2 < 0 ) {
             x2 = x1;
         }
-        int x3 = fragment(x2);
+        int x3 = fragment(iriChars, x2);
         return x3;
     }
 
     // ---- Path
     // If not withScheme, then segment-nz-nc applies.
-    private int path(int start, boolean withScheme) {
+    private int path(char[] iriChars, int start, boolean withScheme) {
         // @formatter:off
         //
         // path = path-abempty  ; begins with "/" or is empty
@@ -1247,15 +1253,14 @@ public class IRI3986 implements IRI {
 
         if ( start == length )
             return start;
-        int segStart = start;
         int p = start;
         boolean allowColon = withScheme;
 
         while (p < length) {
             // skip segment-nz = 1*pchar
-            char ch = charAt(p);
+            char ch = charAt(iriChars, p);
 
-            int charLen = isIPCharLen(ch, p);
+            int charLen = isIPCharLen(iriChars, ch, p);
             if ( charLen == 1 ) {
                 if ( !allowColon && ch == ':' ) {
                     // segment-nz-nc
@@ -1282,7 +1287,6 @@ public class IRI3986 implements IRI {
                 throw parseError(iriStr, p + 1, format("Bad character in IRI path: '%s' (U+%04X)", Character.toString((int)ch), (int)ch));
             }
             allowColon = true;
-            segStart = p + 1;
             p++;
         }
 
@@ -1295,10 +1299,10 @@ public class IRI3986 implements IRI {
 
     // ---- Query & Fragment
 
-    private int query(int start) {
+    private int query(char[] iriChars, int start) {
         // query = *( pchar / "/" / "?" )
         // iquery = *( ipchar / iprivate / "/" / "?" )
-        int x = trailer('?', start, true);
+        int x = trailer(iriChars, '?', start, true);
 
         if ( x >= 0 && x != start ) {
             query0 = start + 1;
@@ -1309,10 +1313,10 @@ public class IRI3986 implements IRI {
         return x;
     }
 
-    private int fragment(int start) {
+    private int fragment(char[] iriChars, int start) {
         // fragment = *( pchar / "/" / "?" )
         // ifragment = *( ipchar / "/" / "?" )
-        int x = trailer('#', start, false);
+        int x = trailer(iriChars, '#', start, false);
         if ( x >= 0 && x != start ) {
             fragment0 = start + 1;
             fragment1 = x;
@@ -1322,15 +1326,15 @@ public class IRI3986 implements IRI {
         return x;
     }
 
-    private int trailer(char startChar, int start, boolean allowPrivate) {
+    private int trailer(char[] iriChars, char startChar, int start, boolean allowPrivate) {
         if ( start >= length )
             return -1;
-        if ( charAt(start) != startChar )
+        if ( charAt(iriChars, start) != startChar )
             return -1;
         int p = start + 1;
         while (p < length) {
-            char ch = charAt(p);
-            int charLen = isIPCharLen(ch, p);
+            char ch = charAt(iriChars, p);
+            int charLen = isIPCharLen(iriChars, ch, p);
             if ( charLen == 1 || charLen == 3 ) {
                 p += charLen;
                 continue;
@@ -1352,7 +1356,16 @@ public class IRI3986 implements IRI {
     }
 
     /** String.charAt except with an EOF character, not an exception. */
-    private char charAt(int x) {
+    private static char charAt(char[] iriChars, int x) {
+        if ( x < 0 )
+            throw new IllegalArgumentException("Negative index");
+        if ( x >= iriChars.length )
+            return EOF;
+        return iriChars[x];
+    }
+
+    /** String.charAt except with an EOF character, not an exception. */
+    private char iriStrCharAt(int x) {
         if ( x < 0 )
             throw new IllegalArgumentException("Negative index");
         if ( x >= length )
@@ -1367,11 +1380,11 @@ public class IRI3986 implements IRI {
     // parsed but likely they are in the L1 or L2 cache and the alternative is more
     // complex logic. (return the read characters and new character position in some
     // way).
-    private boolean isPctEncoded(char ch, int idx) {
+    private boolean isPctEncoded(char[] iriChars, char ch, int idx) {
         if ( ch != '%' )
             return false;
-        char ch1 = charAt(idx + 1);
-        char ch2 = charAt(idx + 2);
+        char ch1 = charAt(iriChars, idx + 1);
+        char ch2 = charAt(iriChars, idx + 2);
         return Chars3986.percentCheck(ch1, ch2, iriStr, idx);
     }
 
@@ -1385,8 +1398,8 @@ public class IRI3986 implements IRI {
     // sub-delims = "!" / "$" / "&" / "'" / "(" / ")"
     // / "*" / "+" / "," / ";" / "="
 
-    private boolean isPChar(char ch, int posn) {
-        return Chars3986.unreserved(ch) || isPctEncoded(ch, posn) || Chars3986.subDelims(ch) || ch == ':' || ch == '@';
+    private boolean isPChar(char[] iriChars, char ch, int posn) {
+        return Chars3986.unreserved(ch) || isPctEncoded(iriChars, ch, posn) || Chars3986.subDelims(ch) || ch == ':' || ch == '@';
     }
 
     /**
@@ -1394,16 +1407,16 @@ public class IRI3986 implements IRI {
      * not account for surrogate pairs. Normally returns 1, except when '%' when it's
      * 3. Return -1 for error.
      */
-    private int isPCharLen(char ch, int posn) {
+    private int isPCharLen(char[] iriChars, char ch, int posn) {
         if ( Chars3986.unreserved(ch) || Chars3986.subDelims(ch) || ch == ':' || ch == '@' )
             return 1;
-        if ( isPctEncoded(ch, posn) )
+        if ( isPctEncoded(iriChars, ch, posn) )
             return 3;
         return -1;
     }
 
-    private boolean isIPChar(char ch, int posn) {
-        return isPChar(ch, posn) || Chars3986.isUcsChar(ch);
+    private boolean isIPChar(char[] iriChars, char ch, int posn) {
+        return isPChar(iriChars, ch, posn) || Chars3986.isUcsChar(ch);
     }
 
     /**
@@ -1411,32 +1424,30 @@ public class IRI3986 implements IRI {
      * not account for combining chars. Normally returns 1, except when '%' when it's
      * 3. Return -1 for error.
      */
-    private int isIPCharLen(char ch, int posn) {
+    private int isIPCharLen(char[] iriChars, char ch, int posn) {
         if ( Chars3986.unreserved(ch) || Chars3986.subDelims(ch) || ch == ':' || ch == '@' || Chars3986.isUcsChar(ch) )
             return 1;
-        if ( isPctEncoded(ch, posn) )
+        if ( isPctEncoded(iriChars, ch, posn) )
             return 3;
         return -1;
     }
 
-    private static boolean isASCII(String string, int start,int finish) {
-        for ( int i = 0 ; i < finish ; i++ ) {
-            char ch = string.charAt(i);
-            if ( ch > 0x7F )
-                return false;
-        }
-        return true;
+    private static boolean isASCII(String string) {
+        return string.chars().allMatch(ch -> ch <= 0x7F );
     }
 
     // ==== Scheme specific checking.
 
     private IRI3986 schemeSpecificRulesInternal() {
+        return schemeSpecificRulesInternal(iriStr.toCharArray());
+    }
+
+    private IRI3986 schemeSpecificRulesInternal(final char[] iriChars) {
         if ( reports != null ) {
             // Called on IRI that already has reports.
             return this;
         }
-
-        checkGeneral();
+        checkGeneral(iriChars);
 
         if ( !hasScheme() )
             // no scheme, no checks.
@@ -1452,7 +1463,7 @@ public class IRI3986 implements IRI {
         else if ( fromScheme(iriStr, HTTP) )
             checkHTTP();
         else if ( fromScheme(iriStr, URN_UUID) )
-            checkURN_UUID();
+            checkURN_UUID(iriChars);
         else if ( fromScheme(iriStr, URN_OID) )
             checkURN_OID();
         // "urn" namespaces must go before this test.
@@ -1476,7 +1487,7 @@ public class IRI3986 implements IRI {
         return this;
     }
 
-    private void checkGeneral() {
+    private void checkGeneral(char[] iriChars) {
         // RFC 3986   section 3,2.1
         // https://datatracker.ietf.org/doc/html/rfc3986#section-3.2.1
         /*
@@ -1507,7 +1518,7 @@ public class IRI3986 implements IRI {
          */
 
         if ( hasHost() ) {
-            if ( containsUppercase(iriStr, host0, host1) )
+            if ( containsUppercase(iriChars, host0, host1) )
                 schemeReport(this, Issue.iri_host_not_lowercase, URIScheme.GENERAL, "Host name should be lowercase");
         }
 
@@ -1532,23 +1543,22 @@ public class IRI3986 implements IRI {
          * producers and normalizers should use uppercase hexadecimal digits for all
          * percent- encodings.
          */
-        checkPercent();
+        checkPercent(iriChars);
     }
 
-    private void checkPercent() {
+    private void checkPercent(final char[] iriChars) {
         // Path onwards (lower case in host)
         // Legal syntax so percent encoded is hex.
         if ( path0 < 0 )
             return;
         int N = iriStr.length();
         for ( int i = path0 ; i < N ; i++ ) {
-            char ch = iriStr.charAt(i);
-            if ( ch == '%' ) {
+            if ( iriChars[i] == '%' ) {
                 if ( i+2 > N ) {
-                    // Too near the end.
+                    return; // Too near the end.
                 }
-                char ch1 = iriStr.charAt(i+1);
-                char ch2 = iriStr.charAt(i+2);
+                char ch1 = iriChars[i+1];
+                char ch2 = iriChars[i+2];
                 if ( Chars3986.isHexDigitLC(ch1) || Chars3986.isHexDigitLC(ch2) ) {
                     schemeReport(this, Issue.iri_percent_not_uppercase, URIScheme.GENERAL, "Percent encoding should be uppercase");
                 }
@@ -1584,10 +1594,9 @@ public class IRI3986 implements IRI {
         }
     }
 
-    private boolean containsUppercase(String string, int start, int finish) {
+    private boolean containsUppercase(char[] chars, int start, int finish) {
         for ( int i = start ; i < finish ; i++ ) {
-            char ch = string.charAt(i);
-            if ( Character.isUpperCase(ch) )
+            if ( Character.isUpperCase(chars[i]) )
                 return true;
         }
         return false;
@@ -1749,7 +1758,7 @@ public class IRI3986 implements IRI {
      * <a href="https://datatracker.ietf.org/doc/html/rfc8141">RFC 8141</a>.
      *
      * Check "urn:". Additional checks for "urn:uuid:" available in
-     * {@link #checkURN_UUID(String)}.
+     * {@link #checkURN_UUID()}.
      */
     private void checkURN() {
         checkSchemeName(URIScheme.URN);
@@ -1798,13 +1807,46 @@ public class IRI3986 implements IRI {
     private static Pattern UUID_PATTERN_LC = Pattern.compile("^uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
     //private static Pattern UUID_PATTERN_UC_PREFIX = Pattern.compile("^uuid:[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$");
 
-    // Correct URN.
-    private static Pattern URN_UUID_PATTERN_LC = Pattern.compile("^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
-    //private static Pattern URN_UUID_PATTERN_UC = Pattern.compile("^urn:uuid:[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$");
-
     // General shape of a UUID: either scheme, any case. No length check.
     private static Pattern UUID_PATTERN_AnyCase_PREFIX =
             Pattern.compile("^(?:urn:uuid|uuid):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Check for a correct URN UUID.
+     * The pattern is "urn:uuid:" + 8hex + '-' + 4hex + '-' + 4hex + '-' + 4hex + '-' + 12hex
+     * This method replaces the regular expression check for the fast path:
+     * Pattern URN_UUID_PATTERN_LC = Pattern.compile("^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+     * @param iriChars the character array of the IRI string.
+     * @return true if the string is a valid URN UUID in lower case.
+     */
+    private static boolean isCorrectUrnUuidLowerCase(final char[] iriChars) {
+        // must be "urn:uuid:" + 8hex + '-' + 4hex + '-' + 4hex + '-' + 4hex + '-' + 12hex
+        if (iriChars == null || iriChars.length != 45) return false;
+        // check the fixed prefix
+        if (    iriChars[0] != 'u'  || iriChars[1] != 'r'  ||
+                iriChars[2] != 'n'  || iriChars[3] != ':'  ||
+                iriChars[4] != 'u'  || iriChars[5] != 'u'  ||
+                iriChars[6] != 'i'  || iriChars[7] != 'd'  ||
+                iriChars[8] != ':'  ||
+                iriChars[17] != '-' || iriChars[22] != '-' ||
+                iriChars[27] != '-' || iriChars[32] != '-' )
+            return false;
+        final int[] hexPositions = {
+                 9, 10, 11, 12, 13, 14, 15, 16, // 8 hex}
+                18, 19, 20, 21, // 4 hex
+                23, 24, 25, 26, // 4 hex
+                28, 29, 30, 31, // 4 hex
+                33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44 }; // 12 hex
+        for (var i : hexPositions) {
+            final char c = iriChars[i];
+            if (! ( (c <= '9' && c >= '0')     // otherwise must be [0-9] or [a-f]
+                    ||
+                    (c >= 'a' && c <= 'f') ) ) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     private final int UUID_length = 36;
     // "uuid" is the scheme,the URI path is the 36 character of the UUID.
@@ -1818,13 +1860,12 @@ public class IRI3986 implements IRI {
      * <p>
      * {@code <urn:uuid:...>} This is the correct way to have UUIDs as URIs.
      */
-    private void checkURN_UUID() {
+    private void checkURN_UUID(char[] iriChars) {
         checkSchemeName(URIScheme.URN_UUID);
-        boolean matches = URN_UUID_PATTERN_LC.matcher(iriStr).matches();
-        if ( matches )
+        if ( isCorrectUrnUuidLowerCase(iriChars) )
             // Fast path - no string manipulation, lower case, no components.
             return;
-        checkUUID(URIScheme.URN_UUID, iriStr, URN_UUID_scheme_path_length);
+        checkUUID(URIScheme.URN_UUID, URN_UUID_scheme_path_length);
         BiConsumer<Issue, String> handler = (issue, msg) -> schemeReport(this, issue, URIScheme.URN, msg);
         checkURNComponents(URIScheme.URN_UUID, handler);
     }
@@ -1841,7 +1882,7 @@ public class IRI3986 implements IRI {
         if ( matches )
             // Fast path - no string manipulation, lower case
             return;
-        checkUUID(URIScheme.UUID, iriStr, UUID_scheme_path_length);
+        checkUUID(URIScheme.UUID, UUID_scheme_path_length);
         // No query string, no URN components.
         if ( hasQuery() )
             schemeReport(this, Issue.uuid_has_query, URIScheme.UUID, "query component not allowed");
@@ -1850,7 +1891,7 @@ public class IRI3986 implements IRI {
     }
 
     // Checks for both urn:uuid: and uuid:
-    private void checkUUID(URIScheme scheme, String iriStr, int uriPathLen) {
+    private void checkUUID(URIScheme scheme, int uriPathLen) {
         // uuidPathLen : whole URI path : : 36 if uuid: ("uuid:" is the scheme), 41 is urn:uuid: (path is uuid:....)
         // It did not pass the fast-path regular expression.
 
@@ -1861,7 +1902,7 @@ public class IRI3986 implements IRI {
         }
 
         if ( scheme == URIScheme.URN_UUID ) {
-            if ( containsHexUC(iriStr, path0, path0+"uuid".length()) )
+            if ( containsHexUC(path0, path0+"uuid".length()) )
                 schemeReport(this, Issue.uuid_not_lowercase, scheme, "Lowercase recommended for urn UUID namspace");
         }
 
@@ -1874,14 +1915,13 @@ public class IRI3986 implements IRI {
         // We know it is the right length, right shape so:
         int uuidStart = path1 - UUID_length;
         int uuidFinish = path1;
-        if ( containsHexUC(iriStr,uuidStart, uuidFinish) )
+        if ( containsHexUC(uuidStart, uuidFinish) )
             schemeReport(this, Issue.uuid_not_lowercase, scheme, "Lowercase recommended for UUID string");
     }
 
-    private boolean containsHexUC(String iriStr2, int uuidStart, int uuidFinish) {
+    private boolean containsHexUC(int uuidStart, int uuidFinish) {
         for ( int i = uuidStart ; i < uuidFinish ; i++ ) {
-            char ch = charAt(i);
-            if ( Chars3986.range(ch, 'A', 'F') ) {
+            if ( Chars3986.range(iriStrCharAt(i), 'A', 'F') ) {
                 return true;
             }
         }
