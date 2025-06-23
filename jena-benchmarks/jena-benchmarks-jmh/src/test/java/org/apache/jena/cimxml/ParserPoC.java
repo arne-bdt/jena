@@ -20,9 +20,11 @@ package org.apache.jena.cimxml;
 
 import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.commons.lang3.time.StopWatch;
+import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
@@ -70,7 +72,9 @@ public class ParserPoC {
 
     @Test
     public void testRdfId() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
         final var xmlString = """
                <?xml version="1.0"?>
                <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -113,7 +117,9 @@ public class ParserPoC {
 
     @Test
     public void testTextParserSimple() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
         final var xmlString = """
                 <?xml version="1.0" encoding="utf-8"?>
                 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -151,7 +157,9 @@ public class ParserPoC {
 
     @Test
     public void testTextParser() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
         final var xmlString = """
                 <?xml version="1.0" encoding="utf-8"?>
                 <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -198,7 +206,9 @@ public class ParserPoC {
 
     @Test
     public void testCimXml() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
         final var xmlString = """
                <?xml version="1.0" encoding="utf-8"?>
                <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:cim="http://iec.ch/TC57/2013/CIM-schema-cim16#" xmlns:entsoe="http://entsoe.eu/CIM/SchemaExtension/3/1#" xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#">
@@ -258,7 +268,9 @@ public class ParserPoC {
 
     @Test
     public void testFileParser() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
         final var filePath = java.nio.file.Paths.get(file);
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
@@ -287,7 +299,9 @@ public class ParserPoC {
     @Test
     @Ignore
     public void profileFileParser() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
         final var filePath = java.nio.file.Paths.get(file);
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var parser = new CIMParser(filePath, new StreamRDFGraph(graph));
@@ -301,7 +315,10 @@ public class ParserPoC {
     @Test
     @Ignore
     public void profileFileDefaultParser() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
+
         final var filePath = java.nio.file.Paths.get(file);
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var stopWatch = StopWatch.createStarted();
@@ -317,7 +334,9 @@ public class ParserPoC {
     @Test
     @Ignore
     public void consumeFileLines() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
         final var filePath = java.nio.file.Paths.get(file);
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var stopWatch = StopWatch.createStarted();
@@ -341,7 +360,9 @@ public class ParserPoC {
     @Test
     @Ignore
     public void consumeFileBytewise() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
         final var filePath = java.nio.file.Paths.get(file);
         final var fileSize = java.nio.file.Files.size(filePath);
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
@@ -373,7 +394,9 @@ public class ParserPoC {
     @Test
     @Ignore
     public void consumeFileUsingBufferedInputStream() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
         final var filePath = java.nio.file.Paths.get(file);
         final var fileSize = java.nio.file.Files.size(filePath);
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
@@ -407,7 +430,9 @@ public class ParserPoC {
     @Test
     @Ignore
     public void consumeFileUsingPushbackInputStream() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
+        SystemIRIx.reset();
         final var filePath = java.nio.file.Paths.get(file);
         final var fileSize = java.nio.file.Files.size(filePath);
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
@@ -488,6 +513,9 @@ public class ParserPoC {
     @Test
     @Ignore
     public void testQuery() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
         final var stopWatch = StopWatch.createStarted();
         final var filePath = java.nio.file.Paths.get(file);
         final var subject = NodeFactory.createURI("cim:Location");
