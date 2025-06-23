@@ -387,6 +387,7 @@ class ParserRRX_SAX
     private final String initialXmlBase;
     private final String initialXmlLang;
     private final StreamRDF destination;
+    private Cache<String, Node> uriNodeCache = CacheFactory.createCache(IRI_CACHE_SIZE);
     private Cache<String, IRIx> iriCacheForBaseNull = null;
     private Cache<String, IRIx> currentIriCache = null;
     private final Map<IRIx, Cache<String, IRIx>> mapBaseIriToCache = new HashMap<>();
@@ -1416,11 +1417,11 @@ class ParserRRX_SAX
     }
 
     /** String to IRIx, no opinion */
-    private IRIx resolveIRIxAny(String uriStr, Position position) {
+    private IRIx resolveIRIxAny(final String uriStr, Position position) {
         try {
             return currentIriCache.get(uriStr, uri -> {
                 if( currentBase != null ) {
-                    return currentBase.resolve(uri);
+                    return currentBase.resolve(uriStr);
                 } else {
                     return IRIx.create(uriStr);
                 }
@@ -1431,11 +1432,13 @@ class ParserRRX_SAX
     }
 
     /** Done in accordance to the parser profile policy. */
-    private Node createURI(String iriStr, Position position) {
-        int line = position.line();
-        int col = position.column();
-        // Checking
-        return parserProfile.createURI(iriStr, line, col);
+    private Node createURI(final String iriStr, final Position position) {
+        return uriNodeCache.get(iriStr, (iri) -> {
+            int line = position.line();
+            int col = position.column();
+            // Checking
+            return parserProfile.createURI(iriStr, line, col);
+        });
     }
 
     private Node createURI(IRIx iriX, Position position) {
