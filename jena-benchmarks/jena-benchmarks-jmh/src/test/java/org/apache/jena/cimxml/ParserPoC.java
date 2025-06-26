@@ -156,6 +156,96 @@ public class ParserPoC {
     }
 
     @Test
+    public void testTextParserNestedSubject() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var xmlString = """
+                <?xml version="1.0" encoding="utf-8"?>
+                <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                            xmlns:dc="http://purl.org/dc/elements/1.1/"
+                            xmlns:foaf="http://xmlns.com/foaf/0.1/"
+                            xmlns:ex="http://www.example.org">
+                
+                  <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar" dc:Author="Henry Ford &amp; &quot; &gt; &lt; &apos;">
+                        <ex:knows>
+                            <foaf:Person rdf:about="http://xmlns.com/foaf/0.1/Bob">
+                                <foaf:name>Bob</foaf:name>
+                            </foaf:Person>
+                        </ex:knows>
+                  </rdf:Description>
+                </rdf:RDF>
+                """;
+        final var is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var parser = new CIMParser(is, new StreamRDFGraph(graph));
+
+        final var stopWatch = StopWatch.createStarted();
+        parser.parse();
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
+
+        stopWatch.reset();
+        stopWatch.start();
+        RDFParser.create()
+                .source(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)))
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .parse(new StreamRDFGraph(expectedGraph));
+        stopWatch.stop();
+
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
+
+        assertGraphsEqual(expectedGraph, graph);
+    }
+
+    @Test
+    public void testTextParserParseTypeResource() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var xmlString = """
+                <?xml version="1.0"?>
+                <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                            xmlns:dc="http://purl.org/dc/elements/1.1/"
+                            xmlns:ex="http://example.org/stuff/1.0/">
+                  <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar"
+                                   dc:title="RDF 1.1 XML Syntax">
+                    <ex:editor rdf:parseType="Resource">
+                      <ex:fullName>Dave Beckett</ex:fullName>
+                      <ex:homePage rdf:resource="http://purl.org/net/dajobe/"/>
+                    </ex:editor>
+                  </rdf:Description>
+                </rdf:RDF>
+                """;
+        final var is = new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8));
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var parser = new CIMParser(is, new StreamRDFGraph(graph));
+
+        final var stopWatch = StopWatch.createStarted();
+        parser.parse();
+        stopWatch.stop();
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
+
+        stopWatch.reset();
+        stopWatch.start();
+        RDFParser.create()
+                .source(new ByteArrayInputStream(xmlString.getBytes(StandardCharsets.UTF_8)))
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .parse(new StreamRDFGraph(expectedGraph));
+        stopWatch.stop();
+
+        // print number of triples parsed and the time taken
+        System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
+
+        assertTrue(expectedGraph.isIsomorphicWith(graph));
+    }
+
+    @Test
     public void testTextParser() throws Exception {
         Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
