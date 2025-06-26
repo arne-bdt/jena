@@ -262,16 +262,17 @@ public class CIMParser {
                     + currentTextContent.decodeToString());
         }
         currentTextContent.skip(); // Skip the LEFT_ANGLE_BRACKET
-        /*idea for improvements: have cached literals for some datatypes
-          --> this is only possible in CIM/XML if we have a schema with the datatypes*/
-        final var object = NodeFactory.createLiteral(
-                currentTextContent.decodeToString(),
-                parent.xmlLang != null ? parent.xmlLang.decodeToString(): null,
-                parent.datatype);
-        streamRDFSink.triple(Triple.create(parent.subject, parent.predicate, object));
-
-        //refresh currentTag --> this is a shortcut to avoid LOOKING_FOR_TAG status, which would refresh currentTag
-        root.copyRemainingBytesToStart();
+        var nextByte = currentTextContent.peek();
+        if (nextByte == SLASH) {
+            // the text content must be a literal as the next tag is a closing tag.
+            /*idea for improvements: have cached literals for some datatypes
+            --> this is only possible in CIM/XML if we have a schema with the datatypes*/
+            final var object = NodeFactory.createLiteral(
+                    currentTextContent.decodeToString(),
+                    parent.xmlLang != null ? parent.xmlLang.decodeToString(): null,
+                    parent.datatype);
+            streamRDFSink.triple(Triple.create(parent.subject, parent.predicate, object));
+        }
         return State.LOOKING_FOR_TAG_NAME;
     }
 
@@ -311,6 +312,7 @@ public class CIMParser {
     }
 
     private State handleAtEndOfOpeningTag() throws ParserException, IOException {
+        final var parent = elementStack.peek();
         State state;
         if(TAG_RDF_RDF.equals(currentTag)) {
             state = handleTagRdfRdf();
@@ -320,6 +322,11 @@ public class CIMParser {
             state = handleRdfLi();
         } else {
             state = handleOtherTag();
+        }
+        // if the parent was a predicate, we need to create a triple
+        final var current = elementStack.peek();
+        if (parent != null && parent.predicate != null && current != null && current.subject != null) {
+            streamRDFSink.triple(Triple.create(parent.subject, parent.predicate, current.subject));
         }
         return state;
     }
@@ -335,6 +342,10 @@ public class CIMParser {
                 // create type triple for the current tag
                 var object = getOrCreateNodeForTagOrAttributeName(currentTag);
                 streamRDFSink.triple(Triple.create(current.subject, NODE_RDF_TYPE, object));
+
+                if (parent.predicate != null) {
+                    streamRDFSink.triple(Triple.create(parent.subject, parent.predicate, current.subject));
+                }
             }
 
             // Now process the remaining attributes, which must be literals
@@ -386,14 +397,11 @@ public class CIMParser {
                 final var parseType = attribute.value();
                 if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_LITERAL.equals(parseType)) {
                     throw new ParserException("rdf:parseType='Literal' is not supported in CIM/XML");
-                }
-                if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_RESOURCE.equals(parseType)) {
+                } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_RESOURCE.equals(parseType)) {
                     throw new ParserException("rdf:parseType='Resource' is not supported in CIM/XML");
-                }
-                if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_COLLECTION.equals(parseType)) {
+                } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_COLLECTION.equals(parseType)) {
                     throw new ParserException("rdf:parseType='Collection' is not supported in CIM/XML");
-                }
-                if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_STATEMENT.equals(parseType)) {
+                } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_STATEMENT.equals(parseType)) {
                     throw new ParserException("rdf:parseType='Statement' is not yet supported in this parser");
                 } else {
                     throw new ParserException("Unknown rdf:parseType: " + parseType.decodeToString());
