@@ -67,7 +67,7 @@ public class ParserPoC {
      */
 
     //private final String file = "C:\\temp\\CGMES_v2.4.15_TestConfigurations_v4.0.3\\MicroGrid\\BaseCase_BC\\CGMES_v2.4.15_MicroGridTestConfiguration_BC_Assembled_CA_v2\\MicroGridTestConfiguration_BC_NL_GL_V2.xml";
-    private final String file = "C:\\temp\\v59_3\\AMP_Export_s82_v58_H69.xml";
+    private final String file = "C:\\temp\\v59_3\\InstanceData.xml";
 //    private final String file ="C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml";
 
     @Test
@@ -384,6 +384,28 @@ public class ParserPoC {
         System.out.println("Parsed expected triples: " + expectedGraph.size() + " in " + stopWatch);
 
         assertGraphsEqual(expectedGraph, graph);
+    }
+
+    @Test
+    public void profileGraphAdd() throws Exception {
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var filePath = java.nio.file.Paths.get(file);
+        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        RDFParser.create()
+                .source(filePath)
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .parse(new StreamRDFGraph(graph));
+        final var stopWatch = StopWatch.createStarted();
+        final var graphCopy = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        graph.find().forEachRemaining(graphCopy::add);
+        graphCopy.initializeIndexParallel();
+        stopWatch.stop();
+
+        // print number of triples added and the time taken
+        System.out.println("Added triples: " + graphCopy.size() + " in " + stopWatch);
+
     }
 
     @Test
