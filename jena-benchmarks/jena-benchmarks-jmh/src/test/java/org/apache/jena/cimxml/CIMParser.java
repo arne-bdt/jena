@@ -398,7 +398,11 @@ public class CIMParser {
                 if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_LITERAL.equals(parseType)) {
                     throw new ParserException("rdf:parseType='Literal' is not supported in CIM/XML");
                 } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_RESOURCE.equals(parseType)) {
-                    throw new ParserException("rdf:parseType='Resource' is not supported in CIM/XML");
+                    var predicate = getOrCreateNodeForTagOrAttributeName(currentTag);
+                    current.subject = NodeFactory.createBlankNode(); // Create a blank node as subject
+                    streamRDFSink.triple(Triple.create(parent.subject, predicate, current.subject));
+                    elementStack.push(current);
+                    return State.LOOKING_FOR_TAG;
                 } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_COLLECTION.equals(parseType)) {
                     throw new ParserException("rdf:parseType='Collection' is not supported in CIM/XML");
                 } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_STATEMENT.equals(parseType)) {
