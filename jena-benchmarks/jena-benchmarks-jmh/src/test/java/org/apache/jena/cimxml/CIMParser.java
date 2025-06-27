@@ -19,6 +19,8 @@
 package org.apache.jena.cimxml;
 
 import org.apache.commons.io.input.BufferedFileChannelInputStream;
+import org.apache.jena.atlas.lib.Cache;
+import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.cimxml.collections.JenaHashMap;
 import org.apache.jena.cimxml.collections.JenaHashSet;
 import org.apache.jena.cimxml.utils.*;
@@ -104,8 +106,8 @@ public class CIMParser {
     private final JenaHashSet<SpecialByteBuffer> langSet = new JenaHashSet<>();
     // A map to store baseSet and avoid to copy NamespaceFixedByteArrayBuffer objects unnecessarily
     private final JenaHashMap<SpecialByteBuffer, NamespaceIriPair> baseSet = new JenaHashMap<>();
-    private final JenaHashMap<NamespaceAndQName, Node> iriNodeCacheWithNamespace = new JenaHashMap<>();
-    private final JenaHashMap<SpecialByteBuffer, Node> iriNodeCacheWithoutNamespace = new JenaHashMap<>();
+    private final Cache<NamespaceAndQName, Node> iriNodeCacheWithNamespace = CacheFactory.createSimpleCache(8192);
+    private final Cache<SpecialByteBuffer, Node> iriNodeCacheWithoutNamespace = CacheFactory.createSimpleCache(8192);
 
     private record NamespaceIriPair(ByteArrayKey namespace, IRIx iri) {}
     private record NamespaceAndQName(ByteArrayKey namespace, SpecialByteBuffer qname) {}
@@ -492,7 +494,7 @@ public class CIMParser {
 
     private Node getOrCreateNodeForIri(final NamespaceIriPair xmlBase, final DecodingTextByteBuffer iriQName) {
         if(xmlBase == null) {
-            var node = iriNodeCacheWithoutNamespace.get(iriQName);
+            var node = iriNodeCacheWithoutNamespace.getIfPresent(iriQName);
             if(node != null) {
                 return node;
             }
@@ -504,7 +506,7 @@ public class CIMParser {
             return node;
         } else {
             var cacheKey = new NamespaceAndQName(xmlBase.namespace, iriQName);
-            var node = iriNodeCacheWithNamespace.get(cacheKey);
+            var node = iriNodeCacheWithNamespace.getIfPresent(cacheKey);
             if(node != null) {
                 return node;
             }
@@ -547,7 +549,7 @@ public class CIMParser {
             throw new ParserException("rdf:ID attribute found without base URI");
         }
         var cacheKey = new NamespaceAndQName(xmlBase.namespace, rdfId);
-        var node = iriNodeCacheWithNamespace.get(cacheKey);
+        var node = iriNodeCacheWithNamespace.getIfPresent(cacheKey);
         if(node != null) {
             return node;
         }
