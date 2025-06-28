@@ -88,8 +88,8 @@ public class CIMParser {
     private final InputStream inputStream;
     private final JenaHashMap<SpecialByteBuffer, NamespaceIriPair> prefixToNamespace
             = new JenaHashMap<>(8);
-    private final ByteArrayMap<Node> tagOrAttributeNameToUriNode
-            = new ByteArrayMap<>(256, 8);
+    private final Cache<SpecialByteBuffer, Node> tagOrAttributeNameToUriNode
+            = CacheFactory.createSimpleCache(8192);
     private final StreamRDF streamRDFSink;
 
     private final StreamBufferRoot root = new StreamBufferRoot(MAX_LENGTH_OF_FRAGMENT);
@@ -593,8 +593,7 @@ public class CIMParser {
     }
 
     private Node getOrCreateNodeForTagOrAttributeName(final QNameByteBuffer tagOrAttributeName) throws ParserException {
-        var uriNode = tagOrAttributeNameToUriNode.get(tagOrAttributeName);
-        if(uriNode == null) {
+        return tagOrAttributeNameToUriNode.get(tagOrAttributeName, key -> {
             final NamespaceIriPair namespace;
             if(tagOrAttributeName.hasPrefix()) {
                 // If the name has a prefix, resolve it against the prefixToNamespace map
@@ -605,16 +604,14 @@ public class CIMParser {
             } else {
                 // If no prefix, treat it as a local part and use the default namespace
                 if(defaultNamespace == null) {
-                    throw new ParserException("No default namespace defined for tag or attribute: "
-                            + tagOrAttributeName.decodeToString());
+                    throw new RuntimeException(new ParserException("No default namespace defined for tag or attribute: "
+                            + tagOrAttributeName.decodeToString()));
                 }
                 namespace = defaultNamespace;
             }
-            uriNode = NodeFactory.createURI(
+            return NodeFactory.createURI(
                     namespace.namespace.decodeToString() + tagOrAttributeName.getLocalPart().decodeToString());
-            tagOrAttributeNameToUriNode.put(tagOrAttributeName.copy(), uriNode);
-        }
-        return uriNode;
+        });
     }
 
     private Node getOrCreateNodeForRdfId(NamespaceIriPair xmlBase, final DecodingTextByteBuffer rdfId) throws ParserException {
