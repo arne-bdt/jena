@@ -286,10 +286,11 @@ public class CIMParser {
                     + currentTextContent.decodeToString());
         }
         currentTextContent.setCurrentByteAsStartPositon();
-        if(!currentTextContent.tryForwardAndSetEndPositionExclusive(LEFT_ANGLE_BRACKET)) {
+        if(!currentTextContent.tryConsumeToEndOfTextContent()) {
             throw new ParserException("Unexpected end of stream while looking for opening tag after text content: "
                     + currentTextContent.decodeToString());
         }
+        currentTextContent.setEndPositionExclusive();
         currentTextContent.skip(); // Skip the LEFT_ANGLE_BRACKET
         var nextByte = currentTextContent.peek();
         if (nextByte == SLASH) {
@@ -807,7 +808,7 @@ public class CIMParser {
         if(attributeValue.tryConsumeToStartOfAttributeValue()) {
             attributeValue.skip(); // Move to the next byte after the double quote
             attributeValue.setCurrentByteAsStartPositon();
-            if (attributeValue.tryForwardAndSetEndPositionExclusive(DOUBLE_QUOTE)) {
+            if (attributeValue.tryConsumeToEndOfAttributeValue()) {
                 attributeValue.setEndPositionExclusive();
                 attributeValue.skip();
                 return State.LOOKING_FOR_ATTRIBUTE_NAME;
