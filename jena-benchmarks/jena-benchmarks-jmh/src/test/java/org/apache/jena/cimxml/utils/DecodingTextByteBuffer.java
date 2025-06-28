@@ -130,28 +130,62 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
         }
     }
 
-    public boolean tryConsumeToStartOfAttributeValue() throws IOException {
-        if (root.position >= root.filledToExclusive) {
-            if (!root.tryFillFromInputStream()) {
-                return false; // No more data to read
-            }
-        }
-        while (root.position < root.filledToExclusive) {
-            if (root.buffer[root.position] == DOUBLE_QUOTE) {
-                return true;
-            }
-            if(!isWhitespace(root.buffer[root.position])) {
-                // If we encounter a non-whitespace character before the quote, we stop
-                // there is no need to call afterConsumeCurrent since we are not decoding here
-                return false;
-            }
-            // do not consume whitespace, just skip it
-            if (++root.position == root.filledToExclusive) {
+    public boolean tryConsumeToEndOfAttributeValue() throws IOException {
+        while (true) {
+            if (root.position >= root.filledToExclusive) {
                 if (!root.tryFillFromInputStream()) {
                     return false; // No more data to read
                 }
             }
+            while (root.position < root.filledToExclusive) {
+                final byte currentByte = root.buffer[root.position];
+                if (currentByte == DOUBLE_QUOTE) {
+                    return true;
+                }
+                afterConsumeCurrent(currentByte);
+                root.position++;
+            }
         }
-        return false; // Byte not found
+    }
+
+    public boolean tryConsumeToEndOfTextContent() throws IOException {
+        while (true) {
+            if (root.position >= root.filledToExclusive) {
+                if (!root.tryFillFromInputStream()) {
+                    return false; // No more data to read
+                }
+            }
+            while (root.position < root.filledToExclusive) {
+                final byte currentByte = root.buffer[root.position];
+                if (currentByte == LEFT_ANGLE_BRACKET) {
+                    return true;
+                }
+                afterConsumeCurrent(currentByte);
+                root.position++;
+            }
+        }
+    }
+
+    public boolean tryConsumeToStartOfAttributeValue() throws IOException {
+        while (true) {
+            if (root.position >= root.filledToExclusive) {
+                if (!root.tryFillFromInputStream()) {
+                    return false; // No more data to read
+                }
+            }
+            while (root.position < root.filledToExclusive) {
+                final byte currentByte = root.buffer[root.position];
+                if (currentByte == DOUBLE_QUOTE) {
+                    return true;
+                }
+                if (!isWhitespace(currentByte)) {
+                    // If we encounter a non-whitespace character before the quote, we stop
+                    // there is no need to call afterConsumeCurrent since we are not decoding here
+                    return false;
+                }
+                // do not consume whitespace, just skip it
+                root.position++;
+            }
+        }
     }
 }
