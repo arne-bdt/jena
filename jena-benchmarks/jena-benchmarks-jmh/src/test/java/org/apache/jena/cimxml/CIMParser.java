@@ -593,7 +593,8 @@ public class CIMParser {
     }
 
     private Node getOrCreateNodeForTagOrAttributeName(final QNameByteBuffer tagOrAttributeName) throws ParserException {
-        return tagOrAttributeNameToUriNode.get(tagOrAttributeName, key -> {
+        var uriNode = tagOrAttributeNameToUriNode.getIfPresent(tagOrAttributeName);
+        if(uriNode == null) {
             final NamespaceIriPair namespace;
             if(tagOrAttributeName.hasPrefix()) {
                 // If the name has a prefix, resolve it against the prefixToNamespace map
@@ -604,14 +605,16 @@ public class CIMParser {
             } else {
                 // If no prefix, treat it as a local part and use the default namespace
                 if(defaultNamespace == null) {
-                    throw new RuntimeException(new ParserException("No default namespace defined for tag or attribute: "
-                            + tagOrAttributeName.decodeToString()));
+                    throw new ParserException("No default namespace defined for tag or attribute: "
+                            + tagOrAttributeName.decodeToString());
                 }
                 namespace = defaultNamespace;
             }
-            return NodeFactory.createURI(
+            uriNode = NodeFactory.createURI(
                     namespace.namespace.decodeToString() + tagOrAttributeName.getLocalPart().decodeToString());
-        });
+            tagOrAttributeNameToUriNode.put(tagOrAttributeName.copy(), uriNode);
+        }
+        return uriNode;
     }
 
     private Node getOrCreateNodeForRdfId(NamespaceIriPair xmlBase, final DecodingTextByteBuffer rdfId) throws ParserException {
