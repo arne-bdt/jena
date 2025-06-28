@@ -93,12 +93,15 @@ public class QNameByteBuffer extends StreamBufferChild {
             }
             final int endPos = root.filledToExclusive;
             final var buffer = rootBuffer;
-            while (root.position < endPos) {
-                if (buffer[root.position] == RIGHT_ANGLE_BRACKET) {
+            var pos = root.position;
+            while (pos < endPos) {
+                if (buffer[pos] == RIGHT_ANGLE_BRACKET) {
+                    root.position = pos;
                     return true;
                 }
-                root.position++;
+                pos++;
             }
+            root.position = pos;
         }
     }
 
@@ -110,12 +113,15 @@ public class QNameByteBuffer extends StreamBufferChild {
             }
             final int endPos = root.filledToExclusive;
             final var buffer = rootBuffer;
-            while (root.position < endPos) {
-                if (!isWhitespace(buffer[root.position])) {
+            var pos = root.position;
+            while (pos < endPos) {
+                if (!isWhitespace(buffer[pos])) {
+                    root.position = pos;
                     return true;
                 }
-                root.position++;
+                pos++;
             }
+            root.position = pos;
         }
     }
 
@@ -133,16 +139,19 @@ public class QNameByteBuffer extends StreamBufferChild {
             }
             final int endPos = root.filledToExclusive;
             final var buffer = rootBuffer;
-            while (root.position < endPos) {
-                final byte currentByte = buffer[root.position];
+            var pos = root.position;
+            while (pos < endPos) {
+                final byte currentByte = buffer[pos];
                 if (currentByte == EQUALITY_SIGN || isWhitespace(currentByte) ) {
+                    root.position = pos;
                     return true;
                 }
-                root.position++;
+                pos++;
                 if (currentByte == DOUBLE_COLON) {
-                    startOfLocalPart = root.position; // Set the start of local part after the colon
+                    startOfLocalPart = pos; // Set the start of local part after the colon
                 }
             }
+            root.position = pos;
         }
     }
 
