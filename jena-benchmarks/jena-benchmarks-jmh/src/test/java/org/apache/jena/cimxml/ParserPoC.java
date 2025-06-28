@@ -67,8 +67,8 @@ public class ParserPoC {
      */
 
     //private final String file = "C:\\temp\\CGMES_v2.4.15_TestConfigurations_v4.0.3\\MicroGrid\\BaseCase_BC\\CGMES_v2.4.15_MicroGridTestConfiguration_BC_Assembled_CA_v2\\MicroGridTestConfiguration_BC_NL_GL_V2.xml";
-    private final String file = "C:\\temp\\v59_3\\InstanceData.xml";
-//    private final String file ="C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml";
+//    private final String file = "C:\\temp\\v59_3\\InstanceData.xml";
+    private final String file ="C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml";
 
     @Test
     public void testRdfId() throws Exception {
