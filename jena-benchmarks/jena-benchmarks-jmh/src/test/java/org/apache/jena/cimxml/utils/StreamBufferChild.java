@@ -71,7 +71,7 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
     public void setEndPositionExclusiveAndSkip() throws IOException {
         this.endExclusive = this.root.position;
         root.position++;
-        peek();
+        fillIfNeeded();
     }
 
     public byte setEndPositionExclusiveAndSkipAndPeek() throws IOException {
@@ -103,14 +103,16 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
         return found;
     }
 
-
-
-    public byte peek() throws IOException {
+    public void fillIfNeeded() throws IOException {
         if (root.position >= root.filledToExclusive) {
             if (!root.tryFillFromInputStream()) {
-                return END_OF_STREAM;
+                throw new IOException("No more data to read from input stream");
             }
         }
+    }
+
+    public byte peek() throws IOException {
+        fillIfNeeded();
         return root.buffer[root.position];
     }
 
@@ -133,7 +135,7 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
      */
     public void skip() throws IOException {
         root.position++;
-        peek();
+        fillIfNeeded();
     }
 
     /**
@@ -144,7 +146,7 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
      */
     public void skip(int bytesToSkip) throws IOException {
         root.position += bytesToSkip;
-        peek();
+        fillIfNeeded();
     }
 
     @Override

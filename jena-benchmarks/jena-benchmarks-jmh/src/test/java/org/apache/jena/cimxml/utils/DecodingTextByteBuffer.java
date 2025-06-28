@@ -126,6 +126,8 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
             while (root.position < root.filledToExclusive) {
                 final byte currentByte = root.buffer[root.position];
                 if (currentByte == DOUBLE_QUOTE) {
+                    this.endExclusive = this.root.position++;
+                    fillIfNeeded();
                     return true;
                 }
                 afterConsumeCurrent(currentByte);
@@ -162,6 +164,8 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
             while (root.position < root.filledToExclusive) {
                 final byte currentByte = root.buffer[root.position];
                 if (currentByte == DOUBLE_QUOTE) {
+                    this.start = ++this.root.position;
+                    fillIfNeeded();
                     return true;
                 }
                 if (!isWhitespace(currentByte)) {
