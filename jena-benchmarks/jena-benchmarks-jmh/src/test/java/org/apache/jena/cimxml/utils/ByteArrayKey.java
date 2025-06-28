@@ -46,7 +46,7 @@ public class ByteArrayKey implements SpecialByteBuffer {
     }
 
     public byte[] getData() {
-        return this.data;
+        return data;
     }
 
     @Override

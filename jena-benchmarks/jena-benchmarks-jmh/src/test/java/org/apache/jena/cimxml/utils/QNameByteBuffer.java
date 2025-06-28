@@ -51,16 +51,27 @@ public class QNameByteBuffer extends StreamBufferChild {
         return new WrappedByteArray(rootBuffer, startOfLocalPart, endExclusive - startOfLocalPart);
     }
 
-   public boolean tryConsumeToEndOfTagName() throws IOException {
+    public String getLocalPartAsString() {
+        return new String(rootBuffer, startOfLocalPart, endExclusive - startOfLocalPart, UTF_8);
+    }
+
+    public SpecialByteBuffer getLocalPartAsCopy() {
+        final byte[] dataCopy = new byte[endExclusive - startOfLocalPart];
+        System.arraycopy(rootBuffer, startOfLocalPart, dataCopy, 0, dataCopy.length);
+        return new ByteArrayKey(dataCopy);
+    }
+
+    public boolean tryConsumeToEndOfTagName() throws IOException {
         while (true) {
             if (root.position >= root.filledToExclusive
                     && !root.tryFillFromInputStream()) {
                 return false; // No more data to read
             }
             final int endPos = root.filledToExclusive;
+            final var buffer = rootBuffer;
             var pos = root.position;
             while (pos < endPos) {
-                final byte currentByte = rootBuffer[pos];
+                final byte currentByte = buffer[pos];
                 if (isEndOfTagName(currentByte)) {
                     root.position = pos;
                     return true;
@@ -81,8 +92,9 @@ public class QNameByteBuffer extends StreamBufferChild {
                 return false; // No more data to read
             }
             final int endPos = root.filledToExclusive;
+            final var buffer = rootBuffer;
             while (root.position < endPos) {
-                if (rootBuffer[root.position] == RIGHT_ANGLE_BRACKET) {
+                if (buffer[root.position] == RIGHT_ANGLE_BRACKET) {
                     return true;
                 }
                 root.position++;
@@ -97,8 +109,9 @@ public class QNameByteBuffer extends StreamBufferChild {
                 return false; // No more data to read
             }
             final int endPos = root.filledToExclusive;
+            final var buffer = rootBuffer;
             while (root.position < endPos) {
-                if (!isWhitespace(rootBuffer[root.position])) {
+                if (!isWhitespace(buffer[root.position])) {
                     return true;
                 }
                 root.position++;
@@ -119,8 +132,9 @@ public class QNameByteBuffer extends StreamBufferChild {
                 return false; // No more data to read
             }
             final int endPos = root.filledToExclusive;
+            final var buffer = rootBuffer;
             while (root.position < endPos) {
-                final byte currentByte = rootBuffer[root.position];
+                final byte currentByte = buffer[root.position];
                 if (currentByte == EQUALITY_SIGN || isWhitespace(currentByte) ) {
                     return true;
                 }
