@@ -86,8 +86,8 @@ public class CIMParser {
     private final Path filePath;
     private final FileChannel fileChannel;
     private final InputStream inputStream;
-    private final ByteArrayMap<NamespaceIriPair> prefixToNamespace
-            = new ByteArrayMap<>(8, 8);
+    private final JenaHashMap<SpecialByteBuffer, NamespaceIriPair> prefixToNamespace
+            = new JenaHashMap<>(8);
     private final ByteArrayMap<Node> tagOrAttributeNameToUriNode
             = new ByteArrayMap<>(256, 8);
     private final StreamRDF streamRDFSink;
@@ -508,25 +508,27 @@ public class CIMParser {
         // look for xml:lang and xml:base attributes
         for (var i = 0; i < currentAttributes.size(); i++) {
             final var attribute = currentAttributes.get(i);
-            if (ATTRIBUTE_XML_LANG.equals(attribute.name())) {
-                attribute.setConsumed();
-                // If the attribute is xml:lang, set the xmlLang for the element
-                xmlLang = langSet.getMatchingKey(attribute.value());
-                if (xmlLang == null) {
-                    xmlLang = attribute.value().copy();
-                    langSet.tryAdd(xmlLang); // Store the xml:lang value to avoid copying
-                }
-            } else if (ATTRIBUTE_XML_BASE.equals(attribute.name())) {
-                attribute.setConsumed();
-                // If the attribute is xml:base, set the xmlBase for the element
-                var namespace = attribute.value().copy();
-                xmlBase = baseSet.get(namespace);
-                if (xmlBase == null) {
-                    var nsCopy = namespace.copy();
-                    xmlBase = new NamespaceIriPair(
-                            nsCopy,
-                            iriProvider.create(nsCopy.decodeToString()));
-                    baseSet.put(nsCopy, xmlBase); // Store the xml:base value to avoid copying
+            if(attribute.name().length() == 8) { // xml:lang or xml:base
+                if (ATTRIBUTE_XML_LANG.equals(attribute.name())) {
+                    attribute.setConsumed();
+                    // If the attribute is xml:lang, set the xmlLang for the element
+                    xmlLang = langSet.getMatchingKey(attribute.value());
+                    if (xmlLang == null) {
+                        xmlLang = attribute.value().copy();
+                        langSet.tryAdd(xmlLang); // Store the xml:lang value to avoid copying
+                    }
+                } else if (ATTRIBUTE_XML_BASE.equals(attribute.name())) {
+                    attribute.setConsumed();
+                    // If the attribute is xml:base, set the xmlBase for the element
+                    var namespace = attribute.value().copy();
+                    xmlBase = baseSet.get(namespace);
+                    if (xmlBase == null) {
+                        var nsCopy = namespace.copy();
+                        xmlBase = new NamespaceIriPair(
+                                nsCopy,
+                                iriProvider.create(nsCopy.decodeToString()));
+                        baseSet.put(nsCopy, xmlBase); // Store the xml:base value to avoid copying
+                    }
                 }
             }
         }
