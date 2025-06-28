@@ -108,10 +108,9 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
     }
 
     public void fillIfNeeded() throws IOException {
-        if (root.position >= root.filledToExclusive) {
-            if (!root.tryFillFromInputStream()) {
-                throw new IOException("No more data to read from input stream");
-            }
+        if (root.position >= root.filledToExclusive
+            && !root.tryFillFromInputStream()) {
+            throw new IOException("No more data to read from input stream");
         }
     }
 
