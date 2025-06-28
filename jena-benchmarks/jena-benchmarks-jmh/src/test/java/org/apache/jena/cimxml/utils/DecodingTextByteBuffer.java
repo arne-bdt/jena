@@ -71,18 +71,18 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
         this.containsSpecialCharacters = 0; // Reset the special characters bitmask
     }
 
-    protected void afterConsumeCurrent(byte currentByte) {
+    private void afterConsumeCurrent(byte currentByte, byte[] buffer, int position) {
         switch (currentByte) {
-            case AMPERSAND -> lastAmpersandPosition = root.position; // Store the position of the last '&'
+            case AMPERSAND -> lastAmpersandPosition = position; // Store the position of the last '&'
             case SEMICOLON -> {
-                var charsBetweenAmpersandAndSemicolon = root.position - lastAmpersandPosition - 1;
+                var charsBetweenAmpersandAndSemicolon = position - lastAmpersandPosition - 1;
                 switch (charsBetweenAmpersandAndSemicolon) {
                     case 2: {
-                        if (root.buffer[lastAmpersandPosition + 2] == 't') {
-                            if (root.buffer[lastAmpersandPosition + 1] == 'l') {
+                        if (buffer[lastAmpersandPosition + 2] == 't') {
+                            if (buffer[lastAmpersandPosition + 1] == 'l') {
                                 containsSpecialCharacters |= SpecialCharacter.LEFT_ANGLE_BRACKET.getBit(); // &lt;
                                 return;
-                            } else if (root.buffer[lastAmpersandPosition + 1] == 'g') {
+                            } else if (buffer[lastAmpersandPosition + 1] == 'g') {
                                 containsSpecialCharacters |= SpecialCharacter.RIGHT_ANGLE_BRACKET.getBit(); // &gt;
                                 return;
                             }
@@ -90,22 +90,22 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                         break;
                     }
                     case 3: {
-                        if (root.buffer[lastAmpersandPosition + 3] == 'p'
-                                && root.buffer[lastAmpersandPosition + 2] == 'm'
-                                && root.buffer[lastAmpersandPosition + 1] == 'a') {
+                        if (buffer[lastAmpersandPosition + 3] == 'p'
+                                && buffer[lastAmpersandPosition + 2] == 'm'
+                                && buffer[lastAmpersandPosition + 1] == 'a') {
                             containsSpecialCharacters |= SpecialCharacter.AMPERSAND.getBit(); // &amp;
                         }
                         break;
                     }
                     case 4: {
-                        if (root.buffer[lastAmpersandPosition + 3] == 'o') {
-                            if (root.buffer[lastAmpersandPosition + 1] == 'q'
-                                    && root.buffer[lastAmpersandPosition + 2] == 'u'
-                                    && root.buffer[lastAmpersandPosition + 4] == 't') {
+                        if (buffer[lastAmpersandPosition + 3] == 'o') {
+                            if (buffer[lastAmpersandPosition + 1] == 'q'
+                                    && buffer[lastAmpersandPosition + 2] == 'u'
+                                    && buffer[lastAmpersandPosition + 4] == 't') {
                                 containsSpecialCharacters |= SpecialCharacter.DOUBLE_QUOTE.getBit(); // &quot;
-                            } else if (root.buffer[lastAmpersandPosition + 2] == 'p'
-                                    && root.buffer[lastAmpersandPosition + 4] == 's'
-                                    && root.buffer[lastAmpersandPosition + 1] == 'a') {
+                            } else if (buffer[lastAmpersandPosition + 2] == 'p'
+                                    && buffer[lastAmpersandPosition + 4] == 's'
+                                    && buffer[lastAmpersandPosition + 1] == 'a') {
                                 containsSpecialCharacters |= SpecialCharacter.SINGLE_QUOTE.getBit(); // &apos;
                             }
                         }
@@ -118,64 +118,77 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
 
     public boolean tryConsumeToEndOfAttributeValue() throws IOException {
         while (true) {
-            if (root.position >= root.filledToExclusive) {
-                if (!root.tryFillFromInputStream()) {
-                    return false; // No more data to read
-                }
+            if (root.position >= root.filledToExclusive
+                && !root.tryFillFromInputStream()) {
+                return false; // No more data to read
             }
-            while (root.position < root.filledToExclusive) {
-                final byte currentByte = root.buffer[root.position];
+            final int endPos = root.filledToExclusive;
+            final var buffer = root.buffer;
+            var pos = root.position;
+            while (pos < endPos) {
+                final byte currentByte = buffer[pos];
                 if (currentByte == DOUBLE_QUOTE) {
-                    this.endExclusive = this.root.position++;
+                    this.endExclusive = pos++;
+                    this.root.position = pos;
                     fillIfNeeded();
                     return true;
                 }
-                afterConsumeCurrent(currentByte);
-                root.position++;
+                afterConsumeCurrent(currentByte, buffer, pos);
+                pos++;
             }
+            this.root.position = pos;
         }
     }
 
     public boolean tryConsumeToEndOfTextContent() throws IOException {
         while (true) {
-            if (root.position >= root.filledToExclusive) {
-                if (!root.tryFillFromInputStream()) {
-                    return false; // No more data to read
-                }
+            if (root.position >= root.filledToExclusive
+                    && !root.tryFillFromInputStream()) {
+                return false; // No more data to read
             }
-            while (root.position < root.filledToExclusive) {
-                final byte currentByte = root.buffer[root.position];
+            final int endPos = root.filledToExclusive;
+            final var buffer = root.buffer;
+            var pos = root.position;
+            while (pos < endPos) {
+                final byte currentByte = buffer[pos];
                 if (currentByte == LEFT_ANGLE_BRACKET) {
+                    this.root.position = pos;
                     return true;
                 }
-                afterConsumeCurrent(currentByte);
-                root.position++;
+                afterConsumeCurrent(currentByte, buffer, pos);
+                pos++;
             }
+            root.position = pos;
         }
     }
 
     public boolean tryForwardToStartOfAttributeValue() throws IOException {
         while (true) {
-            if (root.position >= root.filledToExclusive) {
-                if (!root.tryFillFromInputStream()) {
-                    return false; // No more data to read
-                }
+            if (root.position >= root.filledToExclusive
+                    && !root.tryFillFromInputStream()) {
+                return false; // No more data to read
             }
-            while (root.position < root.filledToExclusive) {
-                final byte currentByte = root.buffer[root.position];
+            final int endPos = root.filledToExclusive;
+            final var buffer = root.buffer;
+            var pos = root.position;
+            while (pos < endPos) {
+                final byte currentByte = buffer[pos];
                 if (currentByte == DOUBLE_QUOTE) {
-                    this.start = ++this.root.position;
+                    this.start = ++pos;
+                    this.root.position = pos;
                     fillIfNeeded();
                     return true;
                 }
                 if (!isWhitespace(currentByte)) {
                     // If we encounter a non-whitespace character before the quote, we stop
                     // there is no need to call afterConsumeCurrent since we are not decoding here
+                    this.root.position = pos;
                     return false;
                 }
                 // do not consume whitespace, just skip it
-                root.position++;
+                pos++;
             }
+            this.root.position = pos; // Update the position in the root buffer
         }
     }
 

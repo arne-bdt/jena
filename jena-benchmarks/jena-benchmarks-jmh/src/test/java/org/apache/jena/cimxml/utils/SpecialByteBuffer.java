@@ -25,7 +25,7 @@ import java.nio.ByteBuffer;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.jena.cimxml.utils.ParserConstants.*;
 
-public interface SpecialByteBuffer {
+public interface SpecialByteBuffer extends MapIndexedByLenghtFirst.HasLength {
     // offset in the buffer where the data starts
     int offset();
 
@@ -40,18 +40,27 @@ public interface SpecialByteBuffer {
      */
     default int defaultHashCode() {
         //return Hashing.murmur3_32().hashBytes(getData(), offset(), length()).asInt();
+        final int prime = 31 ;
+        int result;
         switch (length()) {
             case 0:
                 return 0; // Empty buffer
             case 1:
                 return getData()[offset()]; // Single byte
             case 2:
-                return (getData()[offset()] << 8) | (getData()[offset() + 1] & 0xFF); // Two bytes
-            case 3:
-                return (getData()[offset()] << 8) | (getData()[offset() + 2] & 0xFF); // Two bytes
+                result = getData()[offset()]; // First byte
+                result = prime * result + (getData()[offset() + 1]); // Second byte
+                return result;
+            case 3, 4, 5:
+                result = getData()[offset()];
+                result = prime * result + (getData()[offset() + 2]);
+                return result;
             default:
                 // Use the last two bytes for hash code calculation
-                return (getData()[offset() + length() - 2] << 8) | (getData()[offset() + length() - 1] & 0xFF);
+                result = getData()[offset()]; // First byte
+                result = prime * result + (getData()[offset() + 1]); // Second byte
+                result = prime * result + (getData()[offset() + length() - 2]); // Second last byte
+                return result;
         }
     }
 

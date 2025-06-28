@@ -53,34 +53,37 @@ public class QNameByteBuffer extends StreamBufferChild {
 
    public boolean tryConsumeToEndOfTagName() throws IOException {
         while (true) {
-            if (root.position >= root.filledToExclusive) {
-                if (!root.tryFillFromInputStream()) {
-                    return false; // No more data to read
-                }
+            if (root.position >= root.filledToExclusive
+                    && !root.tryFillFromInputStream()) {
+                return false; // No more data to read
             }
-            while (root.position < root.filledToExclusive) {
-                final byte currentByte = root.buffer[root.position];
+            final int endPos = root.filledToExclusive;
+            final var buffer = root.buffer;
+            var pos = root.position;
+            while (pos < endPos) {
+                final byte currentByte = buffer[pos];
                 if (isEndOfTagName(currentByte)) {
+                    root.position = pos;
                     return true;
                 }
-                root.position++;
+                pos++;
                 if (currentByte == DOUBLE_COLON) {
-                    startOfLocalPart = root.position; // Set the start of local part after the colon
+                    startOfLocalPart = pos; // Set the start of local part after the colon
                 }
             }
+            root.position = pos;
         }
     }
 
     public boolean tryForwardToRightAngleBracket() throws IOException {
         while (true) {
-            if (root.position >= root.filledToExclusive) {
-                if (!root.tryFillFromInputStream()) {
-                    return false; // No more data to read
-                }
+            if (root.position >= root.filledToExclusive
+                    && !root.tryFillFromInputStream()) {
+                return false; // No more data to read
             }
-            while (root.position < root.filledToExclusive) {
-                final byte currentByte = root.buffer[root.position];
-                if (currentByte == RIGHT_ANGLE_BRACKET) {
+            final int endPos = root.filledToExclusive;
+            while (root.position < endPos) {
+                if (root.buffer[root.position] == RIGHT_ANGLE_BRACKET) {
                     return true;
                 }
                 root.position++;
@@ -90,14 +93,13 @@ public class QNameByteBuffer extends StreamBufferChild {
 
     public boolean tryConsumeUntilNonWhitespace() throws IOException {
         while (true) {
-            if (root.position >= root.filledToExclusive) {
-                if (!root.tryFillFromInputStream()) {
-                    return false; // No more data to read
-                }
+            if (root.position >= root.filledToExclusive
+                    && !root.tryFillFromInputStream()) {
+                return false; // No more data to read
             }
-            while (root.position < root.filledToExclusive) {
-                final byte currentByte = root.buffer[root.position];
-                if (!isWhitespace(currentByte)) {
+            final int endPos = root.filledToExclusive;
+            while (root.position < endPos) {
+                if (!isWhitespace(root.buffer[root.position])) {
                     return true;
                 }
                 root.position++;
@@ -113,12 +115,12 @@ public class QNameByteBuffer extends StreamBufferChild {
      */
     public boolean tryConsumeUntilEndOfQName() throws IOException {
         while (true) {
-            if (root.position >= root.filledToExclusive) {
-                if (!root.tryFillFromInputStream()) {
-                    return false; // No more data to read
-                }
+            if (root.position >= root.filledToExclusive
+                    && !root.tryFillFromInputStream()) {
+                return false; // No more data to read
             }
-            while (root.position < root.filledToExclusive) {
+            final int endPos = root.filledToExclusive;
+            while (root.position < endPos) {
                 final byte currentByte = root.buffer[root.position];
                 if (currentByte == EQUALITY_SIGN || isWhitespace(currentByte) ) {
                     return true;
