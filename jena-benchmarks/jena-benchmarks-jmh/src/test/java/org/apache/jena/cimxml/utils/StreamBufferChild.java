@@ -192,4 +192,17 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
     public String remainingBufferToString() {
         return new String(this.root.buffer, root.position, root.filledToExclusive - root.position, UTF_8);
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof StreamBufferChild other) {
+            return this.equals(other);
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return this.defaultHashCode();
+    }
 }

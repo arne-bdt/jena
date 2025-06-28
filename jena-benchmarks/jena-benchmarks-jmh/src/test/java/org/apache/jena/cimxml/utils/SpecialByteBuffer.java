@@ -39,7 +39,20 @@ public interface SpecialByteBuffer {
      * Returns a hash code based on the first and last byte of the array.
      */
     default int defaultHashCode() {
-        return Hashing.murmur3_32().hashBytes(getData(), offset(), length()).asInt();
+        //return Hashing.murmur3_32().hashBytes(getData(), offset(), length()).asInt();
+        switch (length()) {
+            case 0:
+                return 0; // Empty buffer
+            case 1:
+                return getData()[offset()]; // Single byte
+            case 2:
+                return (getData()[offset()] << 8) | (getData()[offset() + 1] & 0xFF); // Two bytes
+            case 3:
+                return (getData()[offset()] << 8) | (getData()[offset() + 2] & 0xFF); // Two bytes
+            default:
+                // Use the last two bytes for hash code calculation
+                return (getData()[offset() + length() - 2] << 8) | (getData()[offset() + length() - 1] & 0xFF);
+        }
     }
 
     default boolean equals(SpecialByteBuffer other) {

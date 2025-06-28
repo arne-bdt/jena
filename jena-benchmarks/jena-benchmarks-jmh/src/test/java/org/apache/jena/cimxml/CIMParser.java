@@ -26,6 +26,7 @@ import org.apache.jena.cimxml.collections.JenaHashSet;
 import org.apache.jena.cimxml.utils.*;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
+import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
@@ -33,6 +34,7 @@ import org.apache.jena.iri3986.provider.IRIProvider3986;
 import org.apache.jena.irix.IRIProvider;
 import org.apache.jena.irix.IRIx;
 import org.apache.jena.riot.system.StreamRDF;
+import org.apache.jena.sparql.graph.NodeConst;
 
 import javax.xml.XMLConstants;
 import java.io.BufferedInputStream;
@@ -75,8 +77,6 @@ public class CIMParser {
     private static final ByteArrayKey TAG_RDF_RDF = new ByteArrayKey("rdf:RDF");
     private static final ByteArrayKey TAG_RDF_DESCRIPTION = new ByteArrayKey("rdf:Description");
     private static final ByteArrayKey TAG_RDF_LI = new ByteArrayKey("rdf:li");
-
-    private static final ByteArrayKey SEPARATOR_SHARP = new ByteArrayKey(SHARP);
 
     private static final ByteArrayKey XML_DEFAULT_NS_PREFIX = new ByteArrayKey(XMLConstants.DEFAULT_NS_PREFIX);
 
@@ -279,6 +279,49 @@ public class CIMParser {
         }
     }
 
+    private static Node createNodeLiteral(String lex, SpecialByteBuffer lang, RDFDatatype dtype) {
+        final Node node;
+        if(lex == null) {
+            if (lang == null) {
+                if(dtype == null) {
+                    node = NodeConst.emptyString;
+                } else {
+                    node = NodeFactory.createLiteral(
+                            STRING_EMPTY,
+                            null,
+                            dtype);
+                }
+            } else {
+                node = NodeFactory.createLiteral(
+                        STRING_EMPTY,
+                        lang.decodeToString(),
+                        dtype);
+            }
+        } else {
+            if(lang == null) {
+                if ( XSDDatatype.XSDinteger.equals(dtype) ) {
+                    switch(lex) {
+                        case "0" : return NodeConst.nodeZero ;
+                        case "1" : return NodeConst.nodeOne ;
+                        case "2" : return NodeConst.nodeTwo ;
+                        case "-1" : return NodeConst.nodeMinusOne ;
+                    }
+                    // fallthrough.
+                } else if ( XSDDatatype.XSDboolean.equals(dtype) ) {
+                    switch(lex) {
+                        case "true" : return NodeConst.nodeTrue ;
+                        case "false" : return NodeConst.nodeFalse ;
+                    }
+                    // fallthrough.
+                }
+                node = NodeFactory.createLiteral(lex, null, dtype);
+            } else {
+                node = NodeFactory.createLiteral(lex, lang.decodeToString(), dtype);
+            }
+        }
+        return node;
+    }
+
     private State handleTextContent() throws IOException, ParserException {
         var parent = elementStack.peek();
         if (parent == null || parent.subject == null || parent.predicate == null) {
@@ -295,9 +338,9 @@ public class CIMParser {
             // the text content must be a literal as the next tag is a closing tag.
             /*idea for improvements: have cached literals for some datatypes
             --> this is only possible in CIM/XML if we have a schema with the datatypes*/
-            final var object = NodeFactory.createLiteral(
+            final var object = createNodeLiteral(
                     currentTextContent.decodeToString(),
-                    parent.xmlLang != null ? parent.xmlLang.decodeToString(): null,
+                    parent.xmlLang,
                     parent.datatype);
             streamRDFSink.triple(Triple.create(parent.subject, parent.predicate, object));
         }
@@ -326,10 +369,22 @@ public class CIMParser {
                     throw new ParserException("Self-closing tag without subject or predicate: "
                             + currentTag.decodeToString());
                 }
-                final var object = NodeFactory.createLiteral(
-                        STRING_EMPTY,
-                        element.xmlLang != null ? element.xmlLang.decodeToString() : null,
-                        element.datatype);
+                final Node object;
+                if(element.xmlLang == null) {
+                    if(element.datatype == null) {
+                        object = NodeConst.emptyString;
+                    } else {
+                        object = NodeFactory.createLiteral(
+                                STRING_EMPTY,
+                                null,
+                                element.datatype);
+                    }
+                } else {
+                    object = NodeFactory.createLiteral(
+                            STRING_EMPTY,
+                            element.xmlLang.decodeToString(),
+                            element.datatype);
+                }
                 streamRDFSink.triple(Triple.create(element.subject, element.predicate, object));
                 break;
             default:
@@ -351,10 +406,22 @@ public class CIMParser {
                     throw new ParserException("Self-closing tag without subject or predicate: "
                             + currentTag.decodeToString());
                 }
-                final var object = NodeFactory.createLiteral(
-                        STRING_EMPTY,
-                        element.xmlLang != null ? element.xmlLang.decodeToString() : null,
-                        element.datatype);
+                final Node object;
+                if(element.xmlLang == null) {
+                    if(element.datatype == null) {
+                        object = NodeConst.emptyString;
+                    } else {
+                        object = NodeFactory.createLiteral(
+                                STRING_EMPTY,
+                                null,
+                                element.datatype);
+                    }
+                } else {
+                    object = NodeFactory.createLiteral(
+                            STRING_EMPTY,
+                            element.xmlLang.decodeToString(),
+                            element.datatype);
+                }
                 streamRDFSink.triple(Triple.create(element.subject, element.predicate, object));
                 break;
             default:

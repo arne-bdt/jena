@@ -55,25 +55,24 @@ public abstract class ParserConstants {
     }
 
     public static boolean isWhitespace(byte b) {
-        return Character.isWhitespace(b);
-//        if(b == (WHITESPACE_BLOOM_FILTER & b)) {
-//            switch (b) {
-//                case WHITESPACE_SPACE, WHITESPACE_TAB, WHITESPACE_NEWLINE, WHITESPACE_CARRIAGE_RETURN -> {
-//                    return true;
-//                }
-//            }
-//        }
-//        return false;
+//        return Character.isWhitespace(b);
+        if(b == (WHITESPACE_BLOOM_FILTER & b)) {
+            switch (b) {
+                case WHITESPACE_SPACE, WHITESPACE_CARRIAGE_RETURN, WHITESPACE_TAB, WHITESPACE_NEWLINE -> {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public static boolean isEndOfTagName(byte b) {
         if(b == (END_OF_TAG_NAME_BLOOM_FILTER & b)) {
             switch (b) {
-                case RIGHT_ANGLE_BRACKET, SLASH -> {
+                case WHITESPACE_SPACE, RIGHT_ANGLE_BRACKET, SLASH, WHITESPACE_CARRIAGE_RETURN, WHITESPACE_TAB, WHITESPACE_NEWLINE -> {
                     return true;
                 }
             }
-            return Character.isWhitespace(b);
         }
         return false;
     }
