@@ -63,23 +63,22 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
         this.endExclusive = this.root.position;
     }
 
-    public boolean tryForwardAndSetStartPositionAfter(byte byteToSeek) throws IOException {
-        if(tryForwardToByte(byteToSeek)) {
-            setNextByteAsStartPositon();
-            return  true;
-        }
-        return false;
+    public byte setEndPositionExclusiveAndPeek() throws IOException {
+        this.endExclusive = this.root.position;
+        return peek();
     }
 
-    public boolean tryForwardAndSetEndPositionExclusive(byte byteToSeek) throws IOException {
-        if(tryForwardToByte(byteToSeek)) {
-            setEndPositionExclusive();
-            return  true;
-        }
-        return false;
+    public void setEndPositionExclusiveAndSkip() throws IOException {
+        this.endExclusive = this.root.position;
+        root.position++;
+        peek();
     }
 
-    protected abstract void afterConsumeCurrent(byte currentByte);
+    public byte setEndPositionExclusiveAndSkipAndPeek() throws IOException {
+        this.endExclusive = this.root.position;
+        root.position++;
+        return peek();
+    }
 
     public boolean tryForwardToByte(byte byteToSeek) throws IOException {
         while (true) {
@@ -93,7 +92,6 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
                 if (currentByte == byteToSeek) {
                     return true;
                 }
-                afterConsumeCurrent(currentByte);
                 root.position++;
             }
         }

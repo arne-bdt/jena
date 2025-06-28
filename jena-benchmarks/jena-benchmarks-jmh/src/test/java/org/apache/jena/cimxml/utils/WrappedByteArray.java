@@ -18,6 +18,8 @@
 
 package org.apache.jena.cimxml.utils;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 public class WrappedByteArray implements SpecialByteBuffer {
 
     private final byte[] data;
@@ -45,6 +47,11 @@ public class WrappedByteArray implements SpecialByteBuffer {
     @Override
     public byte[] getData() {
         return data;
+    }
+
+    @Override
+    public String decodeToString() {
+        return new String(data, offset, length, UTF_8);
     }
 
     @Override

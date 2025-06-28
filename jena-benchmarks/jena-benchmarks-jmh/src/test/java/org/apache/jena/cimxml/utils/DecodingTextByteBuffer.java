@@ -19,12 +19,46 @@
 package org.apache.jena.cimxml.utils;
 
 import java.io.IOException;
-import java.util.function.Consumer;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.jena.cimxml.utils.ParserConstants.*;
 
 public class DecodingTextByteBuffer extends StreamBufferChild {
     protected int lastAmpersandPosition = -1; // Position of the last '&' character, used for decoding
+
+    protected int containsSpecialCharacters = 0; // Bitmask to track which special characters are present
+
+    public enum SpecialCharacter {
+        AMPERSAND(1,"&", "&amp;"),
+        LEFT_ANGLE_BRACKET(2, "<", "&lt;"),
+        RIGHT_ANGLE_BRACKET(4, ">", "&gt;"),
+        DOUBLE_QUOTE(8, "\"", "&quot;"),
+        SINGLE_QUOTE(16, "'", "&apos;");
+
+        private final int bit;
+        private final String character;
+        private final String entity;
+
+        SpecialCharacter(int bit, String character, String entity) {
+            this.bit = bit;
+            this.character = character;
+            this.entity = entity;
+        }
+
+        public String getCharacter() {
+            return character;
+        }
+
+        public String getEntity() {
+            return entity;
+        }
+
+        public int getBit() {
+            return bit;
+        }
+    }
+
+
 
     public DecodingTextByteBuffer(StreamBufferRoot parent) {
         super(parent);
@@ -34,9 +68,9 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
     public void reset() {
         super.reset();
         this.lastAmpersandPosition = -1;
+        this.containsSpecialCharacters = 0; // Reset the special characters bitmask
     }
 
-    @Override
     protected void afterConsumeCurrent(byte currentByte) {
         switch (currentByte) {
             case AMPERSAND -> lastAmpersandPosition = root.position; // Store the position of the last '&'
@@ -46,28 +80,10 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                     case 2: {
                         if (root.buffer[lastAmpersandPosition + 2] == 't') {
                             if (root.buffer[lastAmpersandPosition + 1] == 'l') {
-                                root.buffer[lastAmpersandPosition] = LEFT_ANGLE_BRACKET; // &lt;
-
-                                // move remaining data to the left
-                                System.arraycopy(root.buffer, root.position + 1,
-                                        root.buffer, lastAmpersandPosition + 1,
-                                        root.filledToExclusive - root.position - 1);
-
-                                root.filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &lt;
-                                root.position = lastAmpersandPosition;
-                                lastAmpersandPosition = -1; // Reset last ampersand position
+                                containsSpecialCharacters |= SpecialCharacter.LEFT_ANGLE_BRACKET.getBit(); // &lt;
                                 return;
                             } else if (root.buffer[lastAmpersandPosition + 1] == 'g') {
-                                root.buffer[lastAmpersandPosition] = RIGHT_ANGLE_BRACKET; // &gt;
-
-                                // move remaining data to the left
-                                System.arraycopy(root.buffer, root.position + 1,
-                                        root.buffer, lastAmpersandPosition + 1,
-                                        root.filledToExclusive - root.position - 1);
-
-                                root.filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &gt;
-                                root.position = lastAmpersandPosition;
-                                lastAmpersandPosition = -1; // Reset last ampersand position
+                                containsSpecialCharacters |= SpecialCharacter.RIGHT_ANGLE_BRACKET.getBit(); // &gt;
                                 return;
                             }
                         }
@@ -77,17 +93,7 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                         if (root.buffer[lastAmpersandPosition + 3] == 'p'
                                 && root.buffer[lastAmpersandPosition + 2] == 'm'
                                 && root.buffer[lastAmpersandPosition + 1] == 'a') {
-                            root.buffer[lastAmpersandPosition] = AMPERSAND; // &amp;
-
-                            // move remaining data to the left
-                            System.arraycopy(root.buffer, root.position + 1,
-                                    root.buffer, lastAmpersandPosition + 1,
-                                    root.filledToExclusive - root.position - 1);
-
-                            root.filledToExclusive -= 4; // Reduce filledToExclusive by 4 for &amp;
-                            root.position = lastAmpersandPosition;
-                            lastAmpersandPosition = -1; // Reset last ampersand position
-                            return;
+                            containsSpecialCharacters |= SpecialCharacter.AMPERSAND.getBit(); // &amp;
                         }
                         break;
                     }
@@ -96,31 +102,11 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                             if (root.buffer[lastAmpersandPosition + 1] == 'q'
                                     && root.buffer[lastAmpersandPosition + 2] == 'u'
                                     && root.buffer[lastAmpersandPosition + 4] == 't') {
-                                root.buffer[lastAmpersandPosition] = DOUBLE_QUOTE; // &quot;
-
-                                // move remaining data to the left
-                                System.arraycopy(root.buffer, root.position + 1,
-                                        root.buffer, lastAmpersandPosition + 1,
-                                        root.filledToExclusive - root.position - 1);
-
-                                root.filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &quot;
-                                root.position = lastAmpersandPosition;
-                                lastAmpersandPosition = -1; // Reset last ampersand position
-                                return;
+                                containsSpecialCharacters |= SpecialCharacter.DOUBLE_QUOTE.getBit(); // &quot;
                             } else if (root.buffer[lastAmpersandPosition + 2] == 'p'
                                     && root.buffer[lastAmpersandPosition + 4] == 's'
                                     && root.buffer[lastAmpersandPosition + 1] == 'a') {
-                                root.buffer[lastAmpersandPosition] = SINGLE_QUOTE; // &apos;
-
-                                // move remaining data to the left
-                                System.arraycopy(root.buffer, root.position + 1,
-                                        root.buffer, lastAmpersandPosition + 1,
-                                        root.filledToExclusive - root.position - 1);
-
-                                root.filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &apos;
-                                root.position = lastAmpersandPosition;
-                                lastAmpersandPosition = -1; // Reset last ampersand position
-                                return;
+                                containsSpecialCharacters |= SpecialCharacter.SINGLE_QUOTE.getBit(); // &apos;
                             }
                         }
                         break;
@@ -166,7 +152,7 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
         }
     }
 
-    public boolean tryConsumeToStartOfAttributeValue() throws IOException {
+    public boolean tryForwardToStartOfAttributeValue() throws IOException {
         while (true) {
             if (root.position >= root.filledToExclusive) {
                 if (!root.tryFillFromInputStream()) {
@@ -187,5 +173,19 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                 root.position++;
             }
         }
+    }
+
+    @Override
+    public String decodeToString() {
+        var result = new String(this.getData(), this.offset(), this.length(), UTF_8);
+        if (containsSpecialCharacters == 0) {
+            return result; // No special characters to decode
+        }
+        for (SpecialCharacter specialCharacter : SpecialCharacter.values()) {
+            if ((containsSpecialCharacters & specialCharacter.getBit()) != 0) {
+                result = result.replace(specialCharacter.getEntity(), specialCharacter.getCharacter());
+            }
+        }
+        return result;
     }
 }

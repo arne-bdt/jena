@@ -21,6 +21,7 @@ package org.apache.jena.cimxml.utils;
 
 import java.io.IOException;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.jena.cimxml.utils.ParserConstants.*;
 import static org.apache.jena.cimxml.utils.ParserConstants.isEndOfTagName;
 import static org.apache.jena.cimxml.utils.ParserConstants.isWhitespace;
@@ -50,14 +51,7 @@ public class QNameByteBuffer extends StreamBufferChild {
         return new WrappedByteArray(root.buffer, startOfLocalPart, endExclusive - startOfLocalPart);
     }
 
-    @Override
-    protected void afterConsumeCurrent(byte currentByte) {
-        if (currentByte == DOUBLE_COLON) {
-            startOfLocalPart = root.position + 1; // Set the start of local part after the colon
-        }
-    }
-
-    public boolean tryConsumeToEndOfTagName() throws IOException {
+   public boolean tryConsumeToEndOfTagName() throws IOException {
         while (true) {
             if (root.position >= root.filledToExclusive) {
                 if (!root.tryFillFromInputStream()) {
@@ -69,7 +63,26 @@ public class QNameByteBuffer extends StreamBufferChild {
                 if (isEndOfTagName(currentByte)) {
                     return true;
                 }
-                afterConsumeCurrent(currentByte);
+                root.position++;
+                if (currentByte == DOUBLE_COLON) {
+                    startOfLocalPart = root.position; // Set the start of local part after the colon
+                }
+            }
+        }
+    }
+
+    public boolean tryForwardToRightAngleBracket() throws IOException {
+        while (true) {
+            if (root.position >= root.filledToExclusive) {
+                if (!root.tryFillFromInputStream()) {
+                    return false; // No more data to read
+                }
+            }
+            while (root.position < root.filledToExclusive) {
+                final byte currentByte = root.buffer[root.position];
+                if (currentByte == RIGHT_ANGLE_BRACKET) {
+                    return true;
+                }
                 root.position++;
             }
         }
@@ -87,7 +100,6 @@ public class QNameByteBuffer extends StreamBufferChild {
                 if (!isWhitespace(currentByte)) {
                     return true;
                 }
-                afterConsumeCurrent(currentByte);
                 root.position++;
             }
         }
@@ -111,9 +123,16 @@ public class QNameByteBuffer extends StreamBufferChild {
                 if (currentByte == EQUALITY_SIGN || isWhitespace(currentByte) ) {
                     return true;
                 }
-                afterConsumeCurrent(currentByte);
                 root.position++;
+                if (currentByte == DOUBLE_COLON) {
+                    startOfLocalPart = root.position; // Set the start of local part after the colon
+                }
             }
         }
+    }
+
+    @Override
+    public String decodeToString() {
+        return new String(this.getData(), this.offset(), this.length(), UTF_8);
     }
 }
