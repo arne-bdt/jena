@@ -811,10 +811,7 @@ public class CIMParser {
     private State handleLookingForAttributeValue() throws IOException, ParserException {
         final var attributeValue = currentAttributes.currentAttributeValue();
         if(attributeValue.tryForwardToStartOfAttributeValue()) {
-            attributeValue.skip(); // Move to the next byte after the double quote
-            attributeValue.setCurrentByteAsStartPositon();
             if (attributeValue.tryConsumeToEndOfAttributeValue()) {
-                attributeValue.setEndPositionExclusiveAndSkip();
                 return State.LOOKING_FOR_ATTRIBUTE_NAME;
             } else {
                 throw new ParserException("Unexpected end of stream while looking for double quote as end of value");
