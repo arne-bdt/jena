@@ -37,8 +37,8 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
     }
 
     @Override
-    protected void afterConsumeCurrent() {
-        switch (root.buffer[root.position]) {
+    protected void afterConsumeCurrent(byte currentByte) {
+        switch (currentByte) {
             case AMPERSAND -> lastAmpersandPosition = root.position; // Store the position of the last '&'
             case SEMICOLON -> {
                 var charsBetweenAmpersandAndSemicolon = root.position - lastAmpersandPosition - 1;

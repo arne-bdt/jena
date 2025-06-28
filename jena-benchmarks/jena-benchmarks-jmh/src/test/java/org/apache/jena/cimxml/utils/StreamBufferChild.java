@@ -79,26 +79,24 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
         return false;
     }
 
-    protected abstract void afterConsumeCurrent();
+    protected abstract void afterConsumeCurrent(byte currentByte);
 
     public boolean tryForwardToByte(byte byteToSeek) throws IOException {
-        if (root.position >= root.filledToExclusive) {
-            if (!root.tryFillFromInputStream()) {
-                return false; // No more data to read
-            }
-        }
-        while (root.position < root.filledToExclusive) {
-            if (root.buffer[root.position] == byteToSeek) {
-                return true;
-            }
-            afterConsumeCurrent();
-            if (++root.position == root.filledToExclusive) {
+        while (true) {
+            if (root.position >= root.filledToExclusive) {
                 if (!root.tryFillFromInputStream()) {
                     return false; // No more data to read
                 }
             }
+            while (root.position < root.filledToExclusive) {
+                final byte currentByte = root.buffer[root.position];
+                if (currentByte == byteToSeek) {
+                    return true;
+                }
+                afterConsumeCurrent(currentByte);
+                root.position++;
+            }
         }
-        return false; // Byte not found
     }
 
     public boolean tryForwardToByteAfter(byte byteToSeek) throws IOException {
@@ -137,6 +135,17 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
      */
     public void skip() throws IOException {
         root.position++;
+        peek();
+    }
+
+    /**
+     * Skips the current byte and moves to the next one.
+     * This does not change the start or end positions.
+     *
+     * @throws IOException if an I/O error occurs while reading from the input stream
+     */
+    public void skip(int bytesToSkip) throws IOException {
+        root.position += bytesToSkip;
         peek();
     }
 

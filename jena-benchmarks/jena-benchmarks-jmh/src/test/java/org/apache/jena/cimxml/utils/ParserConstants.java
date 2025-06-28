@@ -69,10 +69,11 @@ public abstract class ParserConstants {
     public static boolean isEndOfTagName(byte b) {
         if(b == (END_OF_TAG_NAME_BLOOM_FILTER & b)) {
             switch (b) {
-                case WHITESPACE_SPACE, RIGHT_ANGLE_BRACKET, SLASH, WHITESPACE_TAB, WHITESPACE_NEWLINE, WHITESPACE_CARRIAGE_RETURN -> {
+                case RIGHT_ANGLE_BRACKET, SLASH -> {
                     return true;
                 }
             }
+            return Character.isWhitespace(b);
         }
         return false;
     }
