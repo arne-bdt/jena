@@ -88,8 +88,8 @@ public class CIMParser {
     private final InputStream inputStream;
     private final JenaHashMap<SpecialByteBuffer, NamespaceIriPair> prefixToNamespace
             = new JenaHashMap<>(8);
-    private final ByteArrayMap<SpecialByteBuffer, Node> tagOrAttributeNameToUriNode
-            = new ByteArrayMap(256, 32);
+    private final MapIndexedByLenghtFirst<SpecialByteBuffer, Node> tagOrAttributeNameToUriNode
+            = new MapIndexedByLenghtFirst(256, 32);
 //    private final Cache<SpecialByteBuffer, Node> tagOrAttributeNameToUriNode
 //            = CacheFactory.createSimpleCache(8192);
     private final StreamRDF streamRDFSink;
@@ -102,7 +102,7 @@ public class CIMParser {
     private final Deque<Element> elementStack = new ArrayDeque<>();
 
     //private final Map<SpecialByteBuffer, Node> iriToNode = new HashMap<>();
-    private final JenaHashMap<NamespaceAndQName, RDFDatatype> iriToDatatype = new JenaHashMap<>();
+    private final MapIndexedByLenghtFirst<NamespaceAndQName, RDFDatatype> iriToDatatype = new MapIndexedByLenghtFirst<>(256, 32);
     private final JenaHashMap<SpecialByteBuffer, Node> blankNodeToNode = new JenaHashMap<>();
     // A map to store langSet and avoid to copy SpecialByteBuffer objects unnecessarily
     private final JenaHashSet<SpecialByteBuffer> langSet = new JenaHashSet<>();
@@ -111,8 +111,69 @@ public class CIMParser {
     private final Cache<NamespaceAndQName, Node> iriNodeCacheWithNamespace = CacheFactory.createSimpleCache(8192);
     private final Cache<SpecialByteBuffer, Node> iriNodeCacheWithoutNamespace = CacheFactory.createSimpleCache(8192);
 
-    private record NamespaceIriPair(ByteArrayKey namespace, IRIx iri) {}
-    private record NamespaceAndQName(ByteArrayKey namespace, SpecialByteBuffer qname) {}
+    private static class NamespaceIriPair implements MapIndexedByLenghtFirst.HasLength {
+        private final ByteArrayKey namespace;
+        private final IRIx iri;
+        public NamespaceIriPair(ByteArrayKey namespace, IRIx iri) {
+            this.namespace = namespace;
+            this.iri = iri;
+        }
+        @Override
+        public int length() {
+            return namespace.length() + iri.str().length();
+        }
+        @Override
+        public final boolean equals(Object o) {
+            if (o instanceof NamespaceIriPair that) {
+                return namespace.equals(that.namespace) && iri.equals(that.iri);
+            }
+            return false;
+        }
+        @Override
+        public int hashCode() {
+            int result = namespace.hashCode();
+            result = 31 * result + iri.hashCode();
+            return result;
+        }
+    }
+
+    private static class NamespaceAndQName implements MapIndexedByLenghtFirst.HasLength {
+        private final ByteArrayKey namespace;
+        private final SpecialByteBuffer qname;
+        public NamespaceAndQName(ByteArrayKey namespace, SpecialByteBuffer qname) {
+            this.namespace = namespace;
+            this.qname = qname;
+        }
+        @Override
+        public int length() {
+            if(namespace != null) {
+                return namespace.length() + qname.length();
+            }
+            return qname.length();
+        }
+        @Override
+        public final boolean equals(Object o) {
+            if (o instanceof NamespaceAndQName that) {
+                if (namespace == null) {
+                    if (that.namespace != null) {
+                        return false;
+                    }
+                    return qname.equals(that.qname);
+                }
+                return namespace.equals(that.namespace) && qname.equals(that.qname);
+            }
+            return false;
+        }
+        @Override
+        public int hashCode() {
+            if (namespace == null) {
+                return qname.hashCode();
+            }
+            int result = namespace.hashCode();
+            result = 31 * result + qname.hashCode();
+            return result;
+        }
+    }
 
     private final IRIProvider iriProvider = new IRIProvider3986();
 
@@ -613,7 +674,7 @@ public class CIMParser {
     private RDFDatatype getOrCreateDatatypeForIri(final NamespaceIriPair xmlBase, final DecodingTextByteBuffer iriQName) {
         if(xmlBase == null) {
             var cacheKey = new NamespaceAndQName(null,iriQName);
-            var datatype = iriToDatatype.get(cacheKey);
+            var datatype = iriToDatatype.getIfPresent(cacheKey);
             if(datatype != null) {
                 return datatype; // Return cached datatype if available
             }

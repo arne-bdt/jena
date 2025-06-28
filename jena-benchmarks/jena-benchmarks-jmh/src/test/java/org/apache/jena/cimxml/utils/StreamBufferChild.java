@@ -80,24 +80,27 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
         return peek();
     }
 
-    public boolean tryForwardToByte(byte byteToSeek) throws IOException {
+    public boolean tryForwardToByte(final byte byteToSeek) throws IOException {
         while (true) {
-            if (root.position >= root.filledToExclusive) {
-                if (!root.tryFillFromInputStream()) {
-                    return false; // No more data to read
-                }
+            if (root.position >= root.filledToExclusive
+                    && !root.tryFillFromInputStream()) {
+                return false; // No more data to read
             }
-            while (root.position < root.filledToExclusive) {
-                final byte currentByte = root.buffer[root.position];
-                if (currentByte == byteToSeek) {
+            final var endPos = root.filledToExclusive;
+            final var buffer = root.buffer;
+            var pos = root.position;
+            while (pos < endPos) {
+                if (buffer[pos] == byteToSeek) {
+                    root.position = pos;
                     return true;
                 }
-                root.position++;
+                pos++;
             }
+            root.position = pos;
         }
     }
 
-    public boolean tryForwardToByteAfter(byte byteToSeek) throws IOException {
+    public boolean tryForwardToByteAfter(final byte byteToSeek) throws IOException {
         boolean found = tryForwardToByte(byteToSeek);
         root.position++;
         return found;

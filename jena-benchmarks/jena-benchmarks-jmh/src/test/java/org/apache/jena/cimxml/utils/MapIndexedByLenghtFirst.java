@@ -21,11 +21,15 @@ package org.apache.jena.cimxml.utils;
 import org.apache.jena.atlas.lib.Cache;
 import org.apache.jena.atlas.lib.CacheFactory;
 
-public class ByteArrayMap<K extends SpecialByteBuffer, V> {
+public class MapIndexedByLenghtFirst<K extends MapIndexedByLenghtFirst.HasLength, V> {
     private final int expectedMaxEntriesWithSameLength;
     private Cache<K, V>[] entriesWithSameLength;
 
-    public ByteArrayMap(int expectedMaxByteLength, int expectedEntriesWithSameLength) {
+    public interface HasLength {
+        int length();
+    }
+
+    public MapIndexedByLenghtFirst(int expectedMaxByteLength, int expectedEntriesWithSameLength) {
         var positionsSize = Integer.highestOneBit(expectedMaxByteLength << 1);
         if (positionsSize < expectedMaxByteLength << 1) {
             positionsSize <<= 1;
@@ -61,6 +65,10 @@ public class ByteArrayMap<K extends SpecialByteBuffer, V> {
             map = entriesWithSameLength[key.length()];
         }
         map.put(key, value);
+    }
+
+    public V get(K key) {
+        return getIfPresent(key);
     }
 
     public V getIfPresent(K key) {
