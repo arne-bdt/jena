@@ -126,14 +126,13 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
             final var buffer = rootBuffer;
             var pos = root.position;
             while (pos < endPos) {
-                final byte currentByte = buffer[pos];
-                if (currentByte == DOUBLE_QUOTE) {
+                if (buffer[pos] == DOUBLE_QUOTE) {
                     this.endExclusive = pos++;
                     this.root.position = pos;
                     fillIfNeeded();
                     return true;
                 }
-                afterConsumeCurrent(currentByte, buffer, pos);
+                afterConsumeCurrent(buffer[pos], buffer, pos);
                 pos++;
             }
             this.root.position = pos;
@@ -150,12 +149,11 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
             final var buffer = rootBuffer;
             var pos = root.position;
             while (pos < endPos) {
-                final byte currentByte = buffer[pos];
-                if (currentByte == LEFT_ANGLE_BRACKET) {
+                if (buffer[pos] == LEFT_ANGLE_BRACKET) {
                     this.root.position = pos;
                     return true;
                 }
-                afterConsumeCurrent(currentByte, buffer, pos);
+                afterConsumeCurrent(buffer[pos], buffer, pos);
                 pos++;
             }
             root.position = pos;
@@ -172,14 +170,13 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
             final var buffer = rootBuffer;
             var pos = root.position;
             while (pos < endPos) {
-                final byte currentByte = buffer[pos];
-                if (currentByte == DOUBLE_QUOTE) {
+                if (buffer[pos] == DOUBLE_QUOTE) {
                     this.start = ++pos;
                     this.root.position = pos;
                     fillIfNeeded();
                     return true;
                 }
-                if (!isWhitespace(currentByte)) {
+                if (!isWhitespace(buffer[pos])) {
                     // If we encounter a non-whitespace character before the quote, we stop
                     // there is no need to call afterConsumeCurrent since we are not decoding here
                     this.root.position = pos;
@@ -194,7 +191,7 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
 
     @Override
     public String decodeToString() {
-        var result = new String(this.getData(), this.offset(), this.length(), UTF_8);
+        var result = new String(rootBuffer, start, this.length(), UTF_8);
         if (containsSpecialCharacters == 0) {
             return result; // No special characters to decode
         }

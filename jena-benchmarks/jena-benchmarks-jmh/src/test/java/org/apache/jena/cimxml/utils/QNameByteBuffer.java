@@ -71,13 +71,11 @@ public class QNameByteBuffer extends StreamBufferChild {
             final var buffer = rootBuffer;
             var pos = root.position;
             while (pos < endPos) {
-                final byte currentByte = buffer[pos];
-                if (isEndOfTagName(currentByte)) {
+                if (isEndOfTagName(buffer[pos])) {
                     root.position = pos;
                     return true;
                 }
-                pos++;
-                if (currentByte == DOUBLE_COLON) {
+                if (buffer[pos++] == DOUBLE_COLON) {
                     startOfLocalPart = pos; // Set the start of local part after the colon
                 }
             }
@@ -141,13 +139,11 @@ public class QNameByteBuffer extends StreamBufferChild {
             final var buffer = rootBuffer;
             var pos = root.position;
             while (pos < endPos) {
-                final byte currentByte = buffer[pos];
-                if (currentByte == EQUALITY_SIGN || isWhitespace(currentByte) ) {
+                if (buffer[pos] == EQUALITY_SIGN || isWhitespace(buffer[pos]) ) {
                     root.position = pos;
                     return true;
                 }
-                pos++;
-                if (currentByte == DOUBLE_COLON) {
+                if (buffer[pos++] == DOUBLE_COLON) {
                     startOfLocalPart = pos; // Set the start of local part after the colon
                 }
             }
