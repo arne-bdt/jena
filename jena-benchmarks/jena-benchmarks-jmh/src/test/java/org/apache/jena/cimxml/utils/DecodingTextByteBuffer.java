@@ -51,7 +51,7 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                                 // move remaining data to the left
                                 System.arraycopy(root.buffer, root.position + 1,
                                         root.buffer, lastAmpersandPosition + 1,
-                                        root.filledToExclusive - root.position);
+                                        root.filledToExclusive - root.position - 1);
 
                                 root.filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &lt;
                                 root.position = lastAmpersandPosition;
@@ -63,7 +63,7 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                                 // move remaining data to the left
                                 System.arraycopy(root.buffer, root.position + 1,
                                         root.buffer, lastAmpersandPosition + 1,
-                                        root.filledToExclusive - root.position);
+                                        root.filledToExclusive - root.position - 1);
 
                                 root.filledToExclusive -= 3; // Reduce filledToExclusive by 3 for &gt;
                                 root.position = lastAmpersandPosition;
@@ -82,7 +82,7 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                             // move remaining data to the left
                             System.arraycopy(root.buffer, root.position + 1,
                                     root.buffer, lastAmpersandPosition + 1,
-                                    root.filledToExclusive - root.position);
+                                    root.filledToExclusive - root.position - 1);
 
                             root.filledToExclusive -= 4; // Reduce filledToExclusive by 4 for &amp;
                             root.position = lastAmpersandPosition;
@@ -101,7 +101,7 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                                 // move remaining data to the left
                                 System.arraycopy(root.buffer, root.position + 1,
                                         root.buffer, lastAmpersandPosition + 1,
-                                        root.filledToExclusive - root.position);
+                                        root.filledToExclusive - root.position - 1);
 
                                 root.filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &quot;
                                 root.position = lastAmpersandPosition;
@@ -115,7 +115,7 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                                 // move remaining data to the left
                                 System.arraycopy(root.buffer, root.position + 1,
                                         root.buffer, lastAmpersandPosition + 1,
-                                        root.filledToExclusive - root.position);
+                                        root.filledToExclusive - root.position - 1);
 
                                 root.filledToExclusive -= 5; // Reduce filledToExclusive by 5 for &apos;
                                 root.position = lastAmpersandPosition;
