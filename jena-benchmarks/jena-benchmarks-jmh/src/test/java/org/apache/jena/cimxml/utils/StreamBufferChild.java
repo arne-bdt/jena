@@ -31,6 +31,7 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
      * It also holds the last used buffer, which is used to handover remaining bytes.
      */
     protected final StreamBufferRoot root;
+    protected final byte[] rootBuffer;
     /**
      * The offset in the buffer where the data starts.
      */
@@ -45,6 +46,7 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
             throw new IllegalArgumentException("Parent buffer cannot be null");
         }
         this.root = parent;
+        this.rootBuffer = parent.buffer;
     }
 
     public void reset() {
@@ -87,10 +89,9 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
                 return false; // No more data to read
             }
             final var endPos = root.filledToExclusive;
-            final var buffer = root.buffer;
             var pos = root.position;
             while (pos < endPos) {
-                if (buffer[pos] == byteToSeek) {
+                if (rootBuffer[pos] == byteToSeek) {
                     root.position = pos;
                     return true;
                 }
@@ -116,7 +117,7 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
 
     public byte peek() throws IOException {
         fillIfNeeded();
-        return root.buffer[root.position];
+        return rootBuffer[root.position];
     }
 
     /**
@@ -164,7 +165,7 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
 
     @Override
     public byte[] getData() {
-        return this.root.buffer;
+        return rootBuffer;
     }
 
     @Override
@@ -172,14 +173,14 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
         String text;
         if (start == 0 && endExclusive == 0) {
             text = "Start at 0:[" +
-                    new String(root.buffer, start, root.position - start + 1, UTF_8)
+                    new String(rootBuffer, start, root.position - start + 1, UTF_8)
                     + "]--> end not defined yet";
         } else if (start > endExclusive) {
             if (start < root.position) {
-                text = new String(root.buffer, start, root.position - start + 1, UTF_8)
+                text = new String(rootBuffer, start, root.position - start + 1, UTF_8)
                         + "][--> end not defined yet";
             } else {
-                text = new String(root.buffer, start, 1, UTF_8)
+                text = new String(rootBuffer, start, 1, UTF_8)
                         + "][--> end not defined yet";
             }
         } else {
@@ -189,11 +190,11 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
     }
 
     public String wholeBufferToString() {
-        return new String(this.root.buffer, 0, this.root.filledToExclusive, UTF_8);
+        return new String(rootBuffer, 0, this.root.filledToExclusive, UTF_8);
     }
 
     public String remainingBufferToString() {
-        return new String(this.root.buffer, root.position, root.filledToExclusive - root.position, UTF_8);
+        return new String(rootBuffer, root.position, root.filledToExclusive - root.position, UTF_8);
     }
 
     @Override

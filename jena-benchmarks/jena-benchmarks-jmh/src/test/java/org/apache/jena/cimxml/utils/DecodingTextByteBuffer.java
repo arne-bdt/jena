@@ -71,18 +71,18 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
         this.containsSpecialCharacters = 0; // Reset the special characters bitmask
     }
 
-    private void afterConsumeCurrent(byte currentByte, byte[] buffer, int position) {
+    private void afterConsumeCurrent(byte currentByte, int position) {
         switch (currentByte) {
             case AMPERSAND -> lastAmpersandPosition = position; // Store the position of the last '&'
             case SEMICOLON -> {
                 var charsBetweenAmpersandAndSemicolon = position - lastAmpersandPosition - 1;
                 switch (charsBetweenAmpersandAndSemicolon) {
                     case 2: {
-                        if (buffer[lastAmpersandPosition + 2] == 't') {
-                            if (buffer[lastAmpersandPosition + 1] == 'l') {
+                        if (rootBuffer[lastAmpersandPosition + 2] == 't') {
+                            if (rootBuffer[lastAmpersandPosition + 1] == 'l') {
                                 containsSpecialCharacters |= SpecialCharacter.LEFT_ANGLE_BRACKET.getBit(); // &lt;
                                 return;
-                            } else if (buffer[lastAmpersandPosition + 1] == 'g') {
+                            } else if (rootBuffer[lastAmpersandPosition + 1] == 'g') {
                                 containsSpecialCharacters |= SpecialCharacter.RIGHT_ANGLE_BRACKET.getBit(); // &gt;
                                 return;
                             }
@@ -90,22 +90,22 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                         break;
                     }
                     case 3: {
-                        if (buffer[lastAmpersandPosition + 3] == 'p'
-                                && buffer[lastAmpersandPosition + 2] == 'm'
-                                && buffer[lastAmpersandPosition + 1] == 'a') {
+                        if (rootBuffer[lastAmpersandPosition + 3] == 'p'
+                                && rootBuffer[lastAmpersandPosition + 2] == 'm'
+                                && rootBuffer[lastAmpersandPosition + 1] == 'a') {
                             containsSpecialCharacters |= SpecialCharacter.AMPERSAND.getBit(); // &amp;
                         }
                         break;
                     }
                     case 4: {
-                        if (buffer[lastAmpersandPosition + 3] == 'o') {
-                            if (buffer[lastAmpersandPosition + 1] == 'q'
-                                    && buffer[lastAmpersandPosition + 2] == 'u'
-                                    && buffer[lastAmpersandPosition + 4] == 't') {
+                        if (rootBuffer[lastAmpersandPosition + 3] == 'o') {
+                            if (rootBuffer[lastAmpersandPosition + 1] == 'q'
+                                    && rootBuffer[lastAmpersandPosition + 2] == 'u'
+                                    && rootBuffer[lastAmpersandPosition + 4] == 't') {
                                 containsSpecialCharacters |= SpecialCharacter.DOUBLE_QUOTE.getBit(); // &quot;
-                            } else if (buffer[lastAmpersandPosition + 2] == 'p'
-                                    && buffer[lastAmpersandPosition + 4] == 's'
-                                    && buffer[lastAmpersandPosition + 1] == 'a') {
+                            } else if (rootBuffer[lastAmpersandPosition + 2] == 'p'
+                                    && rootBuffer[lastAmpersandPosition + 4] == 's'
+                                    && rootBuffer[lastAmpersandPosition + 1] == 'a') {
                                 containsSpecialCharacters |= SpecialCharacter.SINGLE_QUOTE.getBit(); // &apos;
                             }
                         }
@@ -123,17 +123,16 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                 return false; // No more data to read
             }
             final int endPos = root.filledToExclusive;
-            final var buffer = root.buffer;
             var pos = root.position;
             while (pos < endPos) {
-                final byte currentByte = buffer[pos];
+                final byte currentByte = rootBuffer[pos];
                 if (currentByte == DOUBLE_QUOTE) {
                     this.endExclusive = pos++;
                     this.root.position = pos;
                     fillIfNeeded();
                     return true;
                 }
-                afterConsumeCurrent(currentByte, buffer, pos);
+                afterConsumeCurrent(currentByte, pos);
                 pos++;
             }
             this.root.position = pos;
@@ -147,15 +146,14 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                 return false; // No more data to read
             }
             final int endPos = root.filledToExclusive;
-            final var buffer = root.buffer;
             var pos = root.position;
             while (pos < endPos) {
-                final byte currentByte = buffer[pos];
+                final byte currentByte = rootBuffer[pos];
                 if (currentByte == LEFT_ANGLE_BRACKET) {
                     this.root.position = pos;
                     return true;
                 }
-                afterConsumeCurrent(currentByte, buffer, pos);
+                afterConsumeCurrent(currentByte, pos);
                 pos++;
             }
             root.position = pos;
@@ -169,10 +167,9 @@ public class DecodingTextByteBuffer extends StreamBufferChild {
                 return false; // No more data to read
             }
             final int endPos = root.filledToExclusive;
-            final var buffer = root.buffer;
             var pos = root.position;
             while (pos < endPos) {
-                final byte currentByte = buffer[pos];
+                final byte currentByte = rootBuffer[pos];
                 if (currentByte == DOUBLE_QUOTE) {
                     this.start = ++pos;
                     this.root.position = pos;
