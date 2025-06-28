@@ -86,8 +86,8 @@ public class CIMParser {
     private final Path filePath;
     private final FileChannel fileChannel;
     private final InputStream inputStream;
-    private final JenaHashMap<SpecialByteBuffer, NamespaceIriPair> prefixToNamespace
-            = new JenaHashMap<>(8);
+    private final PrefixMap<SpecialByteBuffer, NamespaceIriPair> prefixToNamespace
+            = new PrefixMap<>(8);
     private final MapIndexedByLenghtFirst<SpecialByteBuffer, Node> tagOrAttributeNameToUriNode
             = new MapIndexedByLenghtFirst(256, 32);
 //    private final Cache<SpecialByteBuffer, Node> tagOrAttributeNameToUriNode
@@ -745,7 +745,7 @@ public class CIMParser {
                 namespace = defaultNamespace;
             }
             uriNode = NodeFactory.createURI(
-                    namespace.namespace.decodeToString() + tagOrAttributeName.getLocalPart().decodeToString());
+                    namespace.namespace.decodeToString() + tagOrAttributeName.getLocalPartAsString());
             tagOrAttributeNameToUriNode.put(tagOrAttributeName.copy(), uriNode);
         }
         return uriNode;
@@ -849,7 +849,7 @@ public class CIMParser {
                         throw new ParserException("Expected attribute 'xmlns:' in rdf:RDF tag but got: "
                                 + attribute.name().decodeToString());
                     }
-                    final var prefix = attribute.name().getLocalPart().copy();
+                    final var prefix = attribute.name().getLocalPartAsCopy();
                     final var namespace = attribute.value().copy();
                     final var iri = iriProvider.create(namespace.decodeToString());
                     // Add the namespace prefix and IRI to the prefixToNamespace map

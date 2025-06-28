@@ -90,8 +90,9 @@ public abstract class StreamBufferChild implements SpecialByteBuffer {
             }
             final var endPos = root.filledToExclusive;
             var pos = root.position;
+            final var buffer = rootBuffer;
             while (pos < endPos) {
-                if (rootBuffer[pos] == byteToSeek) {
+                if (buffer[pos] == byteToSeek) {
                     root.position = pos;
                     return true;
                 }

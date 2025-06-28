@@ -68,13 +68,16 @@ public interface SpecialByteBuffer extends MapIndexedByLenghtFirst.HasLength {
         if (this == other) return true;
         if (other == null) return false;
 
-        if (this.length() != other.length()) return false;
+        final var length = this.length();
+        if (length != other.length()) return false;
 
-        byte[] thisData = this.getData();
-        byte[] otherData = other.getData();
+        final byte[] thisData = this.getData();
+        final byte[] otherData = other.getData();
+        final var thisOffset = this.offset();
+        final var otherOffset = other.offset();
         // Compare in reverse order, since in CIM XML, the last characters are more significant
-        for (int i = this.length() - 1; i > -1; i--) {
-            if (thisData[offset() + i] != otherData[other.offset() + i]) {
+        for (int i = length - 1; i > -1; i--) {
+            if (thisData[thisOffset + i] != otherData[otherOffset + i]) {
                 return false; // Different content
             }
         }
@@ -89,9 +92,11 @@ public interface SpecialByteBuffer extends MapIndexedByLenghtFirst.HasLength {
         if (other == null || other.length() == 0) {
             return this.copyToByteArray();
         }
-        final byte[] combinedData = new byte[this.length() + other.length()];
-        System.arraycopy(this.getData(), this.offset(), combinedData, 0, this.length());
-        System.arraycopy(other.getData(), other.offset(), combinedData, this.length(), other.length());
+        final int thisLength = this.length();
+        final int otherLength = other.length();
+        final byte[] combinedData = new byte[thisLength + otherLength];
+        System.arraycopy(this.getData(), this.offset(), combinedData, 0, thisLength);
+        System.arraycopy(other.getData(), other.offset(), combinedData, thisLength, otherLength);
         return combinedData;
     }
 
@@ -130,7 +135,7 @@ public interface SpecialByteBuffer extends MapIndexedByLenghtFirst.HasLength {
             return new byte[0];
         }
         final byte[] dataCopy = new byte[this.length()];
-        System.arraycopy(this.getData(), this.offset(), dataCopy, 0, this.length());
+        System.arraycopy(this.getData(), this.offset(), dataCopy, 0, dataCopy.length);
         return dataCopy;
     }
 

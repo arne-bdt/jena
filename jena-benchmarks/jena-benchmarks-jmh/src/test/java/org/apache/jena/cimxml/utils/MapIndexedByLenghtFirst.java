@@ -72,17 +72,19 @@ public class MapIndexedByLenghtFirst<K extends MapIndexedByLenghtFirst.HasLength
     }
 
     public V getIfPresent(K key) {
-        if (entriesWithSameLength.length < key.length() || entriesWithSameLength[key.length()] == null) {
+        final var keyLength = key.length();
+        if (entriesWithSameLength.length < keyLength || entriesWithSameLength[keyLength] == null) {
             return null;
         }
-        return entriesWithSameLength[key.length()].getIfPresent(key);
+        return entriesWithSameLength[keyLength].getIfPresent(key);
     }
 
     public boolean containsKey(K key) {
-        if (entriesWithSameLength.length < key.length() || entriesWithSameLength[key.length()] == null) {
+        final var keyLength = key.length();
+        if (entriesWithSameLength.length < keyLength || entriesWithSameLength[keyLength] == null) {
             return false;
         }
-        return entriesWithSameLength[key.length()].containsKey(key);
+        return entriesWithSameLength[keyLength].containsKey(key);
     }
 
 }

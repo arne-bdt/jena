@@ -18,13 +18,11 @@
 
 package org.apache.jena.cimxml.utils;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class AttributeCollection {
     private final StreamBufferRoot streamingBufferRoot;
-    private final List<AttributeFixedBuffer> attributeFixedBuffers = new ArrayList<>();
+    private AttributeFixedBuffer[] attributeFixedBuffers = new AttributeFixedBuffer[8];
     private int currentAttributeIndex = -1;
+    private int numerOfFilledAttributes = 0;
 
     public AttributeCollection(StreamBufferRoot streamingBufferRoot) {
         this.streamingBufferRoot = streamingBufferRoot;
@@ -34,16 +32,27 @@ public class AttributeCollection {
         currentAttributeIndex = -1;
     }
 
+    private void growAttributeFixedBuffersIfNeeded() {
+        if(currentAttributeIndex >= attributeFixedBuffers.length) {
+            final var newLength = attributeFixedBuffers.length + 8;
+            final var col = attributeFixedBuffers;
+            attributeFixedBuffers = new AttributeFixedBuffer[newLength];
+            System.arraycopy(col, 0, attributeFixedBuffers, 0, col.length);
+        }
+    }
+
     public QNameByteBuffer newAttribute() {
         final AttributeFixedBuffer buffer;
         currentAttributeIndex++;
-        if (currentAttributeIndex == attributeFixedBuffers.size()) {
+        if (currentAttributeIndex == numerOfFilledAttributes) {
+            growAttributeFixedBuffersIfNeeded();
             buffer = new AttributeFixedBuffer(
                     new QNameByteBuffer(streamingBufferRoot),
                     new DecodingTextByteBuffer(streamingBufferRoot));
-            attributeFixedBuffers.add(buffer);
+            attributeFixedBuffers[currentAttributeIndex] = buffer;
+            numerOfFilledAttributes++;
         } else {
-            buffer = attributeFixedBuffers.get(currentAttributeIndex);
+            buffer = attributeFixedBuffers[currentAttributeIndex];
             buffer.resetToUnconsumed();
         }
         return buffer.name();
@@ -54,7 +63,7 @@ public class AttributeCollection {
     }
 
     public DecodingTextByteBuffer currentAttributeValue() {
-        return attributeFixedBuffers.get(currentAttributeIndex).value();
+        return attributeFixedBuffers[currentAttributeIndex].value();
     }
 
     public boolean isEmpty() {
@@ -66,6 +75,6 @@ public class AttributeCollection {
     }
 
     public AttributeFixedBuffer get(int index) {
-        return attributeFixedBuffers.get(index);
+        return attributeFixedBuffers[index];
     }
 }
