@@ -116,6 +116,7 @@ public class CIMParser {
 
     private NamespaceIriPair baseNamespace = null;
     private NamespaceIriPair defaultNamespace = null;
+    private int minPrefixLength = 3;
 
     public void setBaseNamespace(String base) {
         baseNamespace = new NamespaceIriPair(
@@ -238,8 +239,34 @@ public class CIMParser {
                     case LOOKING_FOR_TAG_NAME -> handleLookingForTagName();
                     case LOOKING_FOR_ATTRIBUTE_NAME -> handleLookingForAttributeName();
                     case LOOKING_FOR_ATTRIBUTE_VALUE -> handleLookingForAttributeValue();
-                    case AT_END_OF_OPENING_TAG -> handleAtEndOfOpeningTag();
-                    case AT_END_OF_SELF_CLOSING_TAG -> handleSelfClosingTag();
+                    case AT_END_OF_OPENING_TAG -> {
+                        var s = handleAtEndOfOpeningTagIncludingRDF_RDF();
+                        if (s == State.LOOKING_FOR_TAG && TAG_RDF_RDF.equals(currentTag)) {
+                            yield State.END;
+                        }
+                        yield s;
+                    }
+                    case AT_END_OF_SELF_CLOSING_TAG -> {
+                        var s = handleSelfClosingTagIncludingRDF_RDF();
+                        if (s == State.LOOKING_FOR_TAG && TAG_RDF_RDF.equals(currentTag)) {
+                            yield State.END;
+                        }
+                        yield s;
+                    }
+                    case IN_CLOSING_TAG -> handleClosingTag();
+                    case IN_TEXT_CONTENT -> handleTextContent();
+                    case END -> State.END;
+                };
+            }
+            state = State.LOOKING_FOR_TAG;
+            while (state != State.END) {
+                state = switch (state) {
+                    case LOOKING_FOR_TAG -> handleLookingForTag();
+                    case LOOKING_FOR_TAG_NAME -> handleLookingForTagName();
+                    case LOOKING_FOR_ATTRIBUTE_NAME -> handleLookingForAttributeName();
+                    case LOOKING_FOR_ATTRIBUTE_VALUE -> handleLookingForAttributeValue();
+                    case AT_END_OF_OPENING_TAG -> handleAtEndOfOpeningTagExceptForRDF_RDF();
+                    case AT_END_OF_SELF_CLOSING_TAG -> handleSelfClosingTagExceptForRDF_RDF();
                     case IN_CLOSING_TAG -> handleClosingTag();
                     case IN_TEXT_CONTENT -> handleTextContent();
                     case END -> State.END;
@@ -288,8 +315,8 @@ public class CIMParser {
                 + currentTag.decodeToString());
     }
 
-    private State handleSelfClosingTag() throws ParserException, IOException {
-        switch (handleAtEndOfOpeningTag()) {
+    private State handleSelfClosingTagIncludingRDF_RDF() throws ParserException, IOException {
+        switch (handleAtEndOfOpeningTagIncludingRDF_RDF()) {
             case LOOKING_FOR_TAG:
                 // everything is fine, we are back to looking for a new tag
                 break;
@@ -313,12 +340,55 @@ public class CIMParser {
         return State.LOOKING_FOR_TAG;
     }
 
-    private State handleAtEndOfOpeningTag() throws ParserException, IOException {
+    private State handleSelfClosingTagExceptForRDF_RDF() throws ParserException, IOException {
+        switch (handleAtEndOfOpeningTagExceptForRDF_RDF()) {
+            case LOOKING_FOR_TAG:
+                // everything is fine, we are back to looking for a new tag
+                break;
+            case IN_TEXT_CONTENT:
+                // assume empty text context, since self-closing tags do not have text content
+                var element = elementStack.peek();
+                if (element == null || element.subject == null || element.predicate == null) {
+                    throw new ParserException("Self-closing tag without subject or predicate: "
+                            + currentTag.decodeToString());
+                }
+                final var object = NodeFactory.createLiteral(
+                        STRING_EMPTY,
+                        element.xmlLang != null ? element.xmlLang.decodeToString() : null,
+                        element.datatype);
+                streamRDFSink.triple(Triple.create(element.subject, element.predicate, object));
+                break;
+            default:
+                throw new ParserException("Unexpected state after self-closing tag: " + currentTag.decodeToString());
+        }
+        elementStack.pop(); // Remove the current element from the stack
+        return State.LOOKING_FOR_TAG;
+    }
+
+    private State handleAtEndOfOpeningTagIncludingRDF_RDF() throws ParserException, IOException {
         final var parent = elementStack.peek();
         State state;
         if(TAG_RDF_RDF.equals(currentTag)) {
             state = handleTagRdfRdf();
         } else if(TAG_RDF_DESCRIPTION.equals(currentTag)) {
+            state = handleTagRdfDescription();
+        } else if (TAG_RDF_LI.equals(currentTag)) {
+            state = handleRdfLi();
+        } else {
+            state = handleOtherTag();
+        }
+        // if the parent was a predicate, we need to create a triple
+        final var current = elementStack.peek();
+        if (parent != null && parent.predicate != null && current != null && current.subject != null) {
+            streamRDFSink.triple(Triple.create(parent.subject, parent.predicate, current.subject));
+        }
+        return state;
+    }
+
+    private State handleAtEndOfOpeningTagExceptForRDF_RDF() throws ParserException, IOException {
+        final var parent = elementStack.peek();
+        State state;
+        if(TAG_RDF_DESCRIPTION.equals(currentTag)) {
             state = handleTagRdfDescription();
         } else if (TAG_RDF_LI.equals(currentTag)) {
             state = handleRdfLi();
@@ -624,6 +694,7 @@ public class CIMParser {
 
     private State handleTagRdfRdf() throws ParserException {
         // if the tag is rdf:RDF, it contains only the namespaces as attributes and nothing else
+        minPrefixLength = 3; // reset minPrefixLength
         if (!currentAttributes.isEmpty()) {
             // expect all attributes to be namespace attributes
             for(int i = 0; i< currentAttributes.size(); i++) {
@@ -651,6 +722,9 @@ public class CIMParser {
                     this.streamRDFSink.prefix(
                             prefix.decodeToString(),
                             iri.str());
+                    if(prefix.length() < minPrefixLength) {
+                        minPrefixLength = prefix.length();
+                    }
                 } else {
                     if (!ATTRIBUTE_XMLNS.equals(attribute.name())) {
                         throw new ParserException("Expected attribute 'xmlns:' in rdf:RDF tag but got: "
@@ -705,6 +779,7 @@ public class CIMParser {
 
         State state;
         currentTag.setCurrentByteAsStartPositon();
+        currentTag.skip(minPrefixLength-1);
         if (currentTag.tryConsumeToEndOfTagName()) {
             currentTag.setEndPositionExclusive();
             switch (currentTag.peek()) {

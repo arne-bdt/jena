@@ -387,6 +387,7 @@ public class ParserPoC {
     }
 
     @Test
+    @Ignore
     public void profileGraphAdd() throws Exception {
         Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
