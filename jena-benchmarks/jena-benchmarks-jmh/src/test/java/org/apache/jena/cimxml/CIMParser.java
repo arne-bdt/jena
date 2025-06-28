@@ -88,8 +88,10 @@ public class CIMParser {
     private final InputStream inputStream;
     private final JenaHashMap<SpecialByteBuffer, NamespaceIriPair> prefixToNamespace
             = new JenaHashMap<>(8);
-    private final Cache<SpecialByteBuffer, Node> tagOrAttributeNameToUriNode
-            = CacheFactory.createSimpleCache(8192);
+    private final ByteArrayMap<SpecialByteBuffer, Node> tagOrAttributeNameToUriNode
+            = new ByteArrayMap(256, 32);
+//    private final Cache<SpecialByteBuffer, Node> tagOrAttributeNameToUriNode
+//            = CacheFactory.createSimpleCache(8192);
     private final StreamRDF streamRDFSink;
 
     private final StreamBufferRoot root = new StreamBufferRoot(MAX_LENGTH_OF_FRAGMENT);
