@@ -112,9 +112,7 @@ public interface SpecialByteBuffer {
         return dataCopy;
     }
 
-    default String decodeToString() {
-        return new String(this.getData(), this.offset(), this.length(), UTF_8);
-    }
+    String decodeToString();
 
     /// A heuristic to check if the content is probably a CIM uuid.
     /// These UUIDs start with an underscore or sharp and underscore

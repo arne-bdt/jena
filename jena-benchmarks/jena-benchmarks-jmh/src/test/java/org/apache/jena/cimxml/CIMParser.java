@@ -290,9 +290,7 @@ public class CIMParser {
             throw new ParserException("Unexpected end of stream while looking for opening tag after text content: "
                     + currentTextContent.decodeToString());
         }
-        currentTextContent.setEndPositionExclusive();
-        currentTextContent.skip(); // Skip the LEFT_ANGLE_BRACKET
-        var nextByte = currentTextContent.peek();
+        var nextByte = currentTextContent.setEndPositionExclusiveAndSkipAndPeek(); // Skip the LEFT_ANGLE_BRACKET
         if (nextByte == SLASH) {
             // the text content must be a literal as the next tag is a closing tag.
             /*idea for improvements: have cached literals for some datatypes
@@ -447,41 +445,47 @@ public class CIMParser {
             if (attribute.isConsumed()) {
                 continue; // Skip already consumed attributes
             }
-            if (ATTRIBUTE_RDF_RESOURCE.equals(attribute.name())) {
-                // rdf:resource
-                attribute.setConsumed();
-                var predicate = getOrCreateNodeForTagOrAttributeName(currentTag);
-                var object = getOrCreateNodeForIri(current.xmlBase, attribute.value());
-                streamRDFSink.triple(Triple.create(current.subject, predicate, object));
-                elementStack.push(current);
-                return State.LOOKING_FOR_TAG;
-            }
-            if (ATTRIBUTE_RDF_DATATYPE.equals(attribute.name())) {
-                // rdf:datatype
-                attribute.setConsumed();
-                current.predicate = getOrCreateNodeForTagOrAttributeName(currentTag);
-                current.datatype = getOrCreateDatatypeForIri(current.xmlBase, attribute.value());
-                elementStack.push(current);
-                return State.IN_TEXT_CONTENT;
-            }
-            if (ATTRIBUTE_RDF_PARSE_TYPE.equals(attribute.name())) {
-                // rdf:parseType
-                attribute.setConsumed();
-                final var parseType = attribute.value();
-                if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_LITERAL.equals(parseType)) {
-                    throw new ParserException("rdf:parseType='Literal' is not supported in CIM/XML");
-                } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_RESOURCE.equals(parseType)) {
-                    var predicate = getOrCreateNodeForTagOrAttributeName(currentTag);
-                    current.subject = NodeFactory.createBlankNode(); // Create a blank node as subject
-                    streamRDFSink.triple(Triple.create(parent.subject, predicate, current.subject));
-                    elementStack.push(current);
-                    return State.LOOKING_FOR_TAG;
-                } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_COLLECTION.equals(parseType)) {
-                    throw new ParserException("rdf:parseType='Collection' is not supported in CIM/XML");
-                } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_STATEMENT.equals(parseType)) {
-                    throw new ParserException("rdf:parseType='Statement' is not yet supported in this parser");
-                } else {
-                    throw new ParserException("Unknown rdf:parseType: " + parseType.decodeToString());
+            switch (attribute.name().length()) {
+                case 12 -> {
+                    if (ATTRIBUTE_RDF_RESOURCE.equals(attribute.name())) {
+                        // rdf:resource
+                        attribute.setConsumed();
+                        var predicate = getOrCreateNodeForTagOrAttributeName(currentTag);
+                        var object = getOrCreateNodeForIri(current.xmlBase, attribute.value());
+                        streamRDFSink.triple(Triple.create(current.subject, predicate, object));
+                        elementStack.push(current);
+                        return State.LOOKING_FOR_TAG;
+                    }
+                    if (ATTRIBUTE_RDF_DATATYPE.equals(attribute.name())) {
+                        // rdf:datatype
+                        attribute.setConsumed();
+                        current.predicate = getOrCreateNodeForTagOrAttributeName(currentTag);
+                        current.datatype = getOrCreateDatatypeForIri(current.xmlBase, attribute.value());
+                        elementStack.push(current);
+                        return State.IN_TEXT_CONTENT;
+                    }
+                }
+                case 13 -> {
+                    if (ATTRIBUTE_RDF_PARSE_TYPE.equals(attribute.name())) {
+                        // rdf:parseType
+                        attribute.setConsumed();
+                        final var parseType = attribute.value();
+                        if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_LITERAL.equals(parseType)) {
+                            throw new ParserException("rdf:parseType='Literal' is not supported in CIM/XML");
+                        } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_RESOURCE.equals(parseType)) {
+                            var predicate = getOrCreateNodeForTagOrAttributeName(currentTag);
+                            current.subject = NodeFactory.createBlankNode(); // Create a blank node as subject
+                            streamRDFSink.triple(Triple.create(parent.subject, predicate, current.subject));
+                            elementStack.push(current);
+                            return State.LOOKING_FOR_TAG;
+                        } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_COLLECTION.equals(parseType)) {
+                            throw new ParserException("rdf:parseType='Collection' is not supported in CIM/XML");
+                        } else if (ATTRIBUTE_VALUE_RDF_PARSE_TYPE_STATEMENT.equals(parseType)) {
+                            throw new ParserException("rdf:parseType='Statement' is not yet supported in this parser");
+                        } else {
+                            throw new ParserException("Unknown rdf:parseType: " + parseType.decodeToString());
+                        }
+                    }
                 }
             }
         }
@@ -784,8 +788,7 @@ public class CIMParser {
         currentTag.setCurrentByteAsStartPositon();
         currentTag.skip(minPrefixLength-1);
         if (currentTag.tryConsumeToEndOfTagName()) {
-            currentTag.setEndPositionExclusive();
-            switch (currentTag.peek()) {
+            switch (currentTag.setEndPositionExclusiveAndPeek()) {
                 case RIGHT_ANGLE_BRACKET -> {
                     currentTag.skip(); // Move to the next byte after the right angle bracket
                     state = State.AT_END_OF_OPENING_TAG;
@@ -807,12 +810,11 @@ public class CIMParser {
 
     private State handleLookingForAttributeValue() throws IOException, ParserException {
         final var attributeValue = currentAttributes.currentAttributeValue();
-        if(attributeValue.tryConsumeToStartOfAttributeValue()) {
+        if(attributeValue.tryForwardToStartOfAttributeValue()) {
             attributeValue.skip(); // Move to the next byte after the double quote
             attributeValue.setCurrentByteAsStartPositon();
             if (attributeValue.tryConsumeToEndOfAttributeValue()) {
-                attributeValue.setEndPositionExclusive();
-                attributeValue.skip();
+                attributeValue.setEndPositionExclusiveAndSkip();
                 return State.LOOKING_FOR_ATTRIBUTE_NAME;
             } else {
                 throw new ParserException("Unexpected end of stream while looking for double quote as end of value");
@@ -830,7 +832,8 @@ public class CIMParser {
             // let's check the current byte
             switch (attributeName.peek()) {
                 case SLASH -> { // self-closing tag
-                    if(attributeName.tryForwardToByteAfter(RIGHT_ANGLE_BRACKET)) {
+                    if(attributeName.tryForwardToRightAngleBracket()) {
+                        attributeName.skip();
                         currentAttributes.discardCurrentAttribute();
                         return State.AT_END_OF_SELF_CLOSING_TAG;
                     } else {
@@ -851,8 +854,8 @@ public class CIMParser {
         }
         attributeName.setCurrentByteAsStartPositon();
         if (attributeName.tryConsumeUntilEndOfQName()) {
-            attributeName.setEndPositionExclusive();
-            if(attributeName.peek() == EQUALITY_SIGN) {
+            var b = attributeName.setEndPositionExclusiveAndPeek();
+            if(b == EQUALITY_SIGN) {
                 attributeName.skip(); // Move to the next byte after the equality sign
                 return State.LOOKING_FOR_ATTRIBUTE_VALUE;
             }
