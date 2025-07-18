@@ -42,7 +42,9 @@ import javax.xml.XMLConstants;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.PushbackInputStream;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardOpenOption;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -69,6 +71,7 @@ public class ParserPoC {
     //private final String file = "C:\\temp\\CGMES_v2.4.15_TestConfigurations_v4.0.3\\MicroGrid\\BaseCase_BC\\CGMES_v2.4.15_MicroGridTestConfiguration_BC_Assembled_CA_v2\\MicroGridTestConfiguration_BC_NL_GL_V2.xml";
     private final String file = "C:\\temp\\v59_3\\InstanceData.xml";
 //    private final String file ="C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml";
+//    private final String file = "C:\\temp\\CGMES_ConformityAssessmentScheme_r3-0-2\\CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3\\v3.0\\RealGrid\\RealGrid-Merged\\RealGrid_EQ.xml";
 
     @Test
     public void testRdfId() throws Exception {
@@ -367,6 +370,7 @@ public class ParserPoC {
         final var parser = new CIMParser(filePath, new StreamRDFGraph(graph));
 
         final var stopWatch = StopWatch.createStarted();
+        parser.setBaseNamespace("urn:uuid");
         parser.parse();
         stopWatch.stop();
         // print number of triples parsed and the time taken
@@ -374,10 +378,20 @@ public class ParserPoC {
 
         stopWatch.reset();
         stopWatch.start();
-        RDFParser.create()
-                .source(filePath)
-                .lang(org.apache.jena.riot.Lang.RDFXML)
-                .parse(new StreamRDFGraph(expectedGraph));
+        final int MAX_BUFFER_SIZE = 256*4096;
+        final long fileSize = java.nio.file.Files.size(filePath);
+
+        try (var channel = FileChannel.open(filePath, StandardOpenOption.READ);
+                final var is = new BufferedFileChannelInputStream.Builder().setFileChannel(channel)
+                        .setOpenOptions(StandardOpenOption.READ)
+                        .setBufferSize((fileSize < MAX_BUFFER_SIZE) ? (int) fileSize : MAX_BUFFER_SIZE)
+                        .get()) {
+            RDFParser.create()
+                    .source(is)
+                    .lang(org.apache.jena.riot.Lang.RDFXML)
+                    .base("urn:uuid")
+                    .parse(new StreamRDFGraph(expectedGraph));
+        }
         stopWatch.stop();
 
         // print number of triples parsed and the time taken
@@ -419,6 +433,7 @@ public class ParserPoC {
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var parser = new CIMParser(filePath, new StreamRDFGraph(graph));
         final var stopWatch = StopWatch.createStarted();
+        parser.setBaseNamespace("urn:uuid");
         parser.parse();
         stopWatch.stop();
         // print number of triples parsed and the time taken
@@ -435,10 +450,19 @@ public class ParserPoC {
         final var filePath = java.nio.file.Paths.get(file);
         final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var stopWatch = StopWatch.createStarted();
-        RDFParser.create()
-                .source(filePath)
-                .lang(org.apache.jena.riot.Lang.RDFXML)
-                .parse(new StreamRDFGraph(graph));
+        final int MAX_BUFFER_SIZE = 256*4096;
+        final long fileSize = java.nio.file.Files.size(filePath);
+
+        try (var channel = FileChannel.open(filePath, StandardOpenOption.READ);
+             final var is = new BufferedFileChannelInputStream.Builder().setFileChannel(channel)
+                     .setOpenOptions(StandardOpenOption.READ)
+                     .setBufferSize((fileSize < MAX_BUFFER_SIZE) ? (int) fileSize : MAX_BUFFER_SIZE)
+                     .get()) {
+            RDFParser.create()
+                    .source(is)
+                    .lang(org.apache.jena.riot.Lang.RDFXML)
+                    .parse(new StreamRDFGraph(graph));
+        }
         stopWatch.stop();
         // print number of triples parsed and the time taken
         System.out.println("Parsed triples: " + graph.size() + " in " + stopWatch);
