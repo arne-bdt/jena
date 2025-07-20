@@ -20,7 +20,7 @@ package org.apache.jena.mem2.set.triple;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
+import org.apache.jena.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.junit.Assert;
 import org.junit.Test;

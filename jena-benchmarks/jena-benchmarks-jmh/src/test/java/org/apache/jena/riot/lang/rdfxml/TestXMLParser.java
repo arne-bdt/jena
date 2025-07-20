@@ -20,7 +20,7 @@ package org.apache.jena.riot.lang.rdfxml;
 
 import org.apache.commons.io.input.BufferedFileChannelInputStream;
 import org.apache.jena.graph.Graph;
-import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
+import org.apache.jena.JMHDefaultOptions;
 import org.apache.jena.mem2.GraphMem2Fast;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;

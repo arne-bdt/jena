@@ -20,14 +20,12 @@ package org.apache.jena.mem.graph;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.mem.graph.helper.Context;
-import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
+import org.apache.jena.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
-
-import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 

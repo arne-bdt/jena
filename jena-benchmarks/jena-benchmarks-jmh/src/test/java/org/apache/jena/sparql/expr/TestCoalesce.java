@@ -20,12 +20,11 @@ package org.apache.jena.sparql.expr;
 
 
 import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
+import org.apache.jena.JMHDefaultOptions;
 import org.apache.jena.sparql.engine.binding.Binding;
 import org.apache.jena.sparql.function.FunctionEnv;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Scope;

@@ -21,7 +21,7 @@ package org.apache.jena.mem2.map.node;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
-import org.apache.jena.mem2.helper.JMHDefaultOptions;
+import org.apache.jena.JMHDefaultOptions;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
