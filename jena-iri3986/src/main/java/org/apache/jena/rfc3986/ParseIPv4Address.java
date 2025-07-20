@@ -38,42 +38,42 @@ public class ParseIPv4Address {
 //
 
     /** Check an IPv6 address (including any delimiting []) */
-    public static void checkIPv4(CharSequence string) {
-        checkIPv4(string, 0, string.length());
+    public static void checkIPv4(final char[] chars) {
+        checkIPv4(chars, 0, chars.length);
     }
 
-    public static void checkIPv4(CharSequence string, int start, int end) {
-        int length = string.length();
+    public static void checkIPv4(final char[] chars, int start, int end) {
+        int length = chars.length;
         if ( start < 0 || end < 0 || end > length )
             throw new IllegalArgumentException();
         if ( length == 0 || start >= end )
-            throw parseError(string, "Empty IPv4 address");
-        parseIPv4(string, start, end);
+            throw parseError(chars, "Empty IPv4 address");
+        parseIPv4(chars, start, end);
     }
 
-    private static int parseIPv4(CharSequence string, int start, int end) {
-        int q = ipv4(string, start, end);
+    private static int parseIPv4(final char[] chars, int start, int end) {
+        int q = ipv4(chars, start, end);
         if ( q != end )
-            throw parseError(string, "IPV4 address too long (final dec-octet too long)");
+            throw parseError(chars, "IPV4 address too long (final dec-octet too long)");
         return q;
     }
 
     /** Match exactly an IPv4 address. */
-    /*package*/ static int ipv4(CharSequence string, int start, int end) {
+    /*package*/ static int ipv4(final char[] chars, int start, int end) {
         // Used by ParseIPv6Address
         int p = start;
         // 3* "NNN." then "NNN"
         for ( int i = 0 ; i < 4 ; i++ ) {
-            int x = ipv4_digits(string, p, end);
+            int x = ipv4_digits(chars, p, end);
             if ( x < 0 || x == p )
-                throw parseError(string, "Bad IPv4 address (no digits)");
+                throw parseError(chars, "Bad IPv4 address (no digits)");
             // Check for in 0-255.
             if ( x-p == 3 )
-                checkIPv4Value(string, p);
+                checkIPv4Value(chars, p);
             if ( i != 3 ) {
-                char ch = charAt(string, x);
+                char ch = charAt(chars, x);
                 if ( ch != '.' )
-                    throw parseError(string, "Bad IPv4 address (dot not found after 3 digits)");
+                    throw parseError(chars, "Bad IPv4 address (dot not found after 3 digits)");
                 x++;
             }
             p = x;
@@ -82,12 +82,12 @@ public class ParseIPv4Address {
     }
 
     /** 1 to 3 digits. */
-    private static int ipv4_digits(CharSequence string, int start, int end) {
+    private static int ipv4_digits(final char[] chars, int start, int end) {
         int p = start;
         for (int i = 0 ; i < 3 ; i++ ) {
-            if ( p+i >= string.length() )
+            if ( p+i >= chars.length )
                 return p+i;
-            char ch = charAt(string, p+i);
+            char ch = charAt(chars, p+i);
             if ( ! Chars3986.range(ch, '0', '9') )
                 return p+i;
         }
@@ -95,19 +95,19 @@ public class ParseIPv4Address {
         return p+3;
     }
 
-    private static void checkIPv4Value(CharSequence string, int p) {
+    private static void checkIPv4Value(final char[] chars, int p) {
         // 3 digits. Check for 255. Rather that "parse", we calculate the value.
         // Known to be ASCII digits.
-        char ch1 = charAt(string, p);
-        char ch2 = charAt(string, p+1);
-        char ch3 = charAt(string, p+2);
+        char ch1 = charAt(chars, p);
+        char ch2 = charAt(chars, p+1);
+        char ch3 = charAt(chars, p+2);
         int v = (ch1-'0')*100 + (ch2-'0')*10 + (ch3-'0');
         if ( v > 255 )
-            throw parseError(string, "IPv4 number out of range 0-255.");
+            throw parseError(chars, "IPv4 number out of range 0-255.");
     }
 
     /** Look at the end of the character sequence for an IPv4 address. */
-    private static int peekForIPv4(CharSequence string, int start, int end) {
+    private static int peekForIPv4(final char[] chars, int start, int end) {
         //IPv4address   = dec-octet "." dec-octet "." dec-octet "." dec-octet
         //dec-octet     = DIGIT                 ; 0-9
         //              / %x31-39 DIGIT         ; 10-99
@@ -124,7 +124,7 @@ public class ParseIPv4Address {
             p = end-i-1;
             if ( p < 0 )
                 break;
-            char ch = charAt(string, p);
+            char ch = charAt(chars, p);
             if ( ch == '.' ) {
                 isIPv4 = true;
                 countDot ++;
@@ -140,22 +140,22 @@ public class ParseIPv4Address {
         if ( ! isIPv4 )
             return -1;
         if ( countDot != 3 )
-            throw parseError(string, "Malformed IPv4 address as part of IPv6 []");
+            throw parseError(chars, "Malformed IPv4 address as part of IPv6 []");
 
         // Move to start of IPv4 address. => function.
         for ( int i = 0 ; i < 3 ; i++ ) {
             p = firstDot-i-1;
             if ( p < 0 )
                 break;
-            char ch = charAt(string, p);
+            char ch = charAt(chars, p);
             if ( ! Chars3986.range(ch,'0', '9') )
                 break;
         }
 
         // check p .
-        char ch = charAt(string, p-1);
+        char ch = charAt(chars, p-1);
         if ( ch != ':' )
-            throw parseError(string, "Malformed IPv4 address as part of IPv6; can't find ':' separator");
+            throw parseError(chars, "Malformed IPv4 address as part of IPv6; can't find ':' separator");
         // Location of last :
         return p;
     }

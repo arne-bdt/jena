@@ -99,10 +99,10 @@ public class TestParseIPv6Address {
     @Test public void addr_ipv4_bad_7() { bad6("[::1234.56.78.99]"); }
 
     private void good6(String string) {
-        ParseIPv6Address.checkIPv6(string);
+        ParseIPv6Address.checkIPv6(string.toCharArray());
     }
 
     private void bad6(String string) {
-        assertThrows(IRIParseException.class, ()->ParseIPv6Address.checkIPv6(string));
+        assertThrows(IRIParseException.class, ()->ParseIPv6Address.checkIPv6(string.toCharArray()));
     }
 }

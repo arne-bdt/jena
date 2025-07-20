@@ -41,13 +41,13 @@ public class Chars3986 {
      * Test whether {@code ch} is an RFC3986 pchar.
      * This may need to look ahead in the string if the character is a {@code %}.
      */
-    public static boolean isPChar(char ch, CharSequence str, int posn) {
-        return unreserved(ch) || isPctEncoded(ch, str, posn) || subDelims(ch) || ch == ':' || ch == '@';
+    public static boolean isPChar(char ch, final char[] chars, int posn) {
+        return unreserved(ch) || isPctEncoded(ch, chars, posn) || subDelims(ch) || ch == ':' || ch == '@';
     }
 
     /** RFC3987 ipchar */
-    public static boolean isIPChar(char ch, String str, int posn) {
-        return isPChar(ch, str, posn) || isUcsChar(ch);
+    public static boolean isIPChar(char ch, final char[] chars, int posn) {
+        return isPChar(ch, chars, posn) || isUcsChar(ch);
     }
 
     /**
@@ -58,16 +58,16 @@ public class Chars3986 {
      * are in the L1 or L2 cache and the alternative is more complex logic (return
      * the new character position in some way).
      */
-    public static boolean isPctEncoded(char ch, CharSequence s, int x) {
+    public static boolean isPctEncoded(char ch, final char[] chars, int x) {
         if ( ch != '%' )
             return false;
-        char ch1 = charAt(s, x+1);
-        char ch2 = charAt(s, x+2);
-        return percentCheck(ch1, ch2, s, x);
+        char ch1 = charAt(chars, x+1);
+        char ch2 = charAt(chars, x+2);
+        return percentCheck(ch1, ch2, chars, x);
     }
 
     public static boolean isAlpha(char ch) {
-        return range(ch, 'a', 'z') || range(ch, 'A', 'Z');
+        return range(ch  | 0x20, 'a', 'z' ); // Lower case, so 'A' to 'Z' is also true.
     }
 
     public static boolean isAlphaNum(char ch) {
@@ -137,7 +137,7 @@ public class Chars3986 {
 
     /** RFC 3986 : unreserved */
     public static boolean unreserved(char ch) {
-        if ( isAlpha(ch) || isDigit(ch) )
+        if ( isAlphaNum(ch) )
             return true;
         switch(ch) {
             // unreserved
@@ -182,24 +182,31 @@ public class Chars3986 {
     /**
      * Check whether {@code ch1} and {@code ch2} are percent-encoding hex characters.
      */
-    public static boolean percentCheck(char ch1, char ch2, CharSequence source, int idx) {
+    public static boolean percentCheck(char ch1, char ch2, final char[] sourceChars, int idx) {
         if ( ch1 == EOF || ch2 == EOF ) {
-            parseError(source.toString(), idx+1, "Incomplete %-encoded character");
+            parseError(sourceChars, idx+1, "Incomplete %-encoded character");
             return false;
         }
         // Any case.
 
         if ( isHexDigit(ch1) && isHexDigit(ch2) )
             return true;
-        parseError(source.toString(), idx+1, "Bad %-encoded character ["+displayChar(ch1)+" "+displayChar(ch2)+"]");
+        parseError(sourceChars, idx+1, "Bad %-encoded character ["+displayChar(ch1)+" "+displayChar(ch2)+"]");
         return false;
     }
 
     /** String.charAt except with an EOF character, not an exception. */
-    public static char charAt(CharSequence str, int x) {
-        if ( x >= str.length() )
+    public static char charAt(final char[] chars, int x) {
+        if ( x >= chars.length )
             return EOF;
-        return str.charAt(x);
+        return chars[x];
+    }
+
+    /** String.charAt except with an EOF character, not an exception. */
+    public static char charAt(CharSequence string, int x) {
+        if ( x >= string.length() )
+            return EOF;
+        return string.charAt(x);
     }
 
     /** Test whether a character is in a character range (both ends inclusive) */
@@ -216,7 +223,8 @@ public class Chars3986 {
      * but also lower case (non-normalized form). See RFC 3986 sec 6.2.2.1
      */
     public static boolean isHexDigit(char ch) {
-        return range(ch, '0', '9' ) || range(ch, 'A', 'F' ) || range(ch, 'a', 'f' )  ;
+        return range(ch, '0', '9' )
+                || range(ch  | 0x20, 'a', 'f' ); // Lower case, so 'A' to 'F' is also true.
     }
 
     public static int hexValue(char ch) {
@@ -237,7 +245,7 @@ public class Chars3986 {
     }
 
     // How to handle parse errors (percent encoding).
-    private static void parseError(String source, int posn, String msg) {
-        throw ParseErrorIRI3986.parseError(source, posn, msg);
+    private static void parseError(final char[] sourceChars, int posn, String msg) {
+        throw ParseErrorIRI3986.parseError(sourceChars, posn, msg);
     }
 }

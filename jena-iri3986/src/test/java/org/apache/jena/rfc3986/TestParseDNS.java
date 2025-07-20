@@ -56,10 +56,10 @@ public class TestParseDNS {
     @Test public void parseDNS_bad_09() { badDNS("%Z7"); }
 
     private static void goodDNS(String string) {
-        ParseDNS.parse(string);
+        ParseDNS.parse(string.toCharArray());
     }
 
     private static void badDNS(String string) {
-        assertThrows(IRIParseException.class, ()->ParseDNS.parse(string));
+        assertThrows(IRIParseException.class, ()->ParseDNS.parse(string.toCharArray()));
     }
 }

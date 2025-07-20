@@ -77,8 +77,11 @@ import java.util.regex.Pattern;
                 return createValidURNComponents(null, null, fString);
         }
 
+        final var rqChars = rqString.toCharArray();
+
+
         BiConsumer<Issue, String> handler = (issue, msg) -> new URNComponentException(msg);
-        int N = rqString.length();
+        int N = rqChars.length;
         int x = 0;
         int rCompStart = -1;
         int rCompFinish = -1;
@@ -86,18 +89,17 @@ import java.util.regex.Pattern;
         int qCompStart = -1;
         int qCompFinish = -1;
         String qComponent = null;
-        String fComponent = fString;
 
         // No leading ?
         // Check for '+'
-        if ( lookingAtChar1(rqString, 0, N, CH_PLUS) ) {
+        if ( lookingAtChar1(rqChars, 0, N, CH_PLUS) ) {
             // r-component
             rCompStart = 1;
             for( ; x < N ; x++ ) {
-                char ch = rqString.charAt(x);
+                char ch = rqChars[x];
                 if ( ch == CH_QMARK ) {
                     // q-component?
-                    if ( lookingAtChar1(rqString, x+1, N, CH_EQUALS) ) {
+                    if ( lookingAtChar1(rqChars, x+1, N, CH_EQUALS) ) {
                         break;
                     }
                     // '?' but not ?=
@@ -116,7 +118,7 @@ import java.util.regex.Pattern;
 
         // if not end of string, and exited on '?'
         if ( x < N ) {
-            if ( lookingAtChar1(rqString, x, N, CH_EQUALS) ) {
+            if ( lookingAtChar1(rqChars, x, N, CH_EQUALS) ) {
                 // r-component
                 qCompStart = x+1;
                 qCompFinish = N;
@@ -130,7 +132,7 @@ import java.util.regex.Pattern;
                 return null;
             }
         }
-        return createValidURNComponents(rComponent, qComponent, fComponent);
+        return createValidURNComponents(rComponent, qComponent, fString);
     }
 
     /**
@@ -138,14 +140,14 @@ import java.util.regex.Pattern;
      * <p>
      * The string is a full IRI query string and fragment, starting with '?', or '#' (if only an f-component is present)
      */
-    public static boolean validateURNComponents(String string, int start, BiConsumer<Issue, String> handler) {
-        int N = string.length();
+    public static boolean validateURNComponents(final char[] chars, int start, BiConsumer<Issue, String> handler) {
+        int N = chars.length;
         int x = start;
         if ( N == 0 )
             return true;
 
-        boolean startIsQmark = lookingAtChar1(string, start, N, CH_QMARK);
-        boolean startIsFrag = lookingAtChar1(string, start, N, CH_HASH);
+        boolean startIsQmark = lookingAtChar1(chars, start, N, CH_QMARK);
+        boolean startIsFrag = lookingAtChar1(chars, start, N, CH_HASH);
 
         if ( !startIsQmark && ! startIsFrag ) {
             handler.accept(Issue.urn_bad_components, "Does not start with a r-, q- or f- component");
@@ -153,13 +155,13 @@ import java.util.regex.Pattern;
         }
 
         if ( startIsQmark ) {
-            x = findValidateR(string, x, handler);
+            x = findValidateR(chars, x, handler);
             if ( x == -1 )
                 // Handler called
                 return false;
             if ( x == N )
                 return true;
-            x = findValidateQ(string, x, handler);
+            x = findValidateQ(chars, x, handler);
             if ( x == -1 )
                 // Handler called
                 return false;
@@ -170,7 +172,7 @@ import java.util.regex.Pattern;
                 return false;
             }
         }
-        x = findValidateF(string, x, handler);
+        x = findValidateF(chars, x, handler);
         if ( x == -1 )
             return false;
         return true;
@@ -185,19 +187,19 @@ import java.util.regex.Pattern;
      * @See {@link #parseURNComponents(String, int, BiConsumer)}
      */
     public static URNComponents parseURNComponents(String componentsString) {
-        return parseURNComponents(componentsString, 0, noopHandler);
+        return parseURNComponents(componentsString.toCharArray(), 0, noopHandler);
     }
 
     /**
      * Parse URN components from the end of a string. For example, find the "?" in a URN and parse out the components.
      */
-    public static URNComponents parseURNComponents(String string, int start, BiConsumer<Issue, String> handler) {
-        int N = string.length();
+    public static URNComponents parseURNComponents(final char[] chars, int start, BiConsumer<Issue, String> handler) {
+        int N = chars.length;
         if ( N == 0 )
             return null;
 
-        boolean startIsQmark = lookingAtChar1(string, start, N, CH_QMARK);
-        boolean startIsFrag = lookingAtChar1(string, start, N, CH_HASH);
+        boolean startIsQmark = lookingAtChar1(chars, start, N, CH_QMARK);
+        boolean startIsFrag = lookingAtChar1(chars, start, N, CH_HASH);
 
         if ( !startIsQmark && ! startIsFrag ) {
             handler.accept(Issue.urn_bad_components, "Does not start with an r-, q- or f- component");
@@ -216,7 +218,7 @@ import java.util.regex.Pattern;
 
         if ( startIsQmark ) {
 
-            xEnd = findValidateR(string, x, handler);
+            xEnd = findValidateR(chars, x, handler);
             if ( xEnd == -1 )
                 // Handler called
                 return null;
@@ -227,7 +229,7 @@ import java.util.regex.Pattern;
             // Move on.
             x = xEnd;
 
-            xEnd = findValidateQ(string, x, handler);
+            xEnd = findValidateQ(chars, x, handler);
             if ( xEnd == -1 )
                 // Handler called
                 return null;
@@ -242,7 +244,7 @@ import java.util.regex.Pattern;
             }
             x = xEnd;
         }
-        xEnd = findValidateF(string, x, handler);
+        xEnd = findValidateF(chars, x, handler);
         if ( xEnd == -1 )
             return null;
         if ( xEnd != N )
@@ -252,9 +254,9 @@ import java.util.regex.Pattern;
             fCompFinish = xEnd;
         }
 
-        String rComponent = slice(string, rCompStart, rCompFinish);
-        String qComponent = slice(string, qCompStart, qCompFinish);
-        String fComponent = slice(string, fCompStart, fCompFinish);
+        String rComponent = slice(chars, rCompStart, rCompFinish);
+        String qComponent = slice(chars, qCompStart, qCompFinish);
+        String fComponent = slice(chars, fCompStart, fCompFinish);
         if ( rComponent != null && rComponent.isEmpty() ) {
             handler.accept(Issue.urn_bad_components, "URN r-component must be at least one character");
             return null;
@@ -277,6 +279,12 @@ import java.util.regex.Pattern;
         return string.substring(start, finish);
     }
 
+    private static String slice(final char[] chars, int start, int finish) {
+        if ( start == -1 )
+            return null;
+        return String.valueOf(chars, start, finish-start);
+    }
+
     /**
      * Check any r-component.
      * <p>
@@ -290,9 +298,9 @@ import java.util.regex.Pattern;
      * Return -1 on error if the handler returned.
      * NB An r-component can contain '?'. We interpret this as "r-component ends at first q-component".
      */
-    private static int findValidateR(String string, int start, BiConsumer<Issue, String> handler) {
-        int N = string.length();
-        boolean found = lookingAtChar2(string, start, N, CH_QMARK, CH_PLUS);
+    private static int findValidateR(final char[] chars, int start, BiConsumer<Issue, String> handler) {
+        int N = chars.length;
+        boolean found = lookingAtChar2(chars, start, N, CH_QMARK, CH_PLUS);
         if ( ! found )
             return start;
         // Skip to ?= or #
@@ -300,11 +308,11 @@ import java.util.regex.Pattern;
         int x = compStart;
         char ch = 0;
         for( ; x < N ; x++ ) {
-            ch = string.charAt(x);
+            ch = chars[x];
             if ( ch == CH_HASH )
                 break;
             if ( ch == CH_QMARK ) {
-                if ( lookingAtChar1(string, x+1, N, CH_EQUALS) )
+                if ( lookingAtChar1(chars, x+1, N, CH_EQUALS) )
                     break;
                 // '?' but not ?=
             }
@@ -317,9 +325,9 @@ import java.util.regex.Pattern;
         return compFinish;
     }
 
-    private static int findValidateQ(String string, int start, BiConsumer<Issue, String> handler) {
-        int N = string.length();
-        boolean found = lookingAtChar2(string, start, N, CH_QMARK, CH_EQUALS);
+    private static int findValidateQ(final char[] chars, int start, BiConsumer<Issue, String> handler) {
+        int N = chars.length;
+        boolean found = lookingAtChar2(chars, start, N, CH_QMARK, CH_EQUALS);
         if ( ! found )
             return start;
         // Skip to end of string or hash.
@@ -327,7 +335,7 @@ import java.util.regex.Pattern;
         int x = compStart;
         char ch = 0;
         for( ; x < N ; x++ ) {
-            ch = string.charAt(x);
+            ch = chars[x];
             if ( ch == CH_HASH )
                 break;
         }
@@ -351,9 +359,9 @@ import java.util.regex.Pattern;
      * Call {@code handler} to pass back scheme-specific violations. This is allowed to raise an exception.
      * Return -1 on error if the handler returned.
      */
-    private static int findValidateF(String string, int start, BiConsumer<Issue, String> handler) {
-        int N = string.length();
-        boolean found = lookingAtChar1(string, start, N, CH_HASH);
+    private static int findValidateF(final char[] chars, int start, BiConsumer<Issue, String> handler) {
+        int N = chars.length;
+        boolean found = lookingAtChar1(chars, start, N, CH_HASH);
         if ( ! found )
             return start;
         // Runs from # to end of string.
@@ -361,20 +369,20 @@ import java.util.regex.Pattern;
     }
 
     // Are we looking at a character?
-    private static boolean lookingAtChar1(String string, int index, int N, char ch1) {
+    private static boolean lookingAtChar1(final char[] chars, int index, int N, char ch1) {
         int idx = index;
         if ( idx >= N )
             return false;
-        char x1 = string.charAt(idx);
+        char x1 = chars[idx];
         if ( x1 != 0 && x1 != ch1 )
                 return false;
         return true;
     }
 
     // Are we looking at one character followed by another?
-    private static boolean lookingAtChar2(String string, int index, int N, char ch1, char ch2) {
-        return lookingAtChar1(string, index, N, ch1) &&
-               lookingAtChar1(string, index+1, N, ch2);
+    private static boolean lookingAtChar2(final char[] chars, int index, int N, char ch1, char ch2) {
+        return lookingAtChar1(chars, index, N, ch1) &&
+               lookingAtChar1(chars, index+1, N, ch2);
     }
 
 

@@ -75,83 +75,83 @@ public class ParseIPv6Address {
     // IPv6addrz = IPv6address "%25" ZoneID
 
     /** Check an IPv6 address (including any delimiting []) */
-    public static void checkIPv6(CharSequence string) {
-        checkIPv6(string, 0, string.length());
+    public static void checkIPv6(final char[] chars) {
+        checkIPv6(chars, 0, chars.length);
     }
 
-    public static void checkIPv6(CharSequence string, int start, int end) {
-        int length = string.length();
+    public static void checkIPv6(final char[] chars, int start, int end) {
+        int length = chars.length;
         if ( start < 0 || end < 0 || end > length )
             throw new IllegalArgumentException();
         if ( length == 0 || start >= end )
-            throw ParseErrorIRI3986.parseError(string, "Empty IPv6 address");
-        parseIPv6(string, start, end);
+            throw ParseErrorIRI3986.parseError(chars, "Empty IPv6 address");
+        parseIPv6(chars, start, end);
     }
 
-    private static int parseIPv6(CharSequence string, int start, int end) {
-        if ( charAt(string, start) != '[' || charAt(string, end-1) != ']' )
-            throw ParseErrorIRI3986.parseError(string, "IPv6 (or later) address not properly delimited");
+    private static int parseIPv6(final char[] chars, int start, int end) {
+        if ( charAt(chars, start) != '[' || charAt(chars, end-1) != ']' )
+            throw ParseErrorIRI3986.parseError(chars, "IPv6 (or later) address not properly delimited");
         // end must be > start+1 by the above and checkIPv6 so no risk of missing here.
-        if ( charAt(string, start+1) == 'v' ) {
+        if ( charAt(chars, start+1) == 'v' ) {
             // IPvFuture  = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
-            return parseIPFuture(string, start+2, end-1);
+            return parseIPFuture(chars, start+2, end-1);
         }
-        int idx =  parseIPv6Sub(string, start+1, end-1);
+        int idx =  parseIPv6Sub(chars, start+1, end-1);
         // Optional :: %25zone
-        idx = parseIPv6OptionalZone(string, idx, end-1);
+        idx = parseIPv6OptionalZone(chars, idx, end-1);
 
         // Did parsing end at the last character before the ']'?
         if ( idx != end-1 )
-            throw ParseErrorIRI3986.parseError(string, "Bad end of IPv6X address");
+            throw ParseErrorIRI3986.parseError(chars, "Bad end of IPv6X address");
         return idx;
     }
 
     /** Parse option zoneId after IPv6 address. RFC 6874 */
-    private static int parseIPv6OptionalZone(CharSequence string, int idx, int end) {
+    private static int parseIPv6OptionalZone(final char[] chars, int idx, int end) {
         if ( idx >= end )
             return idx;
-        char chPercent = string.charAt(idx);
+        char chPercent = chars[idx];
         if ( chPercent == '%' ) {
             // Check '2', '5'
             if ( idx+3 >= end )
-                throw ParseErrorIRI3986.parseError(string, "Bad IPv6 zone id");
-            char ch1 = string.charAt(idx+1);
-            char ch2 = string.charAt(idx+2);
+                throw ParseErrorIRI3986.parseError(chars, "Bad IPv6 zone id");
+            char ch1 = chars[idx+1];
+            char ch2 = chars[idx+2];
             if ( ch1 != '2' || ch2 != '5' )
-                throw ParseErrorIRI3986.parseError(string, "Bad IPv6 zone id (must be '%25...'");
+                throw ParseErrorIRI3986.parseError(chars, "Bad IPv6 zone id (must be '%25...'");
             idx = idx + 3;
             // ZoneID = 1*( unreserved / pct-encoded )
             int zIdx = idx;
             for ( ; zIdx < end ; zIdx++ ) {
-                char ch =  string.charAt(zIdx);
+                char ch =  chars[zIdx];
                 if ( Chars3986.unreserved(ch) )
                     continue;
-                if ( Chars3986.isPctEncoded(ch, string, zIdx) )
+                if ( Chars3986.isPctEncoded(ch, chars, zIdx) )
                     continue;
-                throw ParseErrorIRI3986.parseError(string, "Bad character in IPv6 zone id");
+                throw ParseErrorIRI3986.parseError(chars, "Bad character in IPv6 zone id");
             }
             if ( zIdx - idx < 1 )
-                throw ParseErrorIRI3986.parseError(string, "No IPv6 zone id after '%25'");
+                throw ParseErrorIRI3986.parseError(chars, "No IPv6 zone id after '%25'");
             idx = zIdx;
         }
         return idx;
     }
 
-    private static int parseIPFuture(CharSequence string, int start, int end) {
+    private static int parseIPFuture(final char[] chars, int start, int end) {
         int p = start;
         if ( p >= end )
-            throw ParseErrorIRI3986.parseError(string, "Short IPFuture");
-        char ch = string.charAt(p);
+            throw ParseErrorIRI3986.parseError(chars, "Short IPFuture");
+        char ch = chars[p];
         if ( ! Chars3986.isHexDigit(ch) )
-            throw ParseErrorIRI3986.parseError(string, "IPFuture: no version hexdigit");
+            throw ParseErrorIRI3986.parseError(chars, "IPFuture: no version hexdigit");
         p++;
-        ch = string.charAt(p);
+        ch = chars[p];
         if ( ch != '.' )
-            throw ParseErrorIRI3986.parseError(string, "IPFuture: no dot after version hexdigit");
+            throw ParseErrorIRI3986.parseError(chars, "IPFuture: no dot after version hexdigit");
         p++;
         // One or more.
         while (p < end) {
-            ch = string.charAt(p);
+            ch = chars[p];
             if ( ch == ']' )
                 break;
             if ( ! Chars3986.unreserved(ch) && !Chars3986.subDelims(ch) && ch != ':' )
@@ -160,11 +160,11 @@ public class ParseIPv6Address {
         }
         if ( p != end )
             // Only one ']' at index end.
-            throw ParseErrorIRI3986.parseError(string, "IPFuture: extra ']'");
+            throw ParseErrorIRI3986.parseError(chars, "IPFuture: extra ']'");
         return p;
     }
 
-    private static int parseIPv6Sub(CharSequence string, int start, int end) {
+    private static int parseIPv6Sub(final char[] chars, int start, int end) {
         // start-end Without "[...]";
         int p = start;
 
@@ -174,7 +174,7 @@ public class ParseIPv6Address {
         int h16c = 0;
 
         //starting ::
-        boolean b = LibParseIRI.peekFor(string, p, ':',  ':');
+        boolean b = LibParseIRI.peekFor(chars, p, ':',  ':');
         if ( b ) {
             h16c1 = h16c;
             h16c = 0 ;
@@ -183,13 +183,13 @@ public class ParseIPv6Address {
 
         // Move forward over h16:
         for (;;) {
-            int x = ipv6_h16(string, p, end);
+            int x = ipv6_h16(chars, p, end);
             if ( x == p )
                 break;
             if ( x >= end )
                 break;
             h16c++;
-            char ch = charAt(string, x);
+            char ch = charAt(chars, x);
             if ( ch == ':' ) { // "::"
                 //System.out.printf("h16 %d\n", h16c);
                 h16c1 = h16c;
@@ -214,8 +214,8 @@ public class ParseIPv6Address {
             if ( z >= end )
                 // End.
                 break;
-            char ch = charAt(string, z);
-            if ( Chars3986.range(ch, 'a', 'f') || Chars3986.range(ch, 'A', 'F') )
+            char ch = charAt(chars, z);
+            if ( Chars3986.range(ch | 0x20, 'a', 'f') ) // Lower case, so 'A' to 'F' is also true.
                 break;
             if ( ch == '.' ) {
                 IPv4 = true;
@@ -230,13 +230,13 @@ public class ParseIPv6Address {
             if ( h16c2 == -1 ) {
                 // h16c1 must be 6
                 if ( h16c1 != 6 )
-                    throw ParseErrorIRI3986.parseError(string, "Malformed IPv6 address with IPv4 part [case 1]");
+                    throw ParseErrorIRI3986.parseError(chars, "Malformed IPv6 address with IPv4 part [case 1]");
             } else {
                 // h16c1+h16c2 <= 4
                 if ( h16c1+h16c2 > 4 )
-                    throw ParseErrorIRI3986.parseError(string, "Malformed IPv6 address with IPv4 part [case 2]");
+                    throw ParseErrorIRI3986.parseError(chars, "Malformed IPv6 address with IPv4 part [case 2]");
             }
-            int x = ipv4(string, p, end);
+            int x = ipv4(chars, p, end);
             p = x ;
 //            if ( p != end )
 //                throw ErrorIRI3986.parseError(string, "Bad end of IPv4 address");
@@ -245,18 +245,18 @@ public class ParseIPv6Address {
             if ( h16c2 == -1 ) {
                 // h16c1 must be 7
                 if ( h16c1 != 7 )
-                    throw ParseErrorIRI3986.parseError(string, "Malformed IPv6 address [case 1]");
+                    throw ParseErrorIRI3986.parseError(chars, "Malformed IPv6 address [case 1]");
             } else {
                 // h16c1+h16c2 <= 5
                 // or h16c1 <= 6, and h16c2 = 0
                 if ( h16c2 == 0 ) {
                     if ( h16c1 > 6 )
-                        throw ParseErrorIRI3986.parseError(string, "Malformed IPv6 address [case 2]");
+                        throw ParseErrorIRI3986.parseError(chars, "Malformed IPv6 address [case 2]");
                 }
                 else if ( h16c1+h16c2 > 5 )
-                    throw ParseErrorIRI3986.parseError(string, "Malformed IPv6 address [case 3]");
+                    throw ParseErrorIRI3986.parseError(chars, "Malformed IPv6 address [case 3]");
             }
-            int x = ipv6_hex4(string, p, end);
+            int x = ipv6_hex4(chars, p, end);
             p = x;
 //            if ( p != end )
 //                throw ErrorIRI3986.parseError(string, "Bad end of IPv6 address");
@@ -267,18 +267,18 @@ public class ParseIPv6Address {
     // (h16 ":")*
     // Returns index of just after the ":"
     // Does not accept h16 , no ":"
-    private static int ipv6_h16(CharSequence string, int start, int end) {
+    private static int ipv6_h16(final char[] chars, int start, int end) {
         int p = start;
-        int x = ipv6_hex4(string, p, end);
+        int x = ipv6_hex4(chars, p, end);
         if ( x < 0 )
-            throw ParseErrorIRI3986.parseError(string, "hex4 error at "+p);
+            throw ParseErrorIRI3986.parseError(chars, "hex4 error at "+p);
         if ( x == p )
             // No progress.
             return p;
         if ( x >= end )
             // No ":"
             return p;
-        char ch1 = string.charAt(x);
+        char ch1 = chars[x];
         if ( ch1 != ':' )
             return p;
         x++;
@@ -291,12 +291,12 @@ public class ParseIPv6Address {
      * Return character position after the digits or the start position if no hex digits seen.
      * That is, it may make no progress so in effect it is lookign for 0 to 4 hex digits.
      */
-    private static int ipv6_hex4(CharSequence string, int start, int end) {
+    private static int ipv6_hex4(final char[] chars, int start, int end) {
         int p = start;
         for (int i = 0 ; i < 4 ; i++ ) {
             if ( p+i >= end )
                 return p+i;
-            char ch = charAt(string, p+i);
+            char ch = charAt(chars, p+i);
             if ( ! Chars3986.isHexDigit(ch) )
                 return p+i;
         }
@@ -304,7 +304,7 @@ public class ParseIPv6Address {
     }
 
     /** Match exactly an IPv4 address. */
-    private static int ipv4(CharSequence string, int start, int end) {
-        return ParseIPv4Address.ipv4(string, start, end);
+    private static int ipv4(final char[] chars, int start, int end) {
+        return ParseIPv4Address.ipv4(chars, start, end);
     }
 }

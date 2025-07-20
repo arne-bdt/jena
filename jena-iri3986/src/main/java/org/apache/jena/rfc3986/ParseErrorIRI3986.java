@@ -24,11 +24,20 @@ package org.apache.jena.rfc3986;
  */
 /*package*/ class ParseErrorIRI3986 {
 
+    /*package*/ static IRIParseException parseError(final char[] sourceChars, String s) {
+        return parseError(String.valueOf(sourceChars), -1, s);
+    }
+
     /*package*/ static IRIParseException parseError(CharSequence source, String s) {
         return parseError(source, -1, s);
     }
 
     /*package*/ static IRIParseException parseError(CharSequence source, int posn, String s) {
+        return parseException(source, SystemIRI3986.formatMsg(source, posn, s));
+    }
+
+    /*package*/ static IRIParseException parseError(final char[] sourceChars, int posn, String s) {
+        final var source = String.valueOf(sourceChars);
         return parseException(source, SystemIRI3986.formatMsg(source, posn, s));
     }
 
