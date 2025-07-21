@@ -28,6 +28,7 @@ import org.apache.jena.riot.RDFParser;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.openjdk.jmh.annotations.*;
@@ -96,66 +97,66 @@ public class BenchmarkIRI3986 {
     }
 
 
-//    @Setup
-//    public void setupTrial() throws IOException {
-//        iriStringsToResolve = interceptIriCreateCallsAndCollectIriStrings(
-//                "C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml");
-//
-//        switch (param0_jenaVersion) {
-//            case "current":
-//                parser = IRI3986::create;
-//                break;
-//            case "5.5.0":
-//                parser = org.apache.shadedJena550.rfc3986.IRI3986::create;
-//                break;
-//            default:
-//                throw new IllegalArgumentException("Unknown jena version: " + param0_jenaVersion);
-//        }
-//    }
+    @Setup
+    public void setupTrial() throws IOException {
+        iriStringsToResolve = interceptIriCreateCallsAndCollectIriStrings(
+                "C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml");
 
-//    @Ignore
-//    @Test
-//    public void testParse() throws IOException {
-//        iriStringsToResolve = interceptIriCreateCallsAndCollectIriStrings(
-//                "C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml");
-//    }
+        switch (param0_jenaVersion) {
+            case "current":
+                parser = IRI3986::create;
+                break;
+            case "5.5.0":
+                parser = org.apache.shadedJena550.rfc3986.IRI3986::create;
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown jena version: " + param0_jenaVersion);
+        }
+    }
 
-//    @Benchmark
-//    public Object parse() {
-//        var hash = 1;
-//        for(var i=0; i<5; i++) {
-//            for (String iriStr : iriStringsToResolve) {
-//                final Object iri = parser.apply(iriStr);
-//                hash ^= iri.hashCode();
-//            }
-//        }
-//        return hash;
-//    }
-
-    @BeforeClass
-    public static void beforeClass() throws IOException {
+    @Ignore
+    @Test
+    public void testParse() throws IOException {
         iriStringsToResolve = interceptIriCreateCallsAndCollectIriStrings(
                 "C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml");
     }
 
-    @Test
-    public void testParse() {
+    @Benchmark
+    public Object parse() {
         var hash = 1;
-        for (var i = 0; i < 5; i++) {
+        for(var i=0; i<5; i++) {
             for (String iriStr : iriStringsToResolve) {
-                final var iriA = IRI3986.create(iriStr);
-                final var iriB = org.apache.shadedJena550.rfc3986.IRI3986.create(iriStr);
-                Assert.assertEquals(iriA.str(), iriB.str());
-                hash ^= iriA.hashCode();
+                final Object iri = parser.apply(iriStr);
+                hash ^= iri.hashCode();
             }
         }
-        System.out.println("Hash: " + hash);
+        return hash;
     }
-
-//    @Test
-//    public void benchmark() throws Exception {
-//        var opt = JMHDefaultOptions.getDefaults(this.getClass()).build();
-//        var results = new Runner(opt).run();
-//        Assert.assertNotNull(results);
+//
+//    @BeforeClass
+//    public static void beforeClass() throws IOException {
+//        iriStringsToResolve = interceptIriCreateCallsAndCollectIriStrings(
+//                "C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-5m.xml");
 //    }
+//
+//    @Test
+//    public void testParse() {
+//        var hash = 1;
+//        for (var i = 0; i < 10; i++) {
+//            for (String iriStr : iriStringsToResolve) {
+//                final var iriA = IRI3986.create(iriStr);
+//                final var iriB = org.apache.shadedJena550.rfc3986.IRI3986.create(iriStr);
+//                Assert.assertEquals(iriA.str(), iriB.str());
+//                hash ^= iriA.hashCode();
+//            }
+//        }
+//        System.out.println("Hash: " + hash);
+//    }
+
+    @Test
+    public void benchmark() throws Exception {
+        var opt = JMHDefaultOptions.getDefaults(this.getClass()).build();
+        var results = new Runner(opt).run();
+        Assert.assertNotNull(results);
+    }
 }

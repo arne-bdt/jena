@@ -18,7 +18,6 @@
 
 package org.apache.jena.rfc3986;
 
-import static org.apache.jena.rfc3986.Chars3986.charAt;
 
 import java.util.regex.Pattern;
 
@@ -47,35 +46,33 @@ public class ParseDID {
     private static final int DIDStart = "did:".length();
 
     static
-    public void parse(final char[] chars, boolean allowPercentEncoding) {
-        if ( ! LibParseIRI.startsWith(chars, "did:") )
-            error(chars, "Not a DID");
+    public void parse(String string, boolean allowPercentEncoding) {
+        if ( ! string.startsWith("did:") )
+            error(string, "Not a DID");
 
         //int end = length;
-        int end = chars.length;
+        int end = string.length();
         int p = DIDStart;
 
-        int q = methodName(chars, p);
+        int q = methodName(string, p);
         if ( q <= p+1)
-            error(chars, "No method name");
+            error(string, "No method name");
         p = q ;
 
-        q = methodSpecificId(chars, p);
+        q = methodSpecificId(string, p);
         if ( q <= p )
-            error(chars, "No method-specific-id");
+            error(string, "No method-specific-id");
 
         if ( q != end )
-            error(chars, "Trailing characters after method-specific-id");
+            error(string, "Trailing characters after method-specific-id");
     }
 
-    private static int methodName(final char[] chars, int p) {
+    private static int methodName(String str, int p) {
         //int end = length;
-        int end = chars.length;
-        int start = p;
+        final int end = str.length();
+        final int start = p;
         while (p < end) {
-            char ch = charAt(chars, p);
-            if ( ch == EOF ) // Internal error.
-                return p;
+            final char ch = str.charAt(p);
             if ( ch == ':' ) {
                 p++;
                 return p;
@@ -83,39 +80,39 @@ public class ParseDID {
             // Special upper case for better error message?
             if ( ! methodChar(ch) ) {
                 if ( uppercaseMethodChar(ch) )
-                    error(chars, "Uppercase character (not allowed in DID method name): '"+Character.toString(ch)+"'");
+                    error(str, "Uppercase character (not allowed in DID method name): '"+Character.toString(ch)+"'");
                 else
-                    error(chars, "Bad character: '"+Character.toString(ch)+"'");
+                    error(str, "Bad character: '"+Character.toString(ch)+"'");
             }
             p++;
         }
         if ( p != end && start+1 == p )
-            error(chars, "Zero length methodName");
+            error(str, "Zero length methodName");
         // Still may be zero,
         return p;
     }
 
-    private static int methodSpecificId(final char[] chars, int p) {
+    private static int methodSpecificId(String str, int p) {
         //int end = length;
-        int end = chars.length;
-        int start = p;
+        final int end = str.length();
+        final int start = p;
         while (p < end) {
-            char ch = charAt(chars, p);
+            final char ch = str.charAt(p);
             if ( ch == EOF ) {}
             if ( ch == ':' ) { p++; continue; }
 
-            if ( ! idchar(ch, chars, p) ) {
-                error(chars, "Bad character: '"+Character.toString(ch)+"'");
+            if ( ! idchar(ch, str, p) ) {
+                error(str, "Bad character: '"+Character.toString(ch)+"'");
             }
             p++;
         }
         if ( p != end )
-            error(chars, "Traing charactser after method specific id");
+            error(str, "Traing charactser after method specific id");
         if ( start == p )
-            error(chars, "Zero length method specific id");
-        char chLast = charAt(chars, p-1);
-        if ( chLast == ':' )
-            error(chars, "Final method specifc id character is a ':'");
+            error(str, "Zero length method specific id");
+        final char chLast = str.charAt(p - 1);
+        if (chLast == ':')
+            error(str, "Final method specifc id character is a ':'");
         return p;
     }
 
@@ -127,12 +124,12 @@ public class ParseDID {
         return (ch >= 'A' && ch <= 'Z');
     }
 
-    private static boolean idchar(char ch, final char[] chars, int p) {
+    private static boolean idchar(char ch, String str, int p) {
         return (ch >= 'a' && ch <= 'z') ||
                (ch >= 'A' && ch <= 'Z') ||
                (ch >= '0' && ch <= '9') ||
                ch == '.' || ch == '-' || ch == '_' ||
-               Chars3986.isPctEncoded(ch, chars, p);
+               Chars3986.isPctEncoded(ch, str, p);
     }
 
     static class DIDParseException extends IRIParseException {
@@ -141,9 +138,5 @@ public class ParseDID {
 
     private static void error(String didString, String msg) {
         throw new DIDParseException(didString, msg);
-    }
-
-    private static void error(final char[] didChars, String msg) {
-        throw new DIDParseException(String.valueOf(didChars), msg);
     }
 }

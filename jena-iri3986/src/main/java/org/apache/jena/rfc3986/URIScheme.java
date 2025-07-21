@@ -18,6 +18,8 @@
 
 package org.apache.jena.rfc3986;
 
+import static org.apache.jena.rfc3986.LibParseIRI.caseInsensitivePrefix;
+
 /**
  * URI scheme
  * <ul>
@@ -86,18 +88,18 @@ public enum URIScheme {
     }
 
     /** Match schema name, not including any urn namespace, case sensitively */
-    public static boolean matchesExact(final char[] iriChars, URIScheme scheme) {
-        return LibParseIRI.startsWith(iriChars, scheme.schemeNameColon);
+    public static boolean matchesExact(String iriStr, URIScheme scheme) {
+        return iriStr.startsWith(scheme.schemeNameColon);
     }
 
     /** Match case insensitively */
-    public static boolean matchesIgnoreCase(final char[] iriChars, URIScheme scheme) {
-        return LibParseIRI.startWithCaseInsensitive(iriChars, scheme.schemeNameColon);
+    public static boolean matchesIgnoreCase(String iriStr, URIScheme scheme) {
+        return caseInsensitivePrefix(iriStr, scheme.schemeNameColon);
     }
 
     /** Match case insensitively */
-    public static boolean fromScheme(final char[] iriChars, URIScheme scheme) {
-        return LibParseIRI.startWithCaseInsensitive(iriChars, scheme.prefix);
+    public static boolean fromScheme(String iriStr, URIScheme scheme) {
+        return caseInsensitivePrefix(iriStr, scheme.prefix);
     }
 
     public final boolean isURN() {

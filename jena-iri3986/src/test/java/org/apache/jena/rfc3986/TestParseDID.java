@@ -47,12 +47,12 @@ public class TestParseDID {
     @Test public void parseDID_bad_20() { badDID("urn:NID:NSS"); }
 
     private void goodDID(String string) {
-        ParseDID.parse(string.toCharArray(), false);
+        ParseDID.parse(string, false);
     }
 
     private void badDID(String string) {
         assertThrowsExactly(DIDParseException.class,
-                            ()->ParseDID.parse(string.toCharArray(), false)
+                            ()->ParseDID.parse(string, false)
                 );
     }
 }

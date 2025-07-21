@@ -89,11 +89,13 @@ public class ParseDNS {
 
     // allowPercentEncoding
 
-    private final char[] chars;
+    private final String string;
+    private final int length;
     private static char HYPHEN = '-';
 
-    private ParseDNS(final char[] chars) {
-        this.chars = chars;
+    private ParseDNS(String string) {
+        this.string = string;
+        this.length = string.length();
     }
 
     static class DNSParseException extends IRIParseException {
@@ -101,38 +103,32 @@ public class ParseDNS {
     }
 
     static
-    public char[] parse(final char[] chars) {
-        Objects.requireNonNull(chars);
-        new ParseDNS(chars).parse(false);
-        return chars;
+    public String parse(String string) {
+        Objects.requireNonNull(string);
+        new ParseDNS(string).parse(false);
+        return string;
     }
 
     private void error(String msg) {
         throw new DNSParseException(msg);
     }
 
-    /** String.charAt except with an EOF character, not an exception. */
-    private char charAt(int x) {
-        if ( x >= chars.length )
-            return Chars3986.EOF;
-        return chars[x];
-    }
 
     private void parse(boolean allowPercentEncoding) {
-        if ( chars.length == 0 )
-            error("Empty string");
-
-        int end = chars.length;
+        int end = length;
         int p = 0 ;
 
-        if ( chars.length == 1 ) {
-            switch ( chars[0] ) {
-                    // " " is the root but we don't allow it (not used as such in applications).
-                case ' ' ->  error("Empty string");
-                    // Must have one or more labels.
-                case '.' ->  error("No subdomains");
-            }
-        }
+        if ( length == 0 )
+            error("Empty string");
+
+        if ( length == 1 && string.equals(" ") )
+            // " " is the root but we don't allow it (not used as such in applications).
+            error("Empty string");
+
+        if ( length == 1 && string.equals(".") )
+            // Must have one or more labels.
+            error("No subdomains.");
+
 
         List<Integer> dots = new ArrayList<>(4);
 
@@ -141,7 +137,7 @@ public class ParseDNS {
             if ( p < 0 )
                 // Error
                 error("No label");
-            if ( p == chars.length )
+            if ( p == length )
                 break;
             // Separator dots
             dots.add(p-1);
@@ -158,11 +154,11 @@ public class ParseDNS {
 
     // End of label happens in two ways - find a "." or end of string.
     private int label(int p) {
-        int end = chars.length;
+        int end = length;
         int start = p;
         boolean charIsHyphen = false;
         while (p < end) {
-            char ch = charAt(p);
+            char ch = string.charAt(p);
             if ( ch == '.' ) {
                 if ( charIsHyphen )
                     // From last round.
@@ -192,7 +188,7 @@ public class ParseDNS {
     }
 
     private boolean i_letter(char ch, int x) {
-        return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || Chars3986.isUcsChar(ch) || Chars3986.isPctEncoded(ch, chars, x);
+        return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || Chars3986.isUcsChar(ch) || Chars3986.isPctEncoded(ch, string, x);
     }
 
     private static boolean digit(char ch) {

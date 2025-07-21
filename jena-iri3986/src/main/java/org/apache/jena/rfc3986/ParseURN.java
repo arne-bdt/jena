@@ -18,8 +18,6 @@
 
 package org.apache.jena.rfc3986;
 
-import static org.apache.jena.rfc3986.Chars3986.EOF;
-import static org.apache.jena.rfc3986.Chars3986.charAt;
 import static org.apache.jena.rfc3986.LibParseIRI.caseInsensitivePrefix;
 
 import java.util.function.BiConsumer;
@@ -88,7 +86,7 @@ public class ParseURN {
      * Parse a string a a URN, Return null for invalid.
      */
     public static URN parseURN(String string) {
-        return parseURN(string.toCharArray(), noOpHandler);
+        return parseURN(string, noOpHandler);
     }
 
     /**
@@ -97,34 +95,34 @@ public class ParseURN {
      * Call {@code handler} to pass back scheme-specific violations. This is allowed to raise an exception.
      * Return null on error if the handler returned.
      */
-    public static URN parseURN(final char[] chars, BiConsumer<Issue, String> handler) {
-        int N = chars.length;
+    public static URN parseURN(String string, BiConsumer<Issue, String> handler) {
+        int N = string.length();
 
-        int startNamespace = findValidURNScheme(chars, handler);
+        int startNamespace = findValidURNScheme(string, handler);
         if ( startNamespace == -1 )
             return null;
 
-        int finishNamespace = findValidNamespace(chars, startNamespace, handler);
+        int finishNamespace = findValidNamespace(string, startNamespace, handler);
         if ( finishNamespace == -1 ) {
             // Handler already called.
             //handler.accept(Issue.urn_bad_nid, "Failed find the URN scheme name");
             return null;
         }
-        String scheme = String.valueOf(chars, 0, 3); // "urn"
+        String scheme = string.substring(0, 3);
         int startNSS = finishNamespace+1;
-        int finishNSS = findValidNamespaceSpecificString(chars, startNSS, handler);
+        int finishNSS = findValidNamespaceSpecificString(string, startNSS, handler);
         if ( finishNSS == -1 )
             return null;
 
         URNComponents components = null;
         if ( finishNSS < N ) {
-            components = ParseURNComponents.parseURNComponents(chars, finishNSS, handler);
+            components = ParseURNComponents.parseURNComponents(string, finishNSS, handler);
             if ( components == null )
                 return null;
         }
 
-        String namespace = String.valueOf(chars, startNamespace, finishNamespace-startNamespace);
-        String nsSpecific = String.valueOf(chars, startNSS, finishNSS-startNSS);
+        String namespace = string.substring(startNamespace, finishNamespace);
+        String nsSpecific = string.substring(startNSS, finishNSS);
         return new URN(scheme, namespace, nsSpecific, components);
     }
 
@@ -141,20 +139,20 @@ public class ParseURN {
      * Return the index (exclusive) of the end of NSS.
      * Call {@code handler} to pass back scheme-specific violations. This is allowed to raise an exception.
      */
-    public static void validateURN(final char[] chars, BiConsumer<Issue, String> handler) {
-        int endNSS = validateAssignedName(chars, handler);
+    public static void validateURN(String string, BiConsumer<Issue, String> handler) {
+        int endNSS = validateAssignedName(string, handler);
         if ( endNSS == -1 ) {
             // Find end of NSS manually.
-            int idx = LibParseIRI.indexOf(chars, ParseURNComponents.CH_QMARK);
+            int idx = string.indexOf(ParseURNComponents.CH_QMARK);
             if ( idx == -1 )
-                idx = LibParseIRI.indexOf(chars, ParseURNComponents.CH_HASH);
+                idx = string.indexOf(ParseURNComponents.CH_HASH);
             if ( idx == -1 )
                 return;
             endNSS = idx;
         }
-        if ( endNSS == chars.length )
+        if ( endNSS == string.length() )
             return;
-        ParseURNComponents.validateURNComponents(chars, endNSS, handler);
+        ParseURNComponents.validateURNComponents(string, endNSS, handler);
     }
 
     /**
@@ -162,18 +160,19 @@ public class ParseURN {
      * Return the index (exclusive) of the end of NSS.
      * Call {@code handler} to pass back scheme-specific violations. This is allowed to raise an exception.
      */
-    public static int validateAssignedName(final char[] chars, BiConsumer<Issue, String> handler) {
+    public static int validateAssignedName(String string, BiConsumer<Issue, String> handler) {
+        int N = string.length();
 
-        int startNID = findValidURNScheme(chars, handler);
+        int startNID = findValidURNScheme(string, handler);
         if ( startNID == -1 )
             return -1;
 
-        int finishNID = findValidNamespace(chars, startNID, handler);
+        int finishNID = findValidNamespace(string, startNID, handler);
         if ( finishNID == -1 )
             return -1;
         int startNSS = finishNID+1;
 
-        int finishNSS = findValidNamespaceSpecificString(chars, startNSS, handler);
+        int finishNSS = findValidNamespaceSpecificString(string, startNSS, handler);
         if ( finishNSS == -1 )
             return -1;
         return finishNSS;
@@ -185,11 +184,11 @@ public class ParseURN {
      * Call {@code handler} to pass back scheme-specific violations. This is allowed to raise an exception.
      * Return -1 on error if the handler returned.
      */
-    private static int findValidURNScheme(final char[] chars, BiConsumer<Issue, String> handler) {
+    private static int findValidURNScheme(String string, BiConsumer<Issue, String> handler) {
         //findValidURNScheme()
         // Avoid creating intermediate objects.
         final String urnSchemeStr = "urn:";
-        boolean urnScheme = LibParseIRI.startWithCaseInsensitive(chars, urnSchemeStr);
+        boolean urnScheme = caseInsensitivePrefix(string, urnSchemeStr);
         if ( ! urnScheme ) {
             handler.accept(Issue.urn_bad_pattern, "Failed find the URN scheme name");
             return -1;
@@ -204,16 +203,16 @@ public class ParseURN {
      * Call {@code handler} to pass back scheme-specific violations. This is allowed to raise an exception.
      * Return -1 on error if the handler returned.
      */
-    private static int findValidNamespace(final char[] chars, int startNamespace, BiConsumer<Issue, String> handler) {
-        int N = chars.length;
+    private static int findValidNamespace(String string, int startNamespace, BiConsumer<Issue, String> handler) {
+        int N = string.length();
         // Start of namespace id
         int x = startNamespace;
         // First character, alpha.
-        char ch = charAt(chars, x);
-        if ( ch == EOF ) {
+        if ( x >= N ) {
             handler.accept(Issue.urn_bad_nid, "No namespace id");
             return -1;
         }
+        char ch = string.charAt(x);
         if ( ch == ':' ) {
             handler.accept(Issue.urn_bad_nid, "Missing namespace id");
             return -1;
@@ -223,11 +222,11 @@ public class ParseURN {
             return -1;
         }
         x++;
-        char prevChar = EOF;
+        char prevChar;
         // Scan for the terminating ":"
         while(x < N ) {
             prevChar = ch;
-            ch = charAt(chars, x);
+            ch = string.charAt(x);
             if ( ch == ':' ) {
                 if ( prevChar == '-' ) {
                     // Can't end in hyphen
@@ -252,7 +251,6 @@ public class ParseURN {
             handler.accept(Issue.urn_bad_nid, "Namespace not terminated by ':'");
             return -1;
         }
-        x++;
 
         if ( finishNamespace-startNamespace < 2 ) {
             handler.accept(Issue.urn_bad_nid, "Namespace id must be at least 2 characters");
@@ -260,17 +258,17 @@ public class ParseURN {
         }
 
         // RFC 8141 section 5.1 (described in RFC 3406)
-        if ( LibParseIRI.startWithCaseInsensitive(chars, startNamespace, "X-") ) {
-            String start = String.valueOf(chars, startNamespace, 2);
+        if ( LibParseIRI.caseInsensitiveRegion(string, startNamespace, "X-") ) {
+            String start = string.substring(startNamespace,2+startNamespace);
             handler.accept(Issue.urn_x_namespace, "Namespace id starts with '"+start+"'");
             return -1;
         }
 
         // RFC 8141 section 5.2 - Informal namespace. "urn-1234"
-        if ( LibParseIRI.startWithCaseInsensitive(chars, startNamespace, "urn-") ) {
+        if ( LibParseIRI.caseInsensitiveRegion(string, startNamespace, "urn-") ) {
             boolean seenNonZero = false;
             for ( int i = startNamespace+"urn-".length() ; i < finishNamespace ; i++ ) {
-                char chx = charAt(chars, i);
+                char chx = string.charAt(i);
                 if ( !seenNonZero ) {
                     if ( chx == '0' ) {
                         handler.accept(Issue.urn_bad_nid, "Leading zero in an informal namespace");
@@ -295,11 +293,12 @@ public class ParseURN {
      * Call {@code handler} to pass back scheme-specific violations. This is allowed to raise an exception.
      * Return -1 on error if the handler returned.
      */
-    private static int findValidNamespaceSpecificString(final char[] chars, int startNSS, BiConsumer<Issue, String> handler) {
+    private static int findValidNamespaceSpecificString(String string, int startNSS, BiConsumer<Issue, String> handler) {
         int idx = startNSS;
-        int finishNSS = chars.length;
-        for ( ; idx < chars.length ; idx++ ) {
-            char ch = chars[idx];
+        int N = string.length();
+        int finishNSS = N;
+        for ( ; idx < N ; idx++ ) {
+            char ch = string.charAt(idx);
             if ( ch == '?' || ch == '#' ) {
                 finishNSS = idx;
                 break;

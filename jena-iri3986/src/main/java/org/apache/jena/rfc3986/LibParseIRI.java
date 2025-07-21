@@ -18,34 +18,8 @@
 
 package org.apache.jena.rfc3986;
 
-import java.util.Objects;
-
 /** Operations related to parsing IRIs */
 /*package*/ class LibParseIRI {
-
-    public static class CharArrayWrapper implements CharSequence {
-        private final char[] chars;
-        CharArrayWrapper(char[] chars) {
-            this.chars = Objects.requireNonNull(chars);
-        }
-        @Override
-        public int length() {
-            return chars.length;
-        }
-        @Override
-        public char charAt(int index) {
-            return chars[index];
-        }
-        @Override
-        public CharSequence subSequence(int start, int end) {
-            return new CharArrayWrapper(java.util.Arrays.copyOfRange(chars, start, end));
-        }
-        @Override
-        public String toString() {
-            return new String(chars);
-        }
-    }
-
 
     private static int CASE_DIFF = 'a'-'A';     // 0x20. Only for ASCII.
     /*
@@ -80,69 +54,6 @@ import java.util.Objects;
         char ch1 = string.charAt(x);
         char ch2 = string.charAt(x+1);
         return ch1 == x1 && ch2 == x2;
-    }
-
-    /** Check whether the character and the next character match the expected characters. */
-    public static boolean peekFor(final char[] chars, int x, char x1, char x2) {
-        int n = chars.length;
-        if ( x+1 >= n )
-            return false;
-        char ch1 = chars[x];
-        char ch2 = chars[x+1];
-        return ch1 == x1 && ch2 == x2;
-    }
-
-    public static char charAt(CharSequence string, int x) {
-        if ( x >= string.length() )
-            return Chars3986.EOF;
-        return string.charAt(x);
-    }
-
-    public static int indexOf(final char[] iriChars, char ch) {
-        for (int i = 0; i < iriChars.length; i++) {
-            if (iriChars[i] == ch) {
-                return i;
-            }
-        }
-        return -1; // Not found
-    }
-
-    public static boolean startsWith(final char[] iriChars, String match) {
-        return startsWith(iriChars, 0, match);
-    }
-
-    public static boolean startsWith(final char[] iriChars, int startPos, String match) {
-        final var matchLength = match.length();
-
-        if((iriChars.length-startPos) < matchLength)
-            return false;
-
-        for (int i = 0; i < matchLength; i++) {
-            if (iriChars[i+startPos] != match.charAt(i)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public static boolean startWithCaseInsensitive(final char[] iriChars, String match) {
-        return startWithCaseInsensitive(iriChars, 0, match);
-    }
-
-    public static boolean startWithCaseInsensitive(final char[] iriChars, int startPos, String match) {
-        final var matchLength = match.length();
-
-        if((iriChars.length-startPos)  < matchLength)
-            return false;
-
-        final var lowerMatch = match.toLowerCase();
-
-        for (int i = 0; i < matchLength; i++) {
-            if(Character.toLowerCase(iriChars[i+startPos]) != lowerMatch.charAt(i)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /** Case insensitive test of whether a string has a prefix. */

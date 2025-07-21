@@ -85,7 +85,7 @@ public class TestParseURN {
 
         // Again, with handler.
         BiConsumer<Issue, String> handler = (issue, msg) -> { throw new URNParseException(string, msg); };
-        assertThrowsExactly(URNParseException.class, ()->ParseURN.parseURN(string.toCharArray(), handler));
+        assertThrowsExactly(URNParseException.class, ()->ParseURN.parseURN(string, handler));
     }
 
     private static void badURN1(String string) {
@@ -98,7 +98,7 @@ public class TestParseURN {
 
         IssueCollector collector = new IssueCollector();
         // Expect it to pass (parse) validation and generate issues.
-        ParseURN.validateURN(string.toCharArray(), collector);
+        ParseURN.validateURN(string, collector);
         assertFalse(collector.isEmpty(), ()->"Expected issues when validating <"+string+">");
     }
 
@@ -126,7 +126,7 @@ public class TestParseURN {
 
         IssueCollector collector = new IssueCollector();
         // Expect it to pass validation.
-        ParseURN.validateURN(string.toCharArray(), collector);
+        ParseURN.validateURN(string, collector);
         assertTrue(collector.isEmpty(), ()->"Issues recorded <"+string+">");
     }
 

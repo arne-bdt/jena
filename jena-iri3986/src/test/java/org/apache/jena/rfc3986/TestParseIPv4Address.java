@@ -44,10 +44,10 @@ public class TestParseIPv4Address {
     @Test public void addr_ipv4_bad_11() { bad4("1.99.78.111."); }
 
     private void good4(String string) {
-        ParseIPv4Address.checkIPv4(string.toCharArray());
+        ParseIPv4Address.checkIPv4(string);
     }
 
     private void bad4(String string) {
-        assertThrowsExactly(IRIParseException.class, ()->ParseIPv4Address.checkIPv4(string.toCharArray()));
+        assertThrowsExactly(IRIParseException.class, ()->ParseIPv4Address.checkIPv4(string));
     }
 }
