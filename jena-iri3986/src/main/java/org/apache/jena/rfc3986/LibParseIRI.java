@@ -108,22 +108,17 @@ import java.util.Objects;
     }
 
     public static boolean startsWith(final char[] iriChars, String match) {
-        return startsWith(iriChars, 0, match.toCharArray());
-    }
-
-    public static boolean startsWith(final char[] iriChars, final char[] match) {
         return startsWith(iriChars, 0, match);
     }
 
     public static boolean startsWith(final char[] iriChars, int startPos, String match) {
-        return  startsWith(iriChars, startPos, match.toCharArray());
-    }
+        final var matchLength = match.length();
 
-    public static boolean startsWith(final char[] iriChars, int startPos, final char[] match) {
-        if((iriChars.length-startPos) < match.length)
+        if((iriChars.length-startPos) < matchLength)
             return false;
-        for (int i = 0; i < match.length; i++) {
-            if (iriChars[i+startPos] != match[i]) {
+
+        for (int i = 0; i < matchLength; i++) {
+            if (iriChars[i+startPos] != match.charAt(i)) {
                 return false;
             }
         }
@@ -131,23 +126,19 @@ import java.util.Objects;
     }
 
     public static boolean startWithCaseInsensitive(final char[] iriChars, String match) {
-        return startWithCaseInsensitive(iriChars, 0, match.toCharArray());
-    }
-
-    public static boolean startWithCaseInsensitive(final char[] iriChars, final char[] match) {
         return startWithCaseInsensitive(iriChars, 0, match);
     }
 
     public static boolean startWithCaseInsensitive(final char[] iriChars, int startPos, String match) {
-        return startWithCaseInsensitive(iriChars, startPos, match.toCharArray());
-    }
+        final var matchLength = match.length();
 
-    public static boolean startWithCaseInsensitive(final char[] iriChars, int startPos, final char[] match) {
-        if((iriChars.length-startPos)  < match.length)
+        if((iriChars.length-startPos)  < matchLength)
             return false;
 
-        for (int i = 0; i < match.length; i++) {
-            if(Character.toLowerCase(iriChars[i+startPos]) != Character.toLowerCase(match[i])) {
+        final var lowerMatch = match.toLowerCase();
+
+        for (int i = 0; i < matchLength; i++) {
+            if(Character.toLowerCase(iriChars[i+startPos]) != lowerMatch.charAt(i)) {
                 return false;
             }
         }
