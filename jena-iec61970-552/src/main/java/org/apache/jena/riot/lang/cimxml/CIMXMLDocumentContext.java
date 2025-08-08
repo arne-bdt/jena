@@ -20,26 +20,33 @@ package org.apache.jena.riot.lang.cimxml;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.riot.lang.cimxml.graph.ModelHeader;
 
-public enum CimDocumentContext {
-    metadata,
+public enum CIMXMLDocumentContext {
+    fullModel,
+    body,
+    differenceModel,
     forwardDifferences,
     reverseDifferences,
-    preconditions,
-    body;
+    preconditions;
 
-    public static Node getGraphName(CimDocumentContext context) {
+
+    public static Node getGraphName(CIMXMLDocumentContext context) {
         return switch (context) {
-            case metadata -> GRAPH_METADATA;
+            case fullModel -> ModelHeader.TYPE_FULL_MODEL;
+            case body -> null;
+            case differenceModel -> ModelHeader.TYPE_DIFFERENCE_MODEL;
             case forwardDifferences -> GRAPH_FORWARD_DIFFERENCES;
             case reverseDifferences -> GRAPH_REVERSE_DIFFERENCES;
             case preconditions -> GRAPH_PRECONDITIONS;
-            case body -> null;
         };
     }
 
-    public final static Node GRAPH_FORWARD_DIFFERENCES = NodeFactory.createURI("dm:forwardDifferences");
-    public final static Node GRAPH_REVERSE_DIFFERENCES = NodeFactory.createURI("dm:reverseDifferences");
-    public final static Node GRAPH_PRECONDITIONS = NodeFactory.createURI("dm:preconditions");
-    public final static Node GRAPH_METADATA = NodeFactory.createURI("md:Model");
+    public final static String TAG_NAME_FORWARD_DIFFERENCES = "forwardDifferences";
+    public final static String TAG_NAME_REVERSE_DIFFERENCES = "reverseDifferences";
+    public final static String TAG_NAME_PRECONDITIONS = "preconditions";
+
+    public final static Node GRAPH_FORWARD_DIFFERENCES = NodeFactory.createURI(ModelHeader.BASE_DIFFERENCE_MODEL + TAG_NAME_FORWARD_DIFFERENCES);
+    public final static Node GRAPH_REVERSE_DIFFERENCES = NodeFactory.createURI(ModelHeader.BASE_DIFFERENCE_MODEL + TAG_NAME_REVERSE_DIFFERENCES);
+    public final static Node GRAPH_PRECONDITIONS = NodeFactory.createURI(ModelHeader.BASE_DIFFERENCE_MODEL + TAG_NAME_PRECONDITIONS);
 }

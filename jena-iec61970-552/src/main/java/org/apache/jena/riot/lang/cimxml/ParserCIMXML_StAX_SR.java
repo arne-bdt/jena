@@ -31,6 +31,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.irix.IRIException;
 import org.apache.jena.irix.IRIx;
 import org.apache.jena.riot.RiotException;
+import org.apache.jena.riot.lang.cimxml.graph.ModelHeader;
 import org.apache.jena.riot.lang.rdfxml.RDFXMLParseException;
 import org.apache.jena.riot.system.ErrorHandler;
 import org.apache.jena.riot.system.FactoryRDF;
@@ -56,10 +57,7 @@ import static org.apache.jena.riot.SysRIOT.fmtMessage;
 
 public class ParserCIMXML_StAX_SR {
 
-    public static final String xmlBase = "urn:uuid:";
-
-    private static int IRI_CACHE_SIZE = 8192;
-    private static boolean EVENTS = false;
+    private final static int IRI_CACHE_SIZE = 8192;
     private final IndentedWriter trace;
 
     private final XMLStreamReader2 xmlSource;
@@ -67,18 +65,22 @@ public class ParserCIMXML_StAX_SR {
     private Cache<String, IRIx> iriCacheForBaseNull = null;
     private Cache<String, IRIx> currentIriCache = null;
     private final Map<IRIx, Cache<String, IRIx>> mapBaseIriToCache = new HashMap<>();
-    private Cache<String, Node> uriNodeCache = CacheFactory.createCache(IRI_CACHE_SIZE);
-    private FactoryRDF factoryRDF = new FactoryRDFCaching(IRI_CACHE_SIZE, SyntaxLabels.createLabelToNode());
+    private final FactoryRDF factoryRDF = new FactoryRDFCaching(IRI_CACHE_SIZE, SyntaxLabels.createLabelToNode());
 
     // Stacks.
 
     // Constants
     private static final String rdfNS = RDF.uri;
     private static final String xmlNS = "http://www.w3.org/XML/1998/namespace";
+    private static final String mdNS = ModelHeader.BASE_MODEL_DESCRIPTION;
+    private static final String dmND = ModelHeader.BASE_DIFFERENCE_MODEL;
+
     private boolean hasRDF = false;
 
     private final ErrorHandler errorHandler;
     private final StreamCIMXML destination;
+    private final static String PROCESSING_INSTRUCTION_IEC61970_552 = "iec61970-552";
+    private String VersionOfCIMXML = null;
 
     private void updateCurrentIriCacheForCurrentBase() {
         if(currentBase != null) {
@@ -186,14 +188,13 @@ public class ParserCIMXML_StAX_SR {
     /** Integer holder for rdf:li */
     private static class Counter { int value = 1; }
 
-    public ParserCIMXML_StAX_SR(XMLStreamReader2 reader, StreamCIMXML destination, ErrorHandler errorHandler) {
+    public ParserCIMXML_StAX_SR(XMLStreamReader2 reader, String xmlBase, StreamCIMXML destination, ErrorHandler errorHandler) {
     // Debug
         IndentedWriter out = IndentedWriter.stdout.clone();
         out.setFlushOnNewline(true);
         out.setUnitIndent(4);
         out.setLinePrefix("# ");
         this.trace = out;
-        EVENTS = ReaderCIMXML_StAX_SR.TRACE;
         // Debug
 
         this.xmlSource = reader;
@@ -207,6 +208,15 @@ public class ParserCIMXML_StAX_SR {
         this.currentLang = "";
         this.destination = destination;
     }
+
+    // CIMXML model header constants.
+    private static final QName mdFullModel = new QName(ModelHeader.BASE_MODEL_DESCRIPTION, ModelHeader.CLASSNAME_FULL_MODEL);
+    private static final QName dmDifferenceModel = new QName(ModelHeader.BASE_DIFFERENCE_MODEL, ModelHeader.CLASSNAME_DIFFERENCE_MODEL);
+
+    // CIMXML difference model constants.
+    private static final QName dmForwardDifferences = new QName(ModelHeader.BASE_DIFFERENCE_MODEL, CIMXMLDocumentContext.TAG_NAME_FORWARD_DIFFERENCES);
+    private static final QName dmReverseDifferences = new QName(ModelHeader.BASE_DIFFERENCE_MODEL, CIMXMLDocumentContext.TAG_NAME_REVERSE_DIFFERENCES);
+    private static final QName dmPreconditions = new QName(ModelHeader.BASE_DIFFERENCE_MODEL, CIMXMLDocumentContext.TAG_NAME_PRECONDITIONS);
 
     private static final QName rdfRDF = new QName(rdfNS, "RDF");
     private static final QName rdfDescription = new QName(rdfNS, "Description");
@@ -1238,7 +1248,7 @@ public class ParserCIMXML_StAX_SR {
                 int evType = read();
                 switch (evType) {
                     case START_ELEMENT, END_ELEMENT -> {
-                        if ( EVENTS )
+                        if ( ReaderCIMXML_StAX_SR.TRACE )
                             System.out.println("-- Tag: "+strEventType(evType));
                         return evType;
                     }
@@ -1279,12 +1289,17 @@ public class ParserCIMXML_StAX_SR {
                 if ( isComment(ev) )
                     continue;
                 if ( lookingAt(ev, PROCESSING_INSTRUCTION) ) {
-                    RDFXMLparseWarning("XML Processing instruction - ignored");
+                    if(PROCESSING_INSTRUCTION_IEC61970_552.equals(xmlSource.getPITarget())) {
+                        this.VersionOfCIMXML = xmlSource.getPIData();
+                        destination.setVersionOfCIMXML(VersionOfCIMXML);
+                    } else {
+                        RDFXMLparseWarning("XML Processing instruction - ignored");
+                    }
                     continue;
                 }
                 break;
             }
-            if ( EVENTS ) {
+            if ( ReaderCIMXML_StAX_SR.TRACE ) {
                 if ( ev < 0 )
                     System.out.println("-- Read: end of events");
                 else
@@ -1303,7 +1318,7 @@ public class ParserCIMXML_StAX_SR {
             if ( ! xmlSource.hasNext() )
                 return ev;
             ev = read();
-            if ( EVENTS ) {
+            if ( ReaderCIMXML_StAX_SR.TRACE ) {
                 if ( ev < 0 )
                     System.out.println("-- Read: end of events");
                 else
@@ -1317,7 +1332,7 @@ public class ParserCIMXML_StAX_SR {
 
     private int read() throws XMLStreamException {
         int eventType = xmlSource.next();
-        if ( EVENTS )
+        if ( ReaderCIMXML_StAX_SR.TRACE )
             System.out.println("-- Read: "+strEventType(eventType));
         return eventType;
     }

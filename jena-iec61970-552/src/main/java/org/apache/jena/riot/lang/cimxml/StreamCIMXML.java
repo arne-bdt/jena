@@ -21,5 +21,6 @@ package org.apache.jena.riot.lang.cimxml;
 import org.apache.jena.riot.system.StreamRDF;
 
 public interface StreamCIMXML extends StreamRDF {
-    void start(CimDocumentContext cimDocumentContext);
+    default void setVersionOfCIMXML(String versionOfCIMXML) {};
+    default void switchContext(CIMXMLDocumentContext cimDocumentContext) {};
 }

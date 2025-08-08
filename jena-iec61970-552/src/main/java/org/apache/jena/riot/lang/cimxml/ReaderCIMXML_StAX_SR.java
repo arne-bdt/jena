@@ -50,6 +50,8 @@ public class ReaderCIMXML_StAX_SR
         return factory;
     }
 
+    public static final String xmlBaseForCIMXML = "urn:uuid:";
+
     private static final XMLInputFactory2 xmlInputFactory = createXMLInputFactory();
 
     public static boolean TRACE = false;
@@ -65,25 +67,33 @@ public class ReaderCIMXML_StAX_SR
     }
 
     public void read(InputStream input, StreamCIMXML output) {
+        read(input, xmlBaseForCIMXML, output);
+    }
+
+    public void read(InputStream input, String xmlBase, StreamCIMXML output) {
         try {
             var xmlStreamReader = (XMLStreamReader2) xmlInputFactory.createXMLStreamReader(input);
-            parse(xmlStreamReader, output);
+            parse(xmlStreamReader, xmlBase, output);
         } catch (XMLStreamException ex) {
             throw new RiotException("Failed to create the XMLEventReader", ex);
         }
     }
 
     public void read(Reader reader, StreamCIMXML output) {
+        read(reader, xmlBaseForCIMXML, output);
+    }
+
+    public void read(Reader reader, String xmlBase, StreamCIMXML output) {
         try {
             var xmlStreamReader = (XMLStreamReader2) xmlInputFactory.createXMLStreamReader(reader);
-            parse(xmlStreamReader, output);
+            parse(xmlStreamReader, xmlBase, output);
         } catch (XMLStreamException ex) {
             throw new RiotException("Failed to create the XMLEventReader", ex);
         }
     }
 
-     private void parse(XMLStreamReader2 xmlStreamReader, StreamCIMXML destination) {
-        var parser = new ParserCIMXML_StAX_SR(xmlStreamReader, destination, errorHandler);
+     private void parse(XMLStreamReader2 xmlStreamReader, String xmlBase, StreamCIMXML destination) {
+        var parser = new ParserCIMXML_StAX_SR(xmlStreamReader, xmlBase, destination, errorHandler);
         destination.start();
         try {
             parser.parse();

@@ -26,6 +26,9 @@ import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
 import org.apache.jena.riot.RDFParser;
+import org.apache.jena.riot.lang.cimxml.query.StreamCIMXMLToDatasetGraph;
+import org.apache.jena.riot.system.PrefixMap;
+import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
@@ -36,7 +39,7 @@ import java.io.StringReader;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class TestCIMXMLParser {
+public class TestParserRDFXMLConformity {
 
 
     /**
@@ -614,7 +617,7 @@ public class TestCIMXMLParser {
         parseAndCompare(rdfxml, sameAsNTriples);
     }
 
-    public void assertGraphsEqual(Graph expected, Graph actual, boolean checkPrefixMapping) {
+    public void assertGraphEquals(Graph expected, Graph actual) {
         // check that all triples in expected graph are in actual graph
         expected.find().forEachRemaining(expectedTriple -> {
             if(!actual.contains(expectedTriple)) {
@@ -630,20 +633,36 @@ public class TestCIMXMLParser {
         // check graph sizes
         assertEquals("Graphs are not equal: different sizes.",
                 expected.size(), actual.size());
+    }
 
-        if(checkPrefixMapping) {
-            // check namespace mappings size
-            assertEquals("Graphs are not equal: different number of namespaces.",
-                    expected.getPrefixMapping().numPrefixes(), actual.getPrefixMapping().numPrefixes());
+    public void assertPrefixMappingEquals(PrefixMapping expected, PrefixMapping actual) {
 
-            // check that all namespaces in expected graph are in actual graph
-            expected.getPrefixMapping().getNsPrefixMap().forEach((prefix, uri) -> {
-                assertTrue("Graphs are not equal: missing namespace " + prefix + " -> " + uri,
-                        actual.getPrefixMapping().getNsPrefixMap().containsKey(prefix));
-                assertEquals("Graphs are not equal: different URI for namespace " + prefix,
-                        uri, actual.getPrefixMapping().getNsPrefixMap().get(prefix));
+        // check namespace mappings size
+        assertEquals("PrefixMappings are not equal: different number of namespaces.",
+                expected.numPrefixes(), actual.numPrefixes());
+
+        // check that all namespaces in expected graph are in actual graph
+        expected.getNsPrefixMap().forEach((prefix, uri) -> {
+                assertTrue("PrefixMappings are not equal: missing namespace " + prefix + " -> " + uri,
+                        actual.getNsPrefixMap().containsKey(prefix));
+                assertEquals("PrefixMappings are not equal: different URI for namespace " + prefix,
+                        uri, actual.getNsPrefixMap().get(prefix));
             });
-        }
+    }
+
+    public void assertPrefixMappingEquals(PrefixMapping expected, PrefixMap actual) {
+
+        // check namespace mappings size
+        assertEquals("PrefixMappings are not equal: different number of namespaces.",
+                expected.numPrefixes(), actual.size());
+
+        // check that all namespaces in expected graph are in actual graph
+        expected.getNsPrefixMap().forEach((prefix, uri) -> {
+            assertTrue("PrefixMappings are not equal: missing namespace " + prefix + " -> " + uri,
+                    actual.containsPrefix(prefix));
+            assertEquals("PrefixMappings are not equal: different URI for namespace " + prefix,
+                    uri, actual.get(prefix));
+        });
     }
 
     public int parseAndCompare(String rdfxml) throws Exception {
@@ -655,14 +674,14 @@ public class TestCIMXMLParser {
         Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
         SystemIRIx.reset();
-        final var graph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var parser = new ReaderCIMXML_StAX_SR();
-        final var streamRDF = new StreamRDFGraph(graph);
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
         final var stopWatch = StopWatch.createStarted();
-        parser.read(new StringReader(rdfxml), streamRDF);
+        parser.read(new StringReader(rdfxml), null, streamRDF);
         stopWatch.stop();
+        var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
         // print number of triples parsed and the time taken
         System.out.println("Parsed rdf/xml-triples: " + graph.size() + " in " + stopWatch);
         tripleCount += graph.size();
@@ -671,7 +690,6 @@ public class TestCIMXMLParser {
         stopWatch.start();
         RDFParser.create()
                 .source(new StringReader(rdfxml))
-                .base("urn:uuid")
                 .lang(org.apache.jena.riot.Lang.RDFXML)
                 .checking(false)
                 .parse(new StreamRDFGraph(expectedGraph));
@@ -681,7 +699,8 @@ public class TestCIMXMLParser {
         System.out.println("Parsed expected rdf/xml-triples: " + expectedGraph.size() + " in " + stopWatch);
         tripleCount += expectedGraph.size();
 
-        assertGraphsEqual(expectedGraph, graph, true);
+        assertGraphEquals(expectedGraph, graph);
+        assertPrefixMappingEquals(expectedGraph.getPrefixMapping(), streamRDF.getCIMDatasetGraph().prefixes());
 
         if(nTriples != null) {
             final var nTriplesGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
@@ -699,7 +718,7 @@ public class TestCIMXMLParser {
             System.out.println("Parsed n-triples: " + nTriplesGraph.size() + " in " + stopWatch);
             tripleCount += nTriplesGraph.size();
 
-            assertGraphsEqual(expectedGraph, nTriplesGraph, false);
+            assertGraphEquals(expectedGraph, nTriplesGraph);
         }
         return tripleCount;
     }
@@ -738,11 +757,6 @@ public class TestCIMXMLParser {
 
         @Override
         public void finish() {
-
-        }
-
-        @Override
-        public void start(CimDocumentContext cimDocumentContext) {
 
         }
     }
