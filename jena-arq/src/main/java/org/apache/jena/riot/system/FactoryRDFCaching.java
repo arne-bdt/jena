@@ -30,7 +30,7 @@ import org.apache.jena.sparql.graph.NodeConst ;
 
 /** Adds some caching of created nodes - the caching is tuned to RIOT parser usage */
 public class FactoryRDFCaching extends FactoryRDFStd {
-    public static final int DftNodeCacheSize = 5000 ;
+    public static final int DftNodeCacheSize = 8192 ;
 
     private final int cacheSize ;
     private final Cache<String, Node> cache ;
