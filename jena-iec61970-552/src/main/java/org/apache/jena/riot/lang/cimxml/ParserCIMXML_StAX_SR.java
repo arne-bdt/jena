@@ -72,8 +72,8 @@ public class ParserCIMXML_StAX_SR {
     // Constants
     private static final String rdfNS = RDF.uri;
     private static final String xmlNS = "http://www.w3.org/XML/1998/namespace";
-    private static final String mdNS = ModelHeader.BASE_MODEL_DESCRIPTION;
-    private static final String dmND = ModelHeader.BASE_DIFFERENCE_MODEL;
+    private static final String mdNS = ModelHeader.NS_MD;
+    private static final String dmND = ModelHeader.NS_DM;
 
     private boolean hasRDF = false;
 
@@ -210,13 +210,13 @@ public class ParserCIMXML_StAX_SR {
     }
 
     // CIMXML model header constants.
-    private static final QName mdFullModel = new QName(ModelHeader.BASE_MODEL_DESCRIPTION, ModelHeader.CLASSNAME_FULL_MODEL);
-    private static final QName dmDifferenceModel = new QName(ModelHeader.BASE_DIFFERENCE_MODEL, ModelHeader.CLASSNAME_DIFFERENCE_MODEL);
+    private static final QName mdFullModel = new QName(ModelHeader.NS_MD, ModelHeader.CLASSNAME_FULL_MODEL);
+    private static final QName dmDifferenceModel = new QName(ModelHeader.NS_DM, ModelHeader.CLASSNAME_DIFFERENCE_MODEL);
 
     // CIMXML difference model constants.
-    private static final QName dmForwardDifferences = new QName(ModelHeader.BASE_DIFFERENCE_MODEL, CIMXMLDocumentContext.TAG_NAME_FORWARD_DIFFERENCES);
-    private static final QName dmReverseDifferences = new QName(ModelHeader.BASE_DIFFERENCE_MODEL, CIMXMLDocumentContext.TAG_NAME_REVERSE_DIFFERENCES);
-    private static final QName dmPreconditions = new QName(ModelHeader.BASE_DIFFERENCE_MODEL, CIMXMLDocumentContext.TAG_NAME_PRECONDITIONS);
+    private static final QName dmForwardDifferences = new QName(ModelHeader.NS_DM, CIMXMLDocumentContext.TAG_NAME_FORWARD_DIFFERENCES);
+    private static final QName dmReverseDifferences = new QName(ModelHeader.NS_DM, CIMXMLDocumentContext.TAG_NAME_REVERSE_DIFFERENCES);
+    private static final QName dmPreconditions = new QName(ModelHeader.NS_DM, CIMXMLDocumentContext.TAG_NAME_PRECONDITIONS);
 
     private static final QName rdfRDF = new QName(rdfNS, "RDF");
     private static final QName rdfDescription = new QName(rdfNS, "Description");

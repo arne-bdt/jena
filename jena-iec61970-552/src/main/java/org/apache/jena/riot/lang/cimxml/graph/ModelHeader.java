@@ -27,15 +27,15 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.vocabulary.RDF;
 
 public interface ModelHeader extends Graph {
-    String BASE_MODEL_DESCRIPTION = "http://iec.ch/TC57/61970-552/ModelDescription/1#";
-    String BASE_DIFFERENCE_MODEL = "http://iec.ch/TC57/61970-552/DifferenceModel/1#";
+    String NS_MD = "http://iec.ch/TC57/61970-552/ModelDescription/1#";
+    String NS_DM = "http://iec.ch/TC57/61970-552/DifferenceModel/1#";
     String CLASSNAME_FULL_MODEL = "FullModel";
     String CLASSNAME_DIFFERENCE_MODEL = "DifferenceModel";
 
-    Node PREDICATE_PROFILE = NodeFactory.createURI(BASE_MODEL_DESCRIPTION + "Model.profile");
-    Node PREDICATE_SUPERSEDES = NodeFactory.createURI(BASE_MODEL_DESCRIPTION + "Model.Supersedes");
-    Node TYPE_FULL_MODEL = NodeFactory.createURI(BASE_MODEL_DESCRIPTION + CLASSNAME_FULL_MODEL);
-    Node TYPE_DIFFERENCE_MODEL = NodeFactory.createURI(BASE_DIFFERENCE_MODEL + CLASSNAME_DIFFERENCE_MODEL);
+    Node PREDICATE_PROFILE = NodeFactory.createURI(NS_MD + "Model.profile");
+    Node PREDICATE_SUPERSEDES = NodeFactory.createURI(NS_MD + "Model.Supersedes");
+    Node TYPE_FULL_MODEL = NodeFactory.createURI(NS_MD + CLASSNAME_FULL_MODEL);
+    Node TYPE_DIFFERENCE_MODEL = NodeFactory.createURI(NS_DM + CLASSNAME_DIFFERENCE_MODEL);
 
     default boolean isFullModel() {
         return find(Node.ANY, RDF.type.asNode(), TYPE_FULL_MODEL).hasNext();
