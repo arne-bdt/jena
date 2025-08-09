@@ -1,0 +1,125 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.jena.riot.lang.cimxml.graph;
+
+import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.sparql.graph.GraphWrapper;
+import org.apache.jena.vocabulary.RDF;
+
+import java.util.List;
+import java.util.stream.Stream;
+
+public class ProfileOntologyCIM16 extends GraphWrapper implements ProfileOntology {
+
+    final static String NS_CIMS = "http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#";
+    final static String NS_RDFS = "http://www.w3.org/2000/01/rdf-schema#";
+
+    /**
+     * This is how the profile IRI ends in CGMES 2.4.15.
+     * Example: "http://entsoe.eu/CIM/SchemaExtension/3/1#EquipmentVersion"
+     */
+    final static String PROFILE_VERSION_POSTFIX = "Version";
+
+    final static String CLASS_CLASS_CATEGORY = "ClassCategory";
+    final static String PACKAGE_FILE_HEADER_PROFILE = "#Package_FileHeaderProfile";
+
+    final static Node TYPE_CLASS_CATEGORY = NodeFactory.createURI(NS_CIMS + CLASS_CLASS_CATEGORY);
+    final static Node PREDICATE_RDFS_DOMAIN = NodeFactory.createURI(NS_RDFS + "domain");
+    final static Node PREDICATE_CIMS_IS_FIXED = NodeFactory.createURI(NS_CIMS + "isFixed");
+
+
+    public static boolean isHeaderProfile(Graph graph) {
+        return graph.stream(Node.ANY, RDF.type.asNode(), TYPE_CLASS_CATEGORY)
+                .anyMatch(t
+                        -> t.getSubject().isURI()
+                        && t.getSubject().getURI().endsWith(PACKAGE_FILE_HEADER_PROFILE));
+    }
+
+    public static boolean hasVersionIRIAndKeyword(Graph graph) {
+        if(!getProfilePropertyFixedTexts(graph, ".shortName").findAny().isPresent()) {
+            return false;   //no keyword defined
+        }
+
+        if(getProfilePropertyFixedTexts(graph, ".entsoeURI").findAny().isPresent()) {
+            return true; //at least one version IRI defined
+        }
+        if(getProfilePropertyFixedTexts(graph, ".baseURI").findAny().isPresent()) {
+            return true; //at least one version IRI defined
+        }
+        return false; //no version IRI defined
+    }
+
+    public static Stream<String> getProfilePropertyFixedTexts(Graph graph, String propertyNameStartWithIncludingDot) {
+        return graph.stream(Node.ANY, PREDICATE_RDFS_DOMAIN, Node.ANY) //first look for the domain
+                .filter(t
+                        -> t.getObject().isURI()
+                        && t.getObject().getURI().endsWith(PROFILE_VERSION_POSTFIX)
+                        && t.getSubject().isURI()
+                        && t.getSubject().getURI().startsWith(t.getObject().getURI())
+                        && t.getSubject().getURI().regionMatches(t.getObject().getURI().length(),
+                        propertyNameStartWithIncludingDot,0, propertyNameStartWithIncludingDot.length()))
+                .flatMap(t -> graph
+                        .stream(t.getSubject(), PREDICATE_CIMS_IS_FIXED, Node.ANY)
+                        .filter(t2 -> t2.getObject().isLiteral())
+                        .map(t2 -> t2.getObject().getLiteralLexicalForm()));
+    }
+
+    private final boolean isHeaderProfile;
+
+    public ProfileOntologyCIM16(Graph graph, boolean isHeaderProfile) {
+        super(graph);
+        this.isHeaderProfile = isHeaderProfile;
+    }
+
+    @Override
+    public MetadataStyle getMetadataStyle() {
+        return MetadataStyle.CIM16;
+    }
+
+    @Override
+    public boolean isHeaderProfile() {
+        return this.isHeaderProfile;
+    }
+
+    @Override
+    public String getDcatKeyword() {
+        if(isHeaderProfile) {
+            // CGMES 2.4.15 file header profiles do not have a keyword.
+            return "DH"; // Use "DH" for compatibility with old CGMES 2.4.15 file header profiles.
+        }
+        return getProfilePropertyFixedTexts(get(), ".shortName")
+                .findFirst().orElse(null);
+    }
+
+    @Override
+    public List<Node> getOwlVersionIRIs() {
+        return Stream.concat(
+                getProfilePropertyFixedTexts(get(), ".entsoeURI"),
+                getProfilePropertyFixedTexts(get(), ".baseURI"))
+                .map(NodeFactory::createURI)
+                .toList();
+    }
+
+    @Override
+    public String getOwlVersionInfo() {
+        return null;
+    }
+}

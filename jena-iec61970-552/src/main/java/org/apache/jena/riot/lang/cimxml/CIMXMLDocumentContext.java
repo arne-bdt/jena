@@ -46,7 +46,7 @@ public enum CIMXMLDocumentContext {
     public final static String TAG_NAME_REVERSE_DIFFERENCES = "reverseDifferences";
     public final static String TAG_NAME_PRECONDITIONS = "preconditions";
 
-    public final static Node GRAPH_FORWARD_DIFFERENCES = NodeFactory.createURI(ModelHeader.BASE_DIFFERENCE_MODEL + TAG_NAME_FORWARD_DIFFERENCES);
-    public final static Node GRAPH_REVERSE_DIFFERENCES = NodeFactory.createURI(ModelHeader.BASE_DIFFERENCE_MODEL + TAG_NAME_REVERSE_DIFFERENCES);
-    public final static Node GRAPH_PRECONDITIONS = NodeFactory.createURI(ModelHeader.BASE_DIFFERENCE_MODEL + TAG_NAME_PRECONDITIONS);
+    public final static Node GRAPH_FORWARD_DIFFERENCES = NodeFactory.createURI(ModelHeader.NS_DM + TAG_NAME_FORWARD_DIFFERENCES);
+    public final static Node GRAPH_REVERSE_DIFFERENCES = NodeFactory.createURI(ModelHeader.NS_DM + TAG_NAME_REVERSE_DIFFERENCES);
+    public final static Node GRAPH_PRECONDITIONS = NodeFactory.createURI(ModelHeader.NS_DM + TAG_NAME_PRECONDITIONS);
 }

@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.jena.riot.lang.cimxml.query;
 
 import org.apache.jena.graph.Graph;
@@ -28,21 +46,17 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
         return linkedCIMDatasetGraph;
     }
 
-    private static GraphMem2Roaring createLazyGraph() {
-        return new GraphMem2Roaring(IndexingStrategy.LAZY_PARALLEL);
-    }
-
-    private void createAndAddNewCurrentGraph(Node graphName) {
+    private void createAndAddNewCurrentGraph(Node graphName, IndexingStrategy indexingStrategy) {
         if(linkedCIMDatasetGraph.containsGraph(graphName)) {
             throw new IllegalArgumentException("Graph with name " + graphName + " already exists in the dataset.");
         }
-        currentGraph = createLazyGraph();
+        currentGraph = new GraphMem2Roaring(indexingStrategy);
         linkedCIMDatasetGraph.addGraph(graphName, currentGraph);
     }
 
     @Override
     public void start() {
-        currentGraph = createLazyGraph();
+        currentGraph = new GraphMem2Roaring(IndexingStrategy.LAZY_PARALLEL);
         linkedCIMDatasetGraph.addGraph(Quad.defaultGraphIRI, currentGraph);
     }
 
@@ -84,17 +98,19 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
     public void switchContext(CIMXMLDocumentContext cimDocumentContext) {
         switch (cimDocumentContext) {
             case fullModel
-                    -> createAndAddNewCurrentGraph(ModelHeader.TYPE_FULL_MODEL);
+                    // The metadata is usually very small, so we use a minimal indexing strategy.
+                    -> createAndAddNewCurrentGraph(ModelHeader.TYPE_FULL_MODEL, IndexingStrategy.MINIMAL);
             case body
                     -> currentGraph = linkedCIMDatasetGraph.getDefaultGraph();
             case differenceModel
-                    -> createAndAddNewCurrentGraph(ModelHeader.TYPE_DIFFERENCE_MODEL);
+                    // The metadata is usually very small, so we use a minimal indexing strategy.
+                    -> createAndAddNewCurrentGraph(ModelHeader.TYPE_DIFFERENCE_MODEL, IndexingStrategy.MINIMAL);
             case forwardDifferences
-                    -> createAndAddNewCurrentGraph(CIMXMLDocumentContext.GRAPH_FORWARD_DIFFERENCES);
+                    -> createAndAddNewCurrentGraph(CIMXMLDocumentContext.GRAPH_FORWARD_DIFFERENCES, IndexingStrategy.LAZY_PARALLEL);
             case reverseDifferences
-                    -> createAndAddNewCurrentGraph(CIMXMLDocumentContext.GRAPH_REVERSE_DIFFERENCES);
+                    -> createAndAddNewCurrentGraph(CIMXMLDocumentContext.GRAPH_REVERSE_DIFFERENCES, IndexingStrategy.LAZY_PARALLEL);
             case preconditions
-                    -> createAndAddNewCurrentGraph(CIMXMLDocumentContext.GRAPH_PRECONDITIONS);
+                    -> createAndAddNewCurrentGraph(CIMXMLDocumentContext.GRAPH_PRECONDITIONS, IndexingStrategy.LAZY_PARALLEL);
         }
     }
 }
