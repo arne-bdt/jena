@@ -19,6 +19,7 @@
 package org.apache.jena.riot.lang.cimxml.query;
 
 import org.apache.jena.graph.*;
+import org.apache.jena.riot.lang.cimxml.CIMHeaderVocabulary;
 import org.apache.jena.riot.lang.cimxml.CIMXMLDocumentContext;
 import org.apache.jena.riot.lang.cimxml.graph.ModelHeader;
 import org.apache.jena.sparql.core.DatasetGraph;
@@ -26,36 +27,36 @@ import org.apache.jena.sparql.core.DatasetGraph;
 public interface CIMDatasetGraph extends DatasetGraph {
 
     default boolean isFullModel() {
-        return containsGraph(ModelHeader.TYPE_FULL_MODEL);
+        return containsGraph(CIMHeaderVocabulary.TYPE_FULL_MODEL);
     }
 
     default boolean isDifferenceModel() {
-        return containsGraph(ModelHeader.TYPE_DIFFERENCE_MODEL);
+        return containsGraph(CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL);
     }
 
     default Graph getForwardDifferences() {
         if(!this.isDifferenceModel())
             throw new IllegalStateException("Forward differences are only available for DifferenceModels. Use isDifferentModel() to check.");
-        return getGraph(CIMXMLDocumentContext.GRAPH_FORWARD_DIFFERENCES);
+        return getGraph(CIMHeaderVocabulary.GRAPH_FORWARD_DIFFERENCES);
     }
 
     default Graph getReverseDifferences() {
         if(!this.isDifferenceModel())
             throw new IllegalStateException("Reverse differences are only available for DifferenceModels. Use isDifferentModel() to check.");
-        return getGraph(CIMXMLDocumentContext.GRAPH_REVERSE_DIFFERENCES);
+        return getGraph(CIMHeaderVocabulary.GRAPH_REVERSE_DIFFERENCES);
     }
 
     default Graph getPreconditions() {
         if(!this.isDifferenceModel())
             throw new IllegalStateException("Preconditions are only available for DifferenceModels. Use isDifferentModel() to check.");
-        return getGraph(CIMXMLDocumentContext.GRAPH_PRECONDITIONS);
+        return getGraph(CIMHeaderVocabulary.GRAPH_PRECONDITIONS);
     }
 
     default ModelHeader getModelHeader() {
         var graphName = isFullModel()
-                ? ModelHeader.TYPE_FULL_MODEL
+                ? CIMHeaderVocabulary.TYPE_FULL_MODEL
                 : isDifferenceModel()
-                    ? ModelHeader.TYPE_DIFFERENCE_MODEL
+                    ? CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL
                     : null;
 
         if(graphName == null)

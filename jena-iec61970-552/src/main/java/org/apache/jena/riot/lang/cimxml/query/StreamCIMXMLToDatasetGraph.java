@@ -25,43 +25,60 @@ import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
 import org.apache.jena.riot.lang.cimxml.CIMXMLDocumentContext;
 import org.apache.jena.riot.lang.cimxml.StreamCIMXML;
-import org.apache.jena.riot.lang.cimxml.graph.ModelHeader;
+import org.apache.jena.riot.system.ErrorHandler;
+import org.apache.jena.riot.system.ErrorHandlerFactory;
 import org.apache.jena.sparql.core.Quad;
 
 import javax.xml.XMLConstants;
 
 public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
-    private final LinkedCIMDatasetGraph linkedCIMDatasetGraph = new LinkedCIMDatasetGraph();
+    public final ErrorHandler errorHandler;
+    private final LinkedCIMDatasetGraph linkedCIMDatasetGraph;
     private String versionOfCIMXML = null;
-    private Graph currentGraph = null;
+    private Graph currentGraph;
+    private CIMXMLDocumentContext currentContext;
 
+    public StreamCIMXMLToDatasetGraph() {
+        this(ErrorHandlerFactory.errorHandlerStd);
+    }
+
+    public StreamCIMXMLToDatasetGraph(ErrorHandler errorHandler) {
+        this.errorHandler = errorHandler;
+        // init default graph for body context
+        currentContext = CIMXMLDocumentContext.body;
+        currentGraph = new GraphMem2Roaring(IndexingStrategy.LAZY_PARALLEL);
+        linkedCIMDatasetGraph = new LinkedCIMDatasetGraph(currentGraph);
+    }
 
     public String getVersionOfCIMXML() {
         return versionOfCIMXML;
     }
 
-
     public CIMDatasetGraph getCIMDatasetGraph() {
         return linkedCIMDatasetGraph;
     }
 
-    private void createAndAddNewCurrentGraph(Node graphName, IndexingStrategy indexingStrategy) {
+    private void setCurrentGraphAndCreateIfNecessary(Node graphName, IndexingStrategy indexingStrategy) {
         if(linkedCIMDatasetGraph.containsGraph(graphName)) {
-            throw new IllegalArgumentException("Graph with name " + graphName + " already exists in the dataset.");
+            currentGraph = linkedCIMDatasetGraph.getGraph(graphName);
+        } else {
+            currentGraph = new GraphMem2Roaring(indexingStrategy);
+            linkedCIMDatasetGraph.addGraph(graphName, currentGraph);
         }
-        currentGraph = new GraphMem2Roaring(indexingStrategy);
-        linkedCIMDatasetGraph.addGraph(graphName, currentGraph);
     }
 
     @Override
     public void start() {
-        currentGraph = new GraphMem2Roaring(IndexingStrategy.LAZY_PARALLEL);
-        linkedCIMDatasetGraph.addGraph(Quad.defaultGraphIRI, currentGraph);
+        // Nothing to do
     }
 
     @Override
     public void triple(Triple triple) {
+        var newContext = CIMXMLDocumentContext.getNewContextOrNull(triple);
+        if(newContext != null) {
+            switchContext(newContext);
+        }
         currentGraph.add(triple);
     }
 
@@ -82,6 +99,7 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
     @Override
     public void finish() {
+        // Initialize indexes in parallel for all graphs that use LAZY_PARALLEL indexing strategy.
         linkedCIMDatasetGraph.getGraphs().parallelStream().forEach(graph -> {
             if (graph instanceof GraphMem2Roaring roaring && !roaring.isIndexInitialized()) {
                 roaring.initializeIndexParallel();
@@ -95,22 +113,19 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
     }
 
     @Override
+    public CIMXMLDocumentContext getCurrentContext() {
+        return null;
+    }
+
     public void switchContext(CIMXMLDocumentContext cimDocumentContext) {
-        switch (cimDocumentContext) {
-            case fullModel
-                    // The metadata is usually very small, so we use a minimal indexing strategy.
-                    -> createAndAddNewCurrentGraph(ModelHeader.TYPE_FULL_MODEL, IndexingStrategy.MINIMAL);
-            case body
-                    -> currentGraph = linkedCIMDatasetGraph.getDefaultGraph();
-            case differenceModel
-                    // The metadata is usually very small, so we use a minimal indexing strategy.
-                    -> createAndAddNewCurrentGraph(ModelHeader.TYPE_DIFFERENCE_MODEL, IndexingStrategy.MINIMAL);
-            case forwardDifferences
-                    -> createAndAddNewCurrentGraph(CIMXMLDocumentContext.GRAPH_FORWARD_DIFFERENCES, IndexingStrategy.LAZY_PARALLEL);
-            case reverseDifferences
-                    -> createAndAddNewCurrentGraph(CIMXMLDocumentContext.GRAPH_REVERSE_DIFFERENCES, IndexingStrategy.LAZY_PARALLEL);
-            case preconditions
-                    -> createAndAddNewCurrentGraph(CIMXMLDocumentContext.GRAPH_PRECONDITIONS, IndexingStrategy.LAZY_PARALLEL);
-        }
+        var indexingStrategy = switch (cimDocumentContext) {
+            // The metadata is usually very small, so we use a minimal indexing strategy.
+            case fullModel, differenceModel -> IndexingStrategy.MINIMAL;
+            // The data parts can be large, so we use a lazy parallel indexing strategy.
+            default -> IndexingStrategy.LAZY_PARALLEL;
+        };
+        var graphName = CIMXMLDocumentContext.getGraphName(cimDocumentContext);
+        setCurrentGraphAndCreateIfNecessary(graphName, indexingStrategy);
+        currentContext = cimDocumentContext;
     }
 }

@@ -759,5 +759,10 @@ public class TestParserRDFXMLConformity {
         public void finish() {
 
         }
+
+        @Override
+        public CIMXMLDocumentContext getCurrentContext() {
+            return null;
+        }
     }
 }

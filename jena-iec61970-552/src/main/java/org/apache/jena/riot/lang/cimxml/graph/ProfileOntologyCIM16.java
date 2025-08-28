@@ -22,6 +22,7 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.sparql.graph.GraphWrapper;
+import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.vocabulary.RDF;
 
 import java.util.List;
@@ -57,7 +58,6 @@ public class ProfileOntologyCIM16 extends GraphWrapper implements ProfileOntolog
         if(!getProfilePropertyFixedTexts(graph, ".shortName").findAny().isPresent()) {
             return false;   //no keyword defined
         }
-
         if(getProfilePropertyFixedTexts(graph, ".entsoeURI").findAny().isPresent()) {
             return true; //at least one version IRI defined
         }
@@ -110,12 +110,11 @@ public class ProfileOntologyCIM16 extends GraphWrapper implements ProfileOntolog
     }
 
     @Override
-    public List<Node> getOwlVersionIRIs() {
+    public Stream<Node> getOwlVersionIRIs() {
         return Stream.concat(
                 getProfilePropertyFixedTexts(get(), ".entsoeURI"),
                 getProfilePropertyFixedTexts(get(), ".baseURI"))
-                .map(NodeFactory::createURI)
-                .toList();
+                .map(NodeFactory::createURI);
     }
 
     @Override

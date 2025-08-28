@@ -22,5 +22,5 @@ import org.apache.jena.riot.system.StreamRDF;
 
 public interface StreamCIMXML extends StreamRDF {
     default void setVersionOfCIMXML(String versionOfCIMXML) {};
-    default void switchContext(CIMXMLDocumentContext cimDocumentContext) {};
+    CIMXMLDocumentContext getCurrentContext();
 }

@@ -18,21 +18,15 @@
 
 package org.apache.jena.riot.lang.cimxml;
 
-import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.atlas.lib.Lib;
-import org.apache.jena.graph.Graph;
-import org.apache.jena.graph.Triple;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.riot.lang.cimxml.query.StreamCIMXMLToDatasetGraph;
-import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
-import javax.xml.XMLConstants;
 import java.io.StringReader;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class TestParserCIMXMLConformity {
 
@@ -63,58 +57,27 @@ public class TestParserCIMXMLConformity {
         assertEquals("version=\"2.0\"", streamRDF.getVersionOfCIMXML());
     }
 
+    /**
+     * Test that the parser can parse a CIM XML document without a version declaration.
+     */
+    @Test
+    public void testParseCIMXMLWithoutVersion() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF
+            xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+            xmlns:cim="http://iec.ch/TC57/2004/CIM-schema-cim10#">
+            </rdf:RDF>
+            """;
 
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
-    public class StreamRDFGraph implements StreamCIMXML {
-        private final Graph graph;
-        private String versionOfCIMXML;
+        parser.read(new StringReader(rdfxml), streamRDF);
 
-        public String getVersionOfCIMXML() {
-            return versionOfCIMXML;
-        }
-
-        public StreamRDFGraph(Graph graph) {
-            this.graph = graph;
-        }
-
-        @Override
-        public void setVersionOfCIMXML(String versionOfCIMXML) {
-            this.versionOfCIMXML = versionOfCIMXML;
-        }
-
-        @Override
-        public void switchContext(CIMXMLDocumentContext cimDocumentContext) {
-            StreamCIMXML.super.switchContext(cimDocumentContext);
-        }
-
-        @Override
-        public void start() {
-
-        }
-
-        @Override
-        public void triple(Triple triple) {
-            this.graph.add(triple);
-        }
-
-        @Override
-        public void quad(Quad quad) {
-            throw new UnsupportedOperationException("Not supported.");
-        }
-
-        @Override
-        public void base(String base) {
-            this.graph.getPrefixMapping().setNsPrefix(XMLConstants.DEFAULT_NS_PREFIX, base);
-        }
-
-        @Override
-        public void prefix(String prefix, String iri) {
-            this.graph.getPrefixMapping().setNsPrefix(prefix, iri);
-        }
-
-        @Override
-        public void finish() {
-
-        }
+        assertNull(streamRDF.getVersionOfCIMXML());
     }
 }

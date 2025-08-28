@@ -19,8 +19,9 @@
 package org.apache.jena.riot.lang.cimxml;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.riot.lang.cimxml.graph.ModelHeader;
+import org.apache.jena.graph.Triple;
+import org.apache.jena.sparql.core.Quad;
+import org.apache.jena.vocabulary.RDF;
 
 public enum CIMXMLDocumentContext {
     fullModel,
@@ -33,20 +34,26 @@ public enum CIMXMLDocumentContext {
 
     public static Node getGraphName(CIMXMLDocumentContext context) {
         return switch (context) {
-            case fullModel -> ModelHeader.TYPE_FULL_MODEL;
-            case body -> null;
-            case differenceModel -> ModelHeader.TYPE_DIFFERENCE_MODEL;
-            case forwardDifferences -> GRAPH_FORWARD_DIFFERENCES;
-            case reverseDifferences -> GRAPH_REVERSE_DIFFERENCES;
-            case preconditions -> GRAPH_PRECONDITIONS;
+            case fullModel -> CIMHeaderVocabulary.TYPE_FULL_MODEL;
+            case body -> Quad.defaultGraphIRI;
+            case differenceModel -> CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL;
+            case forwardDifferences -> CIMHeaderVocabulary.GRAPH_FORWARD_DIFFERENCES;
+            case reverseDifferences -> CIMHeaderVocabulary.GRAPH_REVERSE_DIFFERENCES;
+            case preconditions -> CIMHeaderVocabulary.GRAPH_PRECONDITIONS;
         };
     }
 
-    public final static String TAG_NAME_FORWARD_DIFFERENCES = "forwardDifferences";
-    public final static String TAG_NAME_REVERSE_DIFFERENCES = "reverseDifferences";
-    public final static String TAG_NAME_PRECONDITIONS = "preconditions";
-
-    public final static Node GRAPH_FORWARD_DIFFERENCES = NodeFactory.createURI(ModelHeader.NS_DM + TAG_NAME_FORWARD_DIFFERENCES);
-    public final static Node GRAPH_REVERSE_DIFFERENCES = NodeFactory.createURI(ModelHeader.NS_DM + TAG_NAME_REVERSE_DIFFERENCES);
-    public final static Node GRAPH_PRECONDITIONS = NodeFactory.createURI(ModelHeader.NS_DM + TAG_NAME_PRECONDITIONS);
+    public static CIMXMLDocumentContext getNewContextOrNull(Triple triple) {
+        if(triple.getPredicate().equals(RDF.type.asNode()) && triple.getObject().isURI()) {
+            return switch (triple.getObject().getURI()) {
+                case CIMHeaderVocabulary.FULL_MODEL_URI -> CIMXMLDocumentContext.fullModel;
+                case CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL_URI -> CIMXMLDocumentContext.differenceModel;
+                case CIMHeaderVocabulary.GRAPH_FORWARD_DIFFERENCES_URI -> CIMXMLDocumentContext.forwardDifferences;
+                case CIMHeaderVocabulary.GRAPH_REVERSE_DIFFERENCES_URI -> CIMXMLDocumentContext.reverseDifferences;
+                case CIMHeaderVocabulary.GRAPH_PRECONDITIONS_URI -> CIMXMLDocumentContext.preconditions;
+                default -> null;
+            };
+        }
+        return null;
+    }
 }

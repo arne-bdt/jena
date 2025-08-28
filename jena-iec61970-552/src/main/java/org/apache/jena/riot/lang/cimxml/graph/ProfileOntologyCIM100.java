@@ -26,13 +26,13 @@ import org.apache.jena.sparql.graph.GraphWrapper;
 import org.apache.jena.vocabulary.RDF;
 
 import java.util.List;
+import java.util.stream.Stream;
 
-public class ProfileOntologyCIM100 extends  GraphWrapper implements ProfileOntology {
+public class ProfileOntologyCIM100 extends GraphWrapper implements ProfileOntology {
 
     final static String NS_EUMD = "https://ap.cim4.eu/DocumentHeader#";
     final static String NS_OWL = "http://www.w3.org/2002/07/owl#";
     final static String NS_DCAT = "http://www.w3.org/ns/dcat#";
-    final static Node SUBJECT_ONTOLOGY = NodeFactory.createURI(NS_EUMD + "Ontology");
     final static Node CLASS_ONTOLOGY = NodeFactory.createURI(NS_OWL + "Ontology");
     final static Node PREDICATE_DCAT_KEYWORD = NodeFactory.createURI(NS_DCAT + "keyword");
     final static Node PREDICATE_OWL_VERSION_IRI = NodeFactory.createURI(NS_OWL + "versionIRI");
@@ -47,12 +47,16 @@ public class ProfileOntologyCIM100 extends  GraphWrapper implements ProfileOntol
      * @return The ontology node or null if not found.
      */
     static boolean hasOntology(Graph graph) {
-        return graph.find(SUBJECT_ONTOLOGY, RDF.type.asNode(), CLASS_ONTOLOGY).hasNext();
+        return graph.find(Node.ANY, RDF.type.asNode(), CLASS_ONTOLOGY).hasNext();
+    }
+
+    public Node getOntology() {
+        return stream(Node.ANY, RDF.type.asNode(), CLASS_ONTOLOGY).findAny().map(Triple::getSubject).orElseThrow();
     }
 
     public static boolean hasVersionIRIAndKeyword(Graph graph) {
-        return graph.find(SUBJECT_ONTOLOGY, PREDICATE_DCAT_KEYWORD, Node.ANY).hasNext()
-                && graph.find(SUBJECT_ONTOLOGY, PREDICATE_OWL_VERSION_IRI, Node.ANY).hasNext();
+        return graph.find(Node.ANY, PREDICATE_DCAT_KEYWORD, Node.ANY).hasNext()
+                && graph.find(Node.ANY, PREDICATE_OWL_VERSION_IRI, Node.ANY).hasNext();
     }
 
     public ProfileOntologyCIM100(Graph graph) {
@@ -67,7 +71,7 @@ public class ProfileOntologyCIM100 extends  GraphWrapper implements ProfileOntol
     @Override
     public boolean isHeaderProfile() {
         // look for https://ap.cim4.eu/DocumentHeader# without # in version IRIs
-        return stream(SUBJECT_ONTOLOGY, PREDICATE_OWL_VERSION_IRI, Node.ANY)
+        return stream(getOntology(), PREDICATE_OWL_VERSION_IRI, Node.ANY)
                 .anyMatch(t
                         -> t.getObject().isURI()
                         && t.getObject().getURI().regionMatches(0, NS_EUMD, 0, NS_EUMD.length()-1));
@@ -75,19 +79,19 @@ public class ProfileOntologyCIM100 extends  GraphWrapper implements ProfileOntol
 
     @Override
     public String getDcatKeyword() {
-        var iter = find(SUBJECT_ONTOLOGY, PREDICATE_DCAT_KEYWORD, Node.ANY);
+        var iter = find(getOntology(), PREDICATE_DCAT_KEYWORD, Node.ANY);
         return iter.hasNext() ? iter.next().getObject().getLiteralValue().toString() : null;
     }
 
     @Override
-    public List<Node> getOwlVersionIRIs() {
-        return find(SUBJECT_ONTOLOGY, PREDICATE_OWL_VERSION_IRI, Node.ANY)
-                .mapWith(Triple::getObject).toList();
+    public Stream<Node> getOwlVersionIRIs() {
+        return stream(getOntology(), PREDICATE_OWL_VERSION_IRI, Node.ANY)
+                .map(Triple::getObject);
     }
 
     @Override
     public String getOwlVersionInfo() {
-        var iter = find(SUBJECT_ONTOLOGY, PREDICATE_OWL_VERSION_INFO, Node.ANY);
+        var iter = find(getOntology(), PREDICATE_OWL_VERSION_INFO, Node.ANY);
         return iter.hasNext() ? iter.next().getObject().getLiteralValue().toString() : null;
     }
 }

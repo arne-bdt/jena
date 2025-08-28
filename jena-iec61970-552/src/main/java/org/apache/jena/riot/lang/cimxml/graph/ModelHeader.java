@@ -20,49 +20,50 @@ package org.apache.jena.riot.lang.cimxml.graph;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.riot.lang.cimxml.CIMHeaderVocabulary;
 import org.apache.jena.sparql.graph.GraphWrapper;
-import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.vocabulary.RDF;
 
-public interface ModelHeader extends Graph {
-    String NS_MD = "http://iec.ch/TC57/61970-552/ModelDescription/1#";
-    String NS_DM = "http://iec.ch/TC57/61970-552/DifferenceModel/1#";
-    String CLASSNAME_FULL_MODEL = "FullModel";
-    String CLASSNAME_DIFFERENCE_MODEL = "DifferenceModel";
+import java.util.stream.Stream;
 
-    Node PREDICATE_PROFILE = NodeFactory.createURI(NS_MD + "Model.profile");
-    Node PREDICATE_SUPERSEDES = NodeFactory.createURI(NS_MD + "Model.Supersedes");
-    Node TYPE_FULL_MODEL = NodeFactory.createURI(NS_MD + CLASSNAME_FULL_MODEL);
-    Node TYPE_DIFFERENCE_MODEL = NodeFactory.createURI(NS_DM + CLASSNAME_DIFFERENCE_MODEL);
+
+public interface ModelHeader extends Graph {
+
 
     default boolean isFullModel() {
-        return find(Node.ANY, RDF.type.asNode(), TYPE_FULL_MODEL).hasNext();
+        return find(Node.ANY, RDF.type.asNode(), CIMHeaderVocabulary.TYPE_FULL_MODEL).hasNext();
     }
 
     default boolean isDifferenceModel() {
-        return find(Node.ANY, RDF.type.asNode(), TYPE_DIFFERENCE_MODEL).hasNext();
+        return find(Node.ANY, RDF.type.asNode(), CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL).hasNext();
     }
 
     default Node getModel() {
-        var iter = find(Node.ANY, RDF.type.asNode(), TYPE_FULL_MODEL);
+        var iter = find(Node.ANY, RDF.type.asNode(), CIMHeaderVocabulary.TYPE_FULL_MODEL);
         if(iter.hasNext()) {
             return iter.next().getSubject();
         }
-        iter = find(Node.ANY, RDF.type.asNode(), TYPE_DIFFERENCE_MODEL);
+        iter = find(Node.ANY, RDF.type.asNode(), CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL);
         if(iter.hasNext()) {
             return iter.next().getSubject();
         }
         throw new IllegalStateException("Found neither FullModel nor DifferenceModel in the header graph.");
     }
-    default ExtendedIterator<Node> getProfiles(Node model) {
-        return find(model, PREDICATE_PROFILE, Node.ANY)
-                .mapWith(Triple::getObject);
+
+    default Stream<Node> getProfiles() {
+        return stream(getModel(), CIMHeaderVocabulary.PREDICATE_PROFILE, Node.ANY)
+                .map(Triple::getObject);
     }
-    default ExtendedIterator<Node> Supersedes(Node model) {
-        return find(model, PREDICATE_SUPERSEDES, Node.ANY)
-                .mapWith(Triple::getObject);
+
+    default Stream<Node> getSupersedes() {
+        return stream(getModel(), CIMHeaderVocabulary.PREDICATE_SUPERSEDES, Node.ANY)
+                .map(Triple::getObject);
+    }
+
+    default Stream<Node> getDependentOn() {
+        return stream(getModel(), CIMHeaderVocabulary.PREDICATE_DEPENDENT_ON, Node.ANY)
+                .map(Triple::getObject);
     }
 
     static ModelHeader wrap(Graph graph) {

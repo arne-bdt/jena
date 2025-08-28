@@ -1,0 +1,85 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.jena.riot.lang.cimxml.graph;
+
+import org.apache.jena.atlas.lib.Lib;
+import org.apache.jena.irix.SystemIRIx;
+import org.apache.jena.mem2.GraphMem2Roaring;
+import org.apache.jena.riot.RDFParser;
+import org.apache.jena.sys.JenaSystem;
+import org.junit.Test;
+
+import java.io.StringReader;
+
+import static org.junit.Assert.*;
+
+public class TestProfileOntologyCIM100 {
+
+
+    /**
+     * Test that the parser can parse a CIM XML document with a version declaration.
+     * And that the version is correctly parsed.
+     */
+    @Test
+    public void parseProfileOntologyHeader() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF
+               xmlns:dcat="http://www.w3.org/ns/dcat#"
+               xmlns:owl="http://www.w3.org/2002/07/owl#"
+               xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+               xml:base ="http://iec.ch/TC57/CIM100">
+                       
+                <rdf:Description rdf:about="http://iec.ch/TC57/ns/CIM/CoreEquipment-EU#Ontology">
+                    <dcat:keyword>MYCUST</dcat:keyword>
+                    <owl:versionIRI rdf:resource="http://example.org/MyCustom/Core/1/1"/>
+                    <owl:versionIRI rdf:resource="http://example.org/MyCustom/Operation/1/1"/>
+                    <owl:versionInfo xml:lang ="en">1.1.0</owl:versionInfo>                    
+                   <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+                </rdf:Description >
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+
+        var graph = new GraphMem2Roaring();
+
+        RDFParser.create()
+            .source(new StringReader(rdfxml))
+            .lang(org.apache.jena.riot.Lang.RDFXML)
+            .checking(false)
+            .parse(graph);
+
+        var ontology = ProfileOntology.wrap(graph);
+
+        assertFalse(ontology.isHeaderProfile());
+        assertEquals(ProfileOntology.MetadataStyle.ONTOLOGY, ontology.getMetadataStyle());
+
+        assertEquals(2, ontology.getOwlVersionIRIs().toList().size());
+        assertTrue(ontology.getOwlVersionIRIs()
+                .anyMatch(n -> n.getURI().equals("http://example.org/MyCustom/Core/1/1")));
+        assertTrue(ontology.getOwlVersionIRIs()
+                .anyMatch(n -> n.getURI().equals("http://example.org/MyCustom/Operation/1/1")));
+        assertEquals("1.1.0", ontology.getOwlVersionInfo());
+        assertEquals("MYCUST", ontology.getDcatKeyword());
+    }
+
+}

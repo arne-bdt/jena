@@ -26,9 +26,9 @@
         <version>5.6.0-SNAPSHOT</version>
     </parent>
 
-    <name>Apache Jena - IEC61770-552 CIMXML</name>
+    <name>Apache Jena - IEC61970-552 CIMXML</name>
     <artifactId>jena-iec61970-552</artifactId>
-    <description>IEC 61770-552 CIMXML parser for Apache Jena</description>
+    <description>IEC 61970-552 CIMXML parser for Apache Jena</description>
     <packaging>jar</packaging>
 
     <url>https://jena.apache.org/</url>

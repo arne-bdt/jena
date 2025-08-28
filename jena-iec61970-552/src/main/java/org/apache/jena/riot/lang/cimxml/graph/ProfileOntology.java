@@ -20,8 +20,10 @@ package org.apache.jena.riot.lang.cimxml.graph;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
+import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 public interface ProfileOntology extends Graph {
 
@@ -71,7 +73,7 @@ public interface ProfileOntology extends Graph {
      *
      * @return The version IRI of the profile, or null if no version IRI is defined.
      */
-    List<Node> getOwlVersionIRIs();
+    Stream<Node> getOwlVersionIRIs();
 
     /**
      * Return owl:versionInfo of the onology object of the profile.
