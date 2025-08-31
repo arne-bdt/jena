@@ -50,8 +50,6 @@ public class ReaderCIMXML_StAX_SR
         return factory;
     }
 
-    public static final String xmlBaseForCIMXML = "urn:uuid:";
-
     private static final XMLInputFactory2 xmlInputFactory = createXMLInputFactory();
 
     public static boolean TRACE = false;
@@ -67,7 +65,7 @@ public class ReaderCIMXML_StAX_SR
     }
 
     public void read(InputStream input, StreamCIMXML output) {
-        read(input, xmlBaseForCIMXML, output);
+        read(input, null, output);
     }
 
     public void read(InputStream input, String xmlBase, StreamCIMXML output) {
@@ -80,7 +78,7 @@ public class ReaderCIMXML_StAX_SR
     }
 
     public void read(Reader reader, StreamCIMXML output) {
-        read(reader, xmlBaseForCIMXML, output);
+        read(reader, null, output);
     }
 
     public void read(Reader reader, String xmlBase, StreamCIMXML output) {

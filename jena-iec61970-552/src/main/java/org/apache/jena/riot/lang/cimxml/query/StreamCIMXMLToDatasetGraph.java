@@ -29,8 +29,6 @@ import org.apache.jena.riot.system.ErrorHandler;
 import org.apache.jena.riot.system.ErrorHandlerFactory;
 import org.apache.jena.sparql.core.Quad;
 
-import javax.xml.XMLConstants;
-
 public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
     public final ErrorHandler errorHandler;
@@ -62,6 +60,11 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
         return versionOfCIMXML;
     }
 
+    @Override
+    public void setVersionOfCIMXML(CIMXMLVersion versionOfCIMXML) {
+        this.versionOfCIMXML = versionOfCIMXML;
+    }
+
     public CIMDatasetGraph getCIMDatasetGraph() {
         return linkedCIMDatasetGraph;
     }
@@ -82,10 +85,6 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
     @Override
     public void triple(Triple triple) {
-        var newContext = CIMXMLDocumentContext.getNewContextOrNull(triple);
-        if(newContext != null) {
-            switchContext(newContext);
-        }
         currentGraph.add(triple);
     }
 
@@ -96,23 +95,11 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
     @Override
     public void base(String base) {
-        linkedCIMDatasetGraph.prefixes.add(XMLConstants.DEFAULT_NS_PREFIX, base);
+        // Nothing to do
     }
 
     @Override
     public void prefix(String prefix, String iri) {
-        if("cim".equals(prefix)) {
-            // Adjust the prefix for the CIM version
-            versionOfCIMXML = switch(iri) {
-                case "http://iec.ch/TC57/2013/CIM-schema-cim16#" -> CIMXMLVersion.CIM_16;
-                case "http://iec.ch/TC57/CIM100#" -> CIMXMLVersion.CIM_17;
-                case "https://cim.ucaiug.io/ns#" -> CIMXMLVersion.CIM_18;
-                default -> {
-                    errorHandler.warning("Unrecognized CIM namespace: " + iri, -1, -1);
-                    yield CIMXMLVersion.NO_CIM;
-                }
-            };
-        }
         linkedCIMDatasetGraph.prefixes.add(prefix, iri);
     }
 
@@ -133,7 +120,12 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
     @Override
     public CIMXMLDocumentContext getCurrentContext() {
-        return null;
+        return currentContext;
+    }
+
+    @Override
+    public void setCurrentContext(CIMXMLDocumentContext context) {
+        switchContext(context);
     }
 
     public void switchContext(CIMXMLDocumentContext cimDocumentContext) {

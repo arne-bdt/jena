@@ -19,6 +19,7 @@
 package org.apache.jena.riot.lang.cimxml;
 
 import org.apache.jena.atlas.lib.Lib;
+import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.riot.lang.cimxml.query.StreamCIMXMLToDatasetGraph;
 import org.apache.jena.sys.JenaSystem;
@@ -36,7 +37,7 @@ public class TestParserCIMXMLConformity {
      * And that the version is correctly parsed.
      */
     @Test
-    public void testParseIEC61970_552() throws Exception {
+    public void parseIEC61970_552Version() throws Exception {
         final var rdfxml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <?iec61970-552 version="2.0"?>
@@ -59,7 +60,7 @@ public class TestParserCIMXMLConformity {
      * Test that the parser can parse a CIM XML document without a version declaration.
      */
     @Test
-    public void testParseWithoutIEC61970_552Version() throws Exception {
+    public void parseWithoutIEC61970_552Version() throws Exception {
         final var rdfxml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
@@ -78,7 +79,7 @@ public class TestParserCIMXMLConformity {
     }
 
     @Test
-    public void testParseCIMVersion17() throws Exception {
+    public void parseCIMVersion17() throws Exception {
         final var rdfxml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <rdf:RDF 
@@ -99,7 +100,7 @@ public class TestParserCIMXMLConformity {
     }
 
     @Test
-    public void testParseCIMVersion18() throws Exception {
+    public void parseCIMVersion18() throws Exception {
         final var rdfxml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <rdf:RDF
@@ -118,4 +119,129 @@ public class TestParserCIMXMLConformity {
 
         assertEquals(StreamCIMXML.CIMXMLVersion.CIM_18, streamRDF.getVersionOfCIMXML());
     }
+
+    @Test
+    public void parseFullModelAndContentInDifferentGraphs() {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <rdf:RDF xmlns:cim="http://iec.ch/TC57/CIM100#" xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:eu="http://iec.ch/TC57/CIM100-European#">
+             <md:FullModel rdf:about="urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6">
+               <md:Model.profile>http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0</md:Model.profile>
+             </md:FullModel>
+             <cim:MyEquipment rdf:ID="f67fc354-9e39-4191-a456-67537399bc48">
+               <cim:IdentifiedObject.name>My Custom Equipment</cim:IdentifiedObject.name>
+             </cim:MyEquipment>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
+        parser.read(new StringReader(rdfxml), streamRDF);
+
+        assertTrue(streamRDF.getCIMDatasetGraph().isFullModel());
+
+        assertNotNull(streamRDF.getCIMDatasetGraph().getModelHeader());
+        var modelHeader = streamRDF.getCIMDatasetGraph().getModelHeader();
+        assertEquals("urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6", modelHeader.getModel().toString());
+        assertEquals(1, modelHeader.getProfiles().toList().size());
+        assertTrue(modelHeader.getProfiles().map(node -> node.getLiteralLexicalForm()).toList()
+                .contains("http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0"));
+
+        var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
+        assertTrue(graph.contains(
+                NodeFactory.createURI("urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6"),
+                NodeFactory.createURI("http://iec.ch/TC57/61970-552/ModelDescription/1#Model.profile"),
+                NodeFactory.createLiteralString("http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0")
+        ));
+        assertTrue(graph.contains(
+                NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#IdentifiedObject.name"),
+                NodeFactory.createLiteralString("My Custom Equipment")
+        ));
+    }
+
+    @Test
+    public void replaceUnderscoresInRdfAboutAndRdfId() {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <rdf:RDF xmlns:cim="http://iec.ch/TC57/CIM100#" xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:eu="http://iec.ch/TC57/CIM100-European#">
+              <cim:MyEquipment rdf:ID="_f67fc354-9e39-4191-a456-67537399bc48">
+                <cim:IdentifiedObject.name>My Custom Equipment</cim:IdentifiedObject.name>
+              </cim:MyEquipment>
+              <cim:MyEquipment rdf:about="_f67fc354-9e39-4191-a456-67537399bc48">
+                <cim:MyEquipment.MyReference rdf:resource="#_d597b77b-c8c4-4d88-883e-f516eedb913b" />
+              </cim:MyEquipment>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
+
+        parser.read(new StringReader(rdfxml), streamRDF);
+
+        var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
+        assertTrue(graph.contains(
+                NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
+                NodeFactory.createURI("rdf:type"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyEquipment")
+        ));
+        assertTrue(graph.contains(
+                NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#IdentifiedObject.name"),
+                NodeFactory.createLiteralString("My Custom Equipment")
+        ));
+        assertTrue(graph.contains(
+                NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyEquipment.MyReference"),
+                NodeFactory.createLiteralString("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48")
+        ));
+    }
+
+    @Test
+    public void replaceUnderscoresInRdfAboutAndRdfIdFixingMissingDashesInUuids() {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <rdf:RDF xmlns:cim="http://iec.ch/TC57/CIM100#" xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:eu="http://iec.ch/TC57/CIM100-European#">
+              <cim:MyEquipment rdf:ID="_f67fc3549e394191a45667537399bc48">
+                <cim:IdentifiedObject.name>My Custom Equipment</cim:IdentifiedObject.name>
+              </cim:MyEquipment>
+              <cim:MyEquipment rdf:about="_f67fc3549e394191a45667537399bc48">
+                <cim:MyEquipment.MyReference rdf:resource="#_d597b77bc8c44d88883ef516eedb913b" />
+              </cim:MyEquipment>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
+
+        parser.read(new StringReader(rdfxml), streamRDF);
+
+        var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
+        assertTrue(graph.contains(
+                NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
+                NodeFactory.createURI("rdf:type"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyEquipment")
+        ));
+        assertTrue(graph.contains(
+                NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#IdentifiedObject.name"),
+                NodeFactory.createLiteralString("My Custom Equipment")
+        ));
+        assertTrue(graph.contains(
+                NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyEquipment.MyReference"),
+                NodeFactory.createLiteralString("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48")
+        ));
+
+    }
+
 }

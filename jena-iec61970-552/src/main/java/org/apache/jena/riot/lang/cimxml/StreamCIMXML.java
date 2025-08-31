@@ -41,11 +41,17 @@ public interface StreamCIMXML extends StreamRDF {
 
     /**
      * Gets the CIMXMLVersion enum value for the given version string
-     * The version is determined by the namespace URI for the prefix "cim",
-     * when the prefix is set using {@link #prefix(String, String)}.
      * @return the CIMXMLVersion enum value
      */
     CIMXMLVersion getVersionOfCIMXML();
 
+    /**
+     * Sets the CIMXMLVersion enum value for the given version string
+     * @param versionOfCIMXML the CIMXMLVersion enum value
+     */
+    void setVersionOfCIMXML(CIMXMLVersion versionOfCIMXML);
+
     CIMXMLDocumentContext getCurrentContext();
+
+    void setCurrentContext(CIMXMLDocumentContext context);
 }

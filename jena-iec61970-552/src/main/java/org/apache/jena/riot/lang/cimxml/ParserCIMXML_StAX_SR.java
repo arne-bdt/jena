@@ -73,8 +73,11 @@ public class ParserCIMXML_StAX_SR {
     private static final String xmlNS = "http://www.w3.org/XML/1998/namespace";
     private static final String mdNS = CIMHeaderVocabulary.NS_MD;
     private static final String dmND = CIMHeaderVocabulary.NS_DM;
+    public static final String xmlBaseForCIMXML = "urn:uuid:";
 
     private boolean hasRDF = false;
+    private boolean isCIMXML = false;
+    private boolean lookingForCimXmlHeader = true;
 
     private final ErrorHandler errorHandler;
     private final StreamCIMXML destination;
@@ -375,7 +378,7 @@ public class ParserCIMXML_StAX_SR {
             // Not necessary to track this element when parsing.
             hasFrame = startElement();
             // Only the XML base and namespaces that apply throughout rdf:RDF are parser output.
-            emitInitialBaseAndNamespaces();
+            emitInitialBaseAndNamespacesDetermineCIMVersionAndSetBaseIfNeeded();
             hasRDF = true;
             eventType = nextEventTag();
         }
@@ -467,7 +470,7 @@ public class ParserCIMXML_StAX_SR {
     private void nodeElementProcess(Node subject) {
         QName qName = qName();
         Location location = location();
-
+        var isCimXmlHeader = false;
         if ( ! qNameMatches(qName, rdfDescription) ) {
             // Typed Node Element
             if ( isMemberProperty(qName) )
@@ -476,7 +479,18 @@ public class ParserCIMXML_StAX_SR {
                 if ( isNotRecognizedRDFtype(qName) )
                     RDFXMLparseWarning(str(qName)+" is not a recognized RDF term for a type");
             }
-
+            // Only for CIMXML
+            if( isCIMXML && lookingForCimXmlHeader ) {
+                // Switch context if FullModel or DifferenceModel
+                if ( qNameMatches(qName, mdFullModel) ) {
+                    destination.setCurrentContext(CIMXMLDocumentContext.fullModel);
+                    isCimXmlHeader = true;
+                }
+                else if ( qNameMatches(qName, dmDifferenceModel) ) {
+                    destination.setCurrentContext(CIMXMLDocumentContext.differenceModel);
+                    isCimXmlHeader = true;
+                }
+            }
             Node object = qNameToIRI(qName, QNameUsage.TypedNodeElement, location);
             emit(subject, NodeConst.nodeRDFType, object, location);
         }
@@ -489,6 +503,11 @@ public class ParserCIMXML_StAX_SR {
 
         if ( ! lookingAt(event, END_ELEMENT) )
             throw RDFXMLparseError("Expected end element for "+qName());
+
+        if ( isCimXmlHeader ) {
+            lookingForCimXmlHeader = false;
+            destination.setCurrentContext(CIMXMLDocumentContext.body);
+        }
     }
 
     // ---- Property elements
@@ -1391,18 +1410,46 @@ public class ParserCIMXML_StAX_SR {
 
     // ---- Parser output
 
-    private void emitInitialBaseAndNamespaces() {
-        String xmlBase = attribute(xmlQNameBase);
-        if ( xmlBase != null )
-            emitBase(xmlBase);
+    private void emitInitialBaseAndNamespacesDetermineCIMVersionAndSetBaseIfNeeded() {
+
+        StreamCIMXML.CIMXMLVersion versionOfCIMXML = StreamCIMXML.CIMXMLVersion.NO_CIM;
         int numNS = xmlSource.getNamespaceCount();
         for ( int i = 0 ; i < numNS ; i++ ) {
             final String prefixURI = xmlSource.getNamespaceURI(i);
             String prefix = xmlSource.getNamespacePrefix(i);
-            if ( prefix == null )
+            if ( prefix == null ) {
                 prefix = "";
+            } else if("cim".equals(prefix)) {
+                // Determine CIM version.
+                versionOfCIMXML = switch(prefixURI) {
+                    case "http://iec.ch/TC57/2013/CIM-schema-cim16#" -> StreamCIMXML.CIMXMLVersion.CIM_16;
+                    case "http://iec.ch/TC57/CIM100#" -> StreamCIMXML.CIMXMLVersion.CIM_17;
+                    case "https://cim.ucaiug.io/ns#" -> StreamCIMXML.CIMXMLVersion.CIM_18;
+                    default -> {
+                        RDFXMLparseWarning("Unrecognized CIM namespace: " + prefixURI, location());
+                        yield StreamCIMXML.CIMXMLVersion.NO_CIM;
+                    }
+                };
+                if (ReaderCIMXML_StAX_SR.TRACE) {
+                    trace.printf("CIM version of CIMXML: %s\n", versionOfCIMXML);
+                }
+            }
             emitPrefix(prefix, prefixURI);
         }
+
+        String xmlBase = attribute(xmlQNameBase);
+        if(versionOfCIMXML != StreamCIMXML.CIMXMLVersion.NO_CIM) {
+            isCIMXML = true;
+            destination.setVersionOfCIMXML(versionOfCIMXML);
+            if (xmlBase == null) {
+                xmlBase = xmlBaseForCIMXML;
+                currentBase = IRIx.create(xmlBase);
+                if (ReaderCIMXML_StAX_SR.TRACE)
+                    trace.printf("+ BASE (default for CIMXML) <%s>\n", xmlBase);
+            }
+        }
+        if ( xmlBase != null )
+            emitBase(xmlBase);
     }
 
     interface Emitter { void emit(Node subject, Node property, Node object, Location location); }

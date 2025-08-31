@@ -49,7 +49,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example02.rdf">example02.rdf</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample02() throws Exception {
+    public void w3cRdfSyntaxGrammarExample02() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -79,7 +79,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example03.rdf">example03.rdf</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample03() throws Exception {
+    public void w3cRdfSyntaxGrammarExample03() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -121,7 +121,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example04.rdf">example04.rdf</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample04() throws Exception {
+    public void w3cRdfSyntaxGrammarExample04() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -153,7 +153,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example05.rdf">example05.rdf</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample05() throws Exception {
+    public void w3cRdfSyntaxGrammarExample05() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -182,7 +182,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example06.rdf">example06.rdf</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample06() throws Exception {
+    public void w3cRdfSyntaxGrammarExample06() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -211,7 +211,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example07.nt">example07.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample07() throws Exception {
+    public void w3cRdfSyntaxGrammarExample07() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -244,7 +244,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example08.nt">example08.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample08() throws Exception {
+    public void w3cRdfSyntaxGrammarExample08() throws Exception {
         final var rdfxml = """
             <?xml version="1.0" encoding="utf-8"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -281,7 +281,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example09.nt">example09.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample09() throws Exception {
+    public void w3cRdfSyntaxGrammarExample09() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -309,7 +309,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example10.nt">example10.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample10() throws Exception {
+    public void w3cRdfSyntaxGrammarExample10() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -333,7 +333,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example11.nt">example11.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample11() throws Exception {
+    public void w3cRdfSyntaxGrammarExample11() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -367,7 +367,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example12.nt">example12.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample12() throws Exception {
+    public void w3cRdfSyntaxGrammarExample12() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -399,7 +399,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example13.nt">example13.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample13() throws Exception {
+    public void w3cRdfSyntaxGrammarExample13() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -428,7 +428,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example14.nt">example14.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample14() throws Exception {
+    public void w3cRdfSyntaxGrammarExample14() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -455,7 +455,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example15.nt">example15.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample15() throws Exception {
+    public void w3cRdfSyntaxGrammarExample15() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -481,7 +481,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example16.nt">example16.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample16() throws Exception {
+    public void w3cRdfSyntaxGrammarExample16() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -506,7 +506,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example17.nt">example17.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample17() throws Exception {
+    public void w3cRdfSyntaxGrammarExample17() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
@@ -534,7 +534,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example18.nt">example18.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample18() throws Exception {
+    public void w3cRdfSyntaxGrammarExample18() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
@@ -562,7 +562,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example19.nt">example19.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample19() throws Exception {
+    public void w3cRdfSyntaxGrammarExample19() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -596,7 +596,7 @@ public class TestParserRDFXMLConformity {
      * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example20.nt">example20.nt</a>
      */
     @Test
-    public void testW3cRdfSyntaxGrammarExample20() throws Exception {
+    public void w3cRdfSyntaxGrammarExample20() throws Exception {
         final var rdfxml = """
             <?xml version="1.0"?>
             <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -633,21 +633,6 @@ public class TestParserRDFXMLConformity {
         // check graph sizes
         assertEquals("Graphs are not equal: different sizes.",
                 expected.size(), actual.size());
-    }
-
-    public void assertPrefixMappingEquals(PrefixMapping expected, PrefixMapping actual) {
-
-        // check namespace mappings size
-        assertEquals("PrefixMappings are not equal: different number of namespaces.",
-                expected.numPrefixes(), actual.numPrefixes());
-
-        // check that all namespaces in expected graph are in actual graph
-        expected.getNsPrefixMap().forEach((prefix, uri) -> {
-                assertTrue("PrefixMappings are not equal: missing namespace " + prefix + " -> " + uri,
-                        actual.getNsPrefixMap().containsKey(prefix));
-                assertEquals("PrefixMappings are not equal: different URI for namespace " + prefix,
-                        uri, actual.getNsPrefixMap().get(prefix));
-            });
     }
 
     public void assertPrefixMappingEquals(PrefixMapping expected, PrefixMap actual) {
@@ -692,7 +677,7 @@ public class TestParserRDFXMLConformity {
                 .source(new StringReader(rdfxml))
                 .lang(org.apache.jena.riot.Lang.RDFXML)
                 .checking(false)
-                .parse(new StreamRDFGraph(expectedGraph));
+                .parse(expectedGraph);
         stopWatch.stop();
 
         // print number of triples parsed and the time taken
@@ -708,10 +693,9 @@ public class TestParserRDFXMLConformity {
             stopWatch.start();
             RDFParser.create()
                     .source(new StringReader(nTriples))
-                    .base("urn:uuid")
                     .lang(org.apache.jena.riot.Lang.NTRIPLES)
                     .checking(false)
-                    .parse(new StreamRDFGraph(nTriplesGraph));
+                    .parse(nTriplesGraph);
             stopWatch.stop();
 
             // print number of triples parsed and the time taken
@@ -721,63 +705,5 @@ public class TestParserRDFXMLConformity {
             assertGraphEquals(expectedGraph, nTriplesGraph);
         }
         return tripleCount;
-    }
-
-    public class StreamRDFGraph implements StreamCIMXML {
-        private final Graph graph;
-
-        public StreamRDFGraph(Graph graph) {
-            this.graph = graph;
-        }
-
-        @Override
-        public void start() {
-
-        }
-
-        @Override
-        public void triple(Triple triple) {
-            this.graph.add(triple);
-        }
-
-        @Override
-        public void quad(Quad quad) {
-            throw new UnsupportedOperationException("Not supported.");
-        }
-
-        @Override
-        public void base(String base) {
-            this.graph.getPrefixMapping().setNsPrefix(XMLConstants.DEFAULT_NS_PREFIX, base);
-        }
-
-        @Override
-        public void prefix(String prefix, String iri) {
-            this.graph.getPrefixMapping().setNsPrefix(prefix, iri);
-        }
-
-        @Override
-        public void finish() {
-
-        }
-
-        @Override
-        public void setVersionOfIEC61970_552(String versionOfCIMXML) {
-
-        }
-
-        @Override
-        public String getVersionOfIEC61970_552() {
-            return null;
-        }
-
-        @Override
-        public CIMXMLVersion getVersionOfCIMXML() {
-            return null;
-        }
-
-        @Override
-        public CIMXMLDocumentContext getCurrentContext() {
-            return null;
-        }
     }
 }
