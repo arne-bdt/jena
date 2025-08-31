@@ -21,6 +21,31 @@ package org.apache.jena.riot.lang.cimxml;
 import org.apache.jena.riot.system.StreamRDF;
 
 public interface StreamCIMXML extends StreamRDF {
-    default void setVersionOfCIMXML(String versionOfCIMXML) {};
+
+    enum CIMXMLVersion {
+        NO_CIM, CIM_16, CIM_17, CIM_18
+    }
+
+    /**
+     * Sets the preprocessing instruction version of IEC 61970-552
+     * @param versionOfCIMXML the version string as found in the CIMXML file
+     */
+    void setVersionOfIEC61970_552(String versionOfCIMXML);
+
+
+    /**
+     * Gets the preprocessing instruction version of IEC 61970-552
+     * @return the version string as found in the CIMXML file
+     */
+    String getVersionOfIEC61970_552();
+
+    /**
+     * Gets the CIMXMLVersion enum value for the given version string
+     * The version is determined by the namespace URI for the prefix "cim",
+     * when the prefix is set using {@link #prefix(String, String)}.
+     * @return the CIMXMLVersion enum value
+     */
+    CIMXMLVersion getVersionOfCIMXML();
+
     CIMXMLDocumentContext getCurrentContext();
 }

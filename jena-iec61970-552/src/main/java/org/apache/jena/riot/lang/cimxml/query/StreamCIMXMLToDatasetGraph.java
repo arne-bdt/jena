@@ -35,9 +35,10 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
     public final ErrorHandler errorHandler;
     private final LinkedCIMDatasetGraph linkedCIMDatasetGraph;
-    private String versionOfCIMXML = null;
+    private String versionOfIEC61970_552 = null;
     private Graph currentGraph;
     private CIMXMLDocumentContext currentContext;
+    private CIMXMLVersion versionOfCIMXML = CIMXMLVersion.NO_CIM;
 
     public StreamCIMXMLToDatasetGraph() {
         this(ErrorHandlerFactory.errorHandlerStd);
@@ -51,7 +52,13 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
         linkedCIMDatasetGraph = new LinkedCIMDatasetGraph(currentGraph);
     }
 
-    public String getVersionOfCIMXML() {
+    @Override
+    public String getVersionOfIEC61970_552() {
+        return versionOfIEC61970_552;
+    }
+
+    @Override
+    public CIMXMLVersion getVersionOfCIMXML() {
         return versionOfCIMXML;
     }
 
@@ -94,6 +101,18 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
     @Override
     public void prefix(String prefix, String iri) {
+        if("cim".equals(prefix)) {
+            // Adjust the prefix for the CIM version
+            versionOfCIMXML = switch(iri) {
+                case "http://iec.ch/TC57/2013/CIM-schema-cim16#" -> CIMXMLVersion.CIM_16;
+                case "http://iec.ch/TC57/CIM100#" -> CIMXMLVersion.CIM_17;
+                case "https://cim.ucaiug.io/ns#" -> CIMXMLVersion.CIM_18;
+                default -> {
+                    errorHandler.warning("Unrecognized CIM namespace: " + iri, -1, -1);
+                    yield CIMXMLVersion.NO_CIM;
+                }
+            };
+        }
         linkedCIMDatasetGraph.prefixes.add(prefix, iri);
     }
 
@@ -108,8 +127,8 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
     }
 
     @Override
-    public void setVersionOfCIMXML(String versionOfCIMXML) {
-        this.versionOfCIMXML = versionOfCIMXML;
+    public void setVersionOfIEC61970_552(String versionOfIEC61970_552) {
+        this.versionOfIEC61970_552 = versionOfIEC61970_552;
     }
 
     @Override

@@ -36,13 +36,11 @@ public class TestParserCIMXMLConformity {
      * And that the version is correctly parsed.
      */
     @Test
-    public void testParseCIMXMLVersion() throws Exception {
+    public void testParseIEC61970_552() throws Exception {
         final var rdfxml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <?iec61970-552 version="2.0"?>
-            <rdf:RDF
-            xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-            xmlns:cim="http://iec.ch/TC57/2004/CIM-schema-cim10#">
+            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
             </rdf:RDF>
             """;
 
@@ -54,19 +52,17 @@ public class TestParserCIMXMLConformity {
 
         parser.read(new StringReader(rdfxml), streamRDF);
 
-        assertEquals("version=\"2.0\"", streamRDF.getVersionOfCIMXML());
+        assertEquals("version=\"2.0\"", streamRDF.getVersionOfIEC61970_552());
     }
 
     /**
      * Test that the parser can parse a CIM XML document without a version declaration.
      */
     @Test
-    public void testParseCIMXMLWithoutVersion() throws Exception {
+    public void testParseWithoutIEC61970_552Version() throws Exception {
         final var rdfxml = """
             <?xml version="1.0" encoding="UTF-8"?>
-            <rdf:RDF
-            xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-            xmlns:cim="http://iec.ch/TC57/2004/CIM-schema-cim10#">
+            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
             </rdf:RDF>
             """;
 
@@ -78,6 +74,48 @@ public class TestParserCIMXMLConformity {
 
         parser.read(new StringReader(rdfxml), streamRDF);
 
-        assertNull(streamRDF.getVersionOfCIMXML());
+        assertNull(streamRDF.getVersionOfIEC61970_552());
+    }
+
+    @Test
+    public void testParseCIMVersion17() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF 
+                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                xmlns:cim="http://iec.ch/TC57/CIM100#">
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
+
+        parser.read(new StringReader(rdfxml), streamRDF);
+
+        assertEquals(StreamCIMXML.CIMXMLVersion.CIM_17, streamRDF.getVersionOfCIMXML());
+    }
+
+    @Test
+    public void testParseCIMVersion18() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF
+                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                xmlns:cim="https://cim.ucaiug.io/ns#">
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
+
+        parser.read(new StringReader(rdfxml), streamRDF);
+
+        assertEquals(StreamCIMXML.CIMXMLVersion.CIM_18, streamRDF.getVersionOfCIMXML());
     }
 }

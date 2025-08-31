@@ -761,6 +761,21 @@ public class TestParserRDFXMLConformity {
         }
 
         @Override
+        public void setVersionOfIEC61970_552(String versionOfCIMXML) {
+
+        }
+
+        @Override
+        public String getVersionOfIEC61970_552() {
+            return null;
+        }
+
+        @Override
+        public CIMXMLVersion getVersionOfCIMXML() {
+            return null;
+        }
+
+        @Override
         public CIMXMLDocumentContext getCurrentContext() {
             return null;
         }

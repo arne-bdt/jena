@@ -31,7 +31,6 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.irix.IRIException;
 import org.apache.jena.irix.IRIx;
 import org.apache.jena.riot.RiotException;
-import org.apache.jena.riot.lang.cimxml.graph.ModelHeader;
 import org.apache.jena.riot.lang.rdfxml.RDFXMLParseException;
 import org.apache.jena.riot.system.ErrorHandler;
 import org.apache.jena.riot.system.FactoryRDF;
@@ -1291,7 +1290,7 @@ public class ParserCIMXML_StAX_SR {
                 if ( lookingAt(ev, PROCESSING_INSTRUCTION) ) {
                     if(PROCESSING_INSTRUCTION_IEC61970_552.equals(xmlSource.getPITarget())) {
                         this.VersionOfCIMXML = xmlSource.getPIData();
-                        destination.setVersionOfCIMXML(VersionOfCIMXML);
+                        destination.setVersionOfIEC61970_552(VersionOfCIMXML);
                     } else {
                         RDFXMLparseWarning("XML Processing instruction - ignored");
                     }
