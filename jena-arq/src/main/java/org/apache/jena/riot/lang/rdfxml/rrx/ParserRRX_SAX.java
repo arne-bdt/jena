@@ -289,10 +289,7 @@ class ParserRRX_SAX
     private enum ObjectParseType { Literal, Collection, Resource,
         // This is a extra parseType to indicate the "no ParseType" case
         // which is a plain lexical or nested resource.
-        Plain,
-        // CIM (Common Information Model) - see github issue 2473
-        // Here it is fully supported for CIMXML.
-        Statements}
+        Plain }
 
     // ---- Parser output
     interface Emitter { void emit(Node subject, Node property, Node object, Position position); }
@@ -879,9 +876,6 @@ class ParserRRX_SAX
                 parserMode(ParserMode.ObjectParseTypeCollection);
                 collectionNode = new NodeHolder();
             }
-            case Statements -> {
-                // TODO: Determine context switch
-            }
         }
     }
 
@@ -1165,6 +1159,11 @@ class ParserRRX_SAX
             switch(parseTypeName) {
                 case "literal" -> {
                     RDFXMLparseWarning("Encountered rdf:parseType='literal'. Treated as rdf:parseType='Literal'", position);
+                    parseTypeName = "Literal";
+                }
+                // CIM (Common Information Model) - see github issue 2473
+                case "Statements" -> {
+                    RDFXMLparseWarning("Encountered rdf:parseType='Statements'. Treated as rdf:parseType='Literal'", position);
                     parseTypeName = "Literal";
                 }
             }

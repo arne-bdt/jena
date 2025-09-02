@@ -19,6 +19,7 @@
 package org.apache.jena.riot.lang.cimxml;
 
 import org.apache.jena.atlas.lib.Lib;
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.riot.lang.cimxml.query.StreamCIMXMLToDatasetGraph;
@@ -121,7 +122,7 @@ public class TestParserCIMXMLConformity {
     }
 
     @Test
-    public void parseFullModelAndContentInDifferentGraphs() {
+    public void parseFullModelHeaderAndContentInDifferentGraphs() {
         final var rdfxml = """
             <?xml version="1.0" encoding="utf-8"?>
             <rdf:RDF xmlns:cim="http://iec.ch/TC57/CIM100#" xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:eu="http://iec.ch/TC57/CIM100-European#">
@@ -160,6 +161,133 @@ public class TestParserCIMXMLConformity {
                 NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
                 NodeFactory.createURI("http://iec.ch/TC57/CIM100#IdentifiedObject.name"),
                 NodeFactory.createLiteralString("My Custom Equipment")
+        ));
+    }
+
+    @Test
+    public void parseDifferenceModelHeaderAndContentInDifferentGraphs() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <rdf:RDF
+                xmlns:dm="http://iec.ch/TC57/61970-552/DifferenceModel/1#"
+                xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#"
+                xmlns:cim="http://iec.ch/TC57/CIM100#"
+                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+             <dm:DifferenceModel rdf:about="urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6">
+                <md:Model.profile>http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0</md:Model.profile>
+                <dm:preconditions rdf:parseType="Statements">
+
+                    <!-- expect the following element to be present in the model
+                         before and after applying the differences -->
+                    <rdf:Description rdf:about="#_135c601e-bad4-4872-ba8f-b15baf91bd2f">
+                        <cim:IdentifiedObject.name>Name of my element</cim:IdentifiedObject.name>
+                    </rdf:Description>
+
+                </dm:preconditions>
+
+                <dm:forwardDifferences rdf:parseType="Statements">
+
+                    <!-- add the following property to the model (delete + add = update) -->
+                    <rdf:Description rdf:about="#_135c601e-bad4-4872-ba8f-b15baf91bd2f">
+                        <cim:MyElement.MyProperty>B</cim:MyElement.MyProperty>
+                    </rdf:Description>
+
+                    <!-- add the following new resource to the model -->
+                    <cim:MyElement rdf:about="#_2d1e4820-8858-49de-b441-5a03e7c40035">
+                        <cim:IdentifiedObject.name>Name of new element to add</cim:IdentifiedObject.name>
+                        <cim:MyElement.MyProperty>property of new element</cim:MyElement.MyProperty>
+                    </cim:MyElement>
+
+                </dm:forwardDifferences>
+
+                <dm:reverseDifferences rdf:parseType="Statements">
+
+                    <!-- remove the following property from the model (delete + add = update) -->
+                    <rdf:Description rdf:about="#_135c601e-bad4-4872-ba8f-b15baf91bd2f">
+                        <cim:MyElement.MyProperty>A</cim:MyElement.MyProperty>
+                    </rdf:Description>
+
+                    <!-- remove the following resource from the model -->
+                    <cim:MyElement rdf:about="#_c9fe6664-fcf0-44e6-9d20-656538b68d1c">
+                        <cim:IdentifiedObject.name>Name of new element to remove entirely</cim:IdentifiedObject.name>
+                        <cim:MyElement.MyProperty>property of new element to remove</cim:MyElement.MyProperty>
+                    </cim:MyElement>
+
+                </dm:reverseDifferences>
+
+             </dm:DifferenceModel>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
+
+        parser.read(new StringReader(rdfxml), streamRDF);
+
+        assertTrue(streamRDF.getCIMDatasetGraph().isDifferenceModel());
+        assertNotNull(streamRDF.getCIMDatasetGraph().getModelHeader());
+        var modelHeader = streamRDF.getCIMDatasetGraph().getModelHeader();
+
+        assertEquals("urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6", modelHeader.getModel().toString());
+
+        var preconditions = streamRDF.getCIMDatasetGraph().getPreconditions();
+        assertNotNull(preconditions);
+        assertEquals(1, preconditions.size());
+        assertTrue(preconditions.contains(
+                NodeFactory.createURI("urn:uuid:135c601e-bad4-4872-ba8f-b15baf91bd2f"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#IdentifiedObject.name"),
+                NodeFactory.createLiteralString("Name of my element")
+        ));
+
+        var forwardDifferences = streamRDF.getCIMDatasetGraph().getForwardDifferences();
+        assertNotNull(forwardDifferences);
+        assertEquals(4, forwardDifferences.size());
+        assertTrue(forwardDifferences.contains(
+                NodeFactory.createURI("urn:uuid:135c601e-bad4-4872-ba8f-b15baf91bd2f"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyElement.MyProperty"),
+                NodeFactory.createLiteralString("B")
+        ));
+        assertTrue(forwardDifferences.contains(
+                NodeFactory.createURI("urn:uuid:2d1e4820-8858-49de-b441-5a03e7c40035"),
+                NodeFactory.createURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyElement")
+        ));
+        assertTrue(forwardDifferences.contains(
+                NodeFactory.createURI("urn:uuid:2d1e4820-8858-49de-b441-5a03e7c40035"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#IdentifiedObject.name"),
+                NodeFactory.createLiteralString("Name of new element to add")
+        ));
+        assertTrue(forwardDifferences.contains(
+                NodeFactory.createURI("urn:uuid:2d1e4820-8858-49de-b441-5a03e7c40035"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyElement.MyProperty"),
+                NodeFactory.createLiteralString("property of new element")
+        ));
+
+        var reverseDifferences = streamRDF.getCIMDatasetGraph().getReverseDifferences();
+        assertNotNull(reverseDifferences);
+        assertEquals(4, reverseDifferences.size());
+        assertTrue(reverseDifferences.contains(
+                NodeFactory.createURI("urn:uuid:135c601e-bad4-4872-ba8f-b15baf91bd2f"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyElement.MyProperty"),
+                NodeFactory.createLiteralString("A")
+        ));
+        assertTrue(reverseDifferences.contains(
+                NodeFactory.createURI("urn:uuid:c9fe6664-fcf0-44e6-9d20-656538b68d1c"),
+                NodeFactory.createURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyElement")
+        ));
+        assertTrue(reverseDifferences.contains(
+                NodeFactory.createURI("urn:uuid:c9fe6664-fcf0-44e6-9d20-656538b68d1c"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#IdentifiedObject.name"),
+                NodeFactory.createLiteralString("Name of new element to remove entirely")
+        ));
+        assertTrue(reverseDifferences.contains(
+                NodeFactory.createURI("urn:uuid:c9fe6664-fcf0-44e6-9d20-656538b68d1c"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyElement.MyProperty"),
+                NodeFactory.createLiteralString("property of new element to remove")
         ));
     }
 

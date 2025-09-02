@@ -41,7 +41,10 @@ public class TestModelHeader {
     public void parseFullModelHeader() throws Exception {
         final var rdfxml = """
             <?xml version="1.0" encoding="utf-8"?>
-            <rdf:RDF xmlns:cim="http://iec.ch/TC57/CIM100#" xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:eu="http://iec.ch/TC57/CIM100-European#">
+            <rdf:RDF
+                xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#"
+                xmlns:cim="http://iec.ch/TC57/CIM100#"
+                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
              <md:FullModel rdf:about="urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6">
                <md:Model.version>003</md:Model.version>
                <md:Model.Supersedes rdf:resource="urn:uuid:f086bea4-3428-4e49-8214-752fdeb1e2e4" />
@@ -79,6 +82,60 @@ public class TestModelHeader {
                 .contains("http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0"));
         assertTrue(modelHeader.getProfiles().map(Node::getLiteralLexicalForm).toList()
                 .contains("http://iec.ch/TC57/ns/CIM/MyCIMProfile/3.0"));
+
+    }
+
+    /**
+     * Test that the parser can parse a CIM XML document with a version declaration.
+     * And that the version is correctly parsed.
+     */
+    @Test
+    public void parseDifferenceModelHeader() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <rdf:RDF
+                xmlns:dm="http://iec.ch/TC57/61970-552/DifferenceModel/1#"
+                xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#"
+                xmlns:cim="http://iec.ch/TC57/CIM100#"
+                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+             <dm:DifferenceModel rdf:about="urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6">
+               <md:Model.version>003</md:Model.version>
+               <md:Model.Supersedes rdf:resource="urn:uuid:f086bea4-3428-4e49-8214-752fdeb1e2e4" />
+               <md:Model.DependentOn rdf:resource="urn:uuid:fa274c8c-a346-4080-ba5a-8a4eaa9083f9" />
+               <md:Model.profile>http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0</md:Model.profile>
+               <md:Model.profile>http://iec.ch/TC57/ns/CIM/MyCIMProfile/3.0</md:Model.profile>
+             </dm:DifferenceModel>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
+
+        parser.read(new StringReader(rdfxml), streamRDF);
+
+        assertTrue(streamRDF.getCIMDatasetGraph().isDifferenceModel());
+        assertNotNull(streamRDF.getCIMDatasetGraph().getModelHeader());
+        var modelHeader = streamRDF.getCIMDatasetGraph().getModelHeader();
+
+        assertEquals("urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6", modelHeader.getModel().toString());
+
+        assertEquals(1, modelHeader.getSupersedes().toList().size());
+        assertEquals("urn:uuid:f086bea4-3428-4e49-8214-752fdeb1e2e4",
+                modelHeader.getSupersedes().findAny().orElseThrow().getURI());
+
+        assertEquals(1, modelHeader.getDependentOn().toList().size());
+        assertEquals("urn:uuid:fa274c8c-a346-4080-ba5a-8a4eaa9083f9",
+                modelHeader.getDependentOn().findAny().orElseThrow().getURI());
+
+        assertEquals(2, modelHeader.getProfiles().toList().size());
+        assertTrue(modelHeader.getProfiles().map(Node::getLiteralLexicalForm).toList()
+                .contains("http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0"));
+        assertTrue(modelHeader.getProfiles().map(Node::getLiteralLexicalForm).toList()
+                .contains("http://iec.ch/TC57/ns/CIM/MyCIMProfile/3.0"));
+
 
     }
 

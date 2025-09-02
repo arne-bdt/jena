@@ -72,8 +72,6 @@ public class ParserCIMXML_StAX_SR {
     // Constants
     private static final String rdfNS = RDF.uri;
     private static final String xmlNS = "http://www.w3.org/XML/1998/namespace";
-    private static final String mdNS = CIMHeaderVocabulary.NS_MD;
-    private static final String dmND = CIMHeaderVocabulary.NS_DM;
     private static final String xmlBaseForCIMXML = "urn:uuid:";
 
     private static final Pattern CIM_UUID_PATTERN = Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
@@ -86,7 +84,6 @@ public class ParserCIMXML_StAX_SR {
     private final ErrorHandler errorHandler;
     private final StreamCIMXML destination;
     private final static String PROCESSING_INSTRUCTION_IEC61970_552 = "iec61970-552";
-    private String VersionOfCIMXML = null;
 
     private void updateCurrentIriCacheForCurrentBase() {
         if(currentBase != null) {
@@ -105,14 +102,11 @@ public class ParserCIMXML_StAX_SR {
     private boolean isDifferentFromCurrentBase(IRIx base) {
         if(currentBase != null) {
             return !currentBase.equals(base);
-        } else if(base == null) {
-            return false;
-        }
-        return true;
+        } else return base != null;
     }
 
     private record BaseLang(IRIx base, String lang, Cache<String, IRIx> iriCache) {}
-    private Deque<BaseLang> stack = new ArrayDeque<>();
+    private final Deque<BaseLang> stack = new ArrayDeque<>();
     // Just these operations:
 
     private void pushFrame(IRIx base, String lang) {
@@ -138,7 +132,7 @@ public class ParserCIMXML_StAX_SR {
     private enum QNameUsage {
         TypedNodeElement("typed node element"), PropertyElement("property element");
         final String msg;
-        private QNameUsage(String msg) { this.msg = msg; }
+        QNameUsage(String msg) { this.msg = msg; }
     }
 
     // ---- Error handlers
@@ -152,12 +146,15 @@ public class ParserCIMXML_StAX_SR {
     }
 
     private RiotException RDFXMLparseError(String message, Location location) {
-        if ( location != null )
-            errorHandler.error(message, location.getLineNumber(), location.getColumnNumber());
-        else
+        if ( location == null ) {
             errorHandler.error(message, -1, -1);
+            // The error handler normally throws an exception - for RDF/XML parsing it is required.
+            return new RiotException(fmtMessage(message, -1, -1)) ;
+        }
+
+        errorHandler.error(message, location.getLineNumber(), location.getColumnNumber());
         // The error handler normally throws an exception - for RDF/XML parsing it is required.
-        return new RiotException(fmtMessage(message, location.getLineNumber(), location.getColumnNumber())) ;
+        return new RiotException(fmtMessage(message, location.getLineNumber(), location.getColumnNumber()));
     }
 
     private void RDFXMLparseWarning(String message, Location location) {
@@ -171,9 +168,9 @@ public class ParserCIMXML_StAX_SR {
     // We limit the number of local fragment IDs tracked because map only grows.
     // A base URI may be re-introduced so this isn't nested scoping.
     private int countTrackingIDs = 0;
-    private Map<IRIx, Map<String,  Location>> trackUsedIDs = new HashMap<>();
+    private final Map<IRIx, Map<String,  Location>> trackUsedIDs = new HashMap<>();
     private Location previousUseOfID(String idStr, Location location) {
-        Map<String, Location> scope = trackUsedIDs.computeIfAbsent(currentBase, k->new HashMap<>());
+        final Map<String, Location> scope = trackUsedIDs.computeIfAbsent(currentBase, k->new HashMap<>());
         Location prev = scope.get(idStr);
         if ( prev != null )
             return prev;
@@ -186,9 +183,9 @@ public class ParserCIMXML_StAX_SR {
 
     // Collecting characters does not need to be a stack because there are
     // no nested objects while gathering characters for lexical or XMLLiterals.
-    private StringBuilder accCharacters = new StringBuilder(100);
+    private final StringBuilder accCharacters = new StringBuilder(100);
 
-    private IRIx currentBase = null;
+    private IRIx currentBase;
     private String currentLang = null;
 
     /** Integer holder for rdf:li */
@@ -249,7 +246,7 @@ public class ParserCIMXML_StAX_SR {
     private static final String parseTypeCollection    = "Collection";
     private static final String parseTypeLiteral       = "Literal";
     private static final String parseTypeLiteralAlt    = "literal";
-    private static final String parseTypeLiteralStmts  = "Statements";    // CIM Github issue 2473
+    private static final String parseTypeLiteralStmts  = "Statements";    // CIM GitHub issue 2473
     private static final String parseTypeResource      = "Resource";
     // This is a dummy parseType for when there is no given rdf:parseType.
     private static final String parseTypePlain = "$$";
@@ -257,20 +254,20 @@ public class ParserCIMXML_StAX_SR {
     // Grammar productions.
     // 6.2.2 Production coreSyntaxTerms
     // rdf:RDF | rdf:ID | rdf:about | rdf:parseType | rdf:resource | rdf:nodeID | rdf:datatype
-    private static Set<QName> $coreSyntaxTerms =
+    private static final Set<QName> $coreSyntaxTerms =
             Set.of(rdfRDF, rdfID, rdfAbout, rdfParseType, rdfResource, rdfNodeID, rdfDatatype);
 
     // 6.2.3 Production syntaxTerms
     // coreSyntaxTerms | rdf:Description | rdf:li
-    private static Set<QName> $syntaxTerms =
+    private static final Set<QName> $syntaxTerms =
             Set.of(rdfRDF, rdfID, rdfAbout, rdfParseType, rdfResource, rdfNodeID, rdfDatatype,
                    rdfDescription, rdfContainerItem);
 
     // 6.2.4 Production oldTerms
     // rdf:aboutEach | rdf:aboutEachPrefix | rdf:bagID
-    private static Set<QName> $oldTerms = Set.of(rdfAboutEach, rdfAboutEachPrefix, rdfBagID);
+    private static final Set<QName> $oldTerms = Set.of(rdfAboutEach, rdfAboutEachPrefix, rdfBagID);
 
-    private static Set<String> $allowedUnqualified =
+    private static final Set<String> $allowedUnqualified =
             Set.of(rdfAbout.getLocalPart(), rdfID.getLocalPart(), rdfResource.getLocalPart(),
                    rdfParseType.getLocalPart(), rdfType.getLocalPart());
 
@@ -329,7 +326,7 @@ public class ParserCIMXML_StAX_SR {
     }
 
     /** The attributes that guide the RDF/XML parser. */
-    private static Set<QName> $rdfSyntaxAttributes =
+    private static final Set<QName> $rdfSyntaxAttributes =
             Set.of(rdfRDF, rdfAbout, rdfNodeID, rdfID, rdfParseType, rdfDatatype, rdfResource);
 
     private static boolean isSyntaxAttribute(QName qName) {
@@ -338,7 +335,7 @@ public class ParserCIMXML_StAX_SR {
 
     // xml:space is a now-deprecated XML attribute that related to handing
     // whitespace characters inside elements.
-    private static Set<QName> $xmlReservedTerms = Set.of(xmlQNameBase, xmlQNameLang, xmlQNameSpace);
+    private static final Set<QName> $xmlReservedTerms = Set.of(xmlQNameBase, xmlQNameLang, xmlQNameSpace);
 
     /** Recognized XML namespace Qname */
     private static boolean isXMLQName(QName qName) {
@@ -355,7 +352,7 @@ public class ParserCIMXML_StAX_SR {
     // doc or production nodeElement.
     // start:
     //  6.2.9 Production RDF
-    public void parse() {
+    void parse() {
 
         int eventType = nextEventAny();
 
@@ -441,7 +438,7 @@ public class ParserCIMXML_StAX_SR {
     }
 
     /**
-     * Process one node element. The subject may have been been determined;
+     * Process one node element. The subject may have been determined;
      * this is needed for nested node elements.
      */
     private void nodeElement(Node subject) {
@@ -503,7 +500,7 @@ public class ParserCIMXML_StAX_SR {
 
         // Finished with the node start tag.
         int event = nextEventTag();
-        event = propertyElementlLoop(subject, event);
+        event = propertyElementLoop(subject, event);
 
         if ( ! lookingAt(event, END_ELEMENT) )
             throw RDFXMLparseError("Expected end element for "+qName());
@@ -516,11 +513,9 @@ public class ParserCIMXML_StAX_SR {
 
     // ---- Property elements
 
-    private int propertyElementlLoop(Node subject, int event) {
+    private int propertyElementLoop(Node subject, int event) {
         Counter listElementCounter = new Counter();
-        while (true) {
-            if ( ! lookingAt(event, START_ELEMENT) )
-                break;
+        while (lookingAt(event, START_ELEMENT)) {
             propertyElement(subject, listElementCounter, location());
             event = nextEventTag();
         }
@@ -554,12 +549,12 @@ public class ParserCIMXML_StAX_SR {
             trace.println("<< propertyElement: "+str(location())+" "+str(qName));
     }
 
-    private int propertyElementProcess(Node subject, QName qName,
+    private void propertyElementProcess(Node subject, QName qName,
                                        Counter listElementCounter, Location location) {
         Node property;
 
         if ( qNameMatches(rdfContainerItem, qName) )
-            property = iriDirect(rdfNS+"_"+Integer.toString(listElementCounter.value++), location());
+            property = iriDirect(rdfNS+"_"+(listElementCounter.value++));
         else
             property = qNameToIRI(qName, QNameUsage.PropertyElement, location);
 
@@ -606,7 +601,7 @@ public class ParserCIMXML_StAX_SR {
             int event = nextEventAny();
             if ( ! lookingAt(event, END_ELEMENT) )
                 throw RDFXMLparseError("Expecting end element tag when using property attributes on a property element");
-            return event;
+            return;
         }
 
         if ( resourceObj != null ) {
@@ -615,7 +610,7 @@ public class ParserCIMXML_StAX_SR {
             int event = nextEventAny();
             if ( ! lookingAt(event, END_ELEMENT) )
                 throw RDFXMLparseError("Expecting end element tag when using rdf:resource or rdf:NodeId on a property.");
-            return event;
+            return;
         }
 
         String parseTypeName = parseType;
@@ -624,9 +619,12 @@ public class ParserCIMXML_StAX_SR {
                 RDFXMLparseWarning("Encountered rdf:parseType='literal'. Treated as rdf:parseType='Literal'", location());
                 parseTypeName = "Literal";
             }
+            // CIM (Common Information Model) - see GitHub issue 2473
             case parseTypeLiteralStmts -> {
-                RDFXMLparseWarning("Encountered rdf:parseType='Statements'. Treated as rdf:parseType='Literal'", location());
-                parseTypeName = "Literal";
+                if(!isCIMXML) {
+                    RDFXMLparseWarning("Encountered rdf:parseType='Statements'. Treated as rdf:parseType='Literal'", location());
+                    parseTypeName = "Literal";
+                }
             }
         }
         switch(parseTypeName) {
@@ -634,20 +632,38 @@ public class ParserCIMXML_StAX_SR {
                 // Implicit <rdf:Description><rdf:Description> i.e. fresh blank node
                 if ( ReaderCIMXML_StAX_SR.TRACE )
                     trace.println("rdfParseType=Resource");
-                int event = parseTypeResource(subject, property, emitter, location);
-                return event;
+                parseTypeResource(subject, property, emitter, location);
+                return;
             }
             case parseTypeLiteral -> {
                 if ( ReaderCIMXML_StAX_SR.TRACE )
                     trace.println("rdfParseType=Literal");
-                int event = parseTypeLiteral(subject, property, emitter, location);
-                return event;
+                parseTypeLiteral(subject, property, emitter, location);
+                return;
             }
             case parseTypeCollection -> {
                 if ( ReaderCIMXML_StAX_SR.TRACE )
                     trace.println("rdfParseType=Collection");
-                int event = parseTypeCollection(subject, property, emitter, location);
-                return event;
+                parseTypeCollection(subject, property, emitter, location);
+                return;
+            }
+            case parseTypeLiteralStmts -> {
+                // must be CIMXML, as checked above - if not, treated as Literal
+                if ( ReaderCIMXML_StAX_SR.TRACE )
+                    trace.println("rdfParseType=Statements");
+                if ( qNameMatches(qName, dmForwardDifferences) ) {
+                    destination.setCurrentContext(CIMXMLDocumentContext.forwardDifferences);
+                } else if ( qNameMatches(qName, dmReverseDifferences) ) {
+                    destination.setCurrentContext(CIMXMLDocumentContext.reverseDifferences);
+                } else if ( qNameMatches(qName, dmPreconditions) ) {
+                    destination.setCurrentContext(CIMXMLDocumentContext.preconditions);
+                } else {
+                    RDFXMLparseWarning("rdf:parseType='Statements' used on an element that is not a recognized CIMXML difference model container (forwardDifferences, reverseDifferences, preconditions). Treated as rdf:parseType='Literal'", location());
+                    parseTypeLiteral(subject, property, emitter, location);
+                }
+                int event = nextEventTag();
+                nodeElementLoop(event);
+                return;
             }
             case parseTypePlain -> {} // The code below.
             default ->
@@ -676,8 +692,8 @@ public class ParserCIMXML_StAX_SR {
                     String msg = nonWhitespaceMsg(accCharacters.toString());
                     throw RDFXMLparseError("Content before node element. '"+msg+"'");
                 }
-                event = processNestedNodeElement(event, subject, property, emitter);
-                return event;
+                processNestedNodeElement(subject, property, emitter);
+                return;
             }
             if ( lookingAt(event, END_ELEMENT) ) {
                 String lexicalForm = accCharacters.toString();
@@ -685,26 +701,24 @@ public class ParserCIMXML_StAX_SR {
                 Node obj;
                 // Characters - lexical form.
                 if ( datatype != null )
-                    obj = literalDatatype(lexicalForm, datatype, loc);
+                    obj = literalDatatype(lexicalForm, datatype);
                 else if ( currentLang() != null )
-                    obj = literal(lexicalForm, currentLang, loc);
+                    obj = literal(lexicalForm, currentLang);
                 else
-                    obj = literal(lexicalForm, loc);
+                    obj = literal(lexicalForm);
                 emitter.emit(subject, property, obj, loc);
-                return event;
+                return;
             }
             throw RDFXMLparseError("Unexpected element: "+strEventType(event));
 
         } else if ( lookingAt(event, START_ELEMENT) ) {
             // No content before start element
-            event = processNestedNodeElement(event, subject, property, emitter);
-            return event;
+            processNestedNodeElement(subject, property, emitter);
         } else if (lookingAt(event, END_ELEMENT) ) {
             emitter.emit(subject, property, NodeConst.emptyString, location);
         } else {
             throw RDFXMLparseError("Malformed property. "+strEventType(event));
         }
-        return event;
     }
 
     private Node processPropertyAttributes(Node resourceObj, QName qName, boolean isPropertyElement, Location location) {
@@ -720,7 +734,7 @@ public class ParserCIMXML_StAX_SR {
             }
         }
 
-        Node innerSubject = (resourceObj==null) ? blankNode(location) : resourceObj;
+        Node innerSubject = (resourceObj==null) ? blankNode() : resourceObj;
         outputPropertyAttributes(innerSubject, indexes, location);
         return innerSubject;
     }
@@ -750,7 +764,7 @@ public class ParserCIMXML_StAX_SR {
             }
             Node property = attributeToIRI(qName, location);
             String lexicalForm =  xmlSource.getAttributeValue(index);
-            Node object = literal(lexicalForm, currentLang, location);
+            Node object = literal(lexicalForm, currentLang);
             emit(subject, property, object, location);
         }
     }
@@ -784,8 +798,7 @@ public class ParserCIMXML_StAX_SR {
 
         if ( StringUtils.isBlank(qName.getNamespaceURI()) ) {
             String localName = qName.getLocalPart();
-            boolean valid = checkPropertyAttributeUnqualifiedTerm(localName, location);
-            return valid;
+            return checkPropertyAttributeUnqualifiedTerm(localName, location);
         }
         return true;
     }
@@ -815,40 +828,18 @@ public class ParserCIMXML_StAX_SR {
         return  ( parseTypeStr != null ) ? parseTypeStr : parseTypePlain;
     }
 
-    /**
-     * Accumulate text for a text element, given some characters already read.
-     * This method skips comments.
-     * This method returns up to the closing end element tag.
-     */
-    private String accumulateLexicalForm(int initialEvent, StringBuilder sBuff) {
-        String lexicalForm;
-        int eventType = initialEvent;
-        while(eventType >= 0 ) {
-            if ( lookingAt(eventType, END_ELEMENT) )
-                break;
-            if ( ! lookingAt(eventType, CHARACTERS) )
-                throw RDFXMLparseError("Unexpected element in text element: "+strEventType(eventType));
-            sBuff.append(xmlSource.getText());
-            eventType = nextEventAny();
-        }
-        lexicalForm = sBuff.toString();
-        return lexicalForm;
-    }
-
-    private int parseTypeResource(Node subject, Node property, Emitter emitter, Location location) {
-        Node innerSubject = blankNode(location);
+    private void parseTypeResource(Node subject, Node property, Emitter emitter, Location location) {
+        Node innerSubject = blankNode();
         emitter.emit(subject, property, innerSubject, location);
         // Move to first property
         int event = nextEventTag();
-        event = propertyElementlLoop(innerSubject, event);
-        return event;
+        propertyElementLoop(innerSubject, event);
     }
 
-    private int parseTypeLiteral(Node subject, Node property, Emitter emitter, Location location) {
+    private void parseTypeLiteral(Node subject, Node property, Emitter emitter, Location location) {
         String text = xmlLiteralAccumulateText();
-        Node object = literalDatatype(text, XMLLiteralType.rdfXMLLiteral, location);
+        Node object = literalDatatype(text, XMLLiteralType.rdfXMLLiteral);
         emitter.emit(subject, property, object, location);
-        return END_ELEMENT;
     }
 
     private static final String openStartTag = "<";
@@ -900,8 +891,6 @@ public class ParserCIMXML_StAX_SR {
                 decIndent();
                 depth--;
                 if ( depth < 0 ) {
-                    //stackNamespaces.clear();
-                    //namespaces = Map.of();
                     break;
                 }
                 namespaces = stackNamespaces.pop();
@@ -999,7 +988,7 @@ public class ParserCIMXML_StAX_SR {
         }
     }
 
-    /** Process one QName - insert a namespace if the prefix is not in scope as given by the amespace mapping. */
+    /** Process one QName - insert a namespace if the prefix is not in scope as given by the namespace mapping. */
     private void xmlLiteralNamespaceQName(Map<String, String> outputNS, Map<String, String> namespaces, NamespaceContext nsCxt, QName qName) {
         String prefix = qName.getPrefix();
         String namespaceURI = nsCxt.getNamespaceURI(prefix);
@@ -1007,8 +996,8 @@ public class ParserCIMXML_StAX_SR {
             // No default in scope.
         }
 
-        // Not seen this prefix or it was a different value.
-        if ( namespaceURI != "" &&      // this first condition is needed for woodstox and allto to work
+        // Not seen this prefix, or it was a different value.
+        if ( !"".equals(namespaceURI) &&      // this first condition is needed for woodstox and aalto to work
                 (! namespaces.containsKey(prefix) ||
                  ( namespaceURI != null && ! namespaces.get(prefix).equals(namespaceURI)) )) {
             // Define in current XML subtree.
@@ -1067,18 +1056,17 @@ public class ParserCIMXML_StAX_SR {
 
     // --- RDF Collections
 
-    private int parseTypeCollection(Node subject, Node property, Emitter emitter, Location location) {
+    private void parseTypeCollection(Node subject, Node property, Emitter emitter, Location location) {
         Node lastCell = null ;
-        int event = -1;
+        int event;
         while(true) {
             event = nextEventTag();
             if ( ! lookingAt(event, START_ELEMENT) )
                 break;
             location = location();
-            Node thisCell = blankNode(location);
+            Node thisCell = blankNode();
             if ( lastCell == null ) {
                 // First list item. Link the list in.
-                lastCell = thisCell;
                 emitter.emit(subject, property, thisCell, location);
             } else {
                 // Link to the previous element. No reification.
@@ -1097,16 +1085,13 @@ public class ParserCIMXML_StAX_SR {
             // It was an empty list
             emitter.emit(subject, property, NodeConst.nodeNil, location);
         }
-
-        return event;
     }
 
     private Node reifyStatement(Location location) {
         String reifyId = attribute(rdfID);
         if ( reifyId == null )
             return null;
-        Node reify = iriFromIDCimAware(reifyId, location);
-        return reify;
+        return iriFromIDCimAware(reifyId, location);
     }
 
     /** Return the lang in-scope. Return null for none. */
@@ -1116,7 +1101,7 @@ public class ParserCIMXML_StAX_SR {
         return currentLang;
     }
 
-    private int processNestedNodeElement(int event, Node subject, Node property, Emitter emitter) {
+    private void processNestedNodeElement(Node subject, Node property, Emitter emitter) {
         // Nested / RDF/XML striped syntax.
         boolean hasFrame = startElement();
         Node subjectInner = attributesToSubjectNode();
@@ -1134,13 +1119,12 @@ public class ParserCIMXML_StAX_SR {
             throw RDFXMLparseError("Expected an end element: got "+strEventType(eventType));
         // -- end
         endElement(hasFrame);
-        return event;
     }
 
     /** Subject for a node element */
     private Node attributesToSubjectNode() {
         // Subject
-        // The spec implies these happen in order (i.e later overrides earlier)
+        // The spec implies these happen in order (i.e. later overrides earlier)
         // but the test suite has negative test cases.
         // If there is an attribute a with a.URI == rdf:ID, then e.subject := uri(identifier := resolve(e, concat("#", a.string-value))).
         // If there is an attribute a with a.URI == rdf:nodeID, then e.subject := bnodeid(identifier:=a.string-value).
@@ -1152,10 +1136,10 @@ public class ParserCIMXML_StAX_SR {
         // Check NCName if blank node created
         String nodeId = attribute(rdfNodeID);
 
-        if ( nodeId != null && iriStr != null && nodeId != null )
+        if ( nodeId != null && idStr != null && iriStr != null )
             throw RDFXMLparseError("All of rdf:about, rdf:NodeId and rdf:ID found. Must be only one.");
 
-        if ( iriStr != null && idStr != null )
+        if ( idStr != null && iriStr != null )
             throw RDFXMLparseError("Both rdf:about and rdf:ID found. Must be only one.");
 
         if ( nodeId != null && iriStr != null )
@@ -1176,7 +1160,7 @@ public class ParserCIMXML_StAX_SR {
             return blankNode(nodeId, location);
 
         // None of the above. It's a fresh blank node.
-        return blankNode(location);
+        return blankNode();
     }
 
     // ---- Nodes
@@ -1185,7 +1169,7 @@ public class ParserCIMXML_StAX_SR {
         if ( StringUtils.isBlank(qName.getNamespaceURI()) )
             throw RDFXMLparseError("Unqualified "+usage.msg+" not allowed: <"+qName.getLocalPart()+">", location);
         String uriStr = strQNameToIRI(qName);
-        return iriDirect(uriStr, location);
+        return iriDirect(uriStr);
     }
 
     /** This is the RDF rule for creating an IRI from a QName. */
@@ -1204,7 +1188,7 @@ public class ParserCIMXML_StAX_SR {
                 throw RDFXMLparseError("Unqualified property attribute not allowed: '"+localName+"'", location);
         }
         String uriStr = namespaceURI+localName;
-        return iriDirect(uriStr, location);
+        return iriDirect(uriStr);
     }
 
     // ---- Reading XML
@@ -1262,7 +1246,7 @@ public class ParserCIMXML_StAX_SR {
      * Returns a start event, endEvent or null.
      */
     private int nextEventTag() {
-        // Similar to XMLStreamreader::nextTag(). This code works with DTD local
+        // Similar to XMLStreamReader::nextTag(). This code works with DTD local
         // character entities and assumes the StAX parser
         // character entities and then manages the text replacement.
         try {
@@ -1281,11 +1265,9 @@ public class ParserCIMXML_StAX_SR {
                             throw RDFXMLparseError("Expecting a start or end element. Got characters '"+text+"'");
                         }
                         // Skip
-                        break;
                     }
                     case COMMENT, DTD -> {
                         // Loop
-                        continue;
                     }
                     //case SPACE:
                     //case PROCESSING_INSTRUCTION:
@@ -1312,8 +1294,8 @@ public class ParserCIMXML_StAX_SR {
                     continue;
                 if ( lookingAt(ev, PROCESSING_INSTRUCTION) ) {
                     if(PROCESSING_INSTRUCTION_IEC61970_552.equals(xmlSource.getPITarget())) {
-                        this.VersionOfCIMXML = xmlSource.getPIData();
-                        destination.setVersionOfIEC61970_552(VersionOfCIMXML);
+                        final var versionOfCIMXML = xmlSource.getPIData();
+                        destination.setVersionOfIEC61970_552(versionOfCIMXML);
                     } else {
                         RDFXMLparseWarning("XML Processing instruction - ignored");
                     }
@@ -1368,9 +1350,7 @@ public class ParserCIMXML_StAX_SR {
      * These set the context for inner elements and need a stack.
      */
     private boolean startElement() {
-        processNamespaces();
-        boolean hasFrame = processBaseAndLang();
-        return hasFrame;
+        return processBaseAndLang();
     }
 
     private boolean processBaseAndLang() {
@@ -1394,22 +1374,6 @@ public class ParserCIMXML_StAX_SR {
     private void endElement(boolean hasFrame) {
         if ( hasFrame )
             popFrame();
-    }
-
-    /**
-     * XML namespaces are handled by the StAX parser.
-     * This is only for tracking.
-     * Return true if there is a namespace declaration.
-     */
-    private void processNamespaces() {
-        if ( ReaderCIMXML_StAX_SR.TRACE ) {
-            int numNS = xmlSource.getNamespaceCount();
-            for ( int i = 0 ; i < numNS ; i++ ) {
-                String prefix = xmlSource.getNamespacePrefix(i);
-                String prefixURI = xmlSource.getNamespaceURI(i);
-                //emitPrefix(prefix, prefixURI);
-            }
-        }
     }
 
     // ---- Parser output
@@ -1513,12 +1477,11 @@ public class ParserCIMXML_StAX_SR {
         if ( prev != null )
             // Already in use
             RDFXMLparseWarning("Reuse of rdf:ID '"+idStr+"' at "+str(prev), location);
-        Node uri = iriResolve("#"+idStr, location);
-        return uri;
+        return iriResolve("#"+idStr, location);
     }
 
     /** Create a URI. The IRI is known to be resolved. */
-    private Node iriDirect(String uriStr, Location location) {
+    private Node iriDirect(String uriStr) {
         Objects.requireNonNull(uriStr);
         return factoryRDF.createURI(uriStr);
     }
@@ -1529,8 +1492,8 @@ public class ParserCIMXML_StAX_SR {
     private Node iriResolve(String uriStr, Location location) {
         Objects.requireNonNull(uriStr);
         return uriStr.startsWith("_:")
-                ?  createURI(uriStr, location) // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
-                :  createURI(resolveIRIx(uriStr, location).str(), location);
+                ?  createURI(uriStr) // <_:label> syntax. Handled by the FactoryRDF via the parser profile.
+                :  createURI(resolveIRIx(uriStr, location).str());
     }
 
     private IRIx resolveIRIx(String uriStr, Location location) {
@@ -1571,7 +1534,7 @@ public class ParserCIMXML_StAX_SR {
         return switch (uuidPart.length()) {
             case 36 -> { // expect UUID - 550e8400-e29b-41d4-a716-446655440000
                 if( CIM_UUID_PATTERN.matcher(uuidPart).matches() ) {
-                    yield iriDirect("urn:uuid:" + uuidPart, location);
+                    yield iriDirect("urn:uuid:" + uuidPart);
                 } else {
                     RDFXMLparseWarning("Not a valid CIM UUID: '"+uriStr+"'", location);
                     yield iriResolve(uriStr, location);
@@ -1591,7 +1554,7 @@ public class ParserCIMXML_StAX_SR {
                     builder.append(uuidPart, 16, 20);
                     builder.append('-');
                     builder.append(uuidPart, 20, 32);
-                    yield iriDirect(builder.toString(), location);
+                    yield iriDirect(builder.toString());
                 } else {
                     RDFXMLparseWarning("Not a valid CIM UUID: '"+uriStr+"'", location);
                     yield null;
@@ -1627,12 +1590,12 @@ public class ParserCIMXML_StAX_SR {
     }
 
     /** Done in accordance to the parser profile policy. */
-    private Node createURI(final String iriStr, final Location location) {
+    private Node createURI(final String iriStr) {
         Objects.requireNonNull(iriStr);
         return factoryRDF.createURI(iriStr);
     }
 
-    private Node blankNode(Location location) {
+    private Node blankNode() {
         return factoryRDF.createBlankNode();
     }
 
@@ -1643,30 +1606,30 @@ public class ParserCIMXML_StAX_SR {
         return factoryRDF.createBlankNode(label);
     }
 
-    private Node literal(String lexical, Location location) {
+    private Node literal(String lexical) {
         Objects.requireNonNull(lexical);
         return factoryRDF.createStringLiteral(lexical);
     }
 
     /**
      * Create literal with a language (rdf:langString).
-     * If lang is null or "", create an xsd:string
+     * If lang is null or "", create a xsd:string
      */
-    private Node literal(String lexical, String lang, Location location) {
+    private Node literal(String lexical, String lang) {
         if ( lang == null )
-            return literal(lexical, location);
+            return literal(lexical);
         Objects.requireNonNull(lexical);
         return factoryRDF.createLangLiteral(lexical, lang);
     }
 
-    private Node literalDatatype(String lexical, String datatype, Location location) {
+    private Node literalDatatype(String lexical, String datatype) {
         Objects.requireNonNull(lexical);
         Objects.requireNonNull(datatype);
         RDFDatatype dt = NodeFactory.getType(datatype);
         return factoryRDF.createTypedLiteral(lexical, dt);
     }
 
-    private Node literalDatatype(String lexical, RDFDatatype datatype, Location location) {
+    private Node literalDatatype(String lexical, RDFDatatype datatype) {
         Objects.requireNonNull(lexical);
         Objects.requireNonNull(datatype);
         return factoryRDF.createTypedLiteral(lexical, datatype);
@@ -1687,21 +1650,13 @@ public class ParserCIMXML_StAX_SR {
             RDFXMLparseWarning("Not a valid XML NCName: '"+string+"'", location);
     }
 
-    private void noContentAllowed(XMLEvent event) {
-        if ( event.isCharacters() ) {
-            String content = event.asCharacters().getData();
-            content = nonWhitespaceMsg(content);
-            throw RDFXMLparseError("Expected XML start tag or end tag. Found text content (possible striping error): \""+content+"\"");
-        }
-    }
-
-    private static boolean isRDF(QName qName) {
-        return rdfNS.equals(qName.getNamespaceURI());
+    private static boolean isNotRDF(QName qName) {
+        return !rdfNS.equals(qName.getNamespaceURI());
     }
 
     /** Test for {@code rdf:_NNNNN}. */
     private static boolean isMemberProperty(QName qName) {
-        if ( ! isRDF(qName) )
+        if (isNotRDF(qName))
             return false;
         return isMemberPropertyLocalName(qName.getLocalPart());
     }
@@ -1741,14 +1696,14 @@ public class ParserCIMXML_StAX_SR {
      * If return true, issue a warning.
      */
     private boolean isNotRecognizedRDFtype(QName qName) {
-        if ( ! isRDF(qName) )
+        if (isNotRDF(qName))
             return false;
         String ln = qName.getLocalPart();
         return ! knownRDFTypes.contains(ln);
     }
 
     private boolean isNotRecognizedRDFproperty(QName qName) {
-        if ( ! isRDF(qName) )
+        if (isNotRDF(qName))
             return false;
         String ln = qName.getLocalPart();
         if ( isMemberPropertyLocalName(ln) )
@@ -1781,19 +1736,6 @@ public class ParserCIMXML_StAX_SR {
             return isWhitespace(s);
         }
         return false;
-    }
-
-//    private static boolean isWhitespace(char[] ch) {
-//        return isWhitespace(ch, 0, ch.length);
-//    }
-//
-    private static boolean isWhitespace(char[] ch, int start, int length) {
-        for ( int i = start ; i < start + length ; i++ ) {
-            char ich = ch[i];
-            if ( !Character.isWhitespace(ich) )
-                return false;
-        }
-        return true;
     }
 
     private static boolean isWhitespace(CharSequence x) {
