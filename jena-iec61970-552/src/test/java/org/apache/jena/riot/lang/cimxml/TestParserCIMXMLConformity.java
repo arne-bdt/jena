@@ -19,7 +19,6 @@
 package org.apache.jena.riot.lang.cimxml;
 
 import org.apache.jena.atlas.lib.Lib;
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.riot.lang.cimxml.query.StreamCIMXMLToDatasetGraph;
@@ -97,7 +96,7 @@ public class TestParserCIMXMLConformity {
 
         parser.read(new StringReader(rdfxml), streamRDF);
 
-        assertEquals(StreamCIMXML.CIMXMLVersion.CIM_17, streamRDF.getVersionOfCIMXML());
+        assertEquals(CIMVersion.CIM_17, streamRDF.getVersionOfCIMXML());
     }
 
     @Test
@@ -118,7 +117,7 @@ public class TestParserCIMXMLConformity {
 
         parser.read(new StringReader(rdfxml), streamRDF);
 
-        assertEquals(StreamCIMXML.CIMXMLVersion.CIM_18, streamRDF.getVersionOfCIMXML());
+        assertEquals(CIMVersion.CIM_18, streamRDF.getVersionOfCIMXML());
     }
 
     @Test
@@ -147,8 +146,8 @@ public class TestParserCIMXMLConformity {
         assertNotNull(streamRDF.getCIMDatasetGraph().getModelHeader());
         var modelHeader = streamRDF.getCIMDatasetGraph().getModelHeader();
         assertEquals("urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6", modelHeader.getModel().toString());
-        assertEquals(1, modelHeader.getProfiles().toList().size());
-        assertTrue(modelHeader.getProfiles().map(node -> node.getLiteralLexicalForm()).toList()
+        assertEquals(1, modelHeader.getProfiles().size());
+        assertTrue(modelHeader.getProfiles().stream().map(node -> node.getLiteralLexicalForm()).toList()
                 .contains("http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0"));
 
         var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
@@ -174,7 +173,7 @@ public class TestParserCIMXMLConformity {
                 xmlns:cim="http://iec.ch/TC57/CIM100#"
                 xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
              <dm:DifferenceModel rdf:about="urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6">
-                <md:Model.profile>http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0</md:Model.profile>
+
                 <dm:preconditions rdf:parseType="Statements">
 
                     <!-- expect the following element to be present in the model
@@ -292,6 +291,61 @@ public class TestParserCIMXMLConformity {
     }
 
     @Test
+    public void writePrefixesToAllGraphInDifferenceModel() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <rdf:RDF
+                xmlns:dm="http://iec.ch/TC57/61970-552/DifferenceModel/1#"
+                xmlns:md="http://iec.ch/TC57/61970-552/ModelDescription/1#"
+                xmlns:cim="http://iec.ch/TC57/CIM100#"
+                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+             <dm:DifferenceModel rdf:about="urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6">
+                
+                <dm:preconditions rdf:parseType="Statements">
+                </dm:preconditions>
+
+                <dm:forwardDifferences rdf:parseType="Statements">
+                </dm:forwardDifferences>
+
+                <dm:reverseDifferences rdf:parseType="Statements">
+                </dm:reverseDifferences>
+
+             </dm:DifferenceModel>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
+
+        parser.read(new StringReader(rdfxml), streamRDF);
+
+        assertTrue(streamRDF.getCIMDatasetGraph().isDifferenceModel());
+        assertNotNull(streamRDF.getCIMDatasetGraph().getModelHeader());
+        var modelHeader = streamRDF.getCIMDatasetGraph().getModelHeader();
+
+        assertEquals(4, modelHeader.getPrefixMapping().numPrefixes());
+        assertEquals("urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6", modelHeader.getModel().toString());
+
+        var preconditions = streamRDF.getCIMDatasetGraph().getPreconditions();
+        assertNotNull(preconditions);
+        assertTrue(preconditions.getPrefixMapping().samePrefixMappingAs(modelHeader.getPrefixMapping()));
+        assertEquals(0, preconditions.size());
+
+        var forwardDifferences = streamRDF.getCIMDatasetGraph().getForwardDifferences();
+        assertNotNull(forwardDifferences);
+        assertTrue(forwardDifferences.getPrefixMapping().samePrefixMappingAs(modelHeader.getPrefixMapping()));
+        assertEquals(0, forwardDifferences.size());
+
+        var reverseDifferences = streamRDF.getCIMDatasetGraph().getReverseDifferences();
+        assertNotNull(reverseDifferences);
+        assertTrue(reverseDifferences.getPrefixMapping().samePrefixMappingAs(modelHeader.getPrefixMapping()));
+        assertEquals(0, reverseDifferences.size());
+    }
+
+    @Test
     public void replaceUnderscoresInRdfAboutAndRdfId() {
         final var rdfxml = """
             <?xml version="1.0" encoding="utf-8"?>
@@ -371,5 +425,4 @@ public class TestParserCIMXMLConformity {
         ));
 
     }
-
 }

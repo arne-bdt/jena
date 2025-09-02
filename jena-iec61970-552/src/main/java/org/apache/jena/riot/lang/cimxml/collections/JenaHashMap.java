@@ -16,24 +16,29 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml.rdfs;
+package org.apache.jena.riot.lang.cimxml.collections;
 
-import org.apache.jena.graph.Graph;
+import org.apache.jena.mem2.collection.FastHashMap;
 
-import java.util.Collection;
+public class JenaHashMap<K, V> extends FastHashMap<K, V> {
 
-public interface ProfileRegistry {
-    /**
-     * Registers a profile graph in the registry.
-     * This method is used to register a graph that contains RDFS CIM profiles.
-     * The graph should contain the necessary RDFS CIM profile definitions
-     * that can be used to validate or interpret CIMXML data.
-     * <p>     *
-     * @param graph
-     */
-    void registerProfile(Graph graph);
+    public JenaHashMap(int initialSize) {
+        super(initialSize);
+    }
 
+    public JenaHashMap() {
+        super();
+    }
 
+    @Override
+    @SuppressWarnings("unchecked")
+    protected K[] newKeysArray(int size) {
+        return (K[]) new Object[size];
+    }
 
-    Collection<Graph> getHeaderProfiles();
+    @Override
+    @SuppressWarnings("unchecked")
+    protected V[] newValuesArray(int size) {
+        return (V[]) new Object[size];
+    }
 }

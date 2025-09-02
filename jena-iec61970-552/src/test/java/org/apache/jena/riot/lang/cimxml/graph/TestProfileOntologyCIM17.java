@@ -22,14 +22,16 @@ import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.riot.RDFParser;
+import org.apache.jena.riot.lang.cimxml.CIMVersion;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
 import java.io.StringReader;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
-public class TestProfileOntologyCIM100 {
+public class TestProfileOntologyCIM17 {
 
 
     /**
@@ -41,6 +43,7 @@ public class TestProfileOntologyCIM100 {
         final var rdfxml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <rdf:RDF
+               xmlns:cim="http://iec.ch/TC57/CIM100#"
                xmlns:dcat="http://www.w3.org/ns/dcat#"
                xmlns:owl="http://www.w3.org/2002/07/owl#"
                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
@@ -71,12 +74,12 @@ public class TestProfileOntologyCIM100 {
         var ontology = ProfileOntology.wrap(graph);
 
         assertFalse(ontology.isHeaderProfile());
-        assertEquals(ProfileOntology.MetadataStyle.ONTOLOGY, ontology.getMetadataStyle());
+        assertTrue(Set.of(CIMVersion.CIM_17, CIMVersion.CIM_18).contains(ontology.getCIMVersion()));
 
-        assertEquals(2, ontology.getOwlVersionIRIs().toList().size());
-        assertTrue(ontology.getOwlVersionIRIs()
+        assertEquals(2, ontology.getOwlVersionIRIs().size());
+        assertTrue(ontology.getOwlVersionIRIs().stream()
                 .anyMatch(n -> n.getURI().equals("http://example.org/MyCustom/Core/1/1")));
-        assertTrue(ontology.getOwlVersionIRIs()
+        assertTrue(ontology.getOwlVersionIRIs().stream()
                 .anyMatch(n -> n.getURI().equals("http://example.org/MyCustom/Operation/1/1")));
         assertEquals("1.1.0", ontology.getOwlVersionInfo());
         assertEquals("MYCUST", ontology.getDcatKeyword());

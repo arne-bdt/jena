@@ -22,15 +22,14 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.sparql.graph.GraphWrapper;
-import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.vocabulary.RDF;
 
-import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class ProfileOntologyCIM16 extends GraphWrapper implements ProfileOntology {
 
-    final static String NS_CIMS = "http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#";
     final static String NS_RDFS = "http://www.w3.org/2000/01/rdf-schema#";
 
     /**
@@ -39,20 +38,9 @@ public class ProfileOntologyCIM16 extends GraphWrapper implements ProfileOntolog
      */
     final static String PROFILE_VERSION_POSTFIX = "Version";
 
-    final static String CLASS_CLASS_CATEGORY = "ClassCategory";
-    final static String PACKAGE_FILE_HEADER_PROFILE = "#Package_FileHeaderProfile";
-
-    final static Node TYPE_CLASS_CATEGORY = NodeFactory.createURI(NS_CIMS + CLASS_CLASS_CATEGORY);
     final static Node PREDICATE_RDFS_DOMAIN = NodeFactory.createURI(NS_RDFS + "domain");
     final static Node PREDICATE_CIMS_IS_FIXED = NodeFactory.createURI(NS_CIMS + "isFixed");
 
-
-    public static boolean isHeaderProfile(Graph graph) {
-        return graph.stream(Node.ANY, RDF.type.asNode(), TYPE_CLASS_CATEGORY)
-                .anyMatch(t
-                        -> t.getSubject().isURI()
-                        && t.getSubject().getURI().endsWith(PACKAGE_FILE_HEADER_PROFILE));
-    }
 
     public static boolean hasVersionIRIAndKeyword(Graph graph) {
         if(!getProfilePropertyFixedTexts(graph, ".shortName").findAny().isPresent()) {
@@ -90,11 +78,6 @@ public class ProfileOntologyCIM16 extends GraphWrapper implements ProfileOntolog
     }
 
     @Override
-    public MetadataStyle getMetadataStyle() {
-        return MetadataStyle.CIM16;
-    }
-
-    @Override
     public boolean isHeaderProfile() {
         return this.isHeaderProfile;
     }
@@ -110,11 +93,12 @@ public class ProfileOntologyCIM16 extends GraphWrapper implements ProfileOntolog
     }
 
     @Override
-    public Stream<Node> getOwlVersionIRIs() {
+    public Set<Node> getOwlVersionIRIs() {
         return Stream.concat(
                 getProfilePropertyFixedTexts(get(), ".entsoeURI"),
                 getProfilePropertyFixedTexts(get(), ".baseURI"))
-                .map(NodeFactory::createURI);
+                .map(NodeFactory::createURI)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     @Override

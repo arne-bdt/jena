@@ -69,18 +69,18 @@ public class TestModelHeader {
 
         assertEquals("urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6", modelHeader.getModel().toString());
 
-        assertEquals(1, modelHeader.getSupersedes().toList().size());
+        assertEquals(1, modelHeader.getSupersedes().size());
         assertEquals("urn:uuid:f086bea4-3428-4e49-8214-752fdeb1e2e4",
-                modelHeader.getSupersedes().findAny().orElseThrow().getURI());
+                modelHeader.getSupersedes().stream().findAny().orElseThrow().getURI());
 
-        assertEquals(1, modelHeader.getDependentOn().toList().size());
+        assertEquals(1, modelHeader.getDependentOn().size());
         assertEquals("urn:uuid:fa274c8c-a346-4080-ba5a-8a4eaa9083f9",
-                modelHeader.getDependentOn().findAny().orElseThrow().getURI());
+                modelHeader.getDependentOn().stream().findAny().orElseThrow().getURI());
 
-        assertEquals(2, modelHeader.getProfiles().toList().size());
-        assertTrue(modelHeader.getProfiles().map(Node::getLiteralLexicalForm).toList()
+        assertEquals(2, modelHeader.getProfiles().size());
+        assertTrue(modelHeader.getProfiles().stream().map(Node::getLiteralLexicalForm).toList()
                 .contains("http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0"));
-        assertTrue(modelHeader.getProfiles().map(Node::getLiteralLexicalForm).toList()
+        assertTrue(modelHeader.getProfiles().stream().map(Node::getLiteralLexicalForm).toList()
                 .contains("http://iec.ch/TC57/ns/CIM/MyCIMProfile/3.0"));
 
     }
@@ -122,18 +122,18 @@ public class TestModelHeader {
 
         assertEquals("urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6", modelHeader.getModel().toString());
 
-        assertEquals(1, modelHeader.getSupersedes().toList().size());
+        assertEquals(1, modelHeader.getSupersedes().size());
         assertEquals("urn:uuid:f086bea4-3428-4e49-8214-752fdeb1e2e4",
-                modelHeader.getSupersedes().findAny().orElseThrow().getURI());
+                modelHeader.getSupersedes().stream().findAny().orElseThrow().getURI());
 
-        assertEquals(1, modelHeader.getDependentOn().toList().size());
+        assertEquals(1, modelHeader.getDependentOn().size());
         assertEquals("urn:uuid:fa274c8c-a346-4080-ba5a-8a4eaa9083f9",
-                modelHeader.getDependentOn().findAny().orElseThrow().getURI());
+                modelHeader.getDependentOn().stream().findAny().orElseThrow().getURI());
 
-        assertEquals(2, modelHeader.getProfiles().toList().size());
-        assertTrue(modelHeader.getProfiles().map(Node::getLiteralLexicalForm).toList()
+        assertEquals(2, modelHeader.getProfiles().size());
+        assertTrue(modelHeader.getProfiles().stream().map(Node::getLiteralLexicalForm).toList()
                 .contains("http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0"));
-        assertTrue(modelHeader.getProfiles().map(Node::getLiteralLexicalForm).toList()
+        assertTrue(modelHeader.getProfiles().stream().map(Node::getLiteralLexicalForm).toList()
                 .contains("http://iec.ch/TC57/ns/CIM/MyCIMProfile/3.0"));
 
 

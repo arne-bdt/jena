@@ -24,6 +24,7 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
 import org.apache.jena.riot.lang.cimxml.CIMXMLDocumentContext;
+import org.apache.jena.riot.lang.cimxml.CIMVersion;
 import org.apache.jena.riot.lang.cimxml.StreamCIMXML;
 import org.apache.jena.riot.system.ErrorHandler;
 import org.apache.jena.riot.system.ErrorHandlerFactory;
@@ -36,7 +37,7 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
     private String versionOfIEC61970_552 = null;
     private Graph currentGraph;
     private CIMXMLDocumentContext currentContext;
-    private CIMXMLVersion versionOfCIMXML = CIMXMLVersion.NO_CIM;
+    private CIMVersion versionOfCIMXML = CIMVersion.NO_CIM;
 
     public StreamCIMXMLToDatasetGraph() {
         this(ErrorHandlerFactory.errorHandlerStd);
@@ -56,12 +57,12 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
     }
 
     @Override
-    public CIMXMLVersion getVersionOfCIMXML() {
+    public CIMVersion getVersionOfCIMXML() {
         return versionOfCIMXML;
     }
 
     @Override
-    public void setVersionOfCIMXML(CIMXMLVersion versionOfCIMXML) {
+    public void setVersionOfCIMXML(CIMVersion versionOfCIMXML) {
         this.versionOfCIMXML = versionOfCIMXML;
     }
 
@@ -110,6 +111,7 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
             if (graph instanceof GraphMem2Roaring roaring && !roaring.isIndexInitialized()) {
                 roaring.initializeIndexParallel();
             }
+            graph.getPrefixMapping().setNsPrefixes(linkedCIMDatasetGraph.prefixes.getMapping());
         });
     }
 

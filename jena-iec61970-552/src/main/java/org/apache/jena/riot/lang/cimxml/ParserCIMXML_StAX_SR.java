@@ -1380,7 +1380,7 @@ public class ParserCIMXML_StAX_SR {
 
     private void emitInitialBaseAndNamespacesDetermineCIMVersionAndSetBaseIfNeeded() {
 
-        StreamCIMXML.CIMXMLVersion versionOfCIMXML = StreamCIMXML.CIMXMLVersion.NO_CIM;
+        var versionOfCIMXML = CIMVersion.NO_CIM;
         int numNS = xmlSource.getNamespaceCount();
         for ( int i = 0 ; i < numNS ; i++ ) {
             final String prefixURI = xmlSource.getNamespaceURI(i);
@@ -1389,15 +1389,10 @@ public class ParserCIMXML_StAX_SR {
                 prefix = "";
             } else if("cim".equals(prefix)) {
                 // Determine CIM version.
-                versionOfCIMXML = switch(prefixURI) {
-                    case "http://iec.ch/TC57/2013/CIM-schema-cim16#" -> StreamCIMXML.CIMXMLVersion.CIM_16;
-                    case "http://iec.ch/TC57/CIM100#" -> StreamCIMXML.CIMXMLVersion.CIM_17;
-                    case "https://cim.ucaiug.io/ns#" -> StreamCIMXML.CIMXMLVersion.CIM_18;
-                    default -> {
-                        RDFXMLparseWarning("Unrecognized CIM namespace: " + prefixURI, location());
-                        yield StreamCIMXML.CIMXMLVersion.NO_CIM;
-                    }
-                };
+                versionOfCIMXML = CIMVersion.fromCimNamespacePrefixUri(prefixURI);
+                if (versionOfCIMXML == CIMVersion.NO_CIM) {
+                    RDFXMLparseWarning("Unrecognized 'cim' namespace: " + prefixURI, location());
+                }
                 if (ReaderCIMXML_StAX_SR.TRACE) {
                     trace.printf("CIM version of CIMXML: %s\n", versionOfCIMXML);
                 }
@@ -1406,7 +1401,7 @@ public class ParserCIMXML_StAX_SR {
         }
 
         String xmlBase = attribute(xmlQNameBase);
-        if(versionOfCIMXML != StreamCIMXML.CIMXMLVersion.NO_CIM) {
+        if(versionOfCIMXML != CIMVersion.NO_CIM) {
             isCIMXML = true;
             destination.setVersionOfCIMXML(versionOfCIMXML);
             if (xmlBase == null) {
@@ -1534,7 +1529,7 @@ public class ParserCIMXML_StAX_SR {
         return switch (uuidPart.length()) {
             case 36 -> { // expect UUID - 550e8400-e29b-41d4-a716-446655440000
                 if( CIM_UUID_PATTERN.matcher(uuidPart).matches() ) {
-                    yield iriDirect("urn:uuid:" + uuidPart);
+                    yield iriDirect(xmlBaseForCIMXML + uuidPart);
                 } else {
                     RDFXMLparseWarning("Not a valid CIM UUID: '"+uriStr+"'", location);
                     yield iriResolve(uriStr, location);
@@ -1544,7 +1539,7 @@ public class ParserCIMXML_StAX_SR {
                 if( CIM_UUID_PATTERN_NO_DASHES.matcher(uuidPart).matches() ) {
                     // warn parsed UUID without dashes into dashed form.
                     RDFXMLparseWarning("CIM UUID without dashes: '"+uriStr+"' - converted to dashed form.", location);
-                    final var builder = new StringBuilder("urn:uuid:");
+                    final var builder = new StringBuilder(xmlBaseForCIMXML);
                     builder.append(uuidPart, 0, 8);
                     builder.append('-');
                     builder.append(uuidPart, 8, 12);

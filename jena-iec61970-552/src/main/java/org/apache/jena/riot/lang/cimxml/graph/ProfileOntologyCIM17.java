@@ -25,10 +25,10 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.sparql.graph.GraphWrapper;
 import org.apache.jena.vocabulary.RDF;
 
-import java.util.List;
-import java.util.stream.Stream;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-public class ProfileOntologyCIM100 extends GraphWrapper implements ProfileOntology {
+public class ProfileOntologyCIM17 extends GraphWrapper implements ProfileOntology {
 
     final static String NS_EUMD = "https://ap.cim4.eu/DocumentHeader#";
     final static String NS_OWL = "http://www.w3.org/2002/07/owl#";
@@ -59,13 +59,11 @@ public class ProfileOntologyCIM100 extends GraphWrapper implements ProfileOntolo
                 && graph.find(Node.ANY, PREDICATE_OWL_VERSION_IRI, Node.ANY).hasNext();
     }
 
-    public ProfileOntologyCIM100(Graph graph) {
-        super(graph);
-    }
+    private final boolean isHeaderProfile;
 
-    @Override
-    public MetadataStyle getMetadataStyle() {
-        return MetadataStyle.ONTOLOGY;
+    public ProfileOntologyCIM17(Graph graph, boolean isHeaderProfile) {
+        super(graph);
+        this.isHeaderProfile = isHeaderProfile;
     }
 
     @Override
@@ -84,9 +82,10 @@ public class ProfileOntologyCIM100 extends GraphWrapper implements ProfileOntolo
     }
 
     @Override
-    public Stream<Node> getOwlVersionIRIs() {
+    public Set<Node> getOwlVersionIRIs() {
         return stream(getOntology(), PREDICATE_OWL_VERSION_IRI, Node.ANY)
-                .map(Triple::getObject);
+                .map(Triple::getObject)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     @Override

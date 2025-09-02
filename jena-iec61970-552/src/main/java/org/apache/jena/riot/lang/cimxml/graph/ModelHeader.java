@@ -22,14 +22,15 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.riot.lang.cimxml.CIMHeaderVocabulary;
+import org.apache.jena.riot.lang.cimxml.CIMVersion;
 import org.apache.jena.sparql.graph.GraphWrapper;
 import org.apache.jena.vocabulary.RDF;
 
-import java.util.stream.Stream;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
-public interface ModelHeader extends Graph {
-
+public interface ModelHeader extends CIMGraph {
 
     default boolean isFullModel() {
         return find(Node.ANY, RDF.type.asNode(), CIMHeaderVocabulary.TYPE_FULL_MODEL).hasNext();
@@ -51,19 +52,28 @@ public interface ModelHeader extends Graph {
         throw new IllegalStateException("Found neither FullModel nor DifferenceModel in the header graph.");
     }
 
-    default Stream<Node> getProfiles() {
+    /**
+     * Get the profiles associated with the model.
+     * Each profile node in a model header references one owlVersionIRI in {@link ProfileOntology#getOwlVersionIRIs()}
+     * of the matching profile ontology.
+     * @return A set of profile nodes (IRIs).
+     */
+    default Set<Node> getProfiles() {
         return stream(getModel(), CIMHeaderVocabulary.PREDICATE_PROFILE, Node.ANY)
-                .map(Triple::getObject);
+                .map(Triple::getObject)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
-    default Stream<Node> getSupersedes() {
+    default Set<Node> getSupersedes() {
         return stream(getModel(), CIMHeaderVocabulary.PREDICATE_SUPERSEDES, Node.ANY)
-                .map(Triple::getObject);
+                .map(Triple::getObject)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
-    default Stream<Node> getDependentOn() {
+    default Set<Node> getDependentOn() {
         return stream(getModel(), CIMHeaderVocabulary.PREDICATE_DEPENDENT_ON, Node.ANY)
-                .map(Triple::getObject);
+                .map(Triple::getObject)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     static ModelHeader wrap(Graph graph) {
@@ -72,6 +82,9 @@ public interface ModelHeader extends Graph {
         }
         if (graph instanceof ModelHeader modelHeader) {
             return modelHeader;
+        }
+        if( CIMGraph.getCIMXMLVersion(graph) == CIMVersion.NO_CIM) {
+            throw new IllegalArgumentException("Graph does not appear to be a CIM graph. No proper 'cim' namespace defined.");
         }
         return new ModelHeaderGraphWrapper(graph);
     }

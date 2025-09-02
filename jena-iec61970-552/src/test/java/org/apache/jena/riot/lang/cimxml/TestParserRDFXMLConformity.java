@@ -21,7 +21,6 @@ package org.apache.jena.riot.lang.cimxml;
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.graph.Graph;
-import org.apache.jena.graph.Triple;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
@@ -29,11 +28,9 @@ import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.lang.cimxml.query.StreamCIMXMLToDatasetGraph;
 import org.apache.jena.riot.system.PrefixMap;
 import org.apache.jena.shared.PrefixMapping;
-import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
-import javax.xml.XMLConstants;
 import java.io.StringReader;
 
 import static org.junit.Assert.assertEquals;
