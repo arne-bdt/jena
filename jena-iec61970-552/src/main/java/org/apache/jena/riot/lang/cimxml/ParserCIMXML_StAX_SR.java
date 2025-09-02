@@ -49,6 +49,7 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 import java.util.*;
+import java.util.regex.Pattern;
 
 import static javax.xml.stream.XMLStreamConstants.*;
 import static org.apache.jena.riot.SysRIOT.fmtMessage;
@@ -73,7 +74,10 @@ public class ParserCIMXML_StAX_SR {
     private static final String xmlNS = "http://www.w3.org/XML/1998/namespace";
     private static final String mdNS = CIMHeaderVocabulary.NS_MD;
     private static final String dmND = CIMHeaderVocabulary.NS_DM;
-    public static final String xmlBaseForCIMXML = "urn:uuid:";
+    private static final String xmlBaseForCIMXML = "urn:uuid:";
+
+    private static final Pattern CIM_UUID_PATTERN = Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+    private static final Pattern CIM_UUID_PATTERN_NO_DASHES = Pattern.compile("^[0-9a-f]{8}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{4}[0-9a-f]{12}$");
 
     private boolean hasRDF = false;
     private boolean isCIMXML = false;
@@ -591,7 +595,7 @@ public class ParserCIMXML_StAX_SR {
         Node resourceObj = null;
 
         if ( rdfResourceStr != null )
-            resourceObj = iriResolve(rdfResourceStr, location);
+            resourceObj = iriResolveCimAware(rdfResourceStr, location);
 
         if ( objBlankNodeLabel != null )
             resourceObj = blankNode(objBlankNodeLabel, location);
@@ -740,7 +744,7 @@ public class ParserCIMXML_StAX_SR {
             QName qName =  xmlSource.getAttributeName(index);
             if ( rdfType.equals(qName) ) {
                 String iriStr = xmlSource.getAttributeValue(index);
-                Node type = iriResolve(iriStr, location);
+                Node type = iriResolveCimAware(iriStr, location);
                 emit(subject, RDF.Nodes.type, type, location);
                 return;
             }
@@ -1101,7 +1105,7 @@ public class ParserCIMXML_StAX_SR {
         String reifyId = attribute(rdfID);
         if ( reifyId == null )
             return null;
-        Node reify = iriFromID(reifyId, location);
+        Node reify = iriFromIDCimAware(reifyId, location);
         return reify;
     }
 
@@ -1163,10 +1167,10 @@ public class ParserCIMXML_StAX_SR {
         Location location = location();
 
         if ( iriStr != null )
-            return iriResolve(iriStr, location);
+            return iriResolveCimAware(iriStr, location);
 
         if ( idStr != null )
-            return iriFromID(idStr, location);
+            return iriFromIDCimAware(idStr, location);
 
         if ( nodeId != null )
             return blankNode(nodeId, location);
@@ -1553,6 +1557,73 @@ public class ParserCIMXML_StAX_SR {
         } catch (IRIException ex) {
             throw RDFXMLparseError(ex.getMessage(), location);
         }
+    }
+
+    /**
+     * Create a CIM UUID IRI or a warning and a normal IRI.
+     * @param uriStr The full URI string (for warning messages).
+     * @param uuidPart The part after "urn:uuid:" or the part after "#_".
+     * @param location Location for warnings.
+     * @return Node or null if not valid CIM UUID.
+     */
+    private Node createCimUuid(String uriStr, String uuidPart, Location location) {
+        // Simple  or
+        return switch (uuidPart.length()) {
+            case 36 -> { // expect UUID - 550e8400-e29b-41d4-a716-446655440000
+                if( CIM_UUID_PATTERN.matcher(uuidPart).matches() ) {
+                    yield iriDirect("urn:uuid:" + uuidPart, location);
+                } else {
+                    RDFXMLparseWarning("Not a valid CIM UUID: '"+uriStr+"'", location);
+                    yield iriResolve(uriStr, location);
+                }
+            }
+            case 32 -> { // expect UUID without dashes - 550e8400e29b41d4a716446655440000
+                if( CIM_UUID_PATTERN_NO_DASHES.matcher(uuidPart).matches() ) {
+                    // warn parsed UUID without dashes into dashed form.
+                    RDFXMLparseWarning("CIM UUID without dashes: '"+uriStr+"' - converted to dashed form.", location);
+                    final var builder = new StringBuilder("urn:uuid:");
+                    builder.append(uuidPart, 0, 8);
+                    builder.append('-');
+                    builder.append(uuidPart, 8, 12);
+                    builder.append('-');
+                    builder.append(uuidPart, 12, 16);
+                    builder.append('-');
+                    builder.append(uuidPart, 16, 20);
+                    builder.append('-');
+                    builder.append(uuidPart, 20, 32);
+                    yield iriDirect(builder.toString(), location);
+                } else {
+                    RDFXMLparseWarning("Not a valid CIM UUID: '"+uriStr+"'", location);
+                    yield null;
+                }
+            }
+            default -> {
+                RDFXMLparseWarning("Not a valid CIM UUID: '"+uriStr+"'", location);
+                yield null;
+            }
+        };
+    }
+
+    private Node iriFromIDCimAware(String idStr, Location location) {
+        if ( isCIMXML && idStr != null && idStr.startsWith("_") ) {
+            final var uri = createCimUuid(idStr, idStr.substring(1), location);
+            if ( uri != null )
+                return uri;
+        }
+        return iriFromID(idStr, location);
+    }
+
+    /**
+     * Create a URI. The IRI is resolved by this operation.
+     */
+    private Node iriResolveCimAware(String uriStr, Location location) {
+        Objects.requireNonNull(uriStr);
+        if( isCIMXML && uriStr.startsWith("#_") ) {
+            final var uri = createCimUuid(uriStr, uriStr.substring(2), location);
+            if ( uri != null )
+                return uri;
+        }
+        return iriResolve(uriStr, location);
     }
 
     /** Done in accordance to the parser profile policy. */

@@ -128,7 +128,7 @@ public class TestParserCIMXMLConformity {
              <md:FullModel rdf:about="urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6">
                <md:Model.profile>http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0</md:Model.profile>
              </md:FullModel>
-             <cim:MyEquipment rdf:ID="f67fc354-9e39-4191-a456-67537399bc48">
+             <cim:MyEquipment rdf:ID="_f67fc354-9e39-4191-a456-67537399bc48">
                <cim:IdentifiedObject.name>My Custom Equipment</cim:IdentifiedObject.name>
              </cim:MyEquipment>
             </rdf:RDF>
@@ -152,9 +152,9 @@ public class TestParserCIMXMLConformity {
 
         var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
         assertTrue(graph.contains(
-                NodeFactory.createURI("urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6"),
-                NodeFactory.createURI("http://iec.ch/TC57/61970-552/ModelDescription/1#Model.profile"),
-                NodeFactory.createLiteralString("http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0")
+                NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
+                NodeFactory.createURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
+                NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyEquipment")
         ));
         assertTrue(graph.contains(
                 NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
@@ -171,7 +171,7 @@ public class TestParserCIMXMLConformity {
               <cim:MyEquipment rdf:ID="_f67fc354-9e39-4191-a456-67537399bc48">
                 <cim:IdentifiedObject.name>My Custom Equipment</cim:IdentifiedObject.name>
               </cim:MyEquipment>
-              <cim:MyEquipment rdf:about="_f67fc354-9e39-4191-a456-67537399bc48">
+              <cim:MyEquipment rdf:about="#_f67fc354-9e39-4191-a456-67537399bc48">
                 <cim:MyEquipment.MyReference rdf:resource="#_d597b77b-c8c4-4d88-883e-f516eedb913b" />
               </cim:MyEquipment>
             </rdf:RDF>
@@ -188,7 +188,7 @@ public class TestParserCIMXMLConformity {
         var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
         assertTrue(graph.contains(
                 NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
-                NodeFactory.createURI("rdf:type"),
+                NodeFactory.createURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
                 NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyEquipment")
         ));
         assertTrue(graph.contains(
@@ -199,7 +199,7 @@ public class TestParserCIMXMLConformity {
         assertTrue(graph.contains(
                 NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
                 NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyEquipment.MyReference"),
-                NodeFactory.createLiteralString("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48")
+                NodeFactory.createURI("urn:uuid:d597b77b-c8c4-4d88-883e-f516eedb913b")
         ));
     }
 
@@ -211,7 +211,7 @@ public class TestParserCIMXMLConformity {
               <cim:MyEquipment rdf:ID="_f67fc3549e394191a45667537399bc48">
                 <cim:IdentifiedObject.name>My Custom Equipment</cim:IdentifiedObject.name>
               </cim:MyEquipment>
-              <cim:MyEquipment rdf:about="_f67fc3549e394191a45667537399bc48">
+              <cim:MyEquipment rdf:about="#_f67fc3549e394191a45667537399bc48">
                 <cim:MyEquipment.MyReference rdf:resource="#_d597b77bc8c44d88883ef516eedb913b" />
               </cim:MyEquipment>
             </rdf:RDF>
@@ -228,7 +228,7 @@ public class TestParserCIMXMLConformity {
         var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
         assertTrue(graph.contains(
                 NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
-                NodeFactory.createURI("rdf:type"),
+                NodeFactory.createURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
                 NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyEquipment")
         ));
         assertTrue(graph.contains(
@@ -239,7 +239,7 @@ public class TestParserCIMXMLConformity {
         assertTrue(graph.contains(
                 NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
                 NodeFactory.createURI("http://iec.ch/TC57/CIM100#MyEquipment.MyReference"),
-                NodeFactory.createLiteralString("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48")
+                NodeFactory.createURI("urn:uuid:d597b77b-c8c4-4d88-883e-f516eedb913b")
         ));
 
     }
