@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml.graph;
+package org.apache.jena.cimxml.graph;
 
 import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.graph.ProfileOntology;

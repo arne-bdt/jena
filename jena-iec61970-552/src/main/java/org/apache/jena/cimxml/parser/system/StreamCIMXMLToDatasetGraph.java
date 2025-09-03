@@ -94,7 +94,7 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
     @Override
     public void prefix(String prefix, String iri) {
-        linkedCIMDatasetGraph.prefixes.add(prefix, iri);
+        linkedCIMDatasetGraph.prefixes().add(prefix, iri);
     }
 
     @Override
@@ -104,7 +104,7 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
             if (graph instanceof GraphMem2Roaring roaring && !roaring.isIndexInitialized()) {
                 roaring.initializeIndexParallel();
             }
-            graph.getPrefixMapping().setNsPrefixes(linkedCIMDatasetGraph.prefixes.getMapping());
+            graph.getPrefixMapping().setNsPrefixes(linkedCIMDatasetGraph.prefixes().getMapping());
         });
     }
 

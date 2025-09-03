@@ -24,6 +24,7 @@ import org.apache.jena.query.ReadWrite;
 import org.apache.jena.query.TxnType;
 import org.apache.jena.riot.system.PrefixMap;
 import org.apache.jena.riot.system.PrefixMapStd;
+import org.apache.jena.sparql.core.*;
 
 import java.util.ArrayList;
 import java.util.Collection;

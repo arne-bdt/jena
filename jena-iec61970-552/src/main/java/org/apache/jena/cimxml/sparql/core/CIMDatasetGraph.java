@@ -21,6 +21,7 @@ package org.apache.jena.cimxml.sparql.core;
 import org.apache.jena.graph.*;
 import org.apache.jena.cimxml.CIMHeaderVocabulary;
 import org.apache.jena.cimxml.graph.ModelHeader;
+import org.apache.jena.sparql.core.DatasetGraph;
 
 public interface CIMDatasetGraph extends DatasetGraph {
 

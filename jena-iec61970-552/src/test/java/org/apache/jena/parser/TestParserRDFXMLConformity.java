@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml;
+package org.apache.jena.parser;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.atlas.lib.Lib;
