@@ -18,7 +18,6 @@
 
 package org.apache.jena.parser;
 
-import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.parser.ReaderCIMXML_StAX_SR;
 import org.apache.jena.graph.Graph;
@@ -631,6 +630,8 @@ public class TestParserRDFXMLConformity {
         // check graph sizes
         assertEquals("Graphs are not equal: different sizes.",
                 expected.size(), actual.size());
+
+        assertTrue(expected.isIsomorphicWith(actual)); // isIsomorphicWith also checks blank nodes
     }
 
     public void assertPrefixMappingEquals(PrefixMapping expected, PrefixMap actual) {
@@ -648,12 +649,11 @@ public class TestParserRDFXMLConformity {
         });
     }
 
-    public int parseAndCompare(String rdfxml) throws Exception {
-        return parseAndCompare(rdfxml, null);
+    public void parseAndCompare(String rdfxml) throws Exception {
+        parseAndCompare(rdfxml, null);
     }
 
-    public int parseAndCompare(String rdfxml, String nTriples) throws Exception {
-        var tripleCount = 0;
+    public void parseAndCompare(String rdfxml, String nTriples) throws Exception {
         Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         JenaSystem.init();
         SystemIRIx.reset();
@@ -661,47 +661,27 @@ public class TestParserRDFXMLConformity {
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
-        final var stopWatch = StopWatch.createStarted();
         parser.read(new StringReader(rdfxml), null, streamRDF);
-        stopWatch.stop();
         var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
-        // print number of triples parsed and the time taken
-        System.out.println("Parsed rdf/xml-triples: " + graph.size() + " in " + stopWatch);
-        tripleCount += graph.size();
 
-        stopWatch.reset();
-        stopWatch.start();
         RDFParser.create()
                 .source(new StringReader(rdfxml))
                 .lang(org.apache.jena.riot.Lang.RDFXML)
                 .checking(false)
                 .parse(expectedGraph);
-        stopWatch.stop();
-
-        // print number of triples parsed and the time taken
-        System.out.println("Parsed expected rdf/xml-triples: " + expectedGraph.size() + " in " + stopWatch);
-        tripleCount += expectedGraph.size();
 
         assertGraphEquals(expectedGraph, graph);
         assertPrefixMappingEquals(expectedGraph.getPrefixMapping(), streamRDF.getCIMDatasetGraph().prefixes());
 
         if(nTriples != null) {
             final var nTriplesGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
-            stopWatch.reset();
-            stopWatch.start();
             RDFParser.create()
                     .source(new StringReader(nTriples))
                     .lang(org.apache.jena.riot.Lang.NTRIPLES)
                     .checking(false)
                     .parse(nTriplesGraph);
-            stopWatch.stop();
-
-            // print number of triples parsed and the time taken
-            System.out.println("Parsed n-triples: " + nTriplesGraph.size() + " in " + stopWatch);
-            tripleCount += nTriplesGraph.size();
 
             assertGraphEquals(expectedGraph, nTriplesGraph);
         }
-        return tripleCount;
     }
 }
