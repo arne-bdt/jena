@@ -16,17 +16,12 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml;
+package org.apache.jena.cimxml.parser;
 
-import org.apache.jena.atlas.web.ContentType;
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.ReaderRIOT;
-import org.apache.jena.riot.ReaderRIOTFactory;
+import org.apache.jena.cimxml.parser.system.StreamCIMXML;
 import org.apache.jena.riot.RiotException;
 import org.apache.jena.riot.lang.rdfxml.SysRRX;
-import org.apache.jena.riot.lang.rdfxml.rrx_stax_sr.ReaderRDFXML_StAX_SR;
 import org.apache.jena.riot.system.*;
-import org.apache.jena.sparql.util.Context;
 import org.codehaus.stax2.XMLInputFactory2;
 import org.codehaus.stax2.XMLStreamReader2;
 

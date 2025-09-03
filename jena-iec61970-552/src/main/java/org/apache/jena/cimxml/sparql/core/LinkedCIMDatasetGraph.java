@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml.query;
+package org.apache.jena.cimxml.sparql.core;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
@@ -24,7 +24,6 @@ import org.apache.jena.query.ReadWrite;
 import org.apache.jena.query.TxnType;
 import org.apache.jena.riot.system.PrefixMap;
 import org.apache.jena.riot.system.PrefixMapStd;
-import org.apache.jena.sparql.core.*;
 
 import java.util.ArrayList;
 import java.util.Collection;

@@ -16,13 +16,17 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml;
+package org.apache.jena.cimxml.parser;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.atlas.lib.Cache;
 import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.atlas.lib.EscapeStr;
+import org.apache.jena.cimxml.CIMHeaderVocabulary;
+import org.apache.jena.cimxml.CIMVersion;
+import org.apache.jena.cimxml.CIMXMLDocumentContext;
+import org.apache.jena.cimxml.parser.system.StreamCIMXML;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.xsd.impl.XMLLiteralType;
 import org.apache.jena.graph.Node;

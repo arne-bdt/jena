@@ -20,12 +20,13 @@ package org.apache.jena.riot.lang.cimxml;
 
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.atlas.lib.Lib;
+import org.apache.jena.cimxml.parser.ReaderCIMXML_StAX_SR;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
 import org.apache.jena.riot.RDFParser;
-import org.apache.jena.riot.lang.cimxml.query.StreamCIMXMLToDatasetGraph;
+import org.apache.jena.cimxml.parser.system.StreamCIMXMLToDatasetGraph;
 import org.apache.jena.riot.system.PrefixMap;
 import org.apache.jena.shared.PrefixMapping;
 import org.apache.jena.sys.JenaSystem;

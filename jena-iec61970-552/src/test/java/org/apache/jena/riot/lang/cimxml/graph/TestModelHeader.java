@@ -21,8 +21,8 @@ package org.apache.jena.riot.lang.cimxml.graph;
 import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.graph.Node;
 import org.apache.jena.irix.SystemIRIx;
-import org.apache.jena.riot.lang.cimxml.ReaderCIMXML_StAX_SR;
-import org.apache.jena.riot.lang.cimxml.query.StreamCIMXMLToDatasetGraph;
+import org.apache.jena.cimxml.parser.ReaderCIMXML_StAX_SR;
+import org.apache.jena.cimxml.parser.system.StreamCIMXMLToDatasetGraph;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 

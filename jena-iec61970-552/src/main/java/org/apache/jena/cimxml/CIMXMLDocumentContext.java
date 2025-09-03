@@ -16,12 +16,10 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml;
+package org.apache.jena.cimxml;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.Triple;
 import org.apache.jena.sparql.core.Quad;
-import org.apache.jena.vocabulary.RDF;
 
 public enum CIMXMLDocumentContext {
     fullModel,

@@ -16,8 +16,10 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml;
+package org.apache.jena.cimxml.parser.system;
 
+import org.apache.jena.cimxml.CIMVersion;
+import org.apache.jena.cimxml.CIMXMLDocumentContext;
 import org.apache.jena.riot.system.StreamRDF;
 
 public interface StreamCIMXML extends StreamRDF {

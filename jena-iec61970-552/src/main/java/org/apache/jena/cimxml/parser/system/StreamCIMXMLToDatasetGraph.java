@@ -16,23 +16,21 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml.query;
+package org.apache.jena.cimxml.parser.system;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
-import org.apache.jena.riot.lang.cimxml.CIMXMLDocumentContext;
-import org.apache.jena.riot.lang.cimxml.CIMVersion;
-import org.apache.jena.riot.lang.cimxml.StreamCIMXML;
-import org.apache.jena.riot.system.ErrorHandler;
-import org.apache.jena.riot.system.ErrorHandlerFactory;
+import org.apache.jena.cimxml.CIMXMLDocumentContext;
+import org.apache.jena.cimxml.CIMVersion;
+import org.apache.jena.cimxml.sparql.core.CIMDatasetGraph;
+import org.apache.jena.cimxml.sparql.core.LinkedCIMDatasetGraph;
 import org.apache.jena.sparql.core.Quad;
 
 public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
-    public final ErrorHandler errorHandler;
     private final LinkedCIMDatasetGraph linkedCIMDatasetGraph;
     private String versionOfIEC61970_552 = null;
     private Graph currentGraph;
@@ -40,11 +38,6 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
     private CIMVersion versionOfCIMXML = CIMVersion.NO_CIM;
 
     public StreamCIMXMLToDatasetGraph() {
-        this(ErrorHandlerFactory.errorHandlerStd);
-    }
-
-    public StreamCIMXMLToDatasetGraph(ErrorHandler errorHandler) {
-        this.errorHandler = errorHandler;
         // init default graph for body context
         currentContext = CIMXMLDocumentContext.body;
         currentGraph = new GraphMem2Roaring(IndexingStrategy.LAZY_PARALLEL);

@@ -1,7 +1,7 @@
-package org.apache.jena.riot.lang.cimxml.graph;
+package org.apache.jena.cimxml.graph;
 
 import org.apache.jena.graph.Graph;
-import org.apache.jena.riot.lang.cimxml.CIMVersion;
+import org.apache.jena.cimxml.CIMVersion;
 
 import java.util.Objects;
 

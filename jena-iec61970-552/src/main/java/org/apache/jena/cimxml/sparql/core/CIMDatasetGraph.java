@@ -16,13 +16,11 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml.query;
+package org.apache.jena.cimxml.sparql.core;
 
 import org.apache.jena.graph.*;
-import org.apache.jena.riot.lang.cimxml.CIMHeaderVocabulary;
-import org.apache.jena.riot.lang.cimxml.CIMXMLDocumentContext;
-import org.apache.jena.riot.lang.cimxml.graph.ModelHeader;
-import org.apache.jena.sparql.core.DatasetGraph;
+import org.apache.jena.cimxml.CIMHeaderVocabulary;
+import org.apache.jena.cimxml.graph.ModelHeader;
 
 public interface CIMDatasetGraph extends DatasetGraph {
 

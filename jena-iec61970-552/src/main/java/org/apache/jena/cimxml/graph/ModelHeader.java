@@ -16,13 +16,13 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml.graph;
+package org.apache.jena.cimxml.graph;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.riot.lang.cimxml.CIMHeaderVocabulary;
-import org.apache.jena.riot.lang.cimxml.CIMVersion;
+import org.apache.jena.cimxml.CIMHeaderVocabulary;
+import org.apache.jena.cimxml.CIMVersion;
 import org.apache.jena.sparql.graph.GraphWrapper;
 import org.apache.jena.vocabulary.RDF;
 

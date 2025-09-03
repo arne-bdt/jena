@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml.collections;
+package org.apache.jena.cimxml.collections;
 
 import org.apache.jena.mem2.collection.FastHashMap;
 

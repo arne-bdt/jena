@@ -16,14 +16,15 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml.rdfs;
+package org.apache.jena.cimxml.rdfs;
 
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.graph.Node;
 import org.apache.jena.mem2.collection.JenaMap;
-import org.apache.jena.riot.lang.cimxml.CIMVersion;
-import org.apache.jena.riot.lang.cimxml.graph.ProfileOntology;
+import org.apache.jena.cimxml.CIMVersion;
+import org.apache.jena.cimxml.graph.ProfileOntology;
 
+import javax.xml.namespace.QName;
 import java.util.Set;
 
 public interface CIMProfileRegistry {
@@ -35,7 +36,6 @@ public interface CIMProfileRegistry {
      * During registration, the data types of all properties in the graph are extracted and stored in a map for fast lookup.
      * Throws an IllegalArgumentException if one of the profiles owlVersionIRIs is already registered
      * or in case of a header profile, if one has already been registered for the same CIM version.
-     * This method is NOT thread-safe.
      * @param graph The profile ontology to register.
      */
     void registerOntology(ProfileOntology graph);
@@ -82,7 +82,7 @@ public interface CIMProfileRegistry {
      * @param owlVersionIRIs A set of profile IRIs as found in the model header.
      * @return A map of properties and their associated RDF datatypes. The map is thread-safe for reading.
      */
-    JenaMap<Node, PropertyAndRDFDatatype> getPropertiesAndDatatypes(Set<Node> owlVersionIRIs);
+    JenaMap<QName, PropertyAndRDFDatatype> getPropertiesAndDatatypes(Set<Node> owlVersionIRIs);
 
     /**
      * Get all properties and their associated RDF datatypes for the header profile of the given CIM version.
@@ -90,5 +90,5 @@ public interface CIMProfileRegistry {
      * @param version The CIM version for which the header profile should be used.
      * @return A map of properties and their associated RDF datatypes. The map is thread-safe for reading.
      */
-    JenaMap<Node, PropertyAndRDFDatatype> getHeaderPropertiesAndDatatypes(CIMVersion version);
+    JenaMap<QName, PropertyAndRDFDatatype> getHeaderPropertiesAndDatatypes(CIMVersion version);
 }

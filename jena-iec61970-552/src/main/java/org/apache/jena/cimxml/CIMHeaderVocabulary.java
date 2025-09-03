@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml;
+package org.apache.jena.cimxml;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;

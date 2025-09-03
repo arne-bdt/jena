@@ -19,10 +19,11 @@
 package org.apache.jena.riot.lang.cimxml.graph;
 
 import org.apache.jena.atlas.lib.Lib;
+import org.apache.jena.cimxml.graph.ProfileOntology;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.riot.RDFParser;
-import org.apache.jena.riot.lang.cimxml.CIMVersion;
+import org.apache.jena.cimxml.CIMVersion;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 

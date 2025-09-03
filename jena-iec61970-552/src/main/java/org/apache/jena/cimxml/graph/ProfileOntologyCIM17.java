@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.jena.riot.lang.cimxml.graph;
+package org.apache.jena.cimxml.graph;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
@@ -77,6 +77,10 @@ public class ProfileOntologyCIM17 extends GraphWrapper implements ProfileOntolog
 
     @Override
     public String getDcatKeyword() {
+        if(isHeaderProfile) {
+            // CGMES v3.0 file header profiles do not have a keyword.
+            return "DH"; // Use "DH" for compatibility with old CGMES 2.4.15 file header profiles.
+        }
         var iter = find(getOntology(), PREDICATE_DCAT_KEYWORD, Node.ANY);
         return iter.hasNext() ? iter.next().getObject().getLiteralValue().toString() : null;
     }
