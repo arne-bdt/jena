@@ -25,7 +25,7 @@ import org.apache.jena.vocabulary.RDF;
 
 import java.util.Set;
 
-public interface ProfileOntology extends CIMGraph {
+public interface CimProfile extends CIMGraph {
 
     String NS_CIMS = "http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#";
     String CLASS_CLASS_CATEGORY = "ClassCategory";
@@ -78,15 +78,45 @@ public interface ProfileOntology extends CIMGraph {
     String getOwlVersionInfo();
 
     /**
-     * Wraps a graph as a ProfileOntology.
-     * If the graph is already a ProfileOntology, it is returned as is.
+     * Checks if this profile is equal to another profile.
+     * Two profiles are equal if they have the same CIM version and the same set of version
+     * IRIs, or if both are header profiles.
+     * @param other The other profile to compare to.
+     * @return true if the profiles are equal, false otherwise.
+     */
+    default boolean equals(CimProfile other) {
+        if(other == null) {
+            return false;
+        }
+        if(!this.getCIMVersion().equals(other.getCIMVersion())) {
+            return false;
+        }
+        if(isHeaderProfile()) {
+            return other.isHeaderProfile();
+        }
+        return this.getOwlVersionIRIs().equals(other.getOwlVersionIRIs());
+    }
+
+    default int calculateHashCode() {
+        // hash code from isHeader, cimVersion and version IRIs
+        int result = Boolean.hashCode(isHeaderProfile());
+        result = 31 * result + getCIMVersion().hashCode();
+        if (!isHeaderProfile()) {
+            result = 31 * result + getOwlVersionIRIs().hashCode();
+        }
+        return result;
+    }
+
+    /**
+     * Wraps a graph as a CimProfile.
+     * If the graph is already a CimProfile, it is returned as is.
      * Otherwise, a new ProfileOntologyImpl is created wrapping the graph.
      *
      * @param graph The graph to wrap.
-     * @return A ProfileOntology wrapping the given graph.
+     * @return A CimProfile wrapping the given graph.
      */
-    static ProfileOntology wrap(Graph graph) throws IllegalArgumentException {
-        if (graph instanceof ProfileOntology po) {
+    static CimProfile wrap(Graph graph) throws IllegalArgumentException {
+        if (graph instanceof CimProfile po) {
             return po;
         }
         var cimVersion = CIMGraph.getCIMXMLVersion(graph);
@@ -94,24 +124,24 @@ public interface ProfileOntology extends CIMGraph {
             case CIM_16 -> {
                 if(isHeaderProfile(graph)) {
                     // If the graph contains header profile, skip the version IRI and keyword check.
-                    yield new ProfileOntologyCIM16(graph, true);
+                    yield new CimProfile16(graph, true);
                 }
-                if(!ProfileOntologyCIM16.hasVersionIRIAndKeyword(graph)) {
+                if(!CimProfile16.hasVersionIRIAndKeyword(graph)) {
                     throw new IllegalArgumentException("Graph does not contain the required '...Version.shortName' and '...Version.entsoeURI*' or '...Version.baseURI...' for a CGMES 2.4.15 profile.");
                 }
-                yield new ProfileOntologyCIM16(graph, false);
+                yield new CimProfile16(graph, false);
             }
             case CIM_17, CIM_18 -> {
-                if(ProfileOntologyCIM17.hasOntology(graph)) {
-                    if(!ProfileOntologyCIM17.hasVersionIRIAndKeyword(graph)) {
+                if(CimProfile17.hasOntology(graph)) {
+                    if(!CimProfile17.hasVersionIRIAndKeyword(graph)) {
                         throw new IllegalArgumentException("Graphs ontology does not contain the required versionIRI and keyword for a CIM profile.");
                     }
                     // If the graph contains the ontology subject, it is assumed to be a CGMES 2.4.15 profile.
-                    yield new ProfileOntologyCIM17(graph, false);
+                    yield new CimProfile17(graph, false);
                 }
                 if(isHeaderProfile(graph)) {
                     // If the graph contains header profile --> it is still CIM16 style
-                    yield new ProfileOntologyCIM17(graph, true);
+                    yield new CimProfile17(graph, true);
                 }
                 throw new IllegalArgumentException("Graph does not contain the required ontology subject for a CIM profile.");
             }

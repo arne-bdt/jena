@@ -15,29 +15,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.jena.cimxml;
 
-import org.apache.jena.graph.Node;
-import org.apache.jena.sparql.core.Quad;
+import java.util.Objects;
 
-public enum CIMXMLDocumentContext {
-    fullModel,
-    body,
-    differenceModel,
-    forwardDifferences,
-    reverseDifferences,
-    preconditions;
+public enum CimVersion {
+    /** No CIM version specified */
+    NO_CIM,
+    /**
+     * CIM version 16.
+     * This version is used in CGMES v2.4.15
+     */
+    CIM_16,
+    /**
+     * CIM version 17.
+     * This version is used in CGMES v3.0
+     * */
+    CIM_17,
+    /**
+     * CIM version 18.
+     * There is no matching version of CGMES yet.
+     */
+    CIM_18;
 
-
-    public static Node getGraphName(CIMXMLDocumentContext context) {
-        return switch (context) {
-            case fullModel -> CIMHeaderVocabulary.TYPE_FULL_MODEL;
-            case body -> Quad.defaultGraphIRI;
-            case differenceModel -> CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL;
-            case forwardDifferences -> CIMHeaderVocabulary.GRAPH_FORWARD_DIFFERENCES;
-            case reverseDifferences -> CIMHeaderVocabulary.GRAPH_REVERSE_DIFFERENCES;
-            case preconditions -> CIMHeaderVocabulary.GRAPH_PRECONDITIONS;
+    public static CimVersion fromCimNamespacePrefixUri(String prefixURI) {
+        Objects.requireNonNull(prefixURI);
+        return switch(prefixURI) {
+            case "http://iec.ch/TC57/2013/CIM-schema-cim16#" -> CimVersion.CIM_16;
+            case "http://iec.ch/TC57/CIM100#" -> CimVersion.CIM_17;
+            case "https://cim.ucaiug.io/ns#" -> CimVersion.CIM_18;
+            default -> CimVersion.NO_CIM;
         };
     }
 }

@@ -19,11 +19,10 @@
 package org.apache.jena.cimxml.graph;
 
 import org.apache.jena.atlas.lib.Lib;
-import org.apache.jena.cimxml.graph.ProfileOntology;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.riot.RDFParser;
-import org.apache.jena.cimxml.CIMVersion;
+import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
@@ -32,7 +31,7 @@ import java.util.Set;
 
 import static org.junit.Assert.*;
 
-public class TestProfileOntologyCIM17 {
+public class TestCimProfile17 {
 
 
     /**
@@ -72,10 +71,10 @@ public class TestProfileOntologyCIM17 {
             .checking(false)
             .parse(graph);
 
-        var ontology = ProfileOntology.wrap(graph);
+        var ontology = CimProfile.wrap(graph);
 
         assertFalse(ontology.isHeaderProfile());
-        assertTrue(Set.of(CIMVersion.CIM_17, CIMVersion.CIM_18).contains(ontology.getCIMVersion()));
+        assertTrue(Set.of(CimVersion.CIM_17, CimVersion.CIM_18).contains(ontology.getCIMVersion()));
 
         assertEquals(2, ontology.getOwlVersionIRIs().size());
         assertTrue(ontology.getOwlVersionIRIs().stream()

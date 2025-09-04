@@ -21,8 +21,8 @@ package org.apache.jena.cimxml.graph;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.cimxml.CIMHeaderVocabulary;
-import org.apache.jena.cimxml.CIMVersion;
+import org.apache.jena.cimxml.CimHeaderVocabulary;
+import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.sparql.graph.GraphWrapper;
 import org.apache.jena.vocabulary.RDF;
 
@@ -30,22 +30,22 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 
-public interface ModelHeader extends CIMGraph {
+public interface CimModelHeader extends CIMGraph {
 
     default boolean isFullModel() {
-        return find(Node.ANY, RDF.type.asNode(), CIMHeaderVocabulary.TYPE_FULL_MODEL).hasNext();
+        return find(Node.ANY, RDF.type.asNode(), CimHeaderVocabulary.TYPE_FULL_MODEL).hasNext();
     }
 
     default boolean isDifferenceModel() {
-        return find(Node.ANY, RDF.type.asNode(), CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL).hasNext();
+        return find(Node.ANY, RDF.type.asNode(), CimHeaderVocabulary.TYPE_DIFFERENCE_MODEL).hasNext();
     }
 
     default Node getModel() {
-        var iter = find(Node.ANY, RDF.type.asNode(), CIMHeaderVocabulary.TYPE_FULL_MODEL);
+        var iter = find(Node.ANY, RDF.type.asNode(), CimHeaderVocabulary.TYPE_FULL_MODEL);
         if(iter.hasNext()) {
             return iter.next().getSubject();
         }
-        iter = find(Node.ANY, RDF.type.asNode(), CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL);
+        iter = find(Node.ANY, RDF.type.asNode(), CimHeaderVocabulary.TYPE_DIFFERENCE_MODEL);
         if(iter.hasNext()) {
             return iter.next().getSubject();
         }
@@ -54,43 +54,43 @@ public interface ModelHeader extends CIMGraph {
 
     /**
      * Get the profiles associated with the model.
-     * Each profile node in a model header references one owlVersionIRI in {@link ProfileOntology#getOwlVersionIRIs()}
+     * Each profile node in a model header references one owlVersionIRI in {@link CimProfile#getOwlVersionIRIs()}
      * of the matching profile ontology.
      * @return A set of profile nodes (IRIs).
      */
     default Set<Node> getProfiles() {
-        return stream(getModel(), CIMHeaderVocabulary.PREDICATE_PROFILE, Node.ANY)
+        return stream(getModel(), CimHeaderVocabulary.PREDICATE_PROFILE, Node.ANY)
                 .map(Triple::getObject)
                 .collect(Collectors.toUnmodifiableSet());
     }
 
     default Set<Node> getSupersedes() {
-        return stream(getModel(), CIMHeaderVocabulary.PREDICATE_SUPERSEDES, Node.ANY)
+        return stream(getModel(), CimHeaderVocabulary.PREDICATE_SUPERSEDES, Node.ANY)
                 .map(Triple::getObject)
                 .collect(Collectors.toUnmodifiableSet());
     }
 
     default Set<Node> getDependentOn() {
-        return stream(getModel(), CIMHeaderVocabulary.PREDICATE_DEPENDENT_ON, Node.ANY)
+        return stream(getModel(), CimHeaderVocabulary.PREDICATE_DEPENDENT_ON, Node.ANY)
                 .map(Triple::getObject)
                 .collect(Collectors.toUnmodifiableSet());
     }
 
-    static ModelHeader wrap(Graph graph) {
+    static CimModelHeader wrap(Graph graph) {
         if (graph == null) {
             return null;
         }
-        if (graph instanceof ModelHeader modelHeader) {
-            return modelHeader;
+        if (graph instanceof CimModelHeader cimModelHeader) {
+            return cimModelHeader;
         }
-        if( CIMGraph.getCIMXMLVersion(graph) == CIMVersion.NO_CIM) {
+        if( CIMGraph.getCIMXMLVersion(graph) == CimVersion.NO_CIM) {
             throw new IllegalArgumentException("Graph does not appear to be a CIM graph. No proper 'cim' namespace defined.");
         }
-        return new ModelHeaderGraphWrapper(graph);
+        return new CimModelHeaderGraphWrapper(graph);
     }
 
-    class ModelHeaderGraphWrapper extends GraphWrapper implements ModelHeader {
-        public ModelHeaderGraphWrapper(Graph graph) {
+    class CimModelHeaderGraphWrapper extends GraphWrapper implements CimModelHeader {
+        public CimModelHeaderGraphWrapper(Graph graph) {
             super(graph);
         }
     }

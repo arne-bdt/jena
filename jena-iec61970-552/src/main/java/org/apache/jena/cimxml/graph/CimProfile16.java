@@ -27,7 +27,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class ProfileOntologyCIM16 extends GraphWrapper implements ProfileOntology {
+public class CimProfile16 extends GraphWrapper implements CimProfile {
 
     final static String NS_RDFS = "http://www.w3.org/2000/01/rdf-schema#";
 
@@ -71,7 +71,7 @@ public class ProfileOntologyCIM16 extends GraphWrapper implements ProfileOntolog
 
     private final boolean isHeaderProfile;
 
-    public ProfileOntologyCIM16(Graph graph, boolean isHeaderProfile) {
+    public CimProfile16(Graph graph, boolean isHeaderProfile) {
         super(graph);
         this.isHeaderProfile = isHeaderProfile;
     }
@@ -103,5 +103,17 @@ public class ProfileOntologyCIM16 extends GraphWrapper implements ProfileOntolog
     @Override
     public String getOwlVersionInfo() {
         return null;
+    }
+
+    @Override
+    public final boolean equals(Object other) {
+        if (!(other instanceof CimProfile16 that)) return false;
+
+        return this.equals(that);
+    }
+
+    @Override
+    public int hashCode() {
+        return this.calculateHashCode();
     }
 }

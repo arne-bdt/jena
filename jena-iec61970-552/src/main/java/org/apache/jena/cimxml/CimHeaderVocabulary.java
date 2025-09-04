@@ -21,7 +21,7 @@ package org.apache.jena.cimxml;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 
-public final class CIMHeaderVocabulary {
+public final class CimHeaderVocabulary {
     public final static String NS_MD = "http://iec.ch/TC57/61970-552/ModelDescription/1#";
     public final static String NS_DM = "http://iec.ch/TC57/61970-552/DifferenceModel/1#";
     public final static String CLASSNAME_FULL_MODEL = "FullModel";

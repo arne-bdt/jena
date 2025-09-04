@@ -19,6 +19,7 @@
 package org.apache.jena.cimxml.parser;
 
 import org.apache.jena.cimxml.parser.system.StreamCIMXML;
+import org.apache.jena.cimxml.rdfs.CimProfileRegistry;
 import org.apache.jena.riot.RiotException;
 import org.apache.jena.riot.lang.rdfxml.SysRRX;
 import org.apache.jena.riot.system.*;
@@ -32,6 +33,8 @@ import java.io.Reader;
 
 /**
  * CIM/XML parser.
+ * This implementation is based on the RDF/XML reader ReaderRDFXML_StAX_SR in Apache Jena, originally.
+ * It has been adapted to the CIM/XML needs.
  * <p>
  * This implementation uses StAX via {@link XMLStreamReader}.
  *
@@ -60,33 +63,50 @@ public class ReaderCIMXML_StAX_SR
     }
 
     public void read(InputStream input, StreamCIMXML output) {
-        read(input, null, output);
+        read(input, null, null, output);
+    }
+
+    public void read(InputStream input, CimProfileRegistry cimProfileRegistry, StreamCIMXML output) {
+        read(input, cimProfileRegistry, null, output);
     }
 
     public void read(InputStream input, String xmlBase, StreamCIMXML output) {
+        read(input, null, xmlBase, output);
+    }
+
+    public void read(InputStream input, CimProfileRegistry cimProfileRegistry, String xmlBase, StreamCIMXML output) {
         try {
             var xmlStreamReader = (XMLStreamReader2) xmlInputFactory.createXMLStreamReader(input);
-            parse(xmlStreamReader, xmlBase, output);
+            parse(xmlStreamReader, cimProfileRegistry, xmlBase, output);
         } catch (XMLStreamException ex) {
             throw new RiotException("Failed to create the XMLEventReader", ex);
         }
     }
 
     public void read(Reader reader, StreamCIMXML output) {
-        read(reader, null, output);
+        read(reader, null, null, output);
     }
 
     public void read(Reader reader, String xmlBase, StreamCIMXML output) {
+        read(reader, null, xmlBase, output);
+    }
+
+    public void read(Reader reader, CimProfileRegistry cimProfileRegistry, StreamCIMXML output) {
+        read(reader, cimProfileRegistry, null, output);
+    }
+
+    public void read(Reader reader, CimProfileRegistry cimProfileRegistry, String xmlBase, StreamCIMXML output) {
         try {
             var xmlStreamReader = (XMLStreamReader2) xmlInputFactory.createXMLStreamReader(reader);
-            parse(xmlStreamReader, xmlBase, output);
+            parse(xmlStreamReader, cimProfileRegistry, xmlBase, output);
         } catch (XMLStreamException ex) {
             throw new RiotException("Failed to create the XMLEventReader", ex);
         }
     }
 
-     private void parse(XMLStreamReader2 xmlStreamReader, String xmlBase, StreamCIMXML destination) {
-        var parser = new ParserCIMXML_StAX_SR(xmlStreamReader, xmlBase, destination, errorHandler);
+    private void parse(XMLStreamReader2 xmlStreamReader, CimProfileRegistry cimProfileRegistry, String xmlBase,
+                       StreamCIMXML destination) {
+        var parser = new ParserCIMXML_StAX_SR(xmlStreamReader, cimProfileRegistry, xmlBase, destination, errorHandler);
         destination.start();
         try {
             parser.parse();

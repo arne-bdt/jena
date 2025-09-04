@@ -18,30 +18,31 @@
 
 package org.apache.jena.cimxml.parser.system;
 
+import org.apache.jena.cimxml.graph.CimModelHeader;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
-import org.apache.jena.cimxml.CIMXMLDocumentContext;
-import org.apache.jena.cimxml.CIMVersion;
-import org.apache.jena.cimxml.sparql.core.CIMDatasetGraph;
-import org.apache.jena.cimxml.sparql.core.LinkedCIMDatasetGraph;
+import org.apache.jena.cimxml.CimXmlDocumentContext;
+import org.apache.jena.cimxml.CimVersion;
+import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
+import org.apache.jena.cimxml.sparql.core.LinkedCimDatasetGraph;
 import org.apache.jena.sparql.core.Quad;
 
 public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
-    private final LinkedCIMDatasetGraph linkedCIMDatasetGraph;
+    private final LinkedCimDatasetGraph linkedCIMDatasetGraph;
     private String versionOfIEC61970_552 = null;
     private Graph currentGraph;
-    private CIMXMLDocumentContext currentContext;
-    private CIMVersion versionOfCIMXML = CIMVersion.NO_CIM;
+    private CimXmlDocumentContext currentContext;
+    private CimVersion versionOfCIMXML = CimVersion.NO_CIM;
 
     public StreamCIMXMLToDatasetGraph() {
         // init default graph for body context
-        currentContext = CIMXMLDocumentContext.body;
+        currentContext = CimXmlDocumentContext.body;
         currentGraph = new GraphMem2Roaring(IndexingStrategy.LAZY_PARALLEL);
-        linkedCIMDatasetGraph = new LinkedCIMDatasetGraph(currentGraph);
+        linkedCIMDatasetGraph = new LinkedCimDatasetGraph(currentGraph);
     }
 
     @Override
@@ -50,16 +51,16 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
     }
 
     @Override
-    public CIMVersion getVersionOfCIMXML() {
+    public CimVersion getVersionOfCIMXML() {
         return versionOfCIMXML;
     }
 
     @Override
-    public void setVersionOfCIMXML(CIMVersion versionOfCIMXML) {
+    public void setVersionOfCIMXML(CimVersion versionOfCIMXML) {
         this.versionOfCIMXML = versionOfCIMXML;
     }
 
-    public CIMDatasetGraph getCIMDatasetGraph() {
+    public CimDatasetGraph getCIMDatasetGraph() {
         return linkedCIMDatasetGraph;
     }
 
@@ -67,7 +68,9 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
         if(linkedCIMDatasetGraph.containsGraph(graphName)) {
             currentGraph = linkedCIMDatasetGraph.getGraph(graphName);
         } else {
-            currentGraph = new GraphMem2Roaring(indexingStrategy);
+            final var newGraph = new GraphMem2Roaring(indexingStrategy);
+            newGraph.getPrefixMapping().setNsPrefixes(currentGraph.getPrefixMapping());
+            currentGraph = newGraph;
             linkedCIMDatasetGraph.addGraph(graphName, currentGraph);
         }
     }
@@ -95,6 +98,7 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
     @Override
     public void prefix(String prefix, String iri) {
         linkedCIMDatasetGraph.prefixes().add(prefix, iri);
+        currentGraph.getPrefixMapping().setNsPrefix(prefix, iri);
     }
 
     @Override
@@ -104,8 +108,12 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
             if (graph instanceof GraphMem2Roaring roaring && !roaring.isIndexInitialized()) {
                 roaring.initializeIndexParallel();
             }
-            graph.getPrefixMapping().setNsPrefixes(linkedCIMDatasetGraph.prefixes().getMapping());
         });
+    }
+
+    @Override
+    public CimModelHeader getModelHeader() {
+        return linkedCIMDatasetGraph.getModelHeader();
     }
 
     @Override
@@ -114,23 +122,23 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
     }
 
     @Override
-    public CIMXMLDocumentContext getCurrentContext() {
+    public CimXmlDocumentContext getCurrentContext() {
         return currentContext;
     }
 
     @Override
-    public void setCurrentContext(CIMXMLDocumentContext context) {
+    public void setCurrentContext(CimXmlDocumentContext context) {
         switchContext(context);
     }
 
-    public void switchContext(CIMXMLDocumentContext cimDocumentContext) {
+    public void switchContext(CimXmlDocumentContext cimDocumentContext) {
         var indexingStrategy = switch (cimDocumentContext) {
             // The metadata is usually very small, so we use a minimal indexing strategy.
             case fullModel, differenceModel -> IndexingStrategy.MINIMAL;
             // The data parts can be large, so we use a lazy parallel indexing strategy.
             default -> IndexingStrategy.LAZY_PARALLEL;
         };
-        var graphName = CIMXMLDocumentContext.getGraphName(cimDocumentContext);
+        var graphName = CimXmlDocumentContext.getGraphName(cimDocumentContext);
         setCurrentGraphAndCreateIfNecessary(graphName, indexingStrategy);
         currentContext = cimDocumentContext;
     }

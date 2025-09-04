@@ -19,49 +19,49 @@
 package org.apache.jena.cimxml.sparql.core;
 
 import org.apache.jena.graph.*;
-import org.apache.jena.cimxml.CIMHeaderVocabulary;
-import org.apache.jena.cimxml.graph.ModelHeader;
+import org.apache.jena.cimxml.CimHeaderVocabulary;
+import org.apache.jena.cimxml.graph.CimModelHeader;
 import org.apache.jena.sparql.core.DatasetGraph;
 
-public interface CIMDatasetGraph extends DatasetGraph {
+public interface CimDatasetGraph extends DatasetGraph {
 
     default boolean isFullModel() {
-        return containsGraph(CIMHeaderVocabulary.TYPE_FULL_MODEL);
+        return containsGraph(CimHeaderVocabulary.TYPE_FULL_MODEL);
     }
 
     default boolean isDifferenceModel() {
-        return containsGraph(CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL);
+        return containsGraph(CimHeaderVocabulary.TYPE_DIFFERENCE_MODEL);
     }
 
     default Graph getForwardDifferences() {
         if(!this.isDifferenceModel())
             throw new IllegalStateException("Forward differences are only available for DifferenceModels. Use isDifferentModel() to check.");
-        return getGraph(CIMHeaderVocabulary.GRAPH_FORWARD_DIFFERENCES);
+        return getGraph(CimHeaderVocabulary.GRAPH_FORWARD_DIFFERENCES);
     }
 
     default Graph getReverseDifferences() {
         if(!this.isDifferenceModel())
             throw new IllegalStateException("Reverse differences are only available for DifferenceModels. Use isDifferentModel() to check.");
-        return getGraph(CIMHeaderVocabulary.GRAPH_REVERSE_DIFFERENCES);
+        return getGraph(CimHeaderVocabulary.GRAPH_REVERSE_DIFFERENCES);
     }
 
     default Graph getPreconditions() {
         if(!this.isDifferenceModel())
             throw new IllegalStateException("Preconditions are only available for DifferenceModels. Use isDifferentModel() to check.");
-        return getGraph(CIMHeaderVocabulary.GRAPH_PRECONDITIONS);
+        return getGraph(CimHeaderVocabulary.GRAPH_PRECONDITIONS);
     }
 
-    default ModelHeader getModelHeader() {
+    default CimModelHeader getModelHeader() {
         var graphName = isFullModel()
-                ? CIMHeaderVocabulary.TYPE_FULL_MODEL
+                ? CimHeaderVocabulary.TYPE_FULL_MODEL
                 : isDifferenceModel()
-                    ? CIMHeaderVocabulary.TYPE_DIFFERENCE_MODEL
+                    ? CimHeaderVocabulary.TYPE_DIFFERENCE_MODEL
                     : null;
 
         if(graphName == null)
             throw new IllegalStateException("Model header is only available for FullModels or DifferenceModels. Use isFullModel() or isDifferenceModel() to check.");
 
-        return ModelHeader.wrap(getGraph(graphName));
+        return CimModelHeader.wrap(getGraph(graphName));
     }
 
     default Graph getBody() {

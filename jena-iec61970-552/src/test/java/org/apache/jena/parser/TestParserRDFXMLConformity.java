@@ -661,7 +661,7 @@ public class TestParserRDFXMLConformity {
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
-        parser.read(new StringReader(rdfxml), null, streamRDF);
+        parser.read(new StringReader(rdfxml), streamRDF);
         var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
 
         RDFParser.create()

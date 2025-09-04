@@ -30,7 +30,7 @@ import java.io.StringReader;
 
 import static org.junit.Assert.*;
 
-public class TestModelHeader {
+public class TestCimModelHeader {
 
 
     /**

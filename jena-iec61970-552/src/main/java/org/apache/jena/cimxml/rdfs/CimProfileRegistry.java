@@ -20,40 +20,39 @@ package org.apache.jena.cimxml.rdfs;
 
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.graph.Node;
-import org.apache.jena.mem2.collection.JenaMap;
-import org.apache.jena.cimxml.CIMVersion;
-import org.apache.jena.cimxml.graph.ProfileOntology;
+import org.apache.jena.cimxml.CimVersion;
+import org.apache.jena.cimxml.graph.CimProfile;
 
-import javax.xml.namespace.QName;
+import java.util.Map;
 import java.util.Set;
 
-public interface CIMProfileRegistry {
+public interface CimProfileRegistry {
 
-    record PropertyAndRDFDatatype(Node property, RDFDatatype rdfDatatype) {}
+    /**
+     * A record to hold the class, property, primitive type and reference type of a property.
+     * Either primitiveType or referenceType may be null, but not both.
+     * If primitiveType is not null, the property is a primitive property.
+     * If referenceType is not null, the property is a reference property.
+     */
+    record ClassPropertyAndTypes(Node clazz, Node property, RDFDatatype primitiveType, Node referenceType) {}
 
     /**
      * Registers an ontology graph for profiles in the registry.
      * During registration, the data types of all properties in the graph are extracted and stored in a map for fast lookup.
      * Throws an IllegalArgumentException if one of the profiles owlVersionIRIs is already registered
      * or in case of a header profile, if one has already been registered for the same CIM version.
-     * @param graph The profile ontology to register.
+     * @param cimProfile The profile ontology to register.
      */
-    void registerOntology(ProfileOntology graph);
+    void register(CimProfile cimProfile);
 
     /**
      * Unregisters an ontology graph for the given profiles in the registry.
-     * The whole set of profile IRIs must match the profile IRIs of a registered ontology.
+     * The whole set of profile IRIs must match the profile IRIs of a registered ontology or
+     * in case of a header profile, the CIM version must match.
      * Throws an IllegalArgumentException if one of the profile IRIs is not registered.
-     * @param owlVersionIRIs A set of profile IRIs as found in the model header or in ProfileOntology#getOwlVersionIRIs().
+     * @param cimProfile profile ontology to unregister.
      */
-    void unregisterOntology(Set<Node> owlVersionIRIs);
-
-    /**
-     * Unregisters the ontology graph that was registered for the given CIM version as header profile.
-     * Throws an IllegalArgumentException if no header profile has been registered for the given CIM version.
-     * @param version The CIM version for which the header profile should be unregistered.
-     */
-    void unregisterHeaderProfile(CIMVersion version);
+    void unregister(CimProfile cimProfile);
 
     /**
      * Checks if the registry contains all profile IRIs in the given set.
@@ -67,13 +66,13 @@ public interface CIMProfileRegistry {
      * @param version The CIM version to check.
      * @return true if a header profile for the given CIM version is registered, false otherwise.
      */
-    boolean containsHeaderProfile(CIMVersion version);
+    boolean containsHeaderProfile(CimVersion version);
 
     /**
      * Get all registered ontologies in the registry.
-     * @return A set of registered ontologies. The set is thread-safe for reading.
+     * @return A collection of all registered ontologies.
      */
-    Set<ProfileOntology> getRegisteredOntologies();
+    Set<CimProfile> getRegisteredProfiles();
 
     /**
      * Get all properties and their associated RDF datatypes for the given set of profile IRIs.
@@ -81,14 +80,16 @@ public interface CIMProfileRegistry {
      * Throws an IllegalArgumentException if one of the profile IRIs is not registered.
      * @param owlVersionIRIs A set of profile IRIs as found in the model header.
      * @return A map of properties and their associated RDF datatypes. The map is thread-safe for reading.
+     *         Returns null if one of the profile IRIs is not registered.
      */
-    JenaMap<QName, PropertyAndRDFDatatype> getPropertiesAndDatatypes(Set<Node> owlVersionIRIs);
+    Map<Node, ClassPropertyAndTypes> getPropertiesAndDatatypes(Set<Node> owlVersionIRIs);
 
     /**
      * Get all properties and their associated RDF datatypes for the header profile of the given CIM version.
      * Throws an IllegalArgumentException if no header profile has been registered for the given CIM version.
      * @param version The CIM version for which the header profile should be used.
      * @return A map of properties and their associated RDF datatypes. The map is thread-safe for reading.
+     *         Returns null if no header profile is registered for the given CIM version.
      */
-    JenaMap<QName, PropertyAndRDFDatatype> getHeaderPropertiesAndDatatypes(CIMVersion version);
+    Map<Node, ClassPropertyAndTypes> getHeaderPropertiesAndDatatypes(CimVersion version);
 }

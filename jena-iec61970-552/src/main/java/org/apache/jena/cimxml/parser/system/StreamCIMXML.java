@@ -18,18 +18,24 @@
 
 package org.apache.jena.cimxml.parser.system;
 
-import org.apache.jena.cimxml.CIMVersion;
-import org.apache.jena.cimxml.CIMXMLDocumentContext;
+import org.apache.jena.cimxml.CimVersion;
+import org.apache.jena.cimxml.CimXmlDocumentContext;
+import org.apache.jena.cimxml.graph.CimModelHeader;
 import org.apache.jena.riot.system.StreamRDF;
 
 public interface StreamCIMXML extends StreamRDF {
+
+
+    /**
+     *  Gets the model header information as found in the CIMXML file
+     */
+    CimModelHeader getModelHeader();
 
     /**
      * Sets the preprocessing instruction version of IEC 61970-552
      * @param versionOfCIMXML the version string as found in the CIMXML file
      */
     void setVersionOfIEC61970_552(String versionOfCIMXML);
-
 
     /**
      * Gets the preprocessing instruction version of IEC 61970-552
@@ -41,15 +47,15 @@ public interface StreamCIMXML extends StreamRDF {
      * Gets the CIMXMLVersion enum value for the given version string
      * @return the CIMXMLVersion enum value
      */
-    CIMVersion getVersionOfCIMXML();
+    CimVersion getVersionOfCIMXML();
 
     /**
      * Sets the CIMXMLVersion enum value for the given version string
      * @param versionOfCIMXML the CIMXMLVersion enum value
      */
-    void setVersionOfCIMXML(CIMVersion versionOfCIMXML);
+    void setVersionOfCIMXML(CimVersion versionOfCIMXML);
 
-    CIMXMLDocumentContext getCurrentContext();
+    CimXmlDocumentContext getCurrentContext();
 
-    void setCurrentContext(CIMXMLDocumentContext context);
+    void setCurrentContext(CimXmlDocumentContext context);
 }

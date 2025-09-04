@@ -15,36 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.jena.cimxml;
 
-import java.util.Objects;
+import org.apache.jena.graph.Node;
+import org.apache.jena.sparql.core.Quad;
 
-public enum CIMVersion {
-    /** No CIM version specified */
-    NO_CIM,
-    /**
-     * CIM version 16.
-     * This version is used in CGMES v2.4.15
-     */
-    CIM_16,
-    /**
-     * CIM version 17.
-     * This version is used in CGMES v3.0
-     * */
-    CIM_17,
-    /**
-     * CIM version 18.
-     * There is no matching version of CGMES yet.
-     */
-    CIM_18;
+public enum CimXmlDocumentContext {
+    fullModel,
+    body,
+    differenceModel,
+    forwardDifferences,
+    reverseDifferences,
+    preconditions;
 
-    public static CIMVersion fromCimNamespacePrefixUri(String prefixURI) {
-        Objects.requireNonNull(prefixURI);
-        return switch(prefixURI) {
-            case "http://iec.ch/TC57/2013/CIM-schema-cim16#" -> CIMVersion.CIM_16;
-            case "http://iec.ch/TC57/CIM100#" -> CIMVersion.CIM_17;
-            case "https://cim.ucaiug.io/ns#" -> CIMVersion.CIM_18;
-            default -> CIMVersion.NO_CIM;
+
+    public static Node getGraphName(CimXmlDocumentContext context) {
+        return switch (context) {
+            case fullModel -> CimHeaderVocabulary.TYPE_FULL_MODEL;
+            case body -> Quad.defaultGraphIRI;
+            case differenceModel -> CimHeaderVocabulary.TYPE_DIFFERENCE_MODEL;
+            case forwardDifferences -> CimHeaderVocabulary.GRAPH_FORWARD_DIFFERENCES;
+            case reverseDifferences -> CimHeaderVocabulary.GRAPH_REVERSE_DIFFERENCES;
+            case preconditions -> CimHeaderVocabulary.GRAPH_PRECONDITIONS;
         };
     }
 }

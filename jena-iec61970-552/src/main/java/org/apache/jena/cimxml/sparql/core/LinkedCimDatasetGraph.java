@@ -40,13 +40,13 @@ import java.util.concurrent.ConcurrentMap;
  * <p>
  * Only the transactional graphs are included in the transaction.
  */
-public class LinkedCIMDatasetGraph  extends DatasetGraphCollection implements CIMDatasetGraph {
+public class LinkedCimDatasetGraph extends DatasetGraphCollection implements CimDatasetGraph {
 
-    public LinkedCIMDatasetGraph() {
+    public LinkedCimDatasetGraph() {
         super();
     }
 
-    public LinkedCIMDatasetGraph(Graph defaultGraph) {
+    public LinkedCimDatasetGraph(Graph defaultGraph) {
         this();
         addGraph(Quad.defaultGraphIRI, defaultGraph);
     }

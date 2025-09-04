@@ -19,7 +19,7 @@
 package org.apache.jena.parser;
 
 import org.apache.jena.atlas.lib.Lib;
-import org.apache.jena.cimxml.CIMVersion;
+import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.cimxml.parser.ReaderCIMXML_StAX_SR;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.irix.SystemIRIx;
@@ -98,7 +98,7 @@ public class TestParserCIMXMLConformity {
 
         parser.read(new StringReader(rdfxml), streamRDF);
 
-        assertEquals(CIMVersion.CIM_17, streamRDF.getVersionOfCIMXML());
+        assertEquals(CimVersion.CIM_17, streamRDF.getVersionOfCIMXML());
     }
 
     @Test
@@ -119,7 +119,7 @@ public class TestParserCIMXMLConformity {
 
         parser.read(new StringReader(rdfxml), streamRDF);
 
-        assertEquals(CIMVersion.CIM_18, streamRDF.getVersionOfCIMXML());
+        assertEquals(CimVersion.CIM_18, streamRDF.getVersionOfCIMXML());
     }
 
     @Test

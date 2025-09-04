@@ -28,7 +28,7 @@ import org.apache.jena.vocabulary.RDF;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class ProfileOntologyCIM17 extends GraphWrapper implements ProfileOntology {
+public class CimProfile17 extends GraphWrapper implements CimProfile {
 
     final static String NS_EUMD = "https://ap.cim4.eu/DocumentHeader#";
     final static String NS_OWL = "http://www.w3.org/2002/07/owl#";
@@ -61,7 +61,7 @@ public class ProfileOntologyCIM17 extends GraphWrapper implements ProfileOntolog
 
     private final boolean isHeaderProfile;
 
-    public ProfileOntologyCIM17(Graph graph, boolean isHeaderProfile) {
+    public CimProfile17(Graph graph, boolean isHeaderProfile) {
         super(graph);
         this.isHeaderProfile = isHeaderProfile;
     }
@@ -96,5 +96,17 @@ public class ProfileOntologyCIM17 extends GraphWrapper implements ProfileOntolog
     public String getOwlVersionInfo() {
         var iter = find(getOntology(), PREDICATE_OWL_VERSION_INFO, Node.ANY);
         return iter.hasNext() ? iter.next().getObject().getLiteralValue().toString() : null;
+    }
+
+    @Override
+    public final boolean equals(Object other) {
+        if (!(other instanceof CimProfile17 that)) return false;
+
+        return this.equals(that);
+    }
+
+    @Override
+    public int hashCode() {
+        return this.calculateHashCode();
     }
 }
