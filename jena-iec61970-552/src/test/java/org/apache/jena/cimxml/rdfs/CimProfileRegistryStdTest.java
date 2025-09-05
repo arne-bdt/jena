@@ -1,13 +1,12 @@
 package org.apache.jena.cimxml.rdfs;
 
 import org.apache.jena.atlas.lib.Lib;
-import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.cimxml.graph.CimProfile;
+import org.apache.jena.cimxml.parser.ReaderCIMXML_StAX_SR;
+import org.apache.jena.cimxml.parser.system.StreamCIMXMLToDatasetGraph;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.irix.SystemIRIx;
-import org.apache.jena.mem2.GraphMem2Roaring;
-import org.apache.jena.riot.RDFParser;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
@@ -76,13 +75,12 @@ public class CimProfileRegistryStdTest {
         JenaSystem.init();
         SystemIRIx.reset();
 
-        var graph = new GraphMem2Roaring();
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
-        RDFParser.create()
-                .source(new StringReader(rdfxml))
-                .lang(org.apache.jena.riot.Lang.RDFXML)
-                .checking(false)
-                .parse(graph);
+        parser.read(new StringReader(rdfxml), streamRDF);
+
+        var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
 
         var profile = CimProfile.wrap(graph);
 
