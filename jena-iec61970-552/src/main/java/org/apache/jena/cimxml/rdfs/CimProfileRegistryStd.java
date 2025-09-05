@@ -19,8 +19,8 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     private final Map<Node, CimProfile> dataProfiles = new ConcurrentHashMap<>();
     private final Map<CimVersion, CimProfile> headerProfiles = new ConcurrentHashMap<>();
-    private final Map<CimProfile, Map<Node, ClassPropertyAndTypes>> profilePropertiesCache = new ConcurrentHashMap<>();
-    private final Map<Set<CimProfile>, Map<Node, ClassPropertyAndTypes>> profileSetPropertiesCache = new ConcurrentHashMap<>();
+    private final Map<CimProfile, Map<Node, PropertyInfo>> profilePropertiesCache = new ConcurrentHashMap<>();
+    private final Map<Set<CimProfile>, Map<Node, PropertyInfo>> profileSetPropertiesCache = new ConcurrentHashMap<>();
 
 
     private final static Query typedPropertiesQuery = QueryFactory.create("""
@@ -144,7 +144,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
     }
 
     @Override
-    public Map<Node, ClassPropertyAndTypes> getPropertiesAndDatatypes(Set<Node> owlVersionIRIs) {
+    public Map<Node, PropertyInfo> getPropertiesAndDatatypes(Set<Node> owlVersionIRIs) {
         if(owlVersionIRIs == null || owlVersionIRIs.isEmpty())
             throw new IllegalArgumentException("At least one profile owlVersionIRI must be provided.");
         var set = new HashSet<CimProfile>();
@@ -162,7 +162,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
         if(properties != null)
             return properties;
 
-        properties = new HashMap<Node, ClassPropertyAndTypes>(1024);
+        properties = new HashMap<Node, PropertyInfo>(1024);
         for(var profile : set) {
             properties.putAll(profilePropertiesCache.get(profile));
         }
@@ -172,15 +172,15 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
     }
 
     @Override
-    public Map<Node, ClassPropertyAndTypes> getHeaderPropertiesAndDatatypes(CimVersion version) {
+    public Map<Node, PropertyInfo> getHeaderPropertiesAndDatatypes(CimVersion version) {
         if(version == CimVersion.NO_CIM)
             throw new IllegalArgumentException("CIM version must be valid.");
         final var profile = headerProfiles.get(version);
         return profilePropertiesCache.get(profile);
     }
 
-    private static Map<Node, ClassPropertyAndTypes> getTypedProperties(Graph g) {
-        final var map = new HashMap<Node, ClassPropertyAndTypes>(1024);
+    private static Map<Node, PropertyInfo> getTypedProperties(Graph g) {
+        final var map = new HashMap<Node, PropertyInfo>(1024);
         QueryExec.graph(g)
                 .query(typedPropertiesQuery)
                 .select()
@@ -190,9 +190,9 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                     final var primitiveType = vars.get("primitiveType").getLiteralLexicalForm();
                     final var referenceType = vars.get("referenceType");
                     if("IRI".equals(primitiveType)) {
-                        map.put(property, new ClassPropertyAndTypes(clazz, property, null, referenceType));
+                        map.put(property, new PropertyInfo(clazz, property, null, referenceType));
                     } else {
-                        map.put(property, new ClassPropertyAndTypes(clazz, property, getDataType(primitiveType), null));
+                        map.put(property, new PropertyInfo(clazz, property, getDataType(primitiveType), null));
                     }
 
                 });
@@ -247,6 +247,8 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 return XSDDatatype.XSDnonPositiveInteger;
             case "PositiveInteger":
                 return XSDDatatype.XSDpositiveInteger;
+            case "String":
+                return XSDDatatype.XSDstring;
             case "StringIRI":
                 return XSDDatatype.XSDstring;
             case "Time":

@@ -200,7 +200,7 @@ public class ParserCIMXML_StAX_SR {
 
     private IRIx currentBase;
     private String currentLang = null;
-    private Map<Node, CimProfileRegistry.ClassPropertyAndTypes> currentDataTypeMap = null;
+    private Map<Node, CimProfileRegistry.PropertyInfo> currentDataTypeMap = null;
     private Set<Node> currentCimProfiles = null;
 
     /** Integer holder for rdf:li */

@@ -34,7 +34,7 @@ public interface CimProfileRegistry {
      * If primitiveType is not null, the property is a primitive property.
      * If referenceType is not null, the property is a reference property.
      */
-    record ClassPropertyAndTypes(Node clazz, Node property, RDFDatatype primitiveType, Node referenceType) {}
+    record PropertyInfo(Node clazz, Node property, RDFDatatype primitiveType, Node referenceType) {}
 
     /**
      * Registers an ontology graph for profiles in the registry.
@@ -82,7 +82,7 @@ public interface CimProfileRegistry {
      * @return A map of properties and their associated RDF datatypes. The map is thread-safe for reading.
      *         Returns null if one of the profile IRIs is not registered.
      */
-    Map<Node, ClassPropertyAndTypes> getPropertiesAndDatatypes(Set<Node> owlVersionIRIs);
+    Map<Node, PropertyInfo> getPropertiesAndDatatypes(Set<Node> owlVersionIRIs);
 
     /**
      * Get all properties and their associated RDF datatypes for the header profile of the given CIM version.
@@ -91,5 +91,5 @@ public interface CimProfileRegistry {
      * @return A map of properties and their associated RDF datatypes. The map is thread-safe for reading.
      *         Returns null if no header profile is registered for the given CIM version.
      */
-    Map<Node, ClassPropertyAndTypes> getHeaderPropertiesAndDatatypes(CimVersion version);
+    Map<Node, PropertyInfo> getHeaderPropertiesAndDatatypes(CimVersion version);
 }
