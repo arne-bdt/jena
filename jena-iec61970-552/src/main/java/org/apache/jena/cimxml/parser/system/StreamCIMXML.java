@@ -21,10 +21,13 @@ package org.apache.jena.cimxml.parser.system;
 import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.cimxml.CimXmlDocumentContext;
 import org.apache.jena.cimxml.graph.CimModelHeader;
+import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
 import org.apache.jena.riot.system.StreamRDF;
 
 public interface StreamCIMXML extends StreamRDF {
 
+
+    CimDatasetGraph getCIMDatasetGraph();
 
     /**
      *  Gets the model header information as found in the CIMXML file

@@ -375,7 +375,7 @@ public class TestParserCIMXMLConformity {
 
         parser.read(new StringReader(rdfxml), streamRDF);
 
-        var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
+        var graph = streamRDF.getCIMDatasetGraph().getBody();
         assertTrue(graph.contains(
                 NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
                 NodeFactory.createURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
@@ -415,7 +415,7 @@ public class TestParserCIMXMLConformity {
 
         parser.read(new StringReader(rdfxml), streamRDF);
 
-        var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
+        var graph = streamRDF.getCIMDatasetGraph().getBody();
         assertTrue(graph.contains(
                 NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),
                 NodeFactory.createURI("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
@@ -562,7 +562,7 @@ public class TestParserCIMXMLConformity {
         final var streamInstanceData = new StreamCIMXMLToDatasetGraph();
         parser.read(new StringReader(cimxmlInstanceData), registry, streamInstanceData);
 
-        var instanceGraph = streamInstanceData.getCIMDatasetGraph().getDefaultGraph();
+        var instanceGraph = streamInstanceData.getCIMDatasetGraph().getBody();
         assertNotNull(instanceGraph);
         assertEquals(6, instanceGraph.size());
 

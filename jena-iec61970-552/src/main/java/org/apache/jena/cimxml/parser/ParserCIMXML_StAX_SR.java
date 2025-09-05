@@ -201,6 +201,7 @@ public class ParserCIMXML_StAX_SR {
     private IRIx currentBase;
     private String currentLang = null;
     private Map<Node, CimProfileRegistry.PropertyInfo> currentDataTypeMap = null;
+    private Set<Node> currentListOfPropertiesNotInProfile = null;
     private Set<Node> currentCimProfiles = null;
 
     /** Integer holder for rdf:li */
@@ -514,6 +515,7 @@ public class ParserCIMXML_StAX_SR {
                         RDFXMLparseWarning("No CimProfileRegistry has been provided, so missing datatypes in CIMXML cannot be resolved.", location);
                     } else {
                         currentDataTypeMap = cimProfileRegistry.getHeaderPropertiesAndDatatypes(versionOfCIMXML);
+                        currentListOfPropertiesNotInProfile = new HashSet<>();
                         if(currentDataTypeMap == null) {
                             RDFXMLparseWarning("No header profile has been registered for CIM version " + versionOfCIMXML, location);
                         }
@@ -561,6 +563,7 @@ public class ParserCIMXML_StAX_SR {
                         currentCimProfiles = uriProfiles;
                     }
                     currentDataTypeMap = cimProfileRegistry.getPropertiesAndDatatypes(currentCimProfiles);
+                    currentListOfPropertiesNotInProfile = new HashSet<>();
                     if(currentDataTypeMap == null) {
                         RDFXMLparseWarning("The profiles in the model header could not be found in the CimProfileRegistry. Profiles: " + currentCimProfiles.toString(), location);
                     }
@@ -633,7 +636,10 @@ public class ParserCIMXML_StAX_SR {
                     property = propertyAndType.property(); // override to support reuse of property references across profiles
                     datatypeFromCimProfile = propertyAndType.primitiveType();
                 } else {
-                    RDFXMLparseWarning("Property '" + str(qName) + "' could not be found in current profile. Profiles: " + currentCimProfiles.toString() , location);
+                    if(!currentListOfPropertiesNotInProfile.contains(property)) {
+                        currentListOfPropertiesNotInProfile.add(property);
+                        RDFXMLparseWarning("Property '" + str(qName) + "' could not be found in current profiles. Profiles: " + currentCimProfiles.toString() , location);
+                    }
                     property = qNameToIRI(qName, QNameUsage.PropertyElement, location);
                 }
             }
@@ -1622,6 +1628,12 @@ public class ParserCIMXML_StAX_SR {
                 if( CIM_UUID_PATTERN.matcher(uuidPart).matches() ) {
                     yield iriDirect(xmlBaseForCIMXML + uuidPart);
                 } else {
+                    final var lowerCase = uuidPart.toLowerCase(Locale.ROOT);
+                    if( CIM_UUID_PATTERN.matcher(lowerCase).matches() ) {
+                        // warn parsed UUID with upper case into lower case form.
+                        RDFXMLparseWarning("CIM UUID with upper case letters: '"+uriStr+"' - converted to lower case form '_"+lowerCase+"'.", location);
+                        yield iriDirect(xmlBaseForCIMXML + lowerCase);
+                    }
                     RDFXMLparseWarning("Not a valid CIM UUID: '"+uriStr+"'", location);
                     yield iriResolve(uriStr, location);
                 }

@@ -33,8 +33,11 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
             {
               {
               	?property rdfs:domain ?class;
-                  		  rdfs:range ?referenceType;
-                		  cims:AssociationUsed "Yes";
+                  		  rdfs:range ?referenceType.
+                OPTIONAL {
+                    ?property cims:AssociationUsed ?associationUsed.
+                }
+                FILTER(!BOUND(?associationUsed) || ?associationUsed = "Yes")
               }
               UNION
               {
@@ -185,12 +188,12 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 .forEachRemaining(vars -> { //?class ?property ?primitiveType ?referenceType
                     final var clazz = vars.get("class");
                     final var property = vars.get("property");
-                    final var primitiveType = vars.get("primitiveType").getLiteralLexicalForm();
+                    final var primitiveType = vars.get("primitiveType");
                     final var referenceType = vars.get("referenceType");
-                    if("IRI".equals(primitiveType)) {
+                    if(referenceType != null) {
                         map.put(property, new PropertyInfo(clazz, property, null, referenceType));
                     } else {
-                        map.put(property, new PropertyInfo(clazz, property, getDataType(primitiveType), null));
+                        map.put(property, new PropertyInfo(clazz, property, getDataType(primitiveType.getLiteralLexicalForm()), null));
                     }
 
                 });

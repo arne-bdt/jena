@@ -60,6 +60,7 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
         this.versionOfCIMXML = versionOfCIMXML;
     }
 
+    @Override
     public CimDatasetGraph getCIMDatasetGraph() {
         return linkedCIMDatasetGraph;
     }
@@ -131,7 +132,7 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
         switchContext(context);
     }
 
-    public void switchContext(CimXmlDocumentContext cimDocumentContext) {
+    private void switchContext(CimXmlDocumentContext cimDocumentContext) {
         var indexingStrategy = switch (cimDocumentContext) {
             // The metadata is usually very small, so we use a minimal indexing strategy.
             case fullModel, differenceModel -> IndexingStrategy.MINIMAL;
