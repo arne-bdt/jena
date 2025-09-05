@@ -151,18 +151,13 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
         for(var owlVersionIRI : owlVersionIRIs) {
             var profile = dataProfiles.get(owlVersionIRI);
             if(profile == null)
-                throw new IllegalArgumentException("Profile ontology with owlVersionIRI " + owlVersionIRI + " is not registered.");
+                return null;
             set.add(profile);
         }
         if(set.size() == 1)
             return profilePropertiesCache.get(set.iterator().next());
 
-        var properties = profileSetPropertiesCache.get(getRegisteredProfiles());
-
-        if(properties != null)
-            return properties;
-
-        properties = new HashMap<Node, PropertyInfo>(1024);
+        Map<Node, PropertyInfo> properties = new HashMap<>(1024);
         for(var profile : set) {
             properties.putAll(profilePropertiesCache.get(profile));
         }
@@ -173,9 +168,12 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     @Override
     public Map<Node, PropertyInfo> getHeaderPropertiesAndDatatypes(CimVersion version) {
+        Objects.requireNonNull(version);
         if(version == CimVersion.NO_CIM)
             throw new IllegalArgumentException("CIM version must be valid.");
         final var profile = headerProfiles.get(version);
+        if(profile == null)
+            return null;
         return profilePropertiesCache.get(profile);
     }
 

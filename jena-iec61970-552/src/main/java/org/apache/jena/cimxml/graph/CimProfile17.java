@@ -68,11 +68,7 @@ public class CimProfile17 extends GraphWrapper implements CimProfile {
 
     @Override
     public boolean isHeaderProfile() {
-        // look for https://ap.cim4.eu/DocumentHeader# without # in version IRIs
-        return stream(getOntology(), PREDICATE_OWL_VERSION_IRI, Node.ANY)
-                .anyMatch(t
-                        -> t.getObject().isURI()
-                        && t.getObject().getURI().regionMatches(0, NS_EUMD, 0, NS_EUMD.length()-1));
+        return this.isHeaderProfile;
     }
 
     @Override

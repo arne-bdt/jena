@@ -42,7 +42,7 @@ public class CimProfile16 extends GraphWrapper implements CimProfile {
 
 
     public static boolean hasVersionIRIAndKeyword(Graph graph) {
-        if(!getProfilePropertyFixedTexts(graph, ".shortName").findAny().isPresent()) {
+        if(getProfilePropertyFixedTexts(graph, ".shortName").findAny().isEmpty()) {
             return false;   //no keyword defined
         }
         if(getProfilePropertyFixedTexts(graph, ".entsoeURI").findAny().isPresent()) {
