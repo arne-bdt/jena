@@ -1,6 +1,5 @@
 package org.apache.jena.cimxml.rdfs;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.cimxml.datatypes.SemVer2_0DataType;
 import org.apache.jena.cimxml.datatypes.UuidDataType;
@@ -22,10 +21,48 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class CimProfileRegistryStd implements CimProfileRegistry {
 
-    static {
-        // Register CIM specific datatypes
-        TypeMapper.getInstance().registerDatatype(SemVer2_0DataType.INSTANCE);
-        TypeMapper.getInstance().registerDatatype(UuidDataType.INSTANCE);
+
+    static Map<String, RDFDatatype> initPrimitiveToRDFDatatypeMapUsingXSDDatatypesOnly() {
+        var map = new HashMap<String, RDFDatatype>();
+        map.put("Base64Binary", XSDDatatype.XSDbase64Binary);
+        map.put("Boolean", XSDDatatype.XSDboolean);
+        map.put("Byte", XSDDatatype.XSDbyte);
+        map.put("Date", XSDDatatype.XSDdate);
+        map.put("DateTime", XSDDatatype.XSDdateTime);
+        map.put("DateTimeStamp", XSDDatatype.XSDdateTimeStamp);
+        map.put("Day", XSDDatatype.XSDgDay);
+        map.put("DayTimeDuration", XSDDatatype.XSDdayTimeDuration);
+        map.put("Decimal", XSDDatatype.XSDdecimal);
+        map.put("Double", XSDDatatype.XSDdouble);
+        map.put("Duration", XSDDatatype.XSDduration);
+        map.put("Float", XSDDatatype.XSDfloat);
+        map.put("HexBinary", XSDDatatype.XSDhexBinary);
+        map.put("Int", XSDDatatype.XSDint);
+        map.put("Integer", XSDDatatype.XSDinteger);
+        map.put("IRI", XSDDatatype.XSDstring);
+        map.put("LangString", RDFLangString.rdfLangString);
+        map.put("Long", XSDDatatype.XSDlong);
+        map.put("Month", XSDDatatype.XSDgMonth);
+        map.put("MonthDay", XSDDatatype.XSDgMonthDay);
+        map.put("NegativeInteger", XSDDatatype.XSDnegativeInteger);
+        map.put("NonNegativeInteger", XSDDatatype.XSDnonNegativeInteger);
+        map.put("NonPositiveInteger", XSDDatatype.XSDnonPositiveInteger);
+        map.put("PositiveInteger", XSDDatatype.XSDpositiveInteger);
+        map.put("String", XSDDatatype.XSDstring);
+        map.put("StringFixedLanguage", XSDDatatype.XSDstring);
+        map.put("StringIRI", XSDDatatype.XSDstring);
+        map.put("Time", XSDDatatype.XSDtime);
+        map.put("UnsignedByte", XSDDatatype.XSDunsignedByte);
+        map.put("UnsignedInt", XSDDatatype.XSDunsignedInt);
+        map.put("UnsignedLong", XSDDatatype.XSDunsignedLong);
+        map.put("UnsignedShort", XSDDatatype.XSDunsignedShort);
+        map.put("URI", XSDDatatype.XSDanyURI);
+        map.put("UUID", XSDDatatype.XSDstring);
+        map.put("Version", XSDDatatype.XSDstring);
+        map.put("Year", XSDDatatype.XSDgYear);
+        map.put("YearMonth", XSDDatatype.XSDgYearMonth);
+        map.put("YearMonthDuration", XSDDatatype.XSDyearMonthDuration);
+        return map;
     }
 
     private final Map<Set<Node>, CimProfile> multiVersionIriProfiles = new ConcurrentHashMap<>();
@@ -33,6 +70,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
     private final Map<CimVersion, CimProfile> headerProfiles = new ConcurrentHashMap<>();
     private final Map<CimProfile, Map<Node, PropertyInfo>> profilePropertiesCache = new ConcurrentHashMap<>();
     private final Map<Set<CimProfile>, Map<Node, PropertyInfo>> profileSetPropertiesCache = new ConcurrentHashMap<>();
+    private final Map<String, RDFDatatype> primitiveToRDFDatatypeMap;
 
     public final ErrorHandler errorHandler;
 
@@ -42,6 +80,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     public CimProfileRegistryStd(ErrorHandler errorHandler) {
         this.errorHandler = errorHandler;
+        this.primitiveToRDFDatatypeMap = initPrimitiveToRDFDatatypeMapUsingXSDDatatypesOnly();
     }
 
     private final static Query typedPropertiesQuery = QueryFactory.create("""
@@ -91,7 +130,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
             if(headerProfiles.containsKey(cimVersion))
                 throw new IllegalArgumentException("Header profile for CIM version " + cimVersion + " is already registered.");
             headerProfiles.put(cimVersion, cimProfile);
-            profilePropertiesCache.put(cimProfile, getTypedProperties(cimProfile, errorHandler));
+            profilePropertiesCache.put(cimProfile, getTypedProperties(cimProfile));
             return;
         }
 
@@ -109,7 +148,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 throw new IllegalArgumentException("Profile ontology with owlVersionIRIs " + owlVersionIRIs + " is already registered.");
             multiVersionIriProfiles.put(owlVersionIRIs, cimProfile);
         }
-        profilePropertiesCache.put(cimProfile, getTypedProperties(cimProfile, errorHandler));
+        profilePropertiesCache.put(cimProfile, getTypedProperties(cimProfile));
     }
 
     @Override
@@ -204,7 +243,19 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
         return profilePropertiesCache.get(profile);
     }
 
-    private static Map<Node, PropertyInfo> getTypedProperties(Graph g, ErrorHandler errorHandler) {
+    @Override
+    public Map<String, RDFDatatype> getPrimitiveToRDFDatatypeMapping() {
+        return Collections.unmodifiableMap(primitiveToRDFDatatypeMap);
+    }
+
+    @Override
+    public void registerPrimitiveType(String cimPrimitiveTypeName, RDFDatatype rdfDatatype) {
+        Objects.requireNonNull(cimPrimitiveTypeName);
+        Objects.requireNonNull(rdfDatatype);
+        primitiveToRDFDatatypeMap.put(cimPrimitiveTypeName, rdfDatatype);
+    }
+
+    private Map<Node, PropertyInfo> getTypedProperties(Graph g) {
         final var map = new HashMap<Node, PropertyInfo>(1024);
         QueryExec.graph(g)
                 .query(typedPropertiesQuery)
@@ -217,90 +268,18 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                     if(referenceType != null) {
                         map.put(property, new PropertyInfo(clazz, property, null, referenceType));
                     } else {
-                        map.put(property, new PropertyInfo(clazz, property, getDataType(primitiveType.getLiteralLexicalForm(), errorHandler), null));
+                        map.put(property, new PropertyInfo(clazz, property, getXsdDatatype(primitiveType.getLiteralLexicalForm()), null));
                     }
 
                 });
         return Collections.unmodifiableMap(map);
     }
 
-    private static RDFDatatype getDataType(String primitiveType, ErrorHandler errorHandler) {
-        switch (primitiveType) {
-            case "Base64Binary":
-                return XSDDatatype.XSDbase64Binary;
-            case "Boolean":
-                return XSDDatatype.XSDboolean;
-            case "Byte":
-                return XSDDatatype.XSDbyte;
-            case "Date":
-                return XSDDatatype.XSDdate;
-            case "DateTime":
-                return XSDDatatype.XSDdateTime;
-            case "DateTimeStamp":
-                return XSDDatatype.XSDdateTimeStamp;
-            case "Day":
-                return XSDDatatype.XSDgDay;
-            case "DayTimeDuration":
-                return XSDDatatype.XSDdayTimeDuration;
-            case "Decimal":
-                return XSDDatatype.XSDdecimal;
-            case "Double":
-                return XSDDatatype.XSDdouble;
-            case "Duration":
-                return XSDDatatype.XSDduration;
-            case "Float":
-                return XSDDatatype.XSDfloat;
-            case "HexBinary":
-                return XSDDatatype.XSDhexBinary;
-            case "Int":
-                return XSDDatatype.XSDint;
-            case "Integer":
-                return XSDDatatype.XSDinteger;
-            case "IRI":
-                return XSDDatatype.XSDanyURI;
-            case "LangString":
-                return RDFLangString.rdfLangString;
-            case "Long":
-                return XSDDatatype.XSDlong;
-            case "Month":
-                return XSDDatatype.XSDgMonth;
-            case "MonthDay":
-                return XSDDatatype.XSDgMonthDay;
-            case "NegativeInteger":
-                return XSDDatatype.XSDnegativeInteger;
-            case "NonNegativeInteger":
-                return XSDDatatype.XSDnonNegativeInteger;
-            case "NonPositiveInteger":
-                return XSDDatatype.XSDnonPositiveInteger;
-            case "PositiveInteger":
-                return XSDDatatype.XSDpositiveInteger;
-            case "String", "StringFixedLanguage", "StringIRI":
-                return XSDDatatype.XSDstring;
-            case "Time":
-                return XSDDatatype.XSDtime;
-            case "UnsignedByte":
-                return XSDDatatype.XSDunsignedByte;
-            case "UnsignedInt":
-                return XSDDatatype.XSDunsignedInt;
-            case "UnsignedLong":
-                return XSDDatatype.XSDunsignedLong;
-            case "UnsignedShort":
-                return XSDDatatype.XSDunsignedShort;
-            case "URI":
-                return XSDDatatype.XSDanyURI;
-            case "UUID":
-                return UuidDataType.INSTANCE;
-            case "Version":
-                return SemVer2_0DataType.INSTANCE;
-            case "Year":
-                return XSDDatatype.XSDgYear;
-            case "YearMonth":
-                return XSDDatatype.XSDgYearMonth;
-            case "YearMonthDuration":
-                return XSDDatatype.XSDyearMonthDuration;
-            default:
-                errorHandler.warning("Unknown mapping from '" + primitiveType + "' to XSD datatype. Using xsd:string as fallback.", -1,-1);
-                return XSDDatatype.XSDstring;
-        }
+    private RDFDatatype getXsdDatatype(String primitiveType) {
+        var dt = primitiveToRDFDatatypeMap.get(primitiveType);
+        if(dt != null)
+            return dt;
+        errorHandler.warning("Unknown mapping from CIM primitive'" + primitiveType + "' to XSD datatype. Using xsd:string as fallback.", -1,-1);
+        return XSDDatatype.XSDstring;
     }
 }

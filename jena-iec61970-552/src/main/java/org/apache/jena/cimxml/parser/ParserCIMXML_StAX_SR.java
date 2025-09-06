@@ -552,7 +552,7 @@ public class ParserCIMXML_StAX_SR {
             } else {
                 if(cimProfileRegistry != null) {
                     if(!currentCimProfiles.iterator().next().isURI()) {
-                        RDFXMLparseWarning("The profiles the ModelHeader are not URIs. Mot likely no FileHeaderProfile has been provided. Converting them to URI-Nodes.", location);
+                        RDFXMLparseWarning("The profiles the ModelHeader are not URIs. Most likely no FileHeaderProfile has been provided. Converting them to URI-Nodes.", location);
                         Set<Node> uriProfiles = new HashSet<>();
                         for(var profile : currentCimProfiles) {
                             uriProfiles.add(NodeFactory.createURI(profile.getLiteralLexicalForm()));

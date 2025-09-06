@@ -83,4 +83,13 @@ public interface CimProfileRegistry {
      *         Returns null if no header profile is registered for the given CIM version.
      */
     Map<Node, PropertyInfo> getHeaderPropertiesAndDatatypes(CimVersion version);
+
+    /**
+     * Get a mapping of primitive type names to RDF datatypes for all registered profiles.
+     * This includes primitive types from all registered ontologies.
+     * @return A map of primitive type names to RDF datatypes. The map is thread-safe for reading.
+     */
+    Map<String, RDFDatatype> getPrimitiveToRDFDatatypeMapping();
+
+    void registerPrimitiveType(String cimPrimitiveTypeName, RDFDatatype rdfDatatype);
 }

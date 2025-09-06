@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
 import static org.junit.Assert.*;
@@ -51,18 +50,9 @@ public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
         JenaSystem.init();
         SystemIRIx.reset();
         Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        final var futures = new ArrayList<Future<?>>();
         for(var rdfPath : java.nio.file.Files.newDirectoryStream(RDFS_FOLDER, "*.rdf")) {
-            futures.add(executor.submit(() -> {
-                try {
-                    cimParser.parseAndRegisterCimProfile(rdfPath);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }));
-        }
-        for(var future : futures) {
-            future.get();
+            System.out.println(rdfPath.toAbsolutePath());
+            cimParser.parseAndRegisterCimProfile(rdfPath);
         }
     }
 
@@ -74,7 +64,7 @@ public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
             paths.filter(p -> Files.isRegularFile(p))
                  .filter(p -> p.getFileName().toString().endsWith(".xml"))
                  .forEach(xmlFile -> {
-                     System.out.println("Loading " + xmlFile.getFileName());
+                     System.out.println("Loading " + xmlFile.toAbsolutePath());
                         try {
                             var cimDataset = cimParser.parseCimModel(xmlFile);
                             cimDatasets.add(cimDataset);
