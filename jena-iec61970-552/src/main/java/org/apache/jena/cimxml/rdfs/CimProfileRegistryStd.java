@@ -2,14 +2,19 @@ package org.apache.jena.cimxml.rdfs;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.jena.cimxml.CimVersion;
+import org.apache.jena.cimxml.datatypes.SemVer2_0DataType;
+import org.apache.jena.cimxml.datatypes.UuidDataType;
 import org.apache.jena.cimxml.graph.CimProfile;
 import org.apache.jena.datatypes.RDFDatatype;
+import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.datatypes.xsd.impl.RDFLangString;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryFactory;
+import org.apache.jena.riot.system.ErrorHandler;
+import org.apache.jena.riot.system.ErrorHandlerFactory;
 import org.apache.jena.sparql.exec.QueryExec;
 
 import java.util.*;
@@ -17,12 +22,27 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class CimProfileRegistryStd implements CimProfileRegistry {
 
+    static {
+        // Register CIM specific datatypes
+        TypeMapper.getInstance().registerDatatype(SemVer2_0DataType.INSTANCE);
+        TypeMapper.getInstance().registerDatatype(UuidDataType.INSTANCE);
+    }
+
     private final Map<Set<Node>, CimProfile> multiVersionIriProfiles = new ConcurrentHashMap<>();
     private final Map<Node, CimProfile> singleVersionIriProfiles = new ConcurrentHashMap<>();
     private final Map<CimVersion, CimProfile> headerProfiles = new ConcurrentHashMap<>();
     private final Map<CimProfile, Map<Node, PropertyInfo>> profilePropertiesCache = new ConcurrentHashMap<>();
     private final Map<Set<CimProfile>, Map<Node, PropertyInfo>> profileSetPropertiesCache = new ConcurrentHashMap<>();
 
+    public final ErrorHandler errorHandler;
+
+    public CimProfileRegistryStd() {
+        this(ErrorHandlerFactory.errorHandlerStd);
+    }
+
+    public CimProfileRegistryStd(ErrorHandler errorHandler) {
+        this.errorHandler = errorHandler;
+    }
 
     private final static Query typedPropertiesQuery = QueryFactory.create("""
             PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -71,7 +91,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
             if(headerProfiles.containsKey(cimVersion))
                 throw new IllegalArgumentException("Header profile for CIM version " + cimVersion + " is already registered.");
             headerProfiles.put(cimVersion, cimProfile);
-            profilePropertiesCache.put(cimProfile, getTypedProperties(cimProfile));
+            profilePropertiesCache.put(cimProfile, getTypedProperties(cimProfile, errorHandler));
             return;
         }
 
@@ -89,7 +109,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 throw new IllegalArgumentException("Profile ontology with owlVersionIRIs " + owlVersionIRIs + " is already registered.");
             multiVersionIriProfiles.put(owlVersionIRIs, cimProfile);
         }
-        profilePropertiesCache.put(cimProfile, getTypedProperties(cimProfile));
+        profilePropertiesCache.put(cimProfile, getTypedProperties(cimProfile, errorHandler));
     }
 
     @Override
@@ -184,7 +204,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
         return profilePropertiesCache.get(profile);
     }
 
-    private static Map<Node, PropertyInfo> getTypedProperties(Graph g) {
+    private static Map<Node, PropertyInfo> getTypedProperties(Graph g, ErrorHandler errorHandler) {
         final var map = new HashMap<Node, PropertyInfo>(1024);
         QueryExec.graph(g)
                 .query(typedPropertiesQuery)
@@ -197,14 +217,14 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                     if(referenceType != null) {
                         map.put(property, new PropertyInfo(clazz, property, null, referenceType));
                     } else {
-                        map.put(property, new PropertyInfo(clazz, property, getDataType(primitiveType.getLiteralLexicalForm()), null));
+                        map.put(property, new PropertyInfo(clazz, property, getDataType(primitiveType.getLiteralLexicalForm(), errorHandler), null));
                     }
 
                 });
         return Collections.unmodifiableMap(map);
     }
 
-    private static RDFDatatype getDataType(String primitiveType) {
+    private static RDFDatatype getDataType(String primitiveType, ErrorHandler errorHandler) {
         switch (primitiveType) {
             case "Base64Binary":
                 return XSDDatatype.XSDbase64Binary;
@@ -236,6 +256,8 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 return XSDDatatype.XSDint;
             case "Integer":
                 return XSDDatatype.XSDinteger;
+            case "IRI":
+                return XSDDatatype.XSDanyURI;
             case "LangString":
                 return RDFLangString.rdfLangString;
             case "Long":
@@ -252,9 +274,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 return XSDDatatype.XSDnonPositiveInteger;
             case "PositiveInteger":
                 return XSDDatatype.XSDpositiveInteger;
-            case "String":
-                return XSDDatatype.XSDstring;
-            case "StringIRI":
+            case "String", "StringFixedLanguage", "StringIRI":
                 return XSDDatatype.XSDstring;
             case "Time":
                 return XSDDatatype.XSDtime;
@@ -268,6 +288,10 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 return XSDDatatype.XSDunsignedShort;
             case "URI":
                 return XSDDatatype.XSDanyURI;
+            case "UUID":
+                return UuidDataType.INSTANCE;
+            case "Version":
+                return SemVer2_0DataType.INSTANCE;
             case "Year":
                 return XSDDatatype.XSDgYear;
             case "YearMonth":
@@ -275,7 +299,8 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
             case "YearMonthDuration":
                 return XSDDatatype.XSDyearMonthDuration;
             default:
-                throw new IllegalArgumentException("The type '" + primitiveType + "' is not yet supported.");
+                errorHandler.warning("Unknown mapping from '" + primitiveType + "' to XSD datatype. Using xsd:string as fallback.", -1,-1);
+                return XSDDatatype.XSDstring;
         }
     }
 }

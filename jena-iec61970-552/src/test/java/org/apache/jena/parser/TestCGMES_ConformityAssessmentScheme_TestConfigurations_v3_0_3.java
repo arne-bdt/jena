@@ -68,7 +68,7 @@ public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
 
 
     @Test
-    public void fullModelWithProfilesAndDatatypes() throws Exception {
+    public void walkFolderAndParseAllXmlFilesAsCimXml() throws Exception {
         var cimDatasets = new ArrayList<CimDatasetGraph>();
         try (Stream<Path> paths = Files.walk(TEST_CONFIGURATIONS_FOLDER)) {
             paths.filter(p -> Files.isRegularFile(p))

@@ -71,7 +71,7 @@ public class TestCGMES_v2_4_15_TestConfigurations_v4_0_3 {
 
     @Ignore
     @Test
-    public void fullModelWithProfilesAndDatatypes() throws Exception {
+    public void walkFolderAndParseAllXmlFilesAsCimXml() throws Exception {
         var cimDatasets = new ArrayList<CimDatasetGraph>();
         try (Stream<Path> paths = Files.walk(TEST_CONFIGURATIONS_FOLDER)) {
             paths.filter(p -> Files.isRegularFile(p))
@@ -85,6 +85,17 @@ public class TestCGMES_v2_4_15_TestConfigurations_v4_0_3 {
                             fail("IOException: " + e.getMessage());
                         }
                  });
+        }
+    }
+
+    @Ignore
+    @Test
+    public void parseCimXml() throws Exception {
+        final CimDatasetGraph cimDataset;
+        try {
+            cimDataset = cimParser.parseCimModel(Paths.get("C://temp/CGMES_v2.4.15_TestConfigurations_v4.0.3/MicroGrid/Type1_T1/T1_BE_Difference_v2/MicroGridTestConfiguration_T1_BE_EQ_DIFF1_V2.xml"));
+        } catch (IOException e) {
+            fail("IOException: " + e.getMessage());
         }
     }
 }

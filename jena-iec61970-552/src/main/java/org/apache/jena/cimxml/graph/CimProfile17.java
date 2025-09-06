@@ -30,7 +30,6 @@ import java.util.stream.Collectors;
 
 public class CimProfile17 extends GraphWrapper implements CimProfile {
 
-    final static String NS_EUMD = "https://ap.cim4.eu/DocumentHeader#";
     final static String NS_OWL = "http://www.w3.org/2002/07/owl#";
     final static String NS_DCAT = "http://www.w3.org/ns/dcat#";
     final static Node CLASS_ONTOLOGY = NodeFactory.createURI(NS_OWL + "Ontology");
@@ -50,8 +49,12 @@ public class CimProfile17 extends GraphWrapper implements CimProfile {
         return graph.find(Node.ANY, RDF.type.asNode(), CLASS_ONTOLOGY).hasNext();
     }
 
+    public static Node getOntology(Graph graph) {
+        return graph.stream(Node.ANY, RDF.type.asNode(), CLASS_ONTOLOGY).findAny().map(Triple::getSubject).orElseThrow();
+    }
+
     public Node getOntology() {
-        return stream(Node.ANY, RDF.type.asNode(), CLASS_ONTOLOGY).findAny().map(Triple::getSubject).orElseThrow();
+        return getOntology(this);
     }
 
     public static boolean hasVersionIRIAndKeyword(Graph graph) {
@@ -104,5 +107,12 @@ public class CimProfile17 extends GraphWrapper implements CimProfile {
     @Override
     public int hashCode() {
         return this.calculateHashCode();
+    }
+
+    public static boolean isHeaderProfile(Graph graph) {
+        return graph.stream(Node.ANY, RDF.type.asNode(), TYPE_CLASS_CATEGORY)
+                .anyMatch(t
+                        -> t.getSubject().isURI()
+                        && t.getSubject().getURI().endsWith(PACKAGE_FILE_HEADER_PROFILE));
     }
 }

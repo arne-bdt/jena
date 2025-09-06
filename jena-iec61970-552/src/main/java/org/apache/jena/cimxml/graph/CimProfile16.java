@@ -22,6 +22,7 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.sparql.graph.GraphWrapper;
+import org.apache.jena.vocabulary.RDF;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -115,5 +116,12 @@ public class CimProfile16 extends GraphWrapper implements CimProfile {
     @Override
     public int hashCode() {
         return this.calculateHashCode();
+    }
+
+    public static boolean isHeaderProfile(Graph graph) {
+        return graph.stream(Node.ANY, RDF.type.asNode(), TYPE_CLASS_CATEGORY)
+                .anyMatch(t
+                        -> t.getSubject().isURI()
+                        && t.getSubject().getURI().endsWith(PACKAGE_FILE_HEADER_PROFILE));
     }
 }
