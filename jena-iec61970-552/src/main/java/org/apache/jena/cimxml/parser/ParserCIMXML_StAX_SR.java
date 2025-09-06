@@ -535,12 +535,9 @@ public class ParserCIMXML_StAX_SR {
         if ( ! lookingAt(event, END_ELEMENT) )
             throw RDFXMLparseError("Expected end element for "+qName());
 
-        if (isCimXmlModel) {
+        if (isCimXmlModel && isFullModel) {
             destination.setCurrentContext(CimXmlDocumentContext.body);
-            if(isFullModel) {
-                // Difference Models already set this
-                initCimModelHeaderCurrentProfileAndCurrentDatatypeMap(location);
-            }
+            initCimModelHeaderCurrentProfileAndCurrentDatatypeMap(location);
         }
     }
 
@@ -638,7 +635,7 @@ public class ParserCIMXML_StAX_SR {
                 } else {
                     if(!currentListOfPropertiesNotInProfile.contains(property)) {
                         currentListOfPropertiesNotInProfile.add(property);
-                        RDFXMLparseWarning("Property '" + str(qName) + "' could not be found in current profiles. Profiles: " + currentCimProfiles.toString() , location);
+                        RDFXMLparseWarning("Property '" + str(qName) + "' could not be found in current profiles. Profiles: " + currentCimProfiles , location);
                     }
                     property = qNameToIRI(qName, QNameUsage.PropertyElement, location);
                 }
@@ -734,6 +731,7 @@ public class ParserCIMXML_StAX_SR {
                     // must be CIMXML, as checked above - if not, treated as Literal
                     if (ReaderCIMXML_StAX_SR.TRACE)
                         trace.println("rdfParseType=Statements");
+                    final var oldContext = destination.getCurrentContext();
                     var isDifferenceModelContainer = false;
                     if (qNameMatches(qName, dmForwardDifferences)) {
                         destination.setCurrentContext(CimXmlDocumentContext.forwardDifferences);
@@ -748,7 +746,8 @@ public class ParserCIMXML_StAX_SR {
                         RDFXMLparseWarning("rdf:parseType='Statements' used on an element that is not a recognized CIMXML difference model container (forwardDifferences, reverseDifferences, preconditions). Treated as rdf:parseType='Literal'", location());
                         parseTypeLiteral(subject, property, emitter, location);
                     }
-                    if ( isDifferenceModelContainer ) {
+                    if ( isDifferenceModelContainer
+                            && oldContext == CimXmlDocumentContext.differenceModel ) { // else already in diff model
                         initCimModelHeaderCurrentProfileAndCurrentDatatypeMap(location);
                     }
                     int event = nextEventTag();

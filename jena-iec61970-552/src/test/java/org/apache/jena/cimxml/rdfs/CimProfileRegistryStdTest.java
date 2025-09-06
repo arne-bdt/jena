@@ -80,7 +80,7 @@ public class CimProfileRegistryStdTest {
 
         parser.read(new StringReader(rdfxml), streamRDF);
 
-        var graph = streamRDF.getCIMDatasetGraph().getBody();
+        var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
 
         var profile = CimProfile.wrap(graph);
 

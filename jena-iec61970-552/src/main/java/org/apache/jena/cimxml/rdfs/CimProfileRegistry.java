@@ -46,15 +46,6 @@ public interface CimProfileRegistry {
     void register(CimProfile cimProfile);
 
     /**
-     * Unregisters an ontology graph for the given profiles in the registry.
-     * The whole set of profile IRIs must match the profile IRIs of a registered ontology or
-     * in case of a header profile, the CIM version must match.
-     * Throws an IllegalArgumentException if one of the profile IRIs is not registered.
-     * @param cimProfile profile ontology to unregister.
-     */
-    void unregister(CimProfile cimProfile);
-
-    /**
      * Checks if the registry contains all profile IRIs in the given set.
      * @param owlVersionIRIs A set of profile IRIs as found in the model header.
      * @return true if all profile IRIs are registered, false otherwise.

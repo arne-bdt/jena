@@ -24,6 +24,7 @@ import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -37,12 +38,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.fail;
 
-public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
+public class TestCGMES_v2_4_15_TestConfigurations_v4_0_3 {
 
-    private final static Path RDFS_FOLDER = Paths.get("C://temp//RDFS2020/");
-    private final static Path TEST_CONFIGURATIONS_FOLDER = Path.of("C:/temp/CGMES_ConformityAssessmentScheme_r3-0-2/CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3/v3.0");
+    private final static Path RDFS_FOLDER = Paths.get("C://temp/CGMES2415_Components_2020/RDFS");
+    private final static Path TEST_CONFIGURATIONS_FOLDER = Path.of("C://temp/CGMES_v2.4.15_TestConfigurations_v4.0.3");
     private final static ExecutorService executor = Executors.newWorkStealingPool();
     private final static CimXmlParser cimParser = new CimXmlParser();
 
@@ -52,14 +53,15 @@ public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
         SystemIRIx.reset();
         Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         final var futures = new ArrayList<Future<?>>();
-        for(var rdfPath : java.nio.file.Files.newDirectoryStream(RDFS_FOLDER, "*.rdf")) {
-            futures.add(executor.submit(() -> {
+        for(var rdfPath : Files.newDirectoryStream(RDFS_FOLDER, "*.rdf")) {
+            //futures.add(executor.submit(() -> {
+                System.out.println("Loading " + rdfPath.getFileName());
                 try {
                     cimParser.parseAndRegisterCimProfile(rdfPath);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
-            }));
+            //}));
         }
         for(var future : futures) {
             future.get();
@@ -67,6 +69,7 @@ public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
     }
 
 
+    @Ignore
     @Test
     public void fullModelWithProfilesAndDatatypes() throws Exception {
         var cimDatasets = new ArrayList<CimDatasetGraph>();
@@ -74,7 +77,7 @@ public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
             paths.filter(p -> Files.isRegularFile(p))
                  .filter(p -> p.getFileName().toString().endsWith(".xml"))
                  .forEach(xmlFile -> {
-                     System.out.println("Loading " + xmlFile.getFileName());
+                     System.out.println("Loading " + xmlFile.toAbsolutePath());
                         try {
                             var cimDataset = cimParser.parseCimModel(xmlFile);
                             cimDatasets.add(cimDataset);

@@ -17,7 +17,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class CimProfileRegistryStd implements CimProfileRegistry {
 
-    private final Map<Node, CimProfile> dataProfiles = new ConcurrentHashMap<>();
+    private final Map<Set<Node>, CimProfile> multiVersionIriProfiles = new ConcurrentHashMap<>();
+    private final Map<Node, CimProfile> singleVersionIriProfiles = new ConcurrentHashMap<>();
     private final Map<CimVersion, CimProfile> headerProfiles = new ConcurrentHashMap<>();
     private final Map<CimProfile, Map<Node, PropertyInfo>> profilePropertiesCache = new ConcurrentHashMap<>();
     private final Map<Set<CimProfile>, Map<Node, PropertyInfo>> profileSetPropertiesCache = new ConcurrentHashMap<>();
@@ -77,50 +78,18 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
         var owlVersionIRIs = cimProfile.getOwlVersionIRIs();
         if(owlVersionIRIs == null || owlVersionIRIs.isEmpty())
             throw new IllegalArgumentException("Profile ontology must have at least one owlVersionIRI.");
-        for(var iri : owlVersionIRIs) {
-            if(dataProfiles.containsKey(iri))
+
+        if(owlVersionIRIs.size() == 1) {
+            var iri = owlVersionIRIs.iterator().next();
+            if(singleVersionIriProfiles.containsKey(iri))
                 throw new IllegalArgumentException("Profile ontology with owlVersionIRI " + iri + " is already registered.");
-        }
-        var profileAndProperties = Pair.of(cimProfile, getTypedProperties(cimProfile));
-        for(var iri : owlVersionIRIs) {
-            dataProfiles.put(iri, cimProfile);
+            singleVersionIriProfiles.put(iri, cimProfile);
+        } else {
+            if(multiVersionIriProfiles.containsKey(owlVersionIRIs))
+                throw new IllegalArgumentException("Profile ontology with owlVersionIRIs " + owlVersionIRIs + " is already registered.");
+            multiVersionIriProfiles.put(owlVersionIRIs, cimProfile);
         }
         profilePropertiesCache.put(cimProfile, getTypedProperties(cimProfile));
-    }
-
-    @Override
-    public void unregister(CimProfile cimProfile) {
-        if(cimProfile.isHeaderProfile()) {
-            final var cimVersion = cimProfile.getCIMVersion();
-            if(cimVersion == CimVersion.NO_CIM)
-                throw new IllegalArgumentException("Header profile must have a valid CIM version.");
-            if(!headerProfiles.containsKey(cimVersion))
-                throw new IllegalArgumentException("Header profile for CIM version " + cimVersion + " is not registered.");
-            headerProfiles.remove(cimVersion);
-            profilePropertiesCache.remove(cimProfile);
-            return;
-        }
-
-        var owlVersionIRIs = cimProfile.getOwlVersionIRIs();
-        if(owlVersionIRIs == null || owlVersionIRIs.isEmpty())
-            throw new IllegalArgumentException("Profile ontology must have at least one owlVersionIRI.");
-        for(var iri : owlVersionIRIs) {
-            if(!dataProfiles.containsKey(iri))
-                throw new IllegalArgumentException("Profile ontology with owlVersionIRI " + iri + " is not registered.");
-        }
-        for(var iri : owlVersionIRIs) {
-            dataProfiles.remove(iri);
-        }
-        profilePropertiesCache.remove(cimProfile);
-        var setsToRemove = new ArrayList<Set<CimProfile>>();
-        for (Set<CimProfile> cimProfiles : profileSetPropertiesCache.keySet()) {
-            if(cimProfiles.contains(cimProfile)) {
-                setsToRemove.add(cimProfiles);
-            }
-        }
-        for (Set<CimProfile> set : setsToRemove) {
-            profileSetPropertiesCache.remove(set);
-        }
     }
 
     @Override
@@ -128,8 +97,15 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
         if(owlVersionIRIs == null || owlVersionIRIs.isEmpty())
             throw new IllegalArgumentException("At least one profile owlVersionIRI must be provided.");
         for(var iri : owlVersionIRIs) {
-            if(!dataProfiles.containsKey(iri))
-                return false;
+            if(!singleVersionIriProfiles.containsKey(iri)) {
+                var foundInMulti = false;
+                for(var registeredVersionIRIs: multiVersionIriProfiles.keySet()) {
+                    if(registeredVersionIRIs.contains(iri))
+                        foundInMulti = true;
+                }
+                if(!foundInMulti)
+                    return false;
+            }
         }
         return true;
     }
@@ -150,19 +126,47 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
     public Map<Node, PropertyInfo> getPropertiesAndDatatypes(Set<Node> owlVersionIRIs) {
         if(owlVersionIRIs == null || owlVersionIRIs.isEmpty())
             throw new IllegalArgumentException("At least one profile owlVersionIRI must be provided.");
+
+        if(owlVersionIRIs.size() == 1) {
+            var versionIRI = owlVersionIRIs.iterator().next();
+            if(singleVersionIriProfiles.containsKey(versionIRI)) {
+                var profile = singleVersionIriProfiles.get(owlVersionIRIs.iterator().next());
+                return profilePropertiesCache.get(profile);
+            }
+        }
+
+        var profile = multiVersionIriProfiles.get(owlVersionIRIs);
+        if(profile != null)
+            return profilePropertiesCache.get(profile);
+
         var set = new HashSet<CimProfile>();
         for(var owlVersionIRI : owlVersionIRIs) {
-            var profile = dataProfiles.get(owlVersionIRI);
-            if(profile == null)
-                return null;
-            set.add(profile);
+            final var p = singleVersionIriProfiles.get(owlVersionIRI);
+            if(p == null) {
+                var foundInMulti = false;
+                for (Set<Node> versionSet : multiVersionIriProfiles.keySet()) {
+                    var multiP = multiVersionIriProfiles.get(versionSet);
+                    if(multiP != null) {
+                        foundInMulti = true;
+                        set.add(multiP);
+                    }
+                }
+                if (!foundInMulti)
+                    return null;
+            } else {
+                set.add(p);
+            }
         }
         if(set.size() == 1)
             return profilePropertiesCache.get(set.iterator().next());
 
-        Map<Node, PropertyInfo> properties = new HashMap<>(1024);
-        for(var profile : set) {
-            properties.putAll(profilePropertiesCache.get(profile));
+        Map<Node, PropertyInfo> properties = profileSetPropertiesCache.get(set);
+        if(properties != null)
+            return properties;
+
+        properties = new HashMap<>(1024);
+        for(var p : set) {
+            properties.putAll(profilePropertiesCache.get(p));
         }
         properties = Collections.unmodifiableMap(properties);
         profileSetPropertiesCache.put(set, properties);
