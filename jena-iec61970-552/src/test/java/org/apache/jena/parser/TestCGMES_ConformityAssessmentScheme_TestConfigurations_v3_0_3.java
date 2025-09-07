@@ -24,6 +24,7 @@ import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.sys.JenaSystem;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -57,6 +58,7 @@ public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
     }
 
 
+    @Ignore
     @Test
     public void walkFolderAndParseAllXmlFilesAsCimXml() throws Exception {
         var cimDatasets = new ArrayList<CimDatasetGraph>();

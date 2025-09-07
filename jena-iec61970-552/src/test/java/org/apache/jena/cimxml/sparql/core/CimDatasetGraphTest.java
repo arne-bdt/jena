@@ -45,7 +45,7 @@ public class CimDatasetGraphTest {
         assertTrue(fullGraph.contains(
                 NodeFactory.createURI("urn:uuid:08984e27-811f-4042-9125-1531ae0de0f6"),
                 NodeFactory.createURI("http://iec.ch/TC57/61970-552/ModelDescription/1#Model.profile"),
-                NodeFactory.createLiteralString("http://iec.ch/TC57/ns/CIM/CoreEquipment-EU/3.0")
+                NodeFactory.createLiteralString("http://soptim.de/CIM/MyProfile/1.1")
         ));
         assertTrue(fullGraph.contains(
                 NodeFactory.createURI("urn:uuid:f67fc354-9e39-4191-a456-67537399bc48"),

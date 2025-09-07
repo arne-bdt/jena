@@ -22,6 +22,7 @@ import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.parser.CimXmlParser;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.sys.JenaSystem;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ public class ApplicationProfiles_NCP_v2_3_2_epsilon {
     private final static Path RDFS_FOLDER = Paths.get("C://temp/ApplicationProfiles_NCP_v2-3-2-epsilon");
     private final static CimXmlParser cimParser = new CimXmlParser();
 
+    @Ignore
     @Test
     public void readeRDFS() throws Exception {
         JenaSystem.init();
