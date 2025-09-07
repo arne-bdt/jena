@@ -29,12 +29,12 @@ import java.util.Set;
 public interface CimProfileRegistry {
 
     /**
-     * A record to hold the class, property, primitive type and reference type of a property.
+     * A record to hold the rdfType(class), property, primitive type and reference type of a property.
      * Either primitiveType or referenceType may be null, but not both.
      * If primitiveType is not null, the property is a primitive property.
      * If referenceType is not null, the property is a reference property.
      */
-    record PropertyInfo(Node clazz, Node property, RDFDatatype primitiveType, Node referenceType) {}
+    record PropertyInfo(Node rdfType, Node property, RDFDatatype primitiveType, Node referenceType) {}
 
     /**
      * Registers an ontology graph for profiles in the registry.

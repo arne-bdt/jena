@@ -101,7 +101,7 @@ public class CimProfileRegistryStdTest {
         var floatProperty = NodeFactory.createURI("http://iec.ch/TC57/CIM100#ClassA.floatProperty");
         assertTrue(properties.containsKey(floatProperty));
         var propertyInfo = properties.get(floatProperty);
-        assertEquals(NodeFactory.createURI("http://iec.ch/TC57/CIM100#ClassA"), propertyInfo.clazz());
+        assertEquals(NodeFactory.createURI("http://iec.ch/TC57/CIM100#ClassA"), propertyInfo.rdfType());
         assertEquals(floatProperty, propertyInfo.property());
         assertEquals(XSDDatatype.XSDfloat, propertyInfo.primitiveType());
         assertNull(propertyInfo.referenceType());
@@ -109,7 +109,7 @@ public class CimProfileRegistryStdTest {
         var textProperty = NodeFactory.createURI("http://iec.ch/TC57/CIM100#ClassA.textProperty");
         assertTrue(properties.containsKey(textProperty));
         propertyInfo = properties.get(textProperty);
-        assertEquals(NodeFactory.createURI("http://iec.ch/TC57/CIM100#ClassA"), propertyInfo.clazz());
+        assertEquals(NodeFactory.createURI("http://iec.ch/TC57/CIM100#ClassA"), propertyInfo.rdfType());
         assertEquals(textProperty, propertyInfo.property());
         assertEquals(XSDDatatype.XSDstring, propertyInfo.primitiveType());
         assertNull(propertyInfo.referenceType());

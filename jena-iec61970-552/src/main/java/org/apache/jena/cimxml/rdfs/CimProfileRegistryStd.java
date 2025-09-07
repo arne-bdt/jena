@@ -1,11 +1,8 @@
 package org.apache.jena.cimxml.rdfs;
 
 import org.apache.jena.cimxml.CimVersion;
-import org.apache.jena.cimxml.datatypes.SemVer2_0DataType;
-import org.apache.jena.cimxml.datatypes.UuidDataType;
 import org.apache.jena.cimxml.graph.CimProfile;
 import org.apache.jena.datatypes.RDFDatatype;
-import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.datatypes.xsd.impl.RDFLangString;
 import org.apache.jena.graph.Graph;
@@ -88,11 +85,11 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
             PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
             PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
             
-            SELECT ?class ?property ?primitiveType ?referenceType
+            SELECT ?rdfType ?property ?primitiveType ?referenceType
             WHERE
             {
               {
-              	?property rdfs:domain ?class;
+              	?property rdfs:domain ?rdfType;
                   		  rdfs:range ?referenceType.
                 OPTIONAL {
                     ?property cims:AssociationUsed ?associationUsed.
@@ -101,7 +98,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
               }
               UNION
               {
-                ?property rdfs:domain ?class;
+                ?property rdfs:domain ?rdfType;
                           cims:dataType ?dataType.
                 {
                   ?dataType cims:stereotype "CIMDatatype".
@@ -261,14 +258,14 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 .query(typedPropertiesQuery)
                 .select()
                 .forEachRemaining(vars -> { //?class ?property ?primitiveType ?referenceType
-                    final var clazz = vars.get("class");
+                    final var rdfType = vars.get("rdfType");
                     final var property = vars.get("property");
                     final var primitiveType = vars.get("primitiveType");
                     final var referenceType = vars.get("referenceType");
                     if(referenceType != null) {
-                        map.put(property, new PropertyInfo(clazz, property, null, referenceType));
+                        map.put(property, new PropertyInfo(rdfType, property, null, referenceType));
                     } else {
-                        map.put(property, new PropertyInfo(clazz, property, getXsdDatatype(primitiveType.getLiteralLexicalForm()), null));
+                        map.put(property, new PropertyInfo(rdfType, property, getXsdDatatype(primitiveType.getLiteralLexicalForm()), null));
                     }
 
                 });
