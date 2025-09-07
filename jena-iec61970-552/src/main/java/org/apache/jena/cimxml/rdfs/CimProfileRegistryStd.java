@@ -81,42 +81,42 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
     }
 
     private final static Query typedPropertiesQuery = QueryFactory.create("""
-            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-            PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
-            
-            SELECT ?rdfType ?property ?primitiveType ?referenceType
-            WHERE
-            {
-              {
-              	?property rdfs:domain ?rdfType;
-                  		  rdfs:range ?referenceType.
-                OPTIONAL {
-                    ?property cims:AssociationUsed ?associationUsed.
-                }
-                FILTER(!BOUND(?associationUsed) || ?associationUsed = "Yes")
-              }
-              UNION
-              {
-                ?property rdfs:domain ?rdfType;
-                          cims:dataType ?dataType.
-                {
-                  ?dataType cims:stereotype "CIMDatatype".
-                  []  rdfs:domain ?dataType;
-                      rdfs:label ?label;
-                      #rdfs:label "value";
-                      cims:dataType/cims:stereotype "Primitive";
-                      cims:dataType/rdfs:label ?primitiveType.
-                  FILTER (!bound(?label) ||  str(?label) = "value")
-                }
-                UNION
-                {
-                  ?dataType   cims:stereotype "Primitive";
+           PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+           PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+           PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
+           
+           SELECT ?class ?property ?cimDatatype ?primitiveType ?referenceType
+           WHERE
+           {
+             {
+             	?property rdfs:domain ?class;
+                 		  rdfs:range ?referenceType;
+               OPTIONAL {
+           		?property cims:AssociationUsed ?associationUsed
+           	}
+           	FILTER(!BOUND(?associationUsed) || ?associationUsed = "Yes")
+             }
+             UNION
+             {
+               ?property rdfs:domain ?class;
+                         cims:dataType ?cimDatatype.
+               {
+                 ?cimDatatype cims:stereotype "CIMDatatype".
+                 []  rdfs:domain ?cimDatatype;
+                     rdfs:label ?label;
+                     #rdfs:label "value";
+                     cims:dataType/cims:stereotype "Primitive";
+                     cims:dataType/rdfs:label ?primitiveType.
+                 FILTER (!bound(?label) ||  str(?label) = "value")
+               }
+               UNION
+               {
+                 ?cimDatatype cims:stereotype "Primitive";
                               rdfs:label ?primitiveType.
-                }
-              }
-            }
-            """);
+               }
+             }
+           }
+           """);
 
     @Override
     public void register(CimProfile cimProfile) {
@@ -260,14 +260,17 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 .forEachRemaining(vars -> { //?class ?property ?primitiveType ?referenceType
                     final var rdfType = vars.get("rdfType");
                     final var property = vars.get("property");
+                    final var cimDatatype = vars.get("property");
                     final var primitiveType = vars.get("primitiveType");
                     final var referenceType = vars.get("referenceType");
-                    if(referenceType != null) {
-                        map.put(property, new PropertyInfo(rdfType, property, null, referenceType));
-                    } else {
-                        map.put(property, new PropertyInfo(rdfType, property, getXsdDatatype(primitiveType.getLiteralLexicalForm()), null));
-                    }
-
+                    map.put(property, new PropertyInfo(
+                            rdfType,
+                            property,
+                            cimDatatype,
+                            primitiveType != null
+                                    ? getXsdDatatype(primitiveType.getLiteralLexicalForm())
+                                    : null,
+                            referenceType));
                 });
         return Collections.unmodifiableMap(map);
     }

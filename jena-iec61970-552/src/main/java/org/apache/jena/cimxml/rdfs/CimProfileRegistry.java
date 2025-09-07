@@ -34,7 +34,7 @@ public interface CimProfileRegistry {
      * If primitiveType is not null, the property is a primitive property.
      * If referenceType is not null, the property is a reference property.
      */
-    record PropertyInfo(Node rdfType, Node property, RDFDatatype primitiveType, Node referenceType) {}
+    record PropertyInfo(Node rdfType, Node property, Node cimDatatype, RDFDatatype primitiveType, Node referenceType) {}
 
     /**
      * Registers an ontology graph for profiles in the registry.
