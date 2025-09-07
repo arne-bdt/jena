@@ -28,6 +28,8 @@ import org.apache.jena.riot.system.ErrorHandler;
 import org.apache.jena.riot.system.ErrorHandlerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -60,6 +62,18 @@ public class CimXmlParser {
         final var profile = rdfXmlParser.parseCimProfile(pathToCimProfile);
         cimProfileRegistry.register(profile);
         return profile;
+    }
+
+    public CimDatasetGraph parseCimModel(final Reader reader) {
+        final var streamRDFProfile = new StreamCIMXMLToDatasetGraph();
+        this.reader.read(reader, cimProfileRegistry, streamRDFProfile);
+        return streamRDFProfile.getCIMDatasetGraph();
+    }
+
+    public CimDatasetGraph parseCimModel(final InputStream inputStream) {
+        final var streamRDFProfile = new StreamCIMXMLToDatasetGraph();
+        this.reader.read(inputStream, cimProfileRegistry, streamRDFProfile);
+        return streamRDFProfile.getCIMDatasetGraph();
     }
 
     public CimDatasetGraph parseCimModel(final Path pathToCimModel) throws IOException {

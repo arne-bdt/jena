@@ -85,11 +85,11 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
            PREFIX cims: <http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#>
            
-           SELECT ?class ?property ?cimDatatype ?primitiveType ?referenceType
+           SELECT ?rdfType ?property ?cimDatatype ?primitiveType ?referenceType
            WHERE
            {
              {
-             	?property rdfs:domain ?class;
+             	?property rdfs:domain ?rdfType;
                  		  rdfs:range ?referenceType;
                OPTIONAL {
            		?property cims:AssociationUsed ?associationUsed
@@ -98,7 +98,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
              }
              UNION
              {
-               ?property rdfs:domain ?class;
+               ?property rdfs:domain ?rdfType;
                          cims:dataType ?cimDatatype.
                {
                  ?cimDatatype cims:stereotype "CIMDatatype".
@@ -200,11 +200,10 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
             final var p = singleVersionIriProfiles.get(owlVersionIRI);
             if(p == null) {
                 var foundInMulti = false;
-                for (Set<Node> versionSet : multiVersionIriProfiles.keySet()) {
-                    var multiP = multiVersionIriProfiles.get(versionSet);
-                    if(multiP != null) {
+                for (var entrySet : multiVersionIriProfiles.entrySet()) {
+                    if(entrySet.getKey().contains(owlVersionIRI)) {
                         foundInMulti = true;
-                        set.add(multiP);
+                        set.add(entrySet.getValue());
                     }
                 }
                 if (!foundInMulti)

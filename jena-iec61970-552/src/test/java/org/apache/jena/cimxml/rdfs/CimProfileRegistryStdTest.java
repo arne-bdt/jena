@@ -2,6 +2,7 @@ package org.apache.jena.cimxml.rdfs;
 
 import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.graph.CimProfile;
+import org.apache.jena.cimxml.parser.RdfXmlParser;
 import org.apache.jena.cimxml.parser.ReaderCIMXML_StAX_SR;
 import org.apache.jena.cimxml.parser.system.StreamCIMXMLToDatasetGraph;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
@@ -18,7 +19,7 @@ import static org.junit.Assert.*;
 public class CimProfileRegistryStdTest {
 
     @Test
-    public void parseProfileWithOneClassAndTwoSimpleProperties() throws Exception {
+    public void registerProfileWithOneClassAndTwoSimpleProperties() throws Exception {
         final var rdfxml = """
             <?xml version="1.0" encoding="UTF-8"?>
             <rdf:RDF
@@ -113,6 +114,272 @@ public class CimProfileRegistryStdTest {
         assertEquals(textProperty, propertyInfo.property());
         assertEquals(XSDDatatype.XSDstring, propertyInfo.primitiveType());
         assertNull(propertyInfo.referenceType());
+    }
+
+    @Test
+    public void registerPofileWithMultipleVersionIRIs() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF
+               xmlns:cim="http://iec.ch/TC57/CIM100#"
+               xmlns:dcat="http://www.w3.org/ns/dcat#"
+               xmlns:owl="http://www.w3.org/2002/07/owl#"
+               xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+               xml:base ="http://iec.ch/TC57/CIM100">
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="http://iec.ch/TC57/ns/CIM/CoreEquipment-EU#Ontology">
+                    <dcat:keyword>MYCUST</dcat:keyword>
+                    <owl:versionIRI rdf:resource="http://example.org/MyCustomCore/1/1"/>
+                    <owl:versionIRI rdf:resource="http://example.org/MyCustomOperation/1/1"/>
+                   <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+                </rdf:Description >
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+
+        var profile = new RdfXmlParser().parseCimProfile(new StringReader(rdfxml));
+
+        var registry = new CimProfileRegistryStd();
+        registry.register(profile);
+
+        {
+            var owlVersionIRIs = Set.of(
+                    NodeFactory.createURI("http://example.org/MyCustomCore/1/1"),
+                    NodeFactory.createURI("http://example.org/MyCustomOperation/1/1"));
+
+            assertTrue(registry.containsProfile(owlVersionIRIs));
+            assertNotNull(registry.getPropertiesAndDatatypes(owlVersionIRIs));
+        }
+
+        {
+            var owlVersionIRIs = Set.of(
+                    NodeFactory.createURI("http://example.org/MyCustomCore/1/1"));
+
+            assertTrue(registry.containsProfile(owlVersionIRIs));
+            assertNotNull(registry.getPropertiesAndDatatypes(owlVersionIRIs));
+        }
+
+        {
+            var owlVersionIRIs = Set.of(
+                    NodeFactory.createURI("http://example.org/MyCustomOperation/1/1"));
+
+            assertTrue(registry.containsProfile(owlVersionIRIs));
+            assertNotNull(registry.getPropertiesAndDatatypes(owlVersionIRIs));
+        }
+
+        {
+            var owlVersionIRIs = Set.of(
+                    NodeFactory.createURI("http://example.org/AnyOtherProfile/1/1"));
+
+            assertFalse(registry.containsProfile(owlVersionIRIs));
+            assertNull(registry.getPropertiesAndDatatypes(owlVersionIRIs));
+        }
+    }
+
+    @Test
+    public void registerProfilesWithSameVersionIris() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF
+               xmlns:cim="http://iec.ch/TC57/CIM100#"
+               xmlns:dcat="http://www.w3.org/ns/dcat#"
+               xmlns:owl="http://www.w3.org/2002/07/owl#"
+               xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+               xml:base ="http://iec.ch/TC57/CIM100">
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="http://iec.ch/TC57/ns/CIM/CoreEquipment-EU#Ontology">
+                    <dcat:keyword>MYCUST</dcat:keyword>
+                    <owl:versionIRI rdf:resource="http://example.org/MyCustom/1/1"/>
+                   <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+                </rdf:Description>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+
+        var profileA = new RdfXmlParser().parseCimProfile(new StringReader(rdfxml));
+        var profileB = new RdfXmlParser().parseCimProfile(new StringReader(rdfxml));
+
+
+        var registry = new CimProfileRegistryStd();
+        registry.register(profileA);
+
+        assertThrows(IllegalArgumentException.class, () -> registry.register(profileB));
+    }
+
+    @Test
+    public void registerProfilesWithMultipleSameVersionIris() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF
+               xmlns:cim="http://iec.ch/TC57/CIM100#"
+               xmlns:dcat="http://www.w3.org/ns/dcat#"
+               xmlns:owl="http://www.w3.org/2002/07/owl#"
+               xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+               xml:base ="http://iec.ch/TC57/CIM100">
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="http://iec.ch/TC57/ns/CIM/CoreEquipment-EU#Ontology">
+                    <dcat:keyword>MYCUST</dcat:keyword>
+                    <owl:versionIRI rdf:resource="http://example.org/MyCustomCore/1/1"/>
+                    <owl:versionIRI rdf:resource="http://example.org/MyCustomOperation/1/1"/>
+                   <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+                </rdf:Description>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+
+        var profileA = new RdfXmlParser().parseCimProfile(new StringReader(rdfxml));
+        var profileB = new RdfXmlParser().parseCimProfile(new StringReader(rdfxml));
+
+
+        var registry = new CimProfileRegistryStd();
+        registry.register(profileA);
+
+        assertThrows(IllegalArgumentException.class, () -> registry.register(profileB));
+    }
+
+    @Test
+    public void registerProfilesWithSingleAndMultiVersionIrisMixed() throws Exception {
+        final var rdfxmlProfileA = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF
+               xmlns:cim="http://iec.ch/TC57/CIM100#"
+               xmlns:cims="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#"
+               xmlns:dcat="http://www.w3.org/ns/dcat#"
+               xmlns:owl="http://www.w3.org/2002/07/owl#"
+               xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+               xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+               xml:base ="http://iec.ch/TC57/CIM100">
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="http://iec.ch/TC57/ns/CIM/CoreEquipment-EU#Ontology">
+                    <dcat:keyword>MYCUST</dcat:keyword>
+                    <owl:versionIRI rdf:resource="http://example.org/MyCustomCore/1/1"/>
+                    <owl:versionIRI rdf:resource="http://example.org/MyCustomOperation/1/1"/>
+                   <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+                </rdf:Description>
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="#ClassA">
+                    <rdf:type rdf:resource="http://www.w3.org/2000/01/rdf-schema#Class"/>
+                    <rdfs:subClassOf rdf:resource="#IdentifiedObject"/>
+                    <cims:stereotype rdf:resource="http://iec.ch/TC57/NonStandard/UML#concrete"/>
+                </rdf:Description>
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="#ClassA.floatProperty">
+                    <rdf:type rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"/>
+                    <cims:stereotype rdf:resource="http://iec.ch/TC57/NonStandard/UML#attribute"/>
+                    <rdfs:domain rdf:resource="#ClassA"/>
+                    <cims:dataType rdf:resource="#Float"/>
+                 </rdf:Description>
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="#Float">
+                    <rdfs:label xml:lang="en">Float</rdfs:label>
+                    <cims:stereotype>Primitive</cims:stereotype>
+                    <rdf:type rdf:resource="http://www.w3.org/2000/01/rdf-schema#Class"/>
+                </rdf:Description>
+            </rdf:RDF>
+            """;
+
+        final var rdfxmlProfileB = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF
+               xmlns:cim="http://iec.ch/TC57/CIM100#"
+               xmlns:cims="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#"
+               xmlns:dcat="http://www.w3.org/ns/dcat#"
+               xmlns:owl="http://www.w3.org/2002/07/owl#"
+               xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+               xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+               xml:base ="http://iec.ch/TC57/CIM100">
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="http://iec.ch/TC57/ns/CIM/CoreEquipment-EU#Ontology">
+                    <dcat:keyword>MYCUST</dcat:keyword>
+                    <owl:versionIRI rdf:resource="http://example.org/MyCustomCore/1/1"/>
+                   <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+                </rdf:Description>
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="#ClassB">
+                    <rdf:type rdf:resource="http://www.w3.org/2000/01/rdf-schema#Class"/>
+                    <rdfs:subClassOf rdf:resource="#IdentifiedObject"/>
+                    <cims:stereotype rdf:resource="http://iec.ch/TC57/NonStandard/UML#concrete"/>
+                </rdf:Description>
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="#ClassB.floatProperty">
+                    <rdf:type rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"/>
+                    <cims:stereotype rdf:resource="http://iec.ch/TC57/NonStandard/UML#attribute"/>
+                    <rdfs:domain rdf:resource="#ClassB"/>
+                    <cims:dataType rdf:resource="#Float"/>
+                 </rdf:Description>
+                <!-- ······························································································· -->
+                <rdf:Description rdf:about="#Float">
+                    <rdfs:label xml:lang="en">Float</rdfs:label>
+                    <cims:stereotype>Primitive</cims:stereotype>
+                    <rdf:type rdf:resource="http://www.w3.org/2000/01/rdf-schema#Class"/>
+                </rdf:Description>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+
+        var profileA = new RdfXmlParser().parseCimProfile(new StringReader(rdfxmlProfileA));
+        var profileB = new RdfXmlParser().parseCimProfile(new StringReader(rdfxmlProfileB));
+
+
+        var registry = new CimProfileRegistryStd();
+        registry.register(profileA);
+        registry.register(profileB);
+
+        //add in different order
+        registry = new CimProfileRegistryStd();
+        registry.register(profileB);
+        registry.register(profileA);
+
+        {
+            var owlVersionIRIs = Set.of(
+                    NodeFactory.createURI("http://example.org/MyCustomCore/1/1"),
+                    NodeFactory.createURI("http://example.org/MyCustomOperation/1/1"));
+
+            assertTrue(registry.containsProfile(owlVersionIRIs));
+            var properties = registry.getPropertiesAndDatatypes(owlVersionIRIs);
+            assertNotNull(properties);
+            assertTrue(properties.containsKey(NodeFactory.createURI("http://iec.ch/TC57/CIM100#ClassA.floatProperty")));
+        }
+
+        {
+            var owlVersionIRIs = Set.of(
+                    NodeFactory.createURI("http://example.org/MyCustomCore/1/1"));
+
+            assertTrue(registry.containsProfile(owlVersionIRIs));
+            var properties = registry.getPropertiesAndDatatypes(owlVersionIRIs);
+            assertNotNull(properties);
+            assertTrue(properties.containsKey(NodeFactory.createURI("http://iec.ch/TC57/CIM100#ClassB.floatProperty")));
+        }
+
+        {
+            var owlVersionIRIs = Set.of(
+                    NodeFactory.createURI("http://example.org/MyCustomOperation/1/1"));
+
+            assertTrue(registry.containsProfile(owlVersionIRIs));
+            var properties = registry.getPropertiesAndDatatypes(owlVersionIRIs);
+            assertNotNull(properties);
+            assertTrue(properties.containsKey(NodeFactory.createURI("http://iec.ch/TC57/CIM100#ClassA.floatProperty")));
+        }
+
+        {
+            var owlVersionIRIs = Set.of(
+                    NodeFactory.createURI("http://example.org/AnyOtherProfile/1/1"));
+
+            assertFalse(registry.containsProfile(owlVersionIRIs));
+            assertNull(registry.getPropertiesAndDatatypes(owlVersionIRIs));
+        }
     }
 
 }

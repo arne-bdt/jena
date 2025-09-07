@@ -26,6 +26,8 @@ import org.apache.jena.riot.system.ErrorHandler;
 import org.apache.jena.riot.system.ErrorHandlerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -52,8 +54,29 @@ public class RdfXmlParser {
         this(new ReaderCIMXML_StAX_SR(errorHandler));
     }
 
+    public CimProfile parseCimProfile(final Reader reader) throws IOException {
+        return CimProfile.wrap(parseGraph(reader));
+    }
+
+    public CimProfile parseCimProfile(final InputStream inputStream) throws IOException {
+        return CimProfile.wrap(parseGraph(inputStream));
+    }
+
     public CimProfile parseCimProfile(final Path pathToCimProfile) throws IOException {
         return CimProfile.wrap(parseGraph(pathToCimProfile));
+    }
+
+
+    public Graph parseGraph(final Reader reader) {
+        final var streamRDFProfile = new StreamCIMXMLToDatasetGraph();
+        this.reader.read(reader, streamRDFProfile);
+        return streamRDFProfile.getCIMDatasetGraph().getDefaultGraph();
+    }
+
+    public Graph parseGraph(final InputStream inputStream) {
+        final var streamRDFProfile = new StreamCIMXMLToDatasetGraph();
+        this.reader.read(inputStream, streamRDFProfile);
+        return streamRDFProfile.getCIMDatasetGraph().getDefaultGraph();
     }
 
     public Graph parseGraph(final Path rdfxmlFilePath) throws IOException {
