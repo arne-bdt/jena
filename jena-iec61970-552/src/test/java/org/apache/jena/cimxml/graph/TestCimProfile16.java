@@ -53,7 +53,7 @@ public class TestCimProfile16 {
                     <cims:stereotype>Entsoe</cims:stereotype>
                     <cims:belongsToCategory rdf:resource="#Package_MyCustomProfile"/>
                     <rdf:type rdf:resource="http://www.w3.org/2000/01/rdf-schema#Class"/>
-                 </rdf:Description>                 
+                 </rdf:Description>
                  <rdf:Description rdf:about="http://entsoe.eu/CIM/SchemaExtension/3/1#MyCustomVersion.baseURIcore">
                     <cims:stereotype rdf:resource="http://iec.ch/TC57/NonStandard/UML#attribute"/>
                     <rdfs:label xml:lang="en">baseURIcore</rdfs:label>
@@ -70,7 +70,7 @@ public class TestCimProfile16 {
                     <rdfs:domain rdf:resource="http://entsoe.eu/CIM/SchemaExtension/3/1#MyCustomVersion"/>
                     <cims:dataType rdf:resource="#String"/>
                     <cims:multiplicity rdf:resource="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#M:1..1" />
-                    <cims:isFixed rdf:datatype="http://www.w3.org/2001/XMLSchema#string">http://example.org/MyCustom/Operation/1/1</cims:isFixed>                    
+                    <cims:isFixed rdf:datatype="http://www.w3.org/2001/XMLSchema#string">http://example.org/MyCustom/Operation/1/1</cims:isFixed>
                     <rdf:type rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"/>
                  </rdf:Description>
                  <rdf:Description rdf:about="http://entsoe.eu/CIM/SchemaExtension/3/1#MyCustomVersion.baseURIshortCircuit">
@@ -81,14 +81,14 @@ public class TestCimProfile16 {
                     <cims:multiplicity rdf:resource="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#M:1..1" />
                     <cims:isFixed rdf:datatype="http://www.w3.org/2001/XMLSchema#string">http://example.org/MyCustom/ShortCircuit/1/1</cims:isFixed>
                     <rdf:type rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"/>
-                 </rdf:Description>                 
+                 </rdf:Description>
                  <rdf:Description rdf:about="http://entsoe.eu/CIM/SchemaExtension/3/1#MyCustomVersion.entsoeURIcore">
                     <cims:stereotype rdf:resource="http://iec.ch/TC57/NonStandard/UML#attribute"/>
                     <rdfs:label xml:lang="en">entsoeURIcore</rdfs:label>
                     <rdfs:domain rdf:resource="http://entsoe.eu/CIM/SchemaExtension/3/1#MyCustomVersion"/>
                     <cims:dataType rdf:resource="#String"/>
                     <cims:multiplicity rdf:resource="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#M:1..1" />
-                    <cims:isFixed rdf:datatype="http://www.w3.org/2001/XMLSchema#string">http://entsoe.eu/CIM/MyCustomCore/2/2</cims:isFixed>                
+                    <cims:isFixed rdf:datatype="http://www.w3.org/2001/XMLSchema#string">http://entsoe.eu/CIM/MyCustomCore/2/2</cims:isFixed>
                     <rdf:type rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"/>
                  </rdf:Description>
                  <rdf:Description rdf:about="http://entsoe.eu/CIM/SchemaExtension/3/1#MyCustomVersion.entsoeURIoperation">
@@ -105,7 +105,7 @@ public class TestCimProfile16 {
                     <rdfs:label xml:lang="en">entsoeURIshortCircuit</rdfs:label>
                     <rdfs:domain rdf:resource="http://entsoe.eu/CIM/SchemaExtension/3/1#MyCustomVersion"/>
                     <cims:dataType rdf:resource="#String"/>
-                    <cims:multiplicity rdf:resource="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#M:1..1" />                    
+                    <cims:multiplicity rdf:resource="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#M:1..1" />
                     <cims:isFixed rdf:datatype="http://www.w3.org/2001/XMLSchema#string">http://entsoe.eu/CIM/MyCustomShortCircuit/2/2</cims:isFixed>
                     <rdf:type rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"/>
                  </rdf:Description>
@@ -115,7 +115,7 @@ public class TestCimProfile16 {
                     <rdfs:domain rdf:resource="http://entsoe.eu/CIM/SchemaExtension/3/1#MyCustomVersion"/>
                     <cims:dataType rdf:resource="#String"/>
                     <cims:multiplicity rdf:resource="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#M:1..1" />
-                    <cims:isFixed rdf:datatype="http://www.w3.org/2001/XMLSchema#string">MYCUST</cims:isFixed>                    
+                    <cims:isFixed rdf:datatype="http://www.w3.org/2001/XMLSchema#string">MYCUST</cims:isFixed>
                     <rdf:type rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Property"/>
                  </rdf:Description>
             </rdf:RDF>
@@ -156,4 +156,36 @@ public class TestCimProfile16 {
         assertEquals("MYCUST", ontology.getDcatKeyword());
     }
 
+    @Test
+    public void parseProfileFileHeaderProfile() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF
+                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+                xmlns:cim="http://iec.ch/TC57/2013/CIM-schema-cim16#">
+                <rdf:Description rdf:about="http://iec.ch/TC57/61970-552/ModelDescription#Package_FileHeaderProfile">
+                    <rdfs:label xml:lang="en">FileHeaderProfile</rdfs:label>
+                    <rdf:type rdf:resource="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#ClassCategory"/>
+                </rdf:Description>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+
+        var graph = new GraphMem2Roaring();
+
+        RDFParser.create()
+                .source(new StringReader(rdfxml))
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .checking(false)
+                .parse(graph);
+
+        var ontology = CimProfile.wrap(graph);
+
+        assertTrue(ontology.isHeaderProfile());
+        assertEquals(CimVersion.CIM_16, ontology.getCIMVersion());;
+    }
 }

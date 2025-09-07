@@ -85,4 +85,38 @@ public class TestCimProfile17 {
         assertEquals("MYCUST", ontology.getDcatKeyword());
     }
 
+    @Test
+    public void parseProfileFileHeaderProfile() throws Exception {
+        final var rdfxml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <rdf:RDF
+                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+                xmlns:cim="http://iec.ch/TC57/CIM100#"
+                xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+                xml:base="http://iec.ch/TC57/CIM100">
+                <rdf:Description rdf:about="#Package_FileHeaderProfile">
+                    <rdfs:label xml:lang="en">FileHeaderProfile</rdfs:label>
+                    <rdf:type rdf:resource="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#ClassCategory"/>                    
+                </rdf:Description>
+            </rdf:RDF>
+            """;
+
+        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+        JenaSystem.init();
+        SystemIRIx.reset();
+
+        var graph = new GraphMem2Roaring();
+
+        RDFParser.create()
+                .source(new StringReader(rdfxml))
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .checking(false)
+                .parse(graph);
+
+        var ontology = CimProfile.wrap(graph);
+
+        assertTrue(ontology.isHeaderProfile());
+        assertEquals(CimVersion.CIM_17, ontology.getCIMVersion());;
+    }
+
 }
