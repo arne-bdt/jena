@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * A {@link DatasetGraph} that holds a set of named graphs and optionally a default graph.
+ * A {@link DatasetGraph} that holds a set of named graphs and an optional default graph.
  * <p>
  * This implementation provides "best effort" transactions; it only provides MRPlusSW locking.
  * So all graphs that are transactional must support MRPlusSW locking.

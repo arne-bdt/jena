@@ -91,5 +91,13 @@ public interface CimProfileRegistry {
      */
     Map<String, RDFDatatype> getPrimitiveToRDFDatatypeMapping();
 
+    /**
+     * Registers a custom primitive type with the given CIM primitive type name and RDF datatype.
+     * If the primitive type name is already registered, it will be overwritten with the new RDF datatype.
+     * This method can be used to register custom primitive types that are not part of the standard CIM profiles.
+     * The rdfDatatype must also be registered with Jena's TypeMapper.
+     * @param cimPrimitiveTypeName The CIM primitive type name, e.g. "string", "int", "float", etc.
+     * @param rdfDatatype The RDF datatype to associate with the given CIM primitive type name.
+     */
     void registerPrimitiveType(String cimPrimitiveTypeName, RDFDatatype rdfDatatype);
 }

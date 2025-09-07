@@ -34,48 +34,95 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
+/**
+ * CIM/XML parser.
+ * This implementation uses ReaderCIMXML_StAX_SR, which is based on the RDF/XML reader ReaderRDFXML_StAX_SR
+ * in Apache Jena, originally.
+ * It has been adapted to the CIM/XML needs.
+ * <p>
+ * This parser has an internal CIM profile registry, which is used when parsing CIM/XML models.
+ * CIM profiles can be parsed and registered in this registry using {@link #parseAndRegisterCimProfile(Path)}.
+ * The registered CIM profiles are then used to interpret the CIM/XML models and parse the data types correctly.
+ */
 public class CimXmlParser {
 
     private final ReaderCIMXML_StAX_SR reader;
     private final CimProfileRegistry cimProfileRegistry;
     private final RdfXmlParser rdfXmlParser;
 
+    /**
+     * Gets the error handler used by this parser.
+     * @return the error handler
+     */
     public ErrorHandler getErrorHandler() {
         return reader.errorHandler;
     }
 
+    /**
+     * Gets the CIM profile registry used by this parser.
+     * @return the CIM profile registry
+     */
     public CimProfileRegistry getCimProfileRegistry() {
         return cimProfileRegistry;
     }
 
+    /**
+     * Creates a new CIM/XML parser with the standard error handler.
+     */
     public CimXmlParser() {
         this(ErrorHandlerFactory.errorHandlerStd);
     }
 
+    /**
+     * Creates a new CIM/XML parser with the given error handler.
+     * @param errorHandler the error handler
+     */
     public CimXmlParser(final ErrorHandler errorHandler) {
         this.reader = new ReaderCIMXML_StAX_SR(errorHandler);
         this.rdfXmlParser = new RdfXmlParser(this.reader);
         this.cimProfileRegistry = new CimProfileRegistryStd();
     }
 
+    /**
+     * Parses the CIM profile from the given path and registers it in the internal CIM profile registry.
+     * @param pathToCimProfile the path to the CIM profile
+     * @return the parsed CIM profile
+     * @throws IOException if an I/O error occurs
+     */
     public CimProfile parseAndRegisterCimProfile(final Path pathToCimProfile) throws IOException {
         final var profile = rdfXmlParser.parseCimProfile(pathToCimProfile);
         cimProfileRegistry.register(profile);
         return profile;
     }
 
+    /**
+     * Parses the CIM/XML from the given reader and returns the resulting CIM dataset graph.
+     * @param reader the reader containing the CIM/XML
+     * @return the resulting CIM dataset graph
+     */
     public CimDatasetGraph parseCimModel(final Reader reader) {
         final var streamRDFProfile = new StreamCIMXMLToDatasetGraph();
         this.reader.read(reader, cimProfileRegistry, streamRDFProfile);
         return streamRDFProfile.getCIMDatasetGraph();
     }
 
+    /**
+     * Parses the CIM/XML from the given input stream and returns the resulting CIM dataset graph.
+     * @param inputStream the input stream containing the CIM/XML
+     * @return the resulting CIM dataset graph
+     */
     public CimDatasetGraph parseCimModel(final InputStream inputStream) {
         final var streamRDFProfile = new StreamCIMXMLToDatasetGraph();
         this.reader.read(inputStream, cimProfileRegistry, streamRDFProfile);
         return streamRDFProfile.getCIMDatasetGraph();
     }
 
+    /**
+     * Parses the CIM/XML file at the given path and returns the resulting CIM dataset graph.
+     * @param pathToCimModel the path to the CIM/XML file
+     * @return the resulting CIM dataset graph
+     * @throws IOException if an I/O error occurs
+     */
     public CimDatasetGraph parseCimModel(final Path pathToCimModel) throws IOException {
         final var fileSize = Files.size(pathToCimModel);
         final var streamRDFProfile = new StreamCIMXMLToDatasetGraph();

@@ -19,6 +19,15 @@ package org.apache.jena.cimxml;
 
 import java.util.Objects;
 
+/**
+ * Enumeration of CIM versions known to this library.
+ * <p>
+ * The CIM version is identified by the namespace prefix URI used in the RDF representation of CIM.
+ * <p>
+ * See also <a href="https://www.iec.ch/TC57/2013/CIM-schema-cim16.htm">CIM 16</a>,
+ * <a href="https://cim.ucaiug.org/100/">CIM 17</a>, and
+ * <a href="https://cim.ucaiug.io/ns#">CIM 18</a>.
+ */
 public enum CimVersion {
     /** No CIM version specified */
     NO_CIM,
@@ -38,6 +47,13 @@ public enum CimVersion {
      */
     CIM_18;
 
+    /**
+     * Get the CIM version for a given CIM namespace prefix URI.
+     *
+     * @param prefixURI The CIM namespace prefix URI. Must not be {@code null}.
+     * @return The corresponding CIM version, or {@link #NO_CIM} if the prefix URI is not recognized.
+     * @throws NullPointerException if {@code prefixURI} is {@code null}.
+     */
     public static CimVersion fromCimNamespacePrefixUri(String prefixURI) {
         Objects.requireNonNull(prefixURI);
         return switch(prefixURI) {

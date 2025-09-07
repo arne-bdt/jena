@@ -30,6 +30,14 @@ import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
 import org.apache.jena.cimxml.sparql.core.LinkedCimDatasetGraph;
 import org.apache.jena.sparql.core.Quad;
 
+/**
+ * An implementation of {@link StreamCIMXML} that populates a {@link LinkedCimDatasetGraph}
+ * with the triples from the CIMXML file being processed.
+ * <p>
+ * This class manages multiple named graphs within the dataset, switching the current graph
+ * context based on the {@link CimXmlDocumentContext}. It uses different indexing strategies
+ * for different contexts to optimize performance.
+ */
 public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
 
     private final LinkedCimDatasetGraph linkedCIMDatasetGraph;
@@ -132,6 +140,13 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
         switchContext(context);
     }
 
+    /**
+     * Switches the current graph context based on the provided {@link CimXmlDocumentContext}.
+     * This method updates the current graph to the appropriate named graph in the dataset,
+     * creating it if it does not already exist. The indexing strategy is chosen based on the
+     * context to optimize performance for different types of data.
+     * @param cimDocumentContext
+     */
     private void switchContext(CimXmlDocumentContext cimDocumentContext) {
         var indexingStrategy = switch (cimDocumentContext) {
             // The metadata is usually very small, so we use a minimal indexing strategy.

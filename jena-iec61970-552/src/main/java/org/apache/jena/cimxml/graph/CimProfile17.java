@@ -28,6 +28,9 @@ import org.apache.jena.vocabulary.RDF;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * A wrapper for a graph that contains a CIM profile ontology as defined in CIM 17.
+ */
 public class CimProfile17 extends GraphWrapper implements CimProfile {
 
     final static String NS_OWL = "http://www.w3.org/2002/07/owl#";
@@ -109,6 +112,14 @@ public class CimProfile17 extends GraphWrapper implements CimProfile {
         return this.calculateHashCode();
     }
 
+    /**
+     * Checks if the given graph is a header profile.
+     * A header profile is defined as a graph that contains a subject with type
+     * "cims:ClassCategory" and
+     * the subject URI ends with "#Package_FileHeaderProfile".
+     * @param graph The graph to check.
+     * @return true if the graph is a header profile, false otherwise.
+     */
     public static boolean isHeaderProfile(Graph graph) {
         return graph.stream(Node.ANY, RDF.type.asNode(), TYPE_CLASS_CATEGORY)
                 .anyMatch(t

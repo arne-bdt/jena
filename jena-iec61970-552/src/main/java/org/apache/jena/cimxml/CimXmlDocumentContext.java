@@ -21,6 +21,10 @@ package org.apache.jena.cimxml;
 import org.apache.jena.graph.Node;
 import org.apache.jena.sparql.core.Quad;
 
+/**
+ * The context of a CIM XML document: full model, difference model, or one of the named graphs
+ * in a difference model.
+ */
 public enum CimXmlDocumentContext {
     fullModel,
     body,
@@ -29,7 +33,11 @@ public enum CimXmlDocumentContext {
     reverseDifferences,
     preconditions;
 
-
+    /**
+     * Get the graph name (Node) for the given context.
+     * @param context the context
+     * @return the graph name (Node)
+     */
     public static Node getGraphName(CimXmlDocumentContext context) {
         return switch (context) {
             case fullModel -> CimHeaderVocabulary.TYPE_FULL_MODEL;

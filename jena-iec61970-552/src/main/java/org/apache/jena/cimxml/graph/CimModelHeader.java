@@ -29,17 +29,36 @@ import org.apache.jena.vocabulary.RDF;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-
+/**
+ * A wrapper for a graph that contains the model header information of a CIM XML document.
+ * <p>
+ * The model header is expected to contain exactly one instance of either cim:FullModel or cim:DifferenceModel.
+ * It may contain zero or more cim:profile references, each referencing one of the registered profile ontologies.
+ * It may also contain zero or more cim:supersedes and cim:dependentOn references to other models.
+ */
 public interface CimModelHeader extends CIMGraph {
 
+    /**
+     * Checks if the model is a full model.
+     * @return true if the model is a full model, false otherwise.
+     */
     default boolean isFullModel() {
         return find(Node.ANY, RDF.type.asNode(), CimHeaderVocabulary.TYPE_FULL_MODEL).hasNext();
     }
 
+    /**
+     * Checks if the model is a difference model.
+     * @return true if the model is a difference model, false otherwise.
+     */
     default boolean isDifferenceModel() {
         return find(Node.ANY, RDF.type.asNode(), CimHeaderVocabulary.TYPE_DIFFERENCE_MODEL).hasNext();
     }
 
+    /**
+     * Get the node representing the model (either cim:FullModel or cim:DifferenceModel).
+     * @return The model node.
+     * @throws IllegalStateException if neither a FullModel nor a DifferenceModel is found in the header graph.
+     */
     default Node getModel() {
         var iter = find(Node.ANY, RDF.type.asNode(), CimHeaderVocabulary.TYPE_FULL_MODEL);
         if(iter.hasNext()) {
@@ -64,18 +83,37 @@ public interface CimModelHeader extends CIMGraph {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    /**
+     * Get the models that are superseded by this model.
+     * Each superseded model is referenced by its IRI.
+     * @return A set of model IRIs that are superseded by this model.
+     */
     default Set<Node> getSupersedes() {
         return stream(getModel(), CimHeaderVocabulary.PREDICATE_SUPERSEDES, Node.ANY)
                 .map(Triple::getObject)
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    /**
+     * Get the models that this model is dependent on.
+     * Each dependent model is referenced by its IRI.
+     * @return A set of model IRIs that this model is dependent on.
+     */
     default Set<Node> getDependentOn() {
         return stream(getModel(), CimHeaderVocabulary.PREDICATE_DEPENDENT_ON, Node.ANY)
                 .map(Triple::getObject)
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    /**
+     * Wraps a given graph as a {@link CimModelHeader}.
+     * If the graph is already an instance of {@link CimModelHeader}, it is returned as is.
+     * If the graph is null, null is returned.
+     * If the graph does not appear to be a CIM graph (no 'cim' namespace defined), an IllegalArgumentException is thrown.
+     * @param graph The graph to wrap.
+     * @return The wrapped graph as a {@link CimModelHeader}, or null if the input graph is null.
+     * @throws IllegalArgumentException if the graph does not appear to be a CIM graph.
+     */
     static CimModelHeader wrap(Graph graph) {
         if (graph == null) {
             return null;
@@ -89,6 +127,9 @@ public interface CimModelHeader extends CIMGraph {
         return new CimModelHeaderGraphWrapper(graph);
     }
 
+    /**
+     * An implementation of {@link CimModelHeader} that wraps a {@link Graph}.
+     */
     class CimModelHeaderGraphWrapper extends GraphWrapper implements CimModelHeader {
         public CimModelHeaderGraphWrapper(Graph graph) {
             super(graph);

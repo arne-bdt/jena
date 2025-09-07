@@ -16,10 +16,16 @@ import org.apache.jena.sparql.exec.QueryExec;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Standard implementation of the {@link CimProfileRegistry}.
+ * This implementation is thread-safe.
+ * Registration of custom primitive type mappings should be done before any other operations on the registry.
+ * The primitive type mapping is static for all instances of the registry.
+ */
 public class CimProfileRegistryStd implements CimProfileRegistry {
 
 
-    static Map<String, RDFDatatype> initPrimitiveToRDFDatatypeMapUsingXSDDatatypesOnly() {
+    private static Map<String, RDFDatatype> initPrimitiveToRDFDatatypeMapUsingXSDDatatypesOnly() {
         var map = new HashMap<String, RDFDatatype>();
         map.put("Base64Binary", XSDDatatype.XSDbase64Binary);
         map.put("Boolean", XSDDatatype.XSDboolean);
@@ -71,10 +77,17 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     public final ErrorHandler errorHandler;
 
+    /**
+     * Creates a new instance of the registry using the standard Jena error handler.
+     */
     public CimProfileRegistryStd() {
         this(ErrorHandlerFactory.errorHandlerStd);
     }
 
+    /**
+     * Creates a new instance of the registry using the given error handler.
+     * @param errorHandler The error handler to use for logging warnings and errors.
+     */
     public CimProfileRegistryStd(ErrorHandler errorHandler) {
         this.errorHandler = errorHandler;
         this.primitiveToRDFDatatypeMap = initPrimitiveToRDFDatatypeMapUsingXSDDatatypesOnly();

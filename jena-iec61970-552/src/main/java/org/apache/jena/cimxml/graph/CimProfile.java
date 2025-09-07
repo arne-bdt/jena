@@ -21,10 +21,36 @@ package org.apache.jena.cimxml.graph;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.vocabulary.RDF;
 
 import java.util.Set;
 
+/**
+ * A CIM profile ontology graph.
+ * A profile describes a subset of the CIM schema for a specific use case, e.g. CGMES 2.4.15.
+ * A profile is identified by its version IRI(s).
+ * A profile can be a header profile or a full profile.
+ * A header profile describes the RDF schema for a CIM model header or document header.
+ * A full profile describes the RDF schema for a CIM model.
+ * <p>
+ * CGMES 2.4.15 profiles are identified by their version IRIs, which are defined in a
+ * "{Profile}Version" class, e.g. "CGMES_2_4_15Version".
+ * The version IRI(s) are defined as fixed properties of the "{Profile}Version" class,
+ * e.g. "CGMES_2_4_15Version.baseURI.*" and "CGMES_2_4_15Version.entsoeURI*".
+ * The "{Profile}Version" class also defines a "shortName" property, which is used as
+ * dcat:keyword of the profile.
+ * <p>
+ * Header profiles do not contain version IRIs or keywords in CGMES 2.4.15 profiles.
+ * But the new ontology document header typically contain "DH" as keyword.
+ * To maintain compatibility, "DH" shall be used for old CGMES 2.4.15 file header profiles.
+ * <p>
+ * In CIM 17 and CIM 18 profiles, the version IRI(s) and keyword are defined in the ontology
+ * object of the profile, using standard OWL properties owl:versionIRI and dcat:keyword.
+ * <p>
+ * A profile can be wrapped around any graph that contains the required information.
+ * The static {@link #wrap(Graph)} method can be used to create a CimProfile from any graph.
+ * It checks if the graph contains the required information and throws an IllegalArgumentException
+ * if not.
+ */
 public interface CimProfile extends CIMGraph {
 
     String NS_CIMS = "http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#";
@@ -97,6 +123,11 @@ public interface CimProfile extends CIMGraph {
         return this.getOwlVersionIRIs().equals(other.getOwlVersionIRIs());
     }
 
+    /**
+     * Calculates the hash code for this profile.
+     * The hash code is based on the CIM version and the set of version IRIs, or if it is a header profile.
+     * @return The hash code for this profile.
+     */
     default int calculateHashCode() {
         // hash code from isHeader, cimVersion and version IRIs
         int result = Boolean.hashCode(isHeaderProfile());

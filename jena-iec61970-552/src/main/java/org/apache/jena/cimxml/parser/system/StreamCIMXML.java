@@ -24,9 +24,16 @@ import org.apache.jena.cimxml.graph.CimModelHeader;
 import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
 import org.apache.jena.riot.system.StreamRDF;
 
+/**
+ * An extension of {@link StreamRDF} to provide access to the underlying {@link CimDatasetGraph}
+ * and to store additional information about the CIMXML file being processed.
+ */
 public interface StreamCIMXML extends StreamRDF {
 
 
+    /**
+     *  Gets the underlying {@link CimDatasetGraph} that is being populated
+     */
     CimDatasetGraph getCIMDatasetGraph();
 
     /**
@@ -58,7 +65,14 @@ public interface StreamCIMXML extends StreamRDF {
      */
     void setVersionOfCIMXML(CimVersion versionOfCIMXML);
 
+    /**
+     * Gets the current document context
+     */
     CimXmlDocumentContext getCurrentContext();
 
+    /**
+     * Sets the current document context
+     * @param context the current document context
+     */
     void setCurrentContext(CimXmlDocumentContext context);
 }

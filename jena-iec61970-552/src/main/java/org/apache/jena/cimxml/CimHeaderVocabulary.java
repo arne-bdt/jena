@@ -21,6 +21,9 @@ package org.apache.jena.cimxml;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 
+/**
+ * Vocabulary for CIM XML header information in RDF.
+ */
 public final class CimHeaderVocabulary {
     public final static String NS_MD = "http://iec.ch/TC57/61970-552/ModelDescription/1#";
     public final static String NS_DM = "http://iec.ch/TC57/61970-552/DifferenceModel/1#";

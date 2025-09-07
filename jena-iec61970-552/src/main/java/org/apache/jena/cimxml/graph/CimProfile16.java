@@ -28,6 +28,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * A wrapper for a graph that contains a CIM profile ontology as defined using CIM 16
+ */
 public class CimProfile16 extends GraphWrapper implements CimProfile {
 
     final static String NS_RDFS = "http://www.w3.org/2000/01/rdf-schema#";
@@ -41,7 +44,15 @@ public class CimProfile16 extends GraphWrapper implements CimProfile {
     final static Node PREDICATE_RDFS_DOMAIN = NodeFactory.createURI(NS_RDFS + "domain");
     final static Node PREDICATE_CIMS_IS_FIXED = NodeFactory.createURI(NS_CIMS + "isFixed");
 
-
+    /**
+     * Checks if the given graph contains the required information to be wrapped as a CimProfile.
+     * It must contain exactly one fixed text for the property cim:shortName.
+     * It may contain zero or more fixed texts for the properties cim:entsoeURI and cim:baseURI.
+     * If the graph contains at least one fixed text for cim:entsoeURI or cim:baseURI,
+     * it must also contain a fixed text for cim:shortName.
+     * @param graph The graph to check.
+     * @return true if the graph can be wrapped as a CimProfile, false otherwise.
+     */
     public static boolean hasVersionIRIAndKeyword(Graph graph) {
         if(getProfilePropertyFixedTexts(graph, ".shortName").findAny().isEmpty()) {
             return false;   //no keyword defined
@@ -55,7 +66,8 @@ public class CimProfile16 extends GraphWrapper implements CimProfile {
         return false; //no version IRI defined
     }
 
-    public static Stream<String> getProfilePropertyFixedTexts(Graph graph, String propertyNameStartWithIncludingDot) {
+
+    private static Stream<String> getProfilePropertyFixedTexts(Graph graph, String propertyNameStartWithIncludingDot) {
         return graph.stream(Node.ANY, PREDICATE_RDFS_DOMAIN, Node.ANY) //first look for the domain
                 .filter(t
                         -> t.getObject().isURI()
@@ -72,6 +84,12 @@ public class CimProfile16 extends GraphWrapper implements CimProfile {
 
     private final boolean isHeaderProfile;
 
+    /**
+     * Wraps the given graph as a CimProfile.
+     * @param graph The graph to wrap.
+     * @return The wrapped CimProfile.
+     * @throws IllegalArgumentException if the graph does not contain the required information to be a CimProfile.
+     */
     public CimProfile16(Graph graph, boolean isHeaderProfile) {
         super(graph);
         this.isHeaderProfile = isHeaderProfile;
@@ -118,6 +136,11 @@ public class CimProfile16 extends GraphWrapper implements CimProfile {
         return this.calculateHashCode();
     }
 
+    /**
+     * Determines if the given graph is a header profile.
+     * In CIM 16, header profiles are identified by the presence of a
+     * cim:Category with the value "PackageFileHeaderProfile".
+     */
     public static boolean isHeaderProfile(Graph graph) {
         return graph.stream(Node.ANY, RDF.type.asNode(), TYPE_CLASS_CATEGORY)
                 .anyMatch(t

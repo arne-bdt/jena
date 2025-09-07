@@ -28,13 +28,11 @@ import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.stream.Stream;
 
 /**
- * Faster alternative to {@link Delta} that uses a {@link GraphMem2Fast} for the additions
- * and a {@link HashSet} for the deletions.
+ * Faster alternative to {@link Delta}
  */
 public class FastDeltaGraph extends GraphBase {
 

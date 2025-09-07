@@ -28,6 +28,9 @@ import org.apache.jena.vocabulary.RDF;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * A wrapper for a graph that contains a CIM profile ontology as defined in CIM 18
+ */
 public class CimProfile18 extends CimProfile17 implements CimProfile {
 
     final static String DOCUMENT_HEADER_VERSION_IRI_START = "https://ap-voc.cim4.eu/DocumentHeader";
@@ -36,11 +39,24 @@ public class CimProfile18 extends CimProfile17 implements CimProfile {
         super(graph, isHeaderProfile);
     }
 
+    /**
+     * Checks if the given graph contains both a DCAT keyword and an OWL version IRI.
+     * @param graph
+     * @return
+     */
     public static boolean hasVersionIRIAndKeyword(Graph graph) {
         return graph.find(Node.ANY, PREDICATE_DCAT_KEYWORD, Node.ANY).hasNext()
                 && graph.find(Node.ANY, PREDICATE_OWL_VERSION_IRI, Node.ANY).hasNext();
     }
 
+    /**
+     * Checks if the given graph is a header profile.
+     * A header profile is identified by having an ontology with a version IRI
+     * that starts with "https://ap-voc.cim4.eu/DocumentHeader".
+     *
+     * @param graph The graph to check.
+     * @return true if the graph is a header profile, false otherwise.
+     */
     public static boolean isHeaderProfile(Graph graph) {
         if(!hasOntology(graph))
             return false;
