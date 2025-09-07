@@ -18,6 +18,9 @@
 
 package org.apache.jena.cimxml.sparql.core;
 
+import org.apache.jena.cimxml.graph.CIMGraph;
+import org.apache.jena.cimxml.graph.DisjointMultiUnion;
+import org.apache.jena.cimxml.graph.FastDeltaGraph;
 import org.apache.jena.graph.*;
 import org.apache.jena.cimxml.CimHeaderVocabulary;
 import org.apache.jena.cimxml.graph.CimModelHeader;
@@ -68,5 +71,45 @@ public interface CimDatasetGraph extends DatasetGraph {
         if(!this.isFullModel())
             throw new IllegalStateException("Body graph is only available for FullModels. Use isFullModel() to check.");
         return getDefaultGraph();
+    }
+
+    default Graph fullModelToSingleGraph() {
+        if(!this.isFullModel())
+            throw new IllegalStateException("Full model graph is only available for FullModels. Use isFullModel() to check.");
+
+        var header = getModelHeader();
+        var body = getBody();
+
+        var union = new DisjointMultiUnion(header, body);
+        union.getPrefixMapping().setNsPrefixes(header.getPrefixMapping());
+
+        return union;
+    }
+
+    /**
+     * Converts this DifferenceModel to a FullModel by applying the forward and reverse differences to the provided predecessor FullModel.
+     * The model header of the resulting FullModel is not included in the returned Graph.
+     * @param predecessorFullModel the predecessor FullModel to apply the differences to
+     * @return a new Graph representing the resulting FullModel - without the Model header
+     * @throws IllegalStateException if this dataset is not a DifferenceModel
+     * @throws IllegalArgumentException if the provided predecessorFullModel is not a FullModel or if its Model is not in the current Model.Supersedes
+     */
+    default Graph differenceModelToFullModel(CimDatasetGraph predecessorFullModel) {
+        if(!this.isDifferenceModel())
+            throw new IllegalStateException("Conversion to full model is only available for DifferenceModels. Use isDifferenceModel() to check.");
+        if(!predecessorFullModel.isFullModel())
+            throw new IllegalArgumentException("The provided predecessorFullModel dataset must be a FullModel. Use isFullModel() to check.");
+
+        if(this.getModelHeader().getSupersedes().contains(predecessorFullModel.getModelHeader().getModel()))
+            throw new IllegalArgumentException("The provided predecessorFullModel dataset Model must be in current Model.Supersedes.");
+
+        var predecessorBody = predecessorFullModel.getBody();
+        var forwardDifferences = getForwardDifferences();
+        var reverseDifferences = getReverseDifferences();
+
+        var deltaGraph = new FastDeltaGraph(predecessorBody, forwardDifferences, reverseDifferences);
+        deltaGraph.getPrefixMapping().setNsPrefixes(this.getModelHeader().getPrefixMapping());
+
+        return deltaGraph;
     }
 }

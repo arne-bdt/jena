@@ -20,34 +20,20 @@ package org.apache.jena.parser;
 
 import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.parser.CimXmlParser;
-import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
 import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.sys.JenaSystem;
-import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.stream.Stream;
-
-import static org.junit.Assert.fail;
 
 public class ApplicationProfiles_NCP_v2_3_2_epsilon {
 
     private final static Path RDFS_FOLDER = Paths.get("C://temp/ApplicationProfiles_NCP_v2-3-2-epsilon");
     private final static CimXmlParser cimParser = new CimXmlParser();
 
-
-
-    @Ignore
     @Test
     public void readeRDFS() throws Exception {
         JenaSystem.init();
