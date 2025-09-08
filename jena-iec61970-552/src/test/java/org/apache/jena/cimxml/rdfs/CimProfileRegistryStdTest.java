@@ -1,14 +1,11 @@
 package org.apache.jena.cimxml.rdfs;
 
-import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.graph.CimProfile;
 import org.apache.jena.cimxml.parser.RdfXmlParser;
 import org.apache.jena.cimxml.parser.ReaderCIMXML_StAX_SR;
 import org.apache.jena.cimxml.parser.system.StreamCIMXMLToDatasetGraph;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.irix.SystemIRIx;
-import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
 import java.io.StringReader;
@@ -72,10 +69,6 @@ public class CimProfileRegistryStdTest {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
-
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
@@ -136,9 +129,6 @@ public class CimProfileRegistryStdTest {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
 
         var profile = new RdfXmlParser().parseCimProfile(new StringReader(rdfxml));
 
@@ -198,9 +188,6 @@ public class CimProfileRegistryStdTest {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
 
         var profileA = new RdfXmlParser().parseCimProfile(new StringReader(rdfxml));
         var profileB = new RdfXmlParser().parseCimProfile(new StringReader(rdfxml));
@@ -231,10 +218,6 @@ public class CimProfileRegistryStdTest {
                 </rdf:Description>
             </rdf:RDF>
             """;
-
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
 
         var profileA = new RdfXmlParser().parseCimProfile(new StringReader(rdfxml));
         var profileB = new RdfXmlParser().parseCimProfile(new StringReader(rdfxml));
@@ -324,10 +307,6 @@ public class CimProfileRegistryStdTest {
                 </rdf:Description>
             </rdf:RDF>
             """;
-
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
 
         var profileA = new RdfXmlParser().parseCimProfile(new StringReader(rdfxmlProfileA));
         var profileB = new RdfXmlParser().parseCimProfile(new StringReader(rdfxmlProfileB));

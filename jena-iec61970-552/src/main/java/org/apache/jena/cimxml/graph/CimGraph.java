@@ -1,7 +1,7 @@
 package org.apache.jena.cimxml.graph;
 
-import org.apache.jena.graph.Graph;
 import org.apache.jena.cimxml.CimVersion;
+import org.apache.jena.graph.Graph;
 
 import java.util.Objects;
 
@@ -9,7 +9,7 @@ import java.util.Objects;
  * A specialization of {@link Graph} that provides methods to determine the CIM version
  * of the graph based on its namespace prefixes.
  */
-public interface CIMGraph extends Graph {
+public interface CimGraph extends Graph {
 
     /**
      * Determines the CIM version of this graph based on its namespace prefixes.

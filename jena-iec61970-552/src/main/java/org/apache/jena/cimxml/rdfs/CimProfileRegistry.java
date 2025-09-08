@@ -18,10 +18,10 @@
 
 package org.apache.jena.cimxml.rdfs;
 
-import org.apache.jena.datatypes.RDFDatatype;
-import org.apache.jena.graph.Node;
 import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.cimxml.graph.CimProfile;
+import org.apache.jena.datatypes.RDFDatatype;
+import org.apache.jena.graph.Node;
 
 import java.util.Map;
 import java.util.Set;

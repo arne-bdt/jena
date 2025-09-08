@@ -18,12 +18,9 @@
 
 package org.apache.jena.cimxml.graph;
 
-import org.apache.jena.atlas.lib.Lib;
-import org.apache.jena.irix.SystemIRIx;
+import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.riot.RDFParser;
-import org.apache.jena.cimxml.CimVersion;
-import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
 import java.io.StringReader;
@@ -121,10 +118,6 @@ public class TestCimProfile16 {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
-
         var graph = new GraphMem2Roaring();
 
         RDFParser.create()
@@ -170,10 +163,6 @@ public class TestCimProfile16 {
                 </rdf:Description>
             </rdf:RDF>
             """;
-
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
 
         var graph = new GraphMem2Roaring();
 

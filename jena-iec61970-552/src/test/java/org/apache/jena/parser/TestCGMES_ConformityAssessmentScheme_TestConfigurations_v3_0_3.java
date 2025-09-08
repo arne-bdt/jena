@@ -18,11 +18,16 @@
 
 package org.apache.jena.parser;
 
-import org.apache.jena.atlas.lib.Lib;
+import org.apache.commons.io.input.BufferedFileChannelInputStream;
+import org.apache.commons.lang3.time.StopWatch;
 import org.apache.jena.cimxml.parser.CimXmlParser;
+import org.apache.jena.cimxml.parser.RdfXmlParser;
 import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
-import org.apache.jena.irix.SystemIRIx;
-import org.apache.jena.sys.JenaSystem;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.mem2.GraphMem2Roaring;
+import org.apache.jena.mem2.IndexingStrategy;
+import org.apache.jena.riot.RDFParser;
+import org.apache.jena.riot.lang.rdfxml.RRX;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -31,13 +36,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.fail;
 
 public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
 
@@ -48,9 +54,6 @@ public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
 
     @BeforeClass
     public static void beforeClassRegisterAllProfiles() throws IOException, InterruptedException, ExecutionException {
-        JenaSystem.init();
-        SystemIRIx.reset();
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         for(var rdfPath : java.nio.file.Files.newDirectoryStream(RDFS_FOLDER, "*.rdf")) {
             System.out.println(rdfPath.toAbsolutePath());
             cimParser.parseAndRegisterCimProfile(rdfPath);
@@ -75,5 +78,51 @@ public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
                         }
                  });
         }
+    }
+
+    @Ignore
+    @Test
+    public void parseCimXmlRealGrid_EQ100() throws Exception {
+        final CimDatasetGraph cimDataset;
+        try {
+            cimDataset = cimParser.parseCimModel(Paths.get("C://temp/RealGrid_EQ100/RealGrid_EQ100.xml"));
+        } catch (IOException e) {
+            fail("IOException: " + e.getMessage());
+        }
+    }
+
+    @Ignore
+    @Test
+    public void parseRdfXml() throws Exception {
+        final Graph g;
+        var parser = new RdfXmlParser();
+        try {
+            g = parser.parseGraph(Path.of("C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-25m.xml"));
+        } catch (IOException e) {
+            fail("IOException: " + e.getMessage());
+        }
+    }
+
+    @Ignore
+    @Test
+    public void parseXML() throws Exception {
+        var stopWatch = StopWatch.createStarted();
+        var sink = new GraphMem2Roaring(IndexingStrategy.LAZY_PARALLEL);
+        try(final var is = new BufferedFileChannelInputStream.Builder()
+                //.setPath("C://temp/RealGrid_EQ100/RealGrid_EQ100.xml")
+                .setPath("C:\\rd\\jena\\jena-benchmarks\\testing\\BSBM\\bsbm-25m.xml")
+                .setOpenOptions(StandardOpenOption.READ)
+                .setBufferSize(64*4096)
+                .get()) {
+            RDFParser.source(is)
+                    //.base("xx:")  // base URI for the model and thus for al mRID's in the model
+                    .forceLang(RRX.RDFXML_SAX)
+                    .checking(false)
+                    .parse(sink);
+        }
+        sink.initializeIndexParallel();
+        stopWatch.stop();
+        System.out.println("Triples in graph: " + sink.size());
+        System.out.println(stopWatch);
     }
 }

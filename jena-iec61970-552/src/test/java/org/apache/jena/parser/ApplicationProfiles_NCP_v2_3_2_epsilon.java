@@ -18,10 +18,7 @@
 
 package org.apache.jena.parser;
 
-import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.parser.CimXmlParser;
-import org.apache.jena.irix.SystemIRIx;
-import org.apache.jena.sys.JenaSystem;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -38,9 +35,6 @@ public class ApplicationProfiles_NCP_v2_3_2_epsilon {
     @Ignore
     @Test
     public void readeRDFS() throws Exception {
-        JenaSystem.init();
-        SystemIRIx.reset();
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         for(var rdfPath : Files.newDirectoryStream(RDFS_FOLDER, "*.rdf")) {
             System.out.println("Loading " + rdfPath.toAbsolutePath());
             try {

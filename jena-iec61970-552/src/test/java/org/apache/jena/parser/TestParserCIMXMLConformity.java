@@ -18,22 +18,16 @@
 
 package org.apache.jena.parser;
 
-import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.cimxml.graph.CimProfile;
 import org.apache.jena.cimxml.parser.ReaderCIMXML_StAX_SR;
+import org.apache.jena.cimxml.parser.system.StreamCIMXMLToDatasetGraph;
 import org.apache.jena.cimxml.rdfs.CimProfileRegistryStd;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.irix.SystemIRIx;
-import org.apache.jena.cimxml.parser.system.StreamCIMXMLToDatasetGraph;
-import org.apache.jena.mem2.GraphMem2Roaring;
-import org.apache.jena.riot.RDFParser;
-import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
 import java.io.StringReader;
-import java.util.Set;
 
 import static org.junit.Assert.*;
 
@@ -53,9 +47,6 @@ public class TestParserCIMXMLConformity {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
@@ -75,9 +66,6 @@ public class TestParserCIMXMLConformity {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
@@ -96,9 +84,6 @@ public class TestParserCIMXMLConformity {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
@@ -117,9 +102,6 @@ public class TestParserCIMXMLConformity {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
@@ -142,9 +124,6 @@ public class TestParserCIMXMLConformity {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
         parser.read(new StringReader(rdfxml), streamRDF);
@@ -226,9 +205,6 @@ public class TestParserCIMXMLConformity {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
@@ -322,9 +298,6 @@ public class TestParserCIMXMLConformity {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
@@ -367,9 +340,6 @@ public class TestParserCIMXMLConformity {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
@@ -407,9 +377,6 @@ public class TestParserCIMXMLConformity {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
@@ -536,10 +503,6 @@ public class TestParserCIMXMLConformity {
              </cim:ClassA>
             </rdf:RDF>
             """;
-
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
 
         final var parser = new ReaderCIMXML_StAX_SR();
 

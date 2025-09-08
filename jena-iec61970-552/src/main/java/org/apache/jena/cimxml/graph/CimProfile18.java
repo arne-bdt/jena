@@ -20,13 +20,6 @@ package org.apache.jena.cimxml.graph;
 
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.graph.Triple;
-import org.apache.jena.sparql.graph.GraphWrapper;
-import org.apache.jena.vocabulary.RDF;
-
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * A wrapper for a graph that contains a CIM profile ontology as defined in CIM 18

@@ -51,7 +51,7 @@ import java.util.Set;
  * It checks if the graph contains the required information and throws an IllegalArgumentException
  * if not.
  */
-public interface CimProfile extends CIMGraph {
+public interface CimProfile extends CimGraph {
 
     String NS_CIMS = "http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#";
     String CLASS_CLASS_CATEGORY = "ClassCategory";
@@ -150,7 +150,7 @@ public interface CimProfile extends CIMGraph {
         if (graph instanceof CimProfile po) {
             return po;
         }
-        var cimVersion = CIMGraph.getCIMXMLVersion(graph);
+        var cimVersion = CimGraph.getCIMXMLVersion(graph);
         return switch (cimVersion) {
             case CIM_16 -> {
                 if(CimProfile16.isHeaderProfile(graph)) {

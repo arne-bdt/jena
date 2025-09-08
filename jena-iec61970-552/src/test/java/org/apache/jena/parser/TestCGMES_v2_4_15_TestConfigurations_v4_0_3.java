@@ -18,11 +18,8 @@
 
 package org.apache.jena.parser;
 
-import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.parser.CimXmlParser;
 import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
-import org.apache.jena.irix.SystemIRIx;
-import org.apache.jena.sys.JenaSystem;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -49,9 +46,6 @@ public class TestCGMES_v2_4_15_TestConfigurations_v4_0_3 {
 
     @BeforeClass
     public static void beforeClassRegisterAllProfiles() throws IOException, InterruptedException, ExecutionException {
-        JenaSystem.init();
-        SystemIRIx.reset();
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
         final var futures = new ArrayList<Future<?>>();
         for(var rdfPath : Files.newDirectoryStream(RDFS_FOLDER, "*.rdf")) {
             //futures.add(executor.submit(() -> {

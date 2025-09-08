@@ -18,12 +18,9 @@
 
 package org.apache.jena.cimxml.graph;
 
-import org.apache.jena.atlas.lib.Lib;
-import org.apache.jena.graph.Node;
-import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.cimxml.parser.ReaderCIMXML_StAX_SR;
 import org.apache.jena.cimxml.parser.system.StreamCIMXMLToDatasetGraph;
-import org.apache.jena.sys.JenaSystem;
+import org.apache.jena.graph.Node;
 import org.junit.Test;
 
 import java.io.StringReader;
@@ -55,9 +52,6 @@ public class TestCimModelHeader {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
@@ -108,9 +102,6 @@ public class TestCimModelHeader {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 

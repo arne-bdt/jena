@@ -23,6 +23,7 @@ import org.apache.jena.atlas.io.IndentedWriter;
 import org.apache.jena.atlas.lib.Cache;
 import org.apache.jena.atlas.lib.CacheFactory;
 import org.apache.jena.atlas.lib.EscapeStr;
+import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.CimHeaderVocabulary;
 import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.cimxml.CimXmlDocumentContext;
@@ -35,8 +36,10 @@ import org.apache.jena.datatypes.xsd.impl.XMLLiteralType;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.iri3986.provider.IRIProvider3986;
 import org.apache.jena.irix.IRIException;
 import org.apache.jena.irix.IRIx;
+import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.riot.RiotException;
 import org.apache.jena.riot.lang.rdfxml.RDFXMLParseException;
 import org.apache.jena.riot.system.ErrorHandler;
@@ -44,6 +47,7 @@ import org.apache.jena.riot.system.FactoryRDF;
 import org.apache.jena.riot.system.FactoryRDFCaching;
 import org.apache.jena.riot.system.SyntaxLabels;
 import org.apache.jena.sparql.graph.NodeConst;
+import org.apache.jena.sys.JenaSystem;
 import org.apache.jena.util.XML11Char;
 import org.apache.jena.vocabulary.RDF;
 import org.codehaus.stax2.XMLStreamReader2;
@@ -66,6 +70,14 @@ import static org.apache.jena.riot.SysRIOT.fmtMessage;
  * It has been adapted to handle CIMXML specifics.
  */
 public class ParserCIMXML_StAX_SR {
+
+    static {
+        JenaSystem.init();
+        if(!(SystemIRIx.getProvider() instanceof IRIProvider3986)) {
+            Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
+            SystemIRIx.reset();
+        }
+    }
 
     private final static int IRI_CACHE_SIZE = 8192;
     private final IndentedWriter trace;

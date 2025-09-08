@@ -18,17 +18,14 @@
 
 package org.apache.jena.parser;
 
-import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.parser.ReaderCIMXML_StAX_SR;
+import org.apache.jena.cimxml.parser.system.StreamCIMXMLToDatasetGraph;
 import org.apache.jena.graph.Graph;
-import org.apache.jena.irix.SystemIRIx;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
 import org.apache.jena.riot.RDFParser;
-import org.apache.jena.cimxml.parser.system.StreamCIMXMLToDatasetGraph;
 import org.apache.jena.riot.system.PrefixMap;
 import org.apache.jena.shared.PrefixMapping;
-import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
 import java.io.StringReader;
@@ -654,9 +651,6 @@ public class TestParserRDFXMLConformity {
     }
 
     public void parseAndCompare(String rdfxml, String nTriples) throws Exception {
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();

@@ -18,11 +18,11 @@
 
 package org.apache.jena.cimxml.graph;
 
+import org.apache.jena.cimxml.CimHeaderVocabulary;
+import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.cimxml.CimHeaderVocabulary;
-import org.apache.jena.cimxml.CimVersion;
 import org.apache.jena.sparql.graph.GraphWrapper;
 import org.apache.jena.vocabulary.RDF;
 
@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
  * It may contain zero or more cim:profile references, each referencing one of the registered profile ontologies.
  * It may also contain zero or more cim:supersedes and cim:dependentOn references to other models.
  */
-public interface CimModelHeader extends CIMGraph {
+public interface CimModelHeader extends CimGraph {
 
     /**
      * Checks if the model is a full model.
@@ -121,7 +121,7 @@ public interface CimModelHeader extends CIMGraph {
         if (graph instanceof CimModelHeader cimModelHeader) {
             return cimModelHeader;
         }
-        if( CIMGraph.getCIMXMLVersion(graph) == CimVersion.NO_CIM) {
+        if( CimGraph.getCIMXMLVersion(graph) == CimVersion.NO_CIM) {
             throw new IllegalArgumentException("Graph does not appear to be a CIM graph. No proper 'cim' namespace defined.");
         }
         return new CimModelHeaderGraphWrapper(graph);

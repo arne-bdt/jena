@@ -18,16 +18,16 @@
 
 package org.apache.jena.cimxml.parser.system;
 
+import org.apache.jena.cimxml.CimVersion;
+import org.apache.jena.cimxml.CimXmlDocumentContext;
 import org.apache.jena.cimxml.graph.CimModelHeader;
+import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
+import org.apache.jena.cimxml.sparql.core.LinkedCimDatasetGraph;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.GraphMem2Roaring;
 import org.apache.jena.mem2.IndexingStrategy;
-import org.apache.jena.cimxml.CimXmlDocumentContext;
-import org.apache.jena.cimxml.CimVersion;
-import org.apache.jena.cimxml.sparql.core.CimDatasetGraph;
-import org.apache.jena.cimxml.sparql.core.LinkedCimDatasetGraph;
 import org.apache.jena.sparql.core.Quad;
 
 /**

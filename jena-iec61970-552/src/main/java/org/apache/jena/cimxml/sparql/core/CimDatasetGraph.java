@@ -18,11 +18,12 @@
 
 package org.apache.jena.cimxml.sparql.core;
 
-import org.apache.jena.cimxml.graph.DisjointMultiUnion;
-import org.apache.jena.cimxml.graph.FastDeltaGraph;
-import org.apache.jena.graph.*;
 import org.apache.jena.cimxml.CimHeaderVocabulary;
 import org.apache.jena.cimxml.graph.CimModelHeader;
+import org.apache.jena.cimxml.graph.DisjointMultiUnion;
+import org.apache.jena.cimxml.graph.FastDeltaGraph;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Triple;
 import org.apache.jena.sparql.core.DatasetGraph;
 
 import java.util.ArrayList;

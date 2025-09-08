@@ -1,10 +1,7 @@
 package org.apache.jena.cimxml.sparql.core;
 
-import org.apache.jena.atlas.lib.Lib;
 import org.apache.jena.cimxml.parser.CimXmlParser;
 import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.irix.SystemIRIx;
-import org.apache.jena.sys.JenaSystem;
 import org.junit.Test;
 
 import java.io.StringReader;
@@ -26,10 +23,6 @@ public class CimDatasetGraphTest {
              </cim:MyEquipment>
             </rdf:RDF>
             """;
-
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
 
         var model = new CimXmlParser().parseCimModel(new StringReader(rdfxml));
 
@@ -136,9 +129,6 @@ public class CimDatasetGraphTest {
             </rdf:RDF>
             """;
 
-        Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
-        JenaSystem.init();
-        SystemIRIx.reset();
         var predecessorFullModel = new CimXmlParser().parseCimModel(new StringReader(rdfXmlFullModel));
         var differenceModel = new CimXmlParser().parseCimModel(new StringReader(rdfxmlDifferenceModel));
 

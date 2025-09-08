@@ -22,7 +22,8 @@ import org.apache.jena.cimxml.parser.system.StreamCIMXML;
 import org.apache.jena.cimxml.rdfs.CimProfileRegistry;
 import org.apache.jena.riot.RiotException;
 import org.apache.jena.riot.lang.rdfxml.SysRRX;
-import org.apache.jena.riot.system.*;
+import org.apache.jena.riot.system.ErrorHandler;
+import org.apache.jena.riot.system.ErrorHandlerFactory;
 import org.codehaus.stax2.XMLInputFactory2;
 import org.codehaus.stax2.XMLStreamReader2;
 
