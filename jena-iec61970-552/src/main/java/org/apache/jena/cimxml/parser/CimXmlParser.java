@@ -35,14 +35,46 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 
 /**
- * CIM/XML parser.
- * This implementation uses ReaderCIMXML_StAX_SR, which is based on the RDF/XML reader ReaderRDFXML_StAX_SR
- * in Apache Jena, originally.
- * It has been adapted to the CIM/XML needs.
- * <p>
- * This parser has an internal CIM profile registry, which is used when parsing CIM/XML models.
- * CIM profiles can be parsed and registered in this registry using {@link #parseAndRegisterCimProfile(Path)}.
- * The registered CIM profiles are then used to interpret the CIM/XML models and parse the data types correctly.
+ * IEC 61970-552 CIMXML parser for Apache Jena.
+ *
+ * <p>This parser provides specialized handling for Common Information Model (CIM) XML files
+ * as defined by the IEC 61970-552 standard. It extends standard RDF/XML parsing with
+ * CIM-specific features including:</p>
+ *
+ * <ul>
+ *   <li>Automatic CIM version detection from namespace declarations</li>
+ *   <li>UUID normalization (handling underscore prefixes and missing dashes)</li>
+ *   <li>Profile-based datatype resolution</li>
+ *   <li>Support for FullModel and DifferenceModel structures</li>
+ *   <li>Processing instruction handling for IEC 61970-552 version</li>
+ * </ul>
+ *
+ * <h2>Usage Example:</h2>
+ * <pre>{@code
+ * // Create parser with default error handling
+ * CimXmlParser parser = new CimXmlParser();
+ *
+ * // Register CIM profiles for datatype resolution
+ * parser.parseAndRegisterCimProfile(Path.of("Equipment.rdf"));
+ *
+ * // Parse a CIMXML model
+ * CimDatasetGraph dataset = parser.parseCimModel(Path.of("model.xml"));
+ *
+ * // Access model components
+ * if (dataset.isFullModel()) {
+ *     Graph body = dataset.getBody();
+ *     CimModelHeader header = dataset.getModelHeader();
+ * }
+ * }</pre>
+ *
+ * <h2>Thread Safety:</h2>
+ * <p>This class is thread-safe for parsing operations. The internal profile registry
+ * is synchronized and can be safely accessed from multiple threads.</p>
+ *
+ * @see CimDatasetGraph
+ * @see CimProfileRegistry
+ * @see <a href="https://webstore.iec.ch/publication/25939">IEC 61970-552 Standard</a>
+ * @since Jena 5.6.0
  */
 public class CimXmlParser {
 

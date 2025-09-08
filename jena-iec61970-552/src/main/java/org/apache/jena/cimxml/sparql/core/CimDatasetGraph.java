@@ -29,27 +29,51 @@ import org.apache.jena.sparql.core.DatasetGraph;
 import java.util.ArrayList;
 
 /**
- * A {@link DatasetGraph} for CIM models.
- * <p>
- * This dataset can hold either a FullModel or a DifferenceModel.
+ * A specialized {@link DatasetGraph} for IEC 61970-552 CIM models.
+ *
+ * <p>This interface extends the standard Jena DatasetGraph with CIM-specific operations
+ * for handling the structure defined in IEC 61970-552. A CIM dataset can contain either
+ * a FullModel or a DifferenceModel:</p>
+ *
+ * <h3>FullModel Structure:</h3>
  * <ul>
- *     <li>A FullModel contains a Model header graph and a body graph as the default graph.</li>
- *     <li>A DifferenceModel contains a Model header graph, a forward differences graph,
- *     a reverse differences graph and an optional preconditions graph as named graphs.</li>
+ *   <li><b>Model Header</b>: Named graph containing metadata (URI: {@code urn:FullModel})</li>
+ *   <li><b>Body</b>: Default graph containing the actual model data</li>
  * </ul>
- * <p>
- * The model type can be determined using {@link #isFullModel()} and {@link #isDifferenceModel()}.
- * <p>
- * For FullModels the body graph can be accessed using {@link #getBody()} and the model header
- * using {@link #getModelHeader()}. To get a single graph containing both the model header and
- * the body graph one can use {@link #fullModelToSingleGraph()}.
- * <p>
- * For DifferenceModels the forward differences, reverse differences and preconditions graphs
- * can be accessed using {@link #getForwardDifferences()}, {@link #getReverseDifferences()}
- * and {@link #getPreconditions()}. The model header can be accessed using {@link #getModelHeader()}.
- * To convert a DifferenceModel to a FullModel one can use {@link #differenceModelToFullModel(CimDatasetGraph)}
- * by providing the predecessor FullModel as an argument. The resulting FullModel does not contain
- * the model header - only the body graph.
+ *
+ * <h3>DifferenceModel Structure:</h3>
+ * <ul>
+ *   <li><b>Model Header</b>: Named graph with metadata (URI: {@code urn:DifferenceModel})</li>
+ *   <li><b>Forward Differences</b>: Triples to add to the base model</li>
+ *   <li><b>Reverse Differences</b>: Triples to remove from the base model</li>
+ *   <li><b>Preconditions</b>: Optional triples that must exist in the base model</li>
+ * </ul>
+ *
+ * <h3>Usage Example:</h3>
+ * <pre>{@code
+ * CimDatasetGraph dataset = parser.parseCimModel(modelFile);
+ *
+ * if (dataset.isFullModel()) {
+ *     // Work with full model
+ *     Graph body = dataset.getBody();
+ *     CimModelHeader header = dataset.getModelHeader();
+ *
+ *     // Convert to single graph if needed
+ *     Graph combined = dataset.fullModelToSingleGraph();
+ * } else if (dataset.isDifferenceModel()) {
+ *     // Work with difference model
+ *     Graph forwardDiffs = dataset.getForwardDifferences();
+ *     Graph reverseDiffs = dataset.getReverseDifferences();
+ *
+ *     // Apply to base model
+ *     CimDatasetGraph baseModel = loadBaseModel();
+ *     Graph result = dataset.differenceModelToFullModel(baseModel);
+ * }
+ * }</pre>
+ *
+ * @see DatasetGraph
+ * @see CimModelHeader
+ * @since Jena 5.6.0
  */
 public interface CimDatasetGraph extends DatasetGraph {
 

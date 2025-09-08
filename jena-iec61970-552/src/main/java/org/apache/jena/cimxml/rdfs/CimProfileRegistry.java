@@ -26,13 +26,81 @@ import org.apache.jena.graph.Node;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Registry for managing CIM profile ontologies and their associated datatypes.
+ *
+ * <p>The CIM Profile Registry is a central component for managing CIM profile ontologies
+ * (RDFS schemas) that define the structure and datatypes used in CIM models. It provides:</p>
+ *
+ * <ul>
+ *   <li>Registration and lookup of CIM profiles by version IRI</li>
+ *   <li>Datatype mapping from CIM primitive types to RDF datatypes</li>
+ *   <li>Property-to-datatype resolution for parsing CIMXML documents</li>
+ *   <li>Support for header profiles and model profiles</li>
+ * </ul>
+ *
+ * <h3>Profile Types:</h3>
+ * <dl>
+ *   <dt><b>Model Profiles</b></dt>
+ *   <dd>Define the structure and properties for CIM model data (e.g., Equipment, Topology)</dd>
+ *
+ *   <dt><b>Header Profiles</b></dt>
+ *   <dd>Define the structure for model headers (FullModel/DifferenceModel metadata)</dd>
+ * </dl>
+ *
+ * <h3>Usage Example:</h3>
+ * <pre>{@code
+ * // Create registry
+ * CimProfileRegistry registry = new CimProfileRegistryStd();
+ *
+ * // Register profiles
+ * CimProfile equipmentProfile = CimProfile.wrap(equipmentGraph);
+ * registry.register(equipmentProfile);
+ *
+ * // Register custom datatype mappings
+ * registry.registerPrimitiveType("Voltage", XSDDatatype.XSDdouble);
+ * registry.registerPrimitiveType("Current", XSDDatatype.XSDdouble);
+ *
+ * // Query properties and datatypes
+ * Set<Node> profileIris = Set.of(NodeFactory.createURI("http://example.org/Equipment/1.0"));
+ * Map<Node, PropertyInfo> properties = registry.getPropertiesAndDatatypes(profileIris);
+ * }</pre>
+ *
+ * <h3>Thread Safety:</h3>
+ * <p>Implementations must be thread-safe for all read operations. Registration operations
+ * may require external synchronization.</p>
+ *
+ * @see CimProfile
+ * @see PropertyInfo
+ * @since Jena 5.6.0
+ */
 public interface CimProfileRegistry {
 
     /**
-     * A record to hold the rdfType(class), property, primitive type and reference type of a property.
-     * Either primitiveType or referenceType may be null, but not both.
-     * If primitiveType is not null, the property is a primitive property.
-     * If referenceType is not null, the property is a reference property.
+     * Information about a CIM property including its domain, range, and datatype.
+     *
+     * <p>This record encapsulates all metadata needed to properly parse and validate
+     * a CIM property value:</p>
+     *
+     * <ul>
+     *   <li><b>rdfType</b>: The class (domain) this property belongs to</li>
+     *   <li><b>property</b>: The property URI</li>
+     *   <li><b>cimDatatype</b>: The CIM datatype definition</li>
+     *   <li><b>primitiveType</b>: RDF datatype for primitive properties (e.g., xsd:float)</li>
+     *   <li><b>referenceType</b>: Target class for object properties</li>
+     * </ul>
+     *
+     * <p>Either primitiveType or referenceType will be non-null, but not both:</p>
+     * <ul>
+     *   <li>If primitiveType is non-null, this is a datatype property</li>
+     *   <li>If referenceType is non-null, this is an object property</li>
+     * </ul>
+     *
+     * @param rdfType The domain class of this property
+     * @param property The property URI
+     * @param cimDatatype The CIM datatype definition (may be null)
+     * @param primitiveType The RDF datatype for primitive values (may be null)
+     * @param referenceType The range class for object properties (may be null)
      */
     record PropertyInfo(Node rdfType, Node property, Node cimDatatype, RDFDatatype primitiveType, Node referenceType) {}
 

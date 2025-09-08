@@ -18,6 +18,8 @@
 
 package org.apache.jena.cimxml.graph;
 
+import org.apache.jena.cimxml.CimVersion;
+import org.apache.jena.cimxml.rdfs.CimProfileRegistry;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -25,31 +27,45 @@ import org.apache.jena.graph.NodeFactory;
 import java.util.Set;
 
 /**
- * A CIM profile ontology graph.
- * A profile describes a subset of the CIM schema for a specific use case, e.g. CGMES 2.4.15.
- * A profile is identified by its version IRI(s).
- * A profile can be a header profile or a full profile.
- * A header profile describes the RDF schema for a CIM model header or document header.
- * A full profile describes the RDF schema for a CIM model.
- * <p>
- * CGMES 2.4.15 profiles are identified by their version IRIs, which are defined in a
- * "{Profile}Version" class, e.g. "CGMES_2_4_15Version".
- * The version IRI(s) are defined as fixed properties of the "{Profile}Version" class,
- * e.g. "CGMES_2_4_15Version.baseURI.*" and "CGMES_2_4_15Version.entsoeURI*".
- * The "{Profile}Version" class also defines a "shortName" property, which is used as
- * dcat:keyword of the profile.
- * <p>
- * Header profiles do not contain version IRIs or keywords in CGMES 2.4.15 profiles.
- * But the new ontology document header typically contain "DH" as keyword.
- * To maintain compatibility, "DH" shall be used for old CGMES 2.4.15 file header profiles.
- * <p>
- * In CIM 17 and CIM 18 profiles, the version IRI(s) and keyword are defined in the ontology
- * object of the profile, using standard OWL properties owl:versionIRI and dcat:keyword.
- * <p>
- * A profile can be wrapped around any graph that contains the required information.
- * The static {@link #wrap(Graph)} method can be used to create a CimProfile from any graph.
- * It checks if the graph contains the required information and throws an IllegalArgumentException
- * if not.
+ * Represents a CIM profile ontology (RDFS schema) graph.
+ *
+ * <p>A CIM profile defines a subset of the CIM schema for specific use cases, such as
+ * equipment models, topology, or state variables. Profiles are versioned and identified
+ * by their version IRIs.</p>
+ *
+ * <h3>Profile Structure:</h3>
+ * <p>CIM profiles can be defined in different formats depending on the CIM version:</p>
+ *
+ * <h4>CIM 16 (CGMES 2.4.15):</h4>
+ * <ul>
+ *   <li>Version IRIs defined via {@code cims:isFixed} properties</li>
+ *   <li>Keywords via {@code {Profile}Version.shortName}</li>
+ *   <li>Multiple version IRIs possible (baseURI, entsoeURI)</li>
+ * </ul>
+ *
+ * <h4>CIM 17/18 (CGMES 3.0+):</h4>
+ * <ul>
+ *   <li>Version IRIs via {@code owl:versionIRI}</li>
+ *   <li>Keywords via {@code dcat:keyword}</li>
+ *   <li>Version info via {@code owl:versionInfo}</li>
+ * </ul>
+ *
+ * <h3>Usage Example:</h3>
+ * <pre>{@code
+ * // Load and wrap a profile graph
+ * Graph profileGraph = loadProfileFromFile("Equipment.rdf");
+ * CimProfile profile = CimProfile.wrap(profileGraph);
+ *
+ * // Query profile metadata
+ * CimVersion version = profile.getCIMVersion();
+ * Set<Node> versionIris = profile.getOwlVersionIRIs();
+ * String keyword = profile.getDcatKeyword();
+ * boolean isHeader = profile.isHeaderProfile();
+ * }</pre>
+ *
+ * @see CimVersion
+ * @see CimProfileRegistry
+ * @since Jena 5.6.0
  */
 public interface CimProfile extends CimGraph {
 
