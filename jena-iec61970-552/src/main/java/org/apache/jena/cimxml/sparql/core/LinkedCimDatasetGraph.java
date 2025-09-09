@@ -104,7 +104,7 @@ public class LinkedCimDatasetGraph extends DatasetGraphCollection implements Cim
     @Override
     public void addGraph(Node graphName, Graph graph) {
         graphs.put(graphName, graph);
-        if(graph instanceof Transactional transactional) {
+        if (graph instanceof Transactional transactional) {
             transactionalGraphs.put(graphName, transactional);
         }
     }

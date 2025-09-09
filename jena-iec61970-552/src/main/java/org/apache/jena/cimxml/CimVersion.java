@@ -48,15 +48,15 @@ public enum CimVersion {
     CIM_18;
 
     /**
-     * Get the CIM version for a given CIM namespace prefix URI.
+     * Get the CIM version for a given CIM namespace.
      *
-     * @param prefixURI The CIM namespace prefix URI. Must not be {@code null}.
-     * @return The corresponding CIM version, or {@link #NO_CIM} if the prefix URI is not recognized.
-     * @throws NullPointerException if {@code prefixURI} is {@code null}.
+     * @param namespace The CIM namespace prefix URI. Must not be {@code null}.
+     * @return The corresponding CIM version, or {@link #NO_CIM} if the namespace is not recognized.
+     * @throws NullPointerException if {@code namespace} is {@code null}.
      */
-    public static CimVersion fromCimNamespacePrefixUri(String prefixURI) {
-        Objects.requireNonNull(prefixURI);
-        return switch(prefixURI) {
+    public static CimVersion fromCimNamespace(String namespace) {
+        Objects.requireNonNull(namespace, "namespace");
+        return switch(namespace) {
             case "http://iec.ch/TC57/2013/CIM-schema-cim16#" -> CimVersion.CIM_16;
             case "http://iec.ch/TC57/CIM100#" -> CimVersion.CIM_17;
             case "https://cim.ucaiug.io/ns#" -> CimVersion.CIM_18;

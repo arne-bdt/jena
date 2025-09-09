@@ -48,7 +48,6 @@ public class FastDeltaGraph extends GraphBase {
         this.deletions = new GraphMem2Roaring(IndexingStrategy.LAZY_PARALLEL);
     }
 
-
     /**
      * Creates a new {@link FastDeltaGraph} that is based on the given {@code newBase} graph.
      * This is used to rebase a {@link FastDeltaGraph} on a new base graph.
@@ -108,7 +107,7 @@ public class FastDeltaGraph extends GraphBase {
     @Override
     protected boolean graphBaseContains(Triple t) {
         if (t.isConcrete()) {
-            if(base.contains(t)) {
+            if (base.contains(t)) {
                 return !deletions.contains(t);
             }
             return additions.contains(t);
@@ -150,7 +149,7 @@ public class FastDeltaGraph extends GraphBase {
         super.close();
         base.close();
         additions.close();
-        deletions.clear();
+        deletions.close();
     }
 
     @Override

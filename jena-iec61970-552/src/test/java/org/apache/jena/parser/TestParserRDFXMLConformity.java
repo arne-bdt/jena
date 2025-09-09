@@ -611,11 +611,44 @@ public class TestParserRDFXMLConformity {
         parseAndCompare(rdfxml, sameAsNTriples);
     }
 
+    public void parseAndCompare(String rdfxml) throws Exception {
+        parseAndCompare(rdfxml, null);
+    }
+
+    public void parseAndCompare(String rdfxml, String nTriples) throws Exception {
+        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+        final var parser = new ReaderCIMXML_StAX_SR();
+        final var streamRDF = new StreamCIMXMLToDatasetGraph();
+
+        parser.read(new StringReader(rdfxml), streamRDF);
+        var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
+
+        RDFParser.create()
+                .source(new StringReader(rdfxml))
+                .lang(org.apache.jena.riot.Lang.RDFXML)
+                .checking(false)
+                .parse(expectedGraph);
+
+        assertGraphEquals(expectedGraph, graph);
+        assertPrefixMappingEquals(expectedGraph.getPrefixMapping(), streamRDF.getCIMDatasetGraph().prefixes());
+
+        if (nTriples != null) {
+            final var nTriplesGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
+            RDFParser.create()
+                    .source(new StringReader(nTriples))
+                    .lang(org.apache.jena.riot.Lang.NTRIPLES)
+                    .checking(false)
+                    .parse(nTriplesGraph);
+
+            assertGraphEquals(expectedGraph, nTriplesGraph);
+        }
+    }
+
     public void assertGraphEquals(Graph expected, Graph actual) {
         // check that all triples in expected graph are in actual graph
         expected.find().forEachRemaining(expectedTriple -> {
-            if(!actual.contains(expectedTriple)) {
-                if(expectedTriple.getSubject().isBlank() || expectedTriple.getPredicate().isBlank() || expectedTriple.getObject().isBlank()) {
+            if (!actual.contains(expectedTriple)) {
+                if (expectedTriple.getSubject().isBlank() || expectedTriple.getPredicate().isBlank() || expectedTriple.getObject().isBlank()) {
                     return; // Blank nodes are not compared by value, so we skip them
                 }
                 int i= 0;
@@ -644,38 +677,5 @@ public class TestParserRDFXMLConformity {
             assertEquals("PrefixMappings are not equal: different URI for namespace " + prefix,
                     uri, actual.get(prefix));
         });
-    }
-
-    public void parseAndCompare(String rdfxml) throws Exception {
-        parseAndCompare(rdfxml, null);
-    }
-
-    public void parseAndCompare(String rdfxml, String nTriples) throws Exception {
-        final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
-        final var parser = new ReaderCIMXML_StAX_SR();
-        final var streamRDF = new StreamCIMXMLToDatasetGraph();
-
-        parser.read(new StringReader(rdfxml), streamRDF);
-        var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
-
-        RDFParser.create()
-                .source(new StringReader(rdfxml))
-                .lang(org.apache.jena.riot.Lang.RDFXML)
-                .checking(false)
-                .parse(expectedGraph);
-
-        assertGraphEquals(expectedGraph, graph);
-        assertPrefixMappingEquals(expectedGraph.getPrefixMapping(), streamRDF.getCIMDatasetGraph().prefixes());
-
-        if(nTriples != null) {
-            final var nTriplesGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
-            RDFParser.create()
-                    .source(new StringReader(nTriples))
-                    .lang(org.apache.jena.riot.Lang.NTRIPLES)
-                    .checking(false)
-                    .parse(nTriplesGraph);
-
-            assertGraphEquals(expectedGraph, nTriplesGraph);
-        }
     }
 }

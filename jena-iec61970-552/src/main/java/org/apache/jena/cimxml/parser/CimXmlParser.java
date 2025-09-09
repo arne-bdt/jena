@@ -99,14 +99,14 @@ public class CimXmlParser {
     }
 
     /**
-     * Creates a new CIM/XML parser with the standard error handler.
+     * Creates a new CIMXML parser with the standard error handler.
      */
     public CimXmlParser() {
         this(ErrorHandlerFactory.errorHandlerStd);
     }
 
     /**
-     * Creates a new CIM/XML parser with the given error handler.
+     * Creates a new CIMXML parser with the given error handler.
      * @param errorHandler the error handler
      */
     public CimXmlParser(final ErrorHandler errorHandler) {
@@ -128,8 +128,8 @@ public class CimXmlParser {
     }
 
     /**
-     * Parses the CIM/XML from the given reader and returns the resulting CIM dataset graph.
-     * @param reader the reader containing the CIM/XML
+     * Parses the CIMXML from the given reader and returns the resulting CIM dataset graph.
+     * @param reader the reader containing the CIMXML
      * @return the resulting CIM dataset graph
      */
     public CimDatasetGraph parseCimModel(final Reader reader) {
@@ -139,8 +139,8 @@ public class CimXmlParser {
     }
 
     /**
-     * Parses the CIM/XML from the given input stream and returns the resulting CIM dataset graph.
-     * @param inputStream the input stream containing the CIM/XML
+     * Parses the CIMXML from the given input stream and returns the resulting CIM dataset graph.
+     * @param inputStream the input stream containing the CIMXML
      * @return the resulting CIM dataset graph
      */
     public CimDatasetGraph parseCimModel(final InputStream inputStream) {
@@ -150,8 +150,8 @@ public class CimXmlParser {
     }
 
     /**
-     * Parses the CIM/XML file at the given path and returns the resulting CIM dataset graph.
-     * @param pathToCimModel the path to the CIM/XML file
+     * Parses the CIMXML file at the given path and returns the resulting CIM dataset graph.
+     * @param pathToCimModel the path to the CIMXML file
      * @return the resulting CIM dataset graph
      * @throws IOException if an I/O error occurs
      */
@@ -163,7 +163,7 @@ public class CimXmlParser {
                 .setOpenOptions(StandardOpenOption.READ)
                 .setBufferSize((fileSize > RdfXmlParser.MAX_BUFFER_SIZE) ? RdfXmlParser.MAX_BUFFER_SIZE : (int) fileSize)
                 .get()) {
-            reader.read(is, cimProfileRegistry, streamRDFProfile);
+            this.reader.read(is, cimProfileRegistry, streamRDFProfile);
         }
         return streamRDFProfile.getCIMDatasetGraph();
     }

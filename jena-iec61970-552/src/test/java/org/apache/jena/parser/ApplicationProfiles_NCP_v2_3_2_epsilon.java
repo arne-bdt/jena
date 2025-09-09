@@ -23,6 +23,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,12 +36,14 @@ public class ApplicationProfiles_NCP_v2_3_2_epsilon {
     @Ignore
     @Test
     public void readeRDFS() throws Exception {
-        for(var rdfPath : Files.newDirectoryStream(RDFS_FOLDER, "*.rdf")) {
-            System.out.println("Loading " + rdfPath.toAbsolutePath());
-            try {
-                cimParser.parseAndRegisterCimProfile(rdfPath);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+        try (var ds = Files.newDirectoryStream(RDFS_FOLDER, "*.rdf")) {
+            for(var rdfPath : ds) {
+                System.out.println("Loading " + rdfPath.toAbsolutePath());
+                try {
+                    cimParser.parseAndRegisterCimProfile(rdfPath);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
     }

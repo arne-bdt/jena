@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.jena.cimxml.rdfs;
 
 import org.apache.jena.cimxml.CimVersion;
@@ -102,12 +120,12 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
            WHERE
            {
              {
-             	?property rdfs:domain ?rdfType;
-                 		  rdfs:range ?referenceType;
+                ?property rdfs:domain ?rdfType;
+                          rdfs:range ?referenceType;
                OPTIONAL {
-           		?property cims:AssociationUsed ?associationUsed
-           	}
-           	FILTER(!BOUND(?associationUsed) || ?associationUsed = "Yes")
+                ?property cims:AssociationUsed ?associationUsed
+            }
+            FILTER(!BOUND(?associationUsed) || ?associationUsed = "Yes")
              }
              UNION
              {
@@ -133,11 +151,11 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     @Override
     public void register(CimProfile cimProfile) {
-        if(cimProfile.isHeaderProfile()) {
+        if (cimProfile.isHeaderProfile()) {
             final var cimVersion = cimProfile.getCIMVersion();
-            if(cimVersion == CimVersion.NO_CIM)
+            if (cimVersion == CimVersion.NO_CIM)
                 throw new IllegalArgumentException("Header profile must have a valid CIM version.");
-            if(headerProfiles.containsKey(cimVersion))
+            if (headerProfiles.containsKey(cimVersion))
                 throw new IllegalArgumentException("Header profile for CIM version " + cimVersion + " is already registered.");
             headerProfiles.put(cimVersion, cimProfile);
             profilePropertiesCache.put(cimProfile, getTypedProperties(cimProfile));
@@ -145,16 +163,16 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
         }
 
         var owlVersionIRIs = cimProfile.getOwlVersionIRIs();
-        if(owlVersionIRIs == null || owlVersionIRIs.isEmpty())
+        if (owlVersionIRIs == null || owlVersionIRIs.isEmpty())
             throw new IllegalArgumentException("Profile ontology must have at least one owlVersionIRI.");
 
-        if(owlVersionIRIs.size() == 1) {
+        if (owlVersionIRIs.size() == 1) {
             var iri = owlVersionIRIs.iterator().next();
-            if(singleVersionIriProfiles.containsKey(iri))
+            if (singleVersionIriProfiles.containsKey(iri))
                 throw new IllegalArgumentException("Profile ontology with owlVersionIRI " + iri + " is already registered.");
             singleVersionIriProfiles.put(iri, cimProfile);
         } else {
-            if(multiVersionIriProfiles.containsKey(owlVersionIRIs))
+            if (multiVersionIriProfiles.containsKey(owlVersionIRIs))
                 throw new IllegalArgumentException("Profile ontology with owlVersionIRIs " + owlVersionIRIs + " is already registered.");
             multiVersionIriProfiles.put(owlVersionIRIs, cimProfile);
         }
@@ -163,16 +181,18 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     @Override
     public boolean containsProfile(Set<Node> owlVersionIRIs) {
-        if(owlVersionIRIs == null || owlVersionIRIs.isEmpty())
+        if (owlVersionIRIs == null || owlVersionIRIs.isEmpty())
             throw new IllegalArgumentException("At least one profile owlVersionIRI must be provided.");
         for(var iri : owlVersionIRIs) {
-            if(!singleVersionIriProfiles.containsKey(iri)) {
+            if (!singleVersionIriProfiles.containsKey(iri)) {
                 var foundInMulti = false;
                 for(var registeredVersionIRIs: multiVersionIriProfiles.keySet()) {
-                    if(registeredVersionIRIs.contains(iri))
+                    if (registeredVersionIRIs.contains(iri)) {
                         foundInMulti = true;
+                        break;
+                    }
                 }
-                if(!foundInMulti)
+                if (!foundInMulti)
                     return false;
             }
         }
@@ -181,7 +201,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     @Override
     public boolean containsHeaderProfile(CimVersion version) {
-        if(version == CimVersion.NO_CIM)
+        if (version == CimVersion.NO_CIM)
             throw new IllegalArgumentException("CIM version must be valid.");
         return headerProfiles.containsKey(version);
     }
@@ -193,30 +213,31 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     @Override
     public Map<Node, PropertyInfo> getPropertiesAndDatatypes(Set<Node> owlVersionIRIs) {
-        if(owlVersionIRIs == null || owlVersionIRIs.isEmpty())
+        if (owlVersionIRIs == null || owlVersionIRIs.isEmpty())
             throw new IllegalArgumentException("At least one profile owlVersionIRI must be provided.");
 
-        if(owlVersionIRIs.size() == 1) {
+        if (owlVersionIRIs.size() == 1) {
             var versionIRI = owlVersionIRIs.iterator().next();
-            if(singleVersionIriProfiles.containsKey(versionIRI)) {
-                var profile = singleVersionIriProfiles.get(owlVersionIRIs.iterator().next());
+            if (singleVersionIriProfiles.containsKey(versionIRI)) {
+                var profile = singleVersionIriProfiles.get(versionIRI);
                 return profilePropertiesCache.get(profile);
             }
         }
 
         var profile = multiVersionIriProfiles.get(owlVersionIRIs);
-        if(profile != null)
+        if (profile != null)
             return profilePropertiesCache.get(profile);
 
         var set = new HashSet<CimProfile>();
         for(var owlVersionIRI : owlVersionIRIs) {
             final var p = singleVersionIriProfiles.get(owlVersionIRI);
-            if(p == null) {
+            if (p == null) {
                 var foundInMulti = false;
                 for (var entrySet : multiVersionIriProfiles.entrySet()) {
-                    if(entrySet.getKey().contains(owlVersionIRI)) {
+                    if (entrySet.getKey().contains(owlVersionIRI)) {
                         foundInMulti = true;
                         set.add(entrySet.getValue());
+                        break;
                     }
                 }
                 if (!foundInMulti)
@@ -225,11 +246,11 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 set.add(p);
             }
         }
-        if(set.size() == 1)
+        if (set.size() == 1)
             return profilePropertiesCache.get(set.iterator().next());
 
         Map<Node, PropertyInfo> properties = profileSetPropertiesCache.get(set);
-        if(properties != null)
+        if (properties != null)
             return properties;
 
         properties = new HashMap<>(1024);
@@ -243,11 +264,11 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     @Override
     public Map<Node, PropertyInfo> getHeaderPropertiesAndDatatypes(CimVersion version) {
-        Objects.requireNonNull(version);
-        if(version == CimVersion.NO_CIM)
+        Objects.requireNonNull(version, "version");
+        if (version == CimVersion.NO_CIM)
             throw new IllegalArgumentException("CIM version must be valid.");
         final var profile = headerProfiles.get(version);
-        if(profile == null)
+        if (profile == null)
             return null;
         return profilePropertiesCache.get(profile);
     }
@@ -259,8 +280,8 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     @Override
     public void registerPrimitiveType(String cimPrimitiveTypeName, RDFDatatype rdfDatatype) {
-        Objects.requireNonNull(cimPrimitiveTypeName);
-        Objects.requireNonNull(rdfDatatype);
+        Objects.requireNonNull(cimPrimitiveTypeName, "cimPrimitiveTypeName");
+        Objects.requireNonNull(rdfDatatype, "rdfDatatype");
         primitiveToRDFDatatypeMap.put(cimPrimitiveTypeName, rdfDatatype);
     }
 
@@ -272,7 +293,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
                 .forEachRemaining(vars -> { //?class ?property ?primitiveType ?referenceType
                     final var rdfType = vars.get("rdfType");
                     final var property = vars.get("property");
-                    final var cimDatatype = vars.get("property");
+                    final var cimDatatype = vars.get("cimDatatype");
                     final var primitiveType = vars.get("primitiveType");
                     final var referenceType = vars.get("referenceType");
                     map.put(property, new PropertyInfo(
@@ -289,7 +310,7 @@ public class CimProfileRegistryStd implements CimProfileRegistry {
 
     private RDFDatatype getXsdDatatype(String primitiveType) {
         var dt = primitiveToRDFDatatypeMap.get(primitiveType);
-        if(dt != null)
+        if (dt != null)
             return dt;
         errorHandler.warning("Unknown mapping from CIM primitive'" + primitiveType + "' to XSD datatype. Using xsd:string as fallback.", -1,-1);
         return XSDDatatype.XSDstring;

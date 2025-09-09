@@ -99,8 +99,8 @@ public interface CimDatasetGraph extends DatasetGraph {
      * @throws IllegalStateException if this dataset is not a DifferenceModel
      */
     default Graph getForwardDifferences() {
-        if(!this.isDifferenceModel())
-            throw new IllegalStateException("Forward differences are only available for DifferenceModels. Use isDifferentModel() to check.");
+        if (!this.isDifferenceModel())
+            throw new IllegalStateException("Forward differences are only available for DifferenceModels. Use isDifferenceModel() to check.");
         return getGraph(CimHeaderVocabulary.GRAPH_FORWARD_DIFFERENCES);
     }
 
@@ -110,8 +110,8 @@ public interface CimDatasetGraph extends DatasetGraph {
      * @throws IllegalStateException if this dataset is not a DifferenceModel
      */
     default Graph getReverseDifferences() {
-        if(!this.isDifferenceModel())
-            throw new IllegalStateException("Reverse differences are only available for DifferenceModels. Use isDifferentModel() to check.");
+        if (!this.isDifferenceModel())
+            throw new IllegalStateException("Reverse differences are only available for DifferenceModels. Use isDifferenceModel() to check.");
         return getGraph(CimHeaderVocabulary.GRAPH_REVERSE_DIFFERENCES);
     }
 
@@ -121,8 +121,8 @@ public interface CimDatasetGraph extends DatasetGraph {
      * @throws IllegalStateException if this dataset is not a DifferenceModel
      */
     default Graph getPreconditions() {
-        if(!this.isDifferenceModel())
-            throw new IllegalStateException("Preconditions are only available for DifferenceModels. Use isDifferentModel() to check.");
+        if (!this.isDifferenceModel())
+            throw new IllegalStateException("Preconditions are only available for DifferenceModels. Use isDifferenceModel() to check.");
         return getGraph(CimHeaderVocabulary.GRAPH_PRECONDITIONS);
     }
 
@@ -138,7 +138,7 @@ public interface CimDatasetGraph extends DatasetGraph {
                     ? CimHeaderVocabulary.TYPE_DIFFERENCE_MODEL
                     : null;
 
-        if(graphName == null)
+        if (graphName == null)
             throw new IllegalStateException("Model header is only available for FullModels or DifferenceModels. Use isFullModel() or isDifferenceModel() to check.");
 
         return CimModelHeader.wrap(getGraph(graphName));
@@ -150,7 +150,7 @@ public interface CimDatasetGraph extends DatasetGraph {
      * @throws IllegalStateException if this dataset is not a FullModel
      */
     default Graph getBody() {
-        if(!this.isFullModel())
+        if (!this.isFullModel())
             throw new IllegalStateException("Body graph is only available for FullModels. Use isFullModel() to check.");
         return getDefaultGraph();
     }
@@ -161,7 +161,7 @@ public interface CimDatasetGraph extends DatasetGraph {
      * @throws IllegalStateException if this dataset is not a FullModel
      */
     default Graph fullModelToSingleGraph() {
-        if(!this.isFullModel())
+        if (!this.isFullModel())
             throw new IllegalStateException("Full model graph is only available for FullModels. Use isFullModel() to check.");
 
         var header = getModelHeader();
@@ -184,24 +184,24 @@ public interface CimDatasetGraph extends DatasetGraph {
      *                                  or if it does not contain all required preconditions
      */
     default Graph differenceModelToFullModel(CimDatasetGraph predecessorFullModel) {
-        if(!this.isDifferenceModel())
+        if (!this.isDifferenceModel())
             throw new IllegalStateException("Conversion to full model is only available for DifferenceModels. Use isDifferenceModel() to check.");
-        if(!predecessorFullModel.isFullModel())
+        if (!predecessorFullModel.isFullModel())
             throw new IllegalArgumentException("The provided predecessorFullModel dataset must be a FullModel. Use isFullModel() to check.");
 
-        if(this.getModelHeader().getSupersedes().contains(predecessorFullModel.getModelHeader().getModel()))
+        if (this.getModelHeader().getSupersedes().contains(predecessorFullModel.getModelHeader().getModel()))
             throw new IllegalArgumentException("The provided predecessorFullModel dataset Model must be in current Model.Supersedes.");
 
         var predecessorBody = predecessorFullModel.getBody();
 
         var preconditions = getPreconditions();
-        if(preconditions != null && !preconditions.isEmpty()) {
+        if (preconditions != null && !preconditions.isEmpty()) {
             var missingPreconditions = new ArrayList<Triple>();
             preconditions.find().forEachRemaining(t -> {
-                if(!predecessorBody.contains(t))
+                if (!predecessorBody.contains(t))
                     missingPreconditions.add(t);
             });
-            if(!missingPreconditions.isEmpty()) {
+            if (!missingPreconditions.isEmpty()) {
                 throw new IllegalArgumentException("The provided predecessorFullModel dataset does not contain all required preconditions. Missing preconditions: " + missingPreconditions);
             }
         }

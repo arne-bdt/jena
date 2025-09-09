@@ -22,7 +22,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 
 /**
- * Vocabulary for CIM XML header information in RDF.
+ * Vocabulary for CIMXML header information in RDF.
  */
 public final class CimHeaderVocabulary {
     public final static String NS_MD = "http://iec.ch/TC57/61970-552/ModelDescription/1#";

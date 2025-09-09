@@ -28,9 +28,8 @@ import org.apache.jena.util.iterator.NullIterator;
 import java.util.Iterator;
 import java.util.stream.Stream;
 
-
 /**
- * Extends the jena MultiUnion but find does not elminiate duplicates
+ * Extends the Apache Jena MultiUnion but find does not elminiate duplicates
  * This is based on from https://github.com/apache/jena/blob/master/jena-core/src/main/java/org/apache/jena/graph/compose/MultiUnion.java
  */
 public class DisjointMultiUnion extends MultiUnion {
@@ -60,7 +59,7 @@ public class DisjointMultiUnion extends MultiUnion {
      */
     @Override
     public ExtendedIterator<Triple> graphBaseFind(Triple t) { // optimise the case where there's only one component graph.
-        ExtendedIterator<Triple> iter = NullIterator.instance();;
+        ExtendedIterator<Triple> iter = NullIterator.instance();
         for(var g: m_subGraphs) {
             iter = iter.andThen(g.find(t));
         }
@@ -78,14 +77,14 @@ public class DisjointMultiUnion extends MultiUnion {
 
     @Override
     public Stream<Triple> stream(Node s, Node p, Node o) {
-        return this.m_subGraphs.stream()
+        return m_subGraphs.stream()
                                .flatMap(g -> g.stream(s, p, o));
     }
 
     @Override
     public Stream<Triple> stream() {
-        return this.m_subGraphs.stream()
-                               .flatMap(g -> g.stream());
+        return m_subGraphs.stream()
+                               .flatMap(Graph::stream);
     }
 
     @Override

@@ -31,7 +31,7 @@ public class TestCimModelHeader {
 
 
     /**
-     * Test that the parser can parse a CIM XML document with a version declaration.
+     * Test that the parser can parse a CIMXML document with a version declaration.
      * And that the version is correctly parsed.
      */
     @Test
@@ -80,7 +80,7 @@ public class TestCimModelHeader {
     }
 
     /**
-     * Test that the parser can parse a CIM XML document with a version declaration.
+     * Test that the parser can parse a CIMXML document with a version declaration.
      * And that the version is correctly parsed.
      */
     @Test

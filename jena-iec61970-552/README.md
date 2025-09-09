@@ -1,5 +1,40 @@
 # Apache Jena IEC 61970-552 CIMXML Parser
 
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Quick Start](#quick-start)
+    - [Basic Usage](#basic-usage)
+    - [Working with CIM Profiles](#working-with-cim-profiles)
+    - [Handling Difference Models](#handling-difference-models)
+- [Architecture](#architecture)
+    - [Core Components](#core-components)
+        - [1. Parser (`org.apache.jena.cimxml.parser`)](#1-parser-orgapachejenacimxmlparser)
+        - [2. Graph Structures (`org.apache.jena.cimxml.graph`)](#2-graph-structures-orgapachejenacimxmlgraph)
+        - [3. Dataset (`org.apache.jena.cimxml.sparql.core`)](#3-dataset-orgapachejenacimxmlsparqlcore)
+        - [4. Profile Registry (`org.apache.jena.cimxml.rdfs`)](#4-profile-registry-orgapachejenacimxmlrdfs)
+    - [Data Model](#data-model)
+- [IEC 61970-552 Compliance](#iec-61970-552-compliance)
+    - [Supported Features](#supported-features)
+    - [CIM Versions](#cim-versions)
+- [Advanced Usage](#advanced-usage)
+    - [Custom Error Handling](#custom-error-handling)
+    - [Profile Registry Management](#profile-registry-management)
+    - [Working with Model Headers](#working-with-model-headers)
+    - [SPARQL Queries on CIM Data](#sparql-queries-on-cim-data)
+- [Performance Considerations](#performance-considerations)
+    - [Memory Optimization](#memory-optimization)
+    - [Large File Handling](#large-file-handling)
+- [Testing](#testing)
+- [Dependencies](#dependencies)
+- [Limitations](#limitations)
+- [Contributing](#contributing)
+- [License](#license)
+- [References](#references)
+- [Support](#support)
+
 ## Overview
 
 The `jena-iec61970-552` module provides a specialized parser and data structures for handling IEC 61970-552 CIMXML (Common Information Model XML) files within the Apache Jena RDF framework. This module enables parsing, manipulation, and querying of power system models that conform to the IEC 61970-552 standard, commonly used in the energy sector for exchanging power system network data.

@@ -30,7 +30,6 @@ import org.apache.jena.riot.system.StreamRDF;
  */
 public interface StreamCIMXML extends StreamRDF {
 
-
     /**
      *  Gets the underlying {@link CimDatasetGraph} that is being populated
      */

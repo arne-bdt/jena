@@ -32,7 +32,7 @@ public class TestCimProfile17 {
 
 
     /**
-     * Test that the parser can parse a CIM XML document with a version declaration.
+     * Test that the parser can parse a CIMXML document with a version declaration.
      * And that the version is correctly parsed.
      */
     @Test
@@ -45,12 +45,12 @@ public class TestCimProfile17 {
                xmlns:owl="http://www.w3.org/2002/07/owl#"
                xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
                xml:base ="http://iec.ch/TC57/CIM100">
-                       
+
                 <rdf:Description rdf:about="http://iec.ch/TC57/ns/CIM/CoreEquipment-EU#Ontology">
                     <dcat:keyword>MYCUST</dcat:keyword>
                     <owl:versionIRI rdf:resource="http://example.org/MyCustom/Core/1/1"/>
                     <owl:versionIRI rdf:resource="http://example.org/MyCustom/Operation/1/1"/>
-                    <owl:versionInfo xml:lang ="en">1.1.0</owl:versionInfo>                    
+                    <owl:versionInfo xml:lang ="en">1.1.0</owl:versionInfo>
                    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
                 </rdf:Description >
             </rdf:RDF>
@@ -89,7 +89,7 @@ public class TestCimProfile17 {
                 xml:base="http://iec.ch/TC57/CIM100">
                 <rdf:Description rdf:about="#Package_FileHeaderProfile">
                     <rdfs:label xml:lang="en">FileHeaderProfile</rdfs:label>
-                    <rdf:type rdf:resource="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#ClassCategory"/>                    
+                    <rdf:type rdf:resource="http://iec.ch/TC57/1999/rdf-schema-extensions-19990926#ClassCategory"/>
                 </rdf:Description>
             </rdf:RDF>
             """;

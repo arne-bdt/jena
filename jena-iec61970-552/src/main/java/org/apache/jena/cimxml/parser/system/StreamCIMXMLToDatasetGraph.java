@@ -74,7 +74,7 @@ public class StreamCIMXMLToDatasetGraph implements StreamCIMXML {
     }
 
     private void setCurrentGraphAndCreateIfNecessary(Node graphName, IndexingStrategy indexingStrategy) {
-        if(linkedCIMDatasetGraph.containsGraph(graphName)) {
+        if (linkedCIMDatasetGraph.containsGraph(graphName)) {
             currentGraph = linkedCIMDatasetGraph.getGraph(graphName);
         } else {
             final var newGraph = new GraphMem2Roaring(indexingStrategy);

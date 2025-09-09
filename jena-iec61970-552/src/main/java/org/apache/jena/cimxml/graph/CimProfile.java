@@ -112,7 +112,7 @@ public interface CimProfile extends CimGraph {
     Set<Node> getOwlVersionIRIs();
 
     /**
-     * Return owl:versionInfo of the onology object of the profile.
+     * Return owl:versionInfo of the ontology object of the profile.
      * For CGMES 2.4.15, there is no such version info.
      *
      * @return The version info of the profile, or null if no version info is defined.
@@ -127,13 +127,13 @@ public interface CimProfile extends CimGraph {
      * @return true if the profiles are equal, false otherwise.
      */
     default boolean equals(CimProfile other) {
-        if(other == null) {
+        if (other == null) {
             return false;
         }
-        if(!this.getCIMVersion().equals(other.getCIMVersion())) {
+        if (!this.getCIMVersion().equals(other.getCIMVersion())) {
             return false;
         }
-        if(isHeaderProfile()) {
+        if (isHeaderProfile()) {
             return other.isHeaderProfile();
         }
         return this.getOwlVersionIRIs().equals(other.getOwlVersionIRIs());
@@ -141,7 +141,9 @@ public interface CimProfile extends CimGraph {
 
     /**
      * Calculates the hash code for this profile.
-     * The hash code is based on the CIM version and the set of version IRIs, or if it is a header profile.
+     * If the model is a header profile, the hash code is based on the CIM version and the fact that it is a header
+     * profile.
+     * If the model is not a header profile, the hash code is based on the CIM version and the set of version IRIs.
      * @return The hash code for this profile.
      */
     default int calculateHashCode() {
@@ -169,42 +171,40 @@ public interface CimProfile extends CimGraph {
         var cimVersion = CimGraph.getCIMXMLVersion(graph);
         return switch (cimVersion) {
             case CIM_16 -> {
-                if(CimProfile16.isHeaderProfile(graph)) {
+                if (CimProfile16.isHeaderProfile(graph)) {
                     // If the graph contains header profile, skip the version IRI and keyword check.
                     yield new CimProfile16(graph, true);
                 }
-                if(!CimProfile16.hasVersionIRIAndKeyword(graph)) {
-                    throw new IllegalArgumentException("Graph does not contain the required '...Version.shortName' and '...Version.entsoeURI*' or '...Version.baseURI...' for a CGMES 2.4.15 profile.");
+                if (CimProfile16.hasVersionIRIAndKeyword(graph)) {
+                    yield new CimProfile16(graph, false);
                 }
-                yield new CimProfile16(graph, false);
+                throw new IllegalArgumentException("Graph does not contain the required '...Version.shortName' and '...Version.entsoeURI*' or '...Version.baseURI...' for a CGMES 2.4.15 profile.");
             }
             case CIM_17 -> {
-                if(CimProfile17.isHeaderProfile(graph)) {
+                if (CimProfile17.isHeaderProfile(graph)) {
                     // If the graph contains header profile --> it is still CIM16 style
                     yield new CimProfile17(graph, true);
                 }
-                if(CimProfile17.hasOntology(graph)) {
-                    if(!CimProfile17.hasVersionIRIAndKeyword(graph)) {
-                        throw new IllegalArgumentException("Graphs ontology does not contain the required versionIRI and keyword for a CIM profile.");
-                    }
-                    // If the graph contains the ontology subject, it is assumed to be a CGMES 2.4.15 profile.
-                    yield new CimProfile17(graph, false);
+                if (!CimProfile17.hasOntology(graph)) {
+                    throw new IllegalArgumentException("Graph does not contain the required ontology subject for a CIM profile.");
                 }
-                throw new IllegalArgumentException("Graph does not contain the required ontology subject for a CIM profile.");
+                if (!CimProfile17.hasVersionIRIAndKeyword(graph)) {
+                    throw new IllegalArgumentException("Graphs ontology does not contain the required versionIRI and keyword for a CIM profile.");
+                }
+                yield new CimProfile17(graph, false);
             }
             case CIM_18 -> {
-                if(CimProfile18.isHeaderProfile(graph)) {
+                if (CimProfile18.isHeaderProfile(graph)) {
                     // If the graph contains header profile --> it is still CIM16 style
                     yield new CimProfile18(graph, true);
                 }
-                if(CimProfile18.hasOntology(graph)) {
-                    if(!CimProfile18.hasVersionIRIAndKeyword(graph)) {
-                        throw new IllegalArgumentException("Graphs ontology does not contain the required versionIRI and keyword for a CIM profile.");
-                    }
-                    // If the graph contains the ontology subject, it is assumed to be a CGMES 2.4.15 profile.
-                    yield new CimProfile18(graph, false);
+                if (!CimProfile18.hasOntology(graph)) {
+                    throw new IllegalArgumentException("Graph does not contain the required ontology subject for a CIM profile.");
                 }
-                throw new IllegalArgumentException("Graph does not contain the required ontology subject for a CIM profile.");
+                if (!CimProfile18.hasVersionIRIAndKeyword(graph)) {
+                    throw new IllegalArgumentException("Graphs ontology does not contain the required versionIRI and keyword for a CIM profile.");
+                }
+                yield new CimProfile18(graph, false);
             }
             case NO_CIM -> throw new IllegalArgumentException("Graph does not appear to be a CIM graph. No proper 'cim' namespace defined.");
         };

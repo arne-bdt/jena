@@ -66,7 +66,7 @@ public class TestCGMES_ConformityAssessmentScheme_TestConfigurations_v3_0_3 {
     public void walkFolderAndParseAllXmlFilesAsCimXml() throws Exception {
         var cimDatasets = new ArrayList<CimDatasetGraph>();
         try (Stream<Path> paths = Files.walk(TEST_CONFIGURATIONS_FOLDER)) {
-            paths.filter(p -> Files.isRegularFile(p))
+            paths.filter(Files::isRegularFile)
                  .filter(p -> p.getFileName().toString().endsWith(".xml"))
                  .forEach(xmlFile -> {
                      System.out.println("Loading " + xmlFile.toAbsolutePath());

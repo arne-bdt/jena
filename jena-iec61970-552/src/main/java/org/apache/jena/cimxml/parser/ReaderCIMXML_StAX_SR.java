@@ -33,9 +33,9 @@ import java.io.InputStream;
 import java.io.Reader;
 
 /**
- * CIM/XML parser.
+ * CIMXML parser.
  * This implementation is based on the RDF/XML reader ReaderRDFXML_StAX_SR in Apache Jena, originally.
- * It has been adapted to the CIM/XML needs.
+ * It has been adapted to the CIMXML needs.
  * <p>
  * This implementation uses StAX via {@link XMLStreamReader}.
  *

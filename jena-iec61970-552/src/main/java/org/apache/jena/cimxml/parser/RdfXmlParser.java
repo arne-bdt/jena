@@ -36,7 +36,7 @@ import java.nio.file.StandardOpenOption;
  * RDF/XML parser.
  * This implementation uses ReaderCIMXML_StAX_SR, which is based on the RDF/XML reader ReaderRDFXML_StAX_SR
  * in Apache Jena, originally.
- * It has been adapted to the CIM/XML needs.
+ * It has been adapted to the CIMXML needs.
  * <p>
  * This implementation uses StAX via {@link javax.xml.stream.XMLStreamReader}.
  *
@@ -85,7 +85,7 @@ public class RdfXmlParser {
      * @return the resulting CIM profile
      * @throws IOException if an I/O error occurs
      */
-    public CimProfile parseCimProfile(final Reader reader) throws IOException {
+    public CimProfile parseCimProfile(final Reader reader) {
         return CimProfile.wrap(parseGraph(reader));
     }
 
@@ -95,7 +95,7 @@ public class RdfXmlParser {
      * @return the resulting CIM profile
      * @throws IOException if an I/O error occurs
      */
-    public CimProfile parseCimProfile(final InputStream inputStream) throws IOException {
+    public CimProfile parseCimProfile(final InputStream inputStream) {
         return CimProfile.wrap(parseGraph(inputStream));
     }
 

@@ -30,11 +30,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * A wrapper for a graph that contains the model header information of a CIM XML document.
+ * A wrapper for a graph that contains the model header information of a CIMXML document.
  * <p>
- * The model header is expected to contain exactly one instance of either cim:FullModel or cim:DifferenceModel.
- * It may contain zero or more cim:profile references, each referencing one of the registered profile ontologies.
- * It may also contain zero or more cim:supersedes and cim:dependentOn references to other models.
+ * The model header is expected to contain exactly one instance of either md:FullModel or dm:DifferenceModel.
+ * It may contain zero or more Model.profile references, each referencing one of the registered profile ontologies.
+ * It may also contain zero or more Model.Supersedes and Model.DependentOn references to other models.
  */
 public interface CimModelHeader extends CimGraph {
 
@@ -55,17 +55,18 @@ public interface CimModelHeader extends CimGraph {
     }
 
     /**
-     * Get the node representing the model (either cim:FullModel or cim:DifferenceModel).
+     * Get the node representing the model (either md:FullModel or dm:DifferenceModel).
+     * The node is expected to be an IRI.
      * @return The model node.
      * @throws IllegalStateException if neither a FullModel nor a DifferenceModel is found in the header graph.
      */
     default Node getModel() {
         var iter = find(Node.ANY, RDF.type.asNode(), CimHeaderVocabulary.TYPE_FULL_MODEL);
-        if(iter.hasNext()) {
+        if (iter.hasNext()) {
             return iter.next().getSubject();
         }
         iter = find(Node.ANY, RDF.type.asNode(), CimHeaderVocabulary.TYPE_DIFFERENCE_MODEL);
-        if(iter.hasNext()) {
+        if (iter.hasNext()) {
             return iter.next().getSubject();
         }
         throw new IllegalStateException("Found neither FullModel nor DifferenceModel in the header graph.");
@@ -95,9 +96,9 @@ public interface CimModelHeader extends CimGraph {
     }
 
     /**
-     * Get the models that this model is dependent on.
+     * Gets all models that this model is dependent on.
      * Each dependent model is referenced by its IRI.
-     * @return A set of model IRIs that this model is dependent on.
+     * @return A set of models (IRIs) that this model is dependent on.
      */
     default Set<Node> getDependentOn() {
         return stream(getModel(), CimHeaderVocabulary.PREDICATE_DEPENDENT_ON, Node.ANY)
@@ -121,7 +122,7 @@ public interface CimModelHeader extends CimGraph {
         if (graph instanceof CimModelHeader cimModelHeader) {
             return cimModelHeader;
         }
-        if( CimGraph.getCIMXMLVersion(graph) == CimVersion.NO_CIM) {
+        if (CimGraph.getCIMXMLVersion(graph) == CimVersion.NO_CIM) {
             throw new IllegalArgumentException("Graph does not appear to be a CIM graph. No proper 'cim' namespace defined.");
         }
         return new CimModelHeaderGraphWrapper(graph);

@@ -67,6 +67,11 @@ public class CimProfile17 extends GraphWrapper implements CimProfile {
 
     private final boolean isHeaderProfile;
 
+    /**
+     * Wraps the given graph as a CimProfile17.
+     * @param graph The graph to wrap.
+     * @throws IllegalArgumentException if the graph does not contain the required information to be a CimProfile17.
+     */
     public CimProfile17(Graph graph, boolean isHeaderProfile) {
         super(graph);
         this.isHeaderProfile = isHeaderProfile;
@@ -79,7 +84,7 @@ public class CimProfile17 extends GraphWrapper implements CimProfile {
 
     @Override
     public String getDcatKeyword() {
-        if(isHeaderProfile) {
+        if (isHeaderProfile) {
             // CGMES v3.0 file header profiles do not have a keyword.
             return "DH"; // Use "DH" for compatibility with old CGMES 2.4.15 file header profiles.
         }

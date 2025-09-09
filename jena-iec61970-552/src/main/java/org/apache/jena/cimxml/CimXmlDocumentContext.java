@@ -22,7 +22,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.sparql.core.Quad;
 
 /**
- * The context of a CIM XML document: full model, difference model, or one of the named graphs
+ * The context of a CIMXML document: full model, difference model, or one of the named graphs
  * in a difference model.
  */
 public enum CimXmlDocumentContext {

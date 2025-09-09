@@ -73,7 +73,7 @@ public class ParserCIMXML_StAX_SR {
 
     static {
         JenaSystem.init();
-        if(!(SystemIRIx.getProvider() instanceof IRIProvider3986)) {
+        if (!(SystemIRIx.getProvider() instanceof IRIProvider3986)) {
             Lib.setenv(SystemIRIx.sysPropertyProvider, "IRI3986");
             SystemIRIx.reset();
         }
@@ -89,8 +89,6 @@ public class ParserCIMXML_StAX_SR {
     private final Map<IRIx, Cache<String, IRIx>> mapBaseIriToCache = new HashMap<>();
     private final FactoryRDF factoryRDF = new FactoryRDFCaching(IRI_CACHE_SIZE, SyntaxLabels.createLabelToNode());
 
-    // Stacks.
-
     // Constants
     private static final String rdfNS = RDF.uri;
     private static final String xmlNS = "http://www.w3.org/XML/1998/namespace";
@@ -103,7 +101,6 @@ public class ParserCIMXML_StAX_SR {
     private boolean hasCimXmlNamespace = false;
     private boolean isCimXmlModel = false;
     private CimVersion versionOfCIMXML = CimVersion.NO_CIM;
-    private CimModelHeader cimModelHeader = null;
 
     private final ErrorHandler errorHandler;
     private final StreamCIMXML destination;
@@ -111,13 +108,13 @@ public class ParserCIMXML_StAX_SR {
     private final static String PROCESSING_INSTRUCTION_IEC61970_552 = "iec61970-552";
 
     private void updateCurrentIriCacheForCurrentBase() {
-        if(currentBase != null) {
+        if (currentBase != null) {
             currentIriCache = mapBaseIriToCache
                     .computeIfAbsent(currentBase,
                             b -> CacheFactory.createSimpleCache(IRI_CACHE_SIZE)
                     );
         } else {
-            if(iriCacheForBaseNull == null) {
+            if (iriCacheForBaseNull == null) {
                 iriCacheForBaseNull = CacheFactory.createSimpleCache(IRI_CACHE_SIZE);
             }
             currentIriCache = iriCacheForBaseNull;
@@ -125,7 +122,7 @@ public class ParserCIMXML_StAX_SR {
     }
 
     private boolean isDifferentFromCurrentBase(IRIx base) {
-        if(currentBase != null) {
+        if (currentBase != null) {
             return !currentBase.equals(base);
         } else return base != null;
     }
@@ -138,7 +135,7 @@ public class ParserCIMXML_StAX_SR {
         BaseLang frame = new BaseLang(currentBase, currentLang, currentIriCache);
         stack.push(frame);
         currentLang = lang;
-        if(isDifferentFromCurrentBase(base)) {
+        if (isDifferentFromCurrentBase(base)) {
             currentBase = base;
             updateCurrentIriCacheForCurrentBase();
         }
@@ -147,7 +144,7 @@ public class ParserCIMXML_StAX_SR {
     private void popFrame() {
         BaseLang frame = stack.pop();
         currentLang = frame.lang;
-        if(isDifferentFromCurrentBase(frame.base)) {
+        if (isDifferentFromCurrentBase(frame.base)) {
             currentBase = frame.base;
             currentIriCache = frame.iriCache;
         }
@@ -221,7 +218,7 @@ public class ParserCIMXML_StAX_SR {
 
     public ParserCIMXML_StAX_SR(XMLStreamReader2 reader, CimProfileRegistry cimProfileRegistry, String xmlBase,
                                 StreamCIMXML destination, ErrorHandler errorHandler) {
-    // Debug
+        // Debug
         IndentedWriter out = IndentedWriter.stdout.clone();
         out.setFlushOnNewline(true);
         out.setUnitIndent(4);
@@ -510,8 +507,7 @@ public class ParserCIMXML_StAX_SR {
                 if ( isNotRecognizedRDFtype(qName) )
                     RDFXMLparseWarning(str(qName)+" is not a recognized RDF term for a type");
             }
-            // Only for CIMXML
-            if( hasCimXmlNamespace && !isCimXmlModel /*found no FullModel or DifferenceModel yet*/ ) {
+            if ( hasCimXmlNamespace && !isCimXmlModel /*found no FullModel or DifferenceModel yet*/ ) {
                 // Switch context if FullModel or DifferenceModel
                 if ( qNameMatches(qName, mdFullModel) ) {
                     destination.setCurrentContext(CimXmlDocumentContext.fullModel);
@@ -522,15 +518,16 @@ public class ParserCIMXML_StAX_SR {
                     destination.setCurrentContext(CimXmlDocumentContext.differenceModel);
                     isCimXmlModel = true;
                 }
-                if(isCimXmlModel) {
+
+                if (isCimXmlModel) {
                     if (cimProfileRegistry == null) {
                         RDFXMLparseWarning("No CimProfileRegistry has been provided, so missing datatypes in CIMXML cannot be resolved.", location);
                     } else {
                         currentDataTypeMap = cimProfileRegistry.getHeaderPropertiesAndDatatypes(versionOfCIMXML);
-                        currentListOfPropertiesNotInProfile = new HashSet<>();
-                        if(currentDataTypeMap == null) {
+                        if (currentDataTypeMap == null) {
                             RDFXMLparseWarning("No header profile has been registered for CIM version " + versionOfCIMXML, location);
                         }
+                        currentListOfPropertiesNotInProfile = new HashSet<>();
                     }
                 }
             }
@@ -554,30 +551,35 @@ public class ParserCIMXML_StAX_SR {
     }
 
     private void initCimModelHeaderCurrentProfileAndCurrentDatatypeMap(Location location) {
-        cimModelHeader = destination.getModelHeader();
-        if(cimModelHeader == null) {
+        final var cimModelHeader = destination.getModelHeader();
+        if (cimModelHeader == null) {
             RDFXMLparseWarning("No model header has been found in CIMXML.", location);
-        } else {
-            currentCimProfiles = cimModelHeader.getProfiles();
-            if(currentCimProfiles == null || currentCimProfiles.isEmpty()) {
-                RDFXMLparseWarning("No profile IRIs have been found in the CIMXML model header", location);
-            } else {
-                if(cimProfileRegistry != null) {
-                    if(!currentCimProfiles.iterator().next().isURI()) {
-                        RDFXMLparseWarning("The profiles the ModelHeader are not URIs. Most likely no FileHeaderProfile has been provided. Converting them to URI-Nodes.", location);
-                        Set<Node> uriProfiles = new HashSet<>();
-                        for(var profile : currentCimProfiles) {
-                            uriProfiles.add(NodeFactory.createURI(profile.getLiteralLexicalForm()));
-                        }
-                        currentCimProfiles = uriProfiles;
-                    }
-                    currentDataTypeMap = cimProfileRegistry.getPropertiesAndDatatypes(currentCimProfiles);
-                    currentListOfPropertiesNotInProfile = new HashSet<>();
-                    if(currentDataTypeMap == null) {
-                        RDFXMLparseWarning("The profiles in the model header could not be found in the CimProfileRegistry. Profiles: " + currentCimProfiles.toString(), location);
-                    }
-                }
+            return;
+        }
+
+        currentCimProfiles = cimModelHeader.getProfiles();
+        if (currentCimProfiles == null || currentCimProfiles.isEmpty()) {
+            RDFXMLparseWarning("No profile IRIs have been found in the CIMXML model header", location);
+            return;
+        }
+
+        if (cimProfileRegistry == null) {
+            return;
+        }
+
+        if (!currentCimProfiles.iterator().next().isURI()) {
+            RDFXMLparseWarning("The profiles the ModelHeader are not URIs. Most likely no FileHeaderProfile has been provided. Converting them to URI-Nodes.", location);
+
+            Set<Node> uriProfiles = new HashSet<>();
+            for(var profile : currentCimProfiles) {
+                uriProfiles.add(NodeFactory.createURI(profile.getLiteralLexicalForm()));
             }
+            currentCimProfiles = uriProfiles;
+        }
+        currentListOfPropertiesNotInProfile = new HashSet<>();
+        currentDataTypeMap = cimProfileRegistry.getPropertiesAndDatatypes(currentCimProfiles);
+        if (currentDataTypeMap == null) {
+            RDFXMLparseWarning("The profiles in the model header could not be found in the CimProfileRegistry. Profiles: " + currentCimProfiles.toString(), location);
         }
     }
 
@@ -638,26 +640,23 @@ public class ParserCIMXML_StAX_SR {
             property = qNameToIRI(qName, QNameUsage.PropertyElement, location);
 
             if (hasCimXmlNamespace
-                    && ( parseType == parseTypePlain || !"Statements".equals(parseType) )
+                    && ( parseType == parseTypePlain || !"Statements".equals(parseType) ) // reference equality with parseTypePlain is a performance optimization
                     && currentDataTypeMap != null) {
                 final var propertyAndType = currentDataTypeMap.get(property);
                 if (propertyAndType != null) {
                     property = propertyAndType.property(); // override to support reuse of property references across profiles
                     datatypeFromCimProfile = propertyAndType.primitiveType();
                 } else {
-                    if(!currentListOfPropertiesNotInProfile.contains(property)) {
+                    if (!currentListOfPropertiesNotInProfile.contains(property)) {
                         currentListOfPropertiesNotInProfile.add(property);
                         RDFXMLparseWarning("Property '" + str(qName) + "' could not be found in current profiles. Profiles: " + currentCimProfiles , location);
                     }
-                    property = qNameToIRI(qName, QNameUsage.PropertyElement, location);
                 }
             }
         }
 
         Node reify = reifyStatement(location);
         Emitter emitter = (reify==null) ? this::emit : (s,p,o,loc)->emitReify(reify, s, p, o, loc);
-
-
 
         // Checking
         if ( datatype != null ) {
@@ -704,7 +703,7 @@ public class ParserCIMXML_StAX_SR {
             return;
         }
 
-        if(parseType != parseTypePlain) {
+        if (parseType != parseTypePlain) {
             String parseTypeName = parseType;
             switch (parseTypeName) {
                 case parseTypeLiteralAlt -> {
@@ -762,8 +761,7 @@ public class ParserCIMXML_StAX_SR {
                             && oldContext == CimXmlDocumentContext.differenceModel ) { // else already in diff model
                         initCimModelHeaderCurrentProfileAndCurrentDatatypeMap(location);
                     }
-                    int event = nextEventTag();
-                    nodeElementLoop(event);
+                    nodeElementLoop(nextEventTag());
                     return;
                 }
                 case parseTypePlain -> {
@@ -798,18 +796,16 @@ public class ParserCIMXML_StAX_SR {
                 return;
             }
             if ( lookingAt(event, END_ELEMENT) ) {
-                String lexicalForm = accCharacters.toString();
-                Location loc = location();
-                Node obj;
+                final String lexicalForm = accCharacters.toString();
+                final Location loc = location();
+                final Node obj;
                 // Characters - lexical form.
-                if ( datatypeFromCimProfile != null
-                        && datatypeFromCimProfile != XSDDatatype.XSDstring ) {
-                    if (datatypeFromCimProfile == XSDDatatype.XSDanyURI) {
+                if ( datatypeFromCimProfile != null && datatypeFromCimProfile != XSDDatatype.XSDstring )
+                    if (datatypeFromCimProfile == XSDDatatype.XSDanyURI)
                         obj = createURI(lexicalForm);
-                    } else {
+                    else
                         obj = literalDatatype(lexicalForm, datatypeFromCimProfile);
-                    }
-                } else if ( datatype != null )
+                else if ( datatype != null )
                     obj = literalDatatype(lexicalForm, datatype);
                 else if ( currentLang() != null )
                     obj = literal(lexicalForm, currentLang);
@@ -1402,7 +1398,7 @@ public class ParserCIMXML_StAX_SR {
                 if ( isComment(ev) )
                     continue;
                 if ( lookingAt(ev, PROCESSING_INSTRUCTION) ) {
-                    if(PROCESSING_INSTRUCTION_IEC61970_552.equals(xmlSource.getPITarget())) {
+                    if (PROCESSING_INSTRUCTION_IEC61970_552.equals(xmlSource.getPITarget())) {
                         final var versionOfIEC61970_552 = xmlSource.getPIData();
                         destination.setVersionOfIEC61970_552(versionOfIEC61970_552);
                     } else {
@@ -1495,9 +1491,9 @@ public class ParserCIMXML_StAX_SR {
             String prefix = xmlSource.getNamespacePrefix(i);
             if ( prefix == null ) {
                 prefix = "";
-            } else if("cim".equals(prefix)) {
+            } else if ("cim".equals(prefix)) {
                 // Determine CIM version.
-                versionOfCIMXML = CimVersion.fromCimNamespacePrefixUri(prefixURI);
+                versionOfCIMXML = CimVersion.fromCimNamespace(prefixURI);
                 if (versionOfCIMXML == CimVersion.NO_CIM) {
                     RDFXMLparseWarning("Unrecognized 'cim' namespace: " + prefixURI, location());
                 }
@@ -1509,7 +1505,7 @@ public class ParserCIMXML_StAX_SR {
         }
 
         String xmlBase = attribute(xmlQNameBase);
-        if(versionOfCIMXML != CimVersion.NO_CIM) {
+        if (versionOfCIMXML != CimVersion.NO_CIM) {
             hasCimXmlNamespace = true;
             destination.setVersionOfCIMXML(versionOfCIMXML);
             if (xmlBase == null) {
@@ -1614,7 +1610,7 @@ public class ParserCIMXML_StAX_SR {
     private IRIx resolveIRIxAny(String uriStr, Location location) {
         try {
             return currentIriCache.get(uriStr, uri -> {
-                if( currentBase != null ) {
+                if ( currentBase != null ) {
                     return currentBase.resolve(uri);
                 } else {
                     return IRIx.create(uriStr);
@@ -1626,7 +1622,7 @@ public class ParserCIMXML_StAX_SR {
     }
 
     /**
-     * Create a CIM UUID IRI or a warning and a normal IRI.
+     * Create a CIM UUID IRI or a warning and resolves the IRI using iriResolve.
      * @param uriStr The full URI string (for warning messages).
      * @param uuidPart The part after "urn:uuid:" or the part after "#_".
      * @param location Location for warnings.
@@ -1636,13 +1632,13 @@ public class ParserCIMXML_StAX_SR {
         // Simple  or
         return switch (uuidPart.length()) {
             case 36 -> { // expect UUID - 550e8400-e29b-41d4-a716-446655440000
-                if( CIM_UUID_PATTERN.matcher(uuidPart).matches() ) {
+                if ( CIM_UUID_PATTERN.matcher(uuidPart).matches() ) {
                     yield iriDirect(xmlBaseForCIMXML + uuidPart);
                 } else {
                     final var lowerCase = uuidPart.toLowerCase(Locale.ROOT);
-                    if( CIM_UUID_PATTERN.matcher(lowerCase).matches() ) {
+                    if ( CIM_UUID_PATTERN.matcher(lowerCase).matches() ) {
                         // warn parsed UUID with upper case into lower case form.
-                        RDFXMLparseWarning("CIM UUID with upper case letters: '"+uriStr+"' - converted to lower case form '_"+lowerCase+"'.", location);
+                        RDFXMLparseWarning("CIM UUID with upper case letters: '"+uuidPart+"' - converted to lower case form.", location);
                         yield iriDirect(xmlBaseForCIMXML + lowerCase);
                     }
                     RDFXMLparseWarning("Not a valid CIM UUID: '"+uriStr+"'", location);
@@ -1650,21 +1646,17 @@ public class ParserCIMXML_StAX_SR {
                 }
             }
             case 32 -> { // expect UUID without dashes - 550e8400e29b41d4a716446655440000
-                if( CIM_UUID_PATTERN_NO_DASHES.matcher(uuidPart).matches() ) {
+                if ( CIM_UUID_PATTERN_NO_DASHES.matcher(uuidPart).matches() ) {
                     // warn parsed UUID without dashes into dashed form.
-                    RDFXMLparseWarning("CIM UUID without dashes: '"+uriStr+"' - converted to dashed form.", location);
-                    final var builder = new StringBuilder(xmlBaseForCIMXML);
-                    builder.append(uuidPart, 0, 8);
-                    builder.append('-');
-                    builder.append(uuidPart, 8, 12);
-                    builder.append('-');
-                    builder.append(uuidPart, 12, 16);
-                    builder.append('-');
-                    builder.append(uuidPart, 16, 20);
-                    builder.append('-');
-                    builder.append(uuidPart, 20, 32);
-                    yield iriDirect(builder.toString());
+                    RDFXMLparseWarning("CIM UUID without dashes: '"+uuidPart+"' - converted to dashed form.", location);
+                    yield iriDirect(toDashedUUID(uuidPart));
                 } else {
+                    final var lowerCase = uuidPart.toLowerCase(Locale.ROOT);
+                    if ( CIM_UUID_PATTERN_NO_DASHES.matcher(lowerCase).matches() ) {
+                        // warn parsed UUID with upper case into lower case form.
+                        RDFXMLparseWarning("CIM UUID with upper case letters and without dashes: '"+uuidPart+"' - converted to lower case dashed form.", location);
+                        yield iriDirect(toDashedUUID(lowerCase));
+                    }
                     RDFXMLparseWarning("Not a valid CIM UUID: '"+uriStr+"'", location);
                     yield null;
                 }
@@ -1674,6 +1666,17 @@ public class ParserCIMXML_StAX_SR {
                 yield null;
             }
         };
+    }
+
+    private static String toDashedUUID(String uuidPart) {
+       final var b = new StringBuilder(xmlBaseForCIMXML.length() + 36)
+                .append(xmlBaseForCIMXML)
+                .append(uuidPart, 0, 8).append('-')
+                .append(uuidPart, 8, 12).append('-')
+                .append(uuidPart, 12, 16).append('-')
+                .append(uuidPart, 16, 20).append('-')
+                .append(uuidPart, 20, 32);
+        return b.toString();
     }
 
     private Node iriFromIDCimAware(String idStr, Location location) {
@@ -1690,7 +1693,7 @@ public class ParserCIMXML_StAX_SR {
      */
     private Node iriResolveCimAware(String uriStr, Location location) {
         Objects.requireNonNull(uriStr);
-        if( hasCimXmlNamespace && uriStr.startsWith("#_") ) {
+        if ( hasCimXmlNamespace && uriStr.startsWith("#_") ) {
             final var uri = createCimUuid(uriStr, uriStr.substring(2), location);
             if ( uri != null )
                 return uri;

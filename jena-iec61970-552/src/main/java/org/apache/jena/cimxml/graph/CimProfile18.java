@@ -28,6 +28,11 @@ public class CimProfile18 extends CimProfile17 implements CimProfile {
 
     final static String DOCUMENT_HEADER_VERSION_IRI_START = "https://ap-voc.cim4.eu/DocumentHeader";
 
+    /**
+     * Wraps the given graph as a CimProfile18.
+     * @param graph The graph to wrap.
+     * @throws IllegalArgumentException if the graph does not contain the required information to be a CimProfile18.
+     */
     public CimProfile18(Graph graph, boolean isHeaderProfile) {
         super(graph, isHeaderProfile);
     }
@@ -51,7 +56,7 @@ public class CimProfile18 extends CimProfile17 implements CimProfile {
      * @return true if the graph is a header profile, false otherwise.
      */
     public static boolean isHeaderProfile(Graph graph) {
-        if(!hasOntology(graph))
+        if (!hasOntology(graph))
             return false;
         var ontology = getOntology(graph);
 

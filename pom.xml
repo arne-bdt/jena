@@ -20,10 +20,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <name>Apache Jena</name>
-    <modules>
-        <module>jena-iec61970-552</module>
-    </modules>
-    <groupId>org.apache.jena</groupId>
+  <groupId>org.apache.jena</groupId>
   <artifactId>jena</artifactId>
   <packaging>pom</packaging>
   <url>https://jena.apache.org/</url>

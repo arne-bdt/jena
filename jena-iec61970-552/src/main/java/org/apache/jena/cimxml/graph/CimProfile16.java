@@ -47,26 +47,33 @@ public class CimProfile16 extends GraphWrapper implements CimProfile {
     /**
      * Checks if the given graph contains the required information to be wrapped as a CimProfile.
      * It must contain exactly one fixed text for the property cim:shortName.
-     * It may contain zero or more fixed texts for the properties cim:entsoeURI and cim:baseURI.
-     * If the graph contains at least one fixed text for cim:entsoeURI or cim:baseURI,
-     * it must also contain a fixed text for cim:shortName.
+     * It may contain zero or more fixed texts for the properties cim:entsoeURI or cim:baseURI.
+     * If the graph contains at least one fixed text for cim:entsoeURI or cim:baseURI.
      * @param graph The graph to check.
      * @return true if the graph can be wrapped as a CimProfile, false otherwise.
      */
     public static boolean hasVersionIRIAndKeyword(Graph graph) {
-        if(getProfilePropertyFixedTexts(graph, ".shortName").findAny().isEmpty()) {
+        if (getProfilePropertyFixedTexts(graph, ".shortName").findAny().isEmpty()) {
             return false;   //no keyword defined
         }
-        if(getProfilePropertyFixedTexts(graph, ".entsoeURI").findAny().isPresent()) {
+        if (getProfilePropertyFixedTexts(graph, ".entsoeURI").findAny().isPresent()) {
             return true; //at least one version IRI defined
         }
-        if(getProfilePropertyFixedTexts(graph, ".baseURI").findAny().isPresent()) {
+        if (getProfilePropertyFixedTexts(graph, ".baseURI").findAny().isPresent()) {
             return true; //at least one version IRI defined
         }
         return false; //no version IRI defined
     }
 
-
+    /**
+     * Looks for all triples with rdfs:domain pointing to a profile class (i.e. ending with "Version")
+     * and with a subject starting with the profile class IRI + the given property name (including the dot).
+     * Then looks for all triples with cim:isFixed for the found profile class
+     * and returns the literal values of those triples.
+     * @param graph
+     * @param propertyNameStartWithIncludingDot
+     * @return
+     */
     private static Stream<String> getProfilePropertyFixedTexts(Graph graph, String propertyNameStartWithIncludingDot) {
         return graph.stream(Node.ANY, PREDICATE_RDFS_DOMAIN, Node.ANY) //first look for the domain
                 .filter(t
@@ -85,10 +92,9 @@ public class CimProfile16 extends GraphWrapper implements CimProfile {
     private final boolean isHeaderProfile;
 
     /**
-     * Wraps the given graph as a CimProfile.
+     * Wraps the given graph as a CimProfile16.
      * @param graph The graph to wrap.
-     * @return The wrapped CimProfile.
-     * @throws IllegalArgumentException if the graph does not contain the required information to be a CimProfile.
+     * @throws IllegalArgumentException if the graph does not contain the required information to be a CimProfile16.
      */
     public CimProfile16(Graph graph, boolean isHeaderProfile) {
         super(graph);
@@ -102,7 +108,7 @@ public class CimProfile16 extends GraphWrapper implements CimProfile {
 
     @Override
     public String getDcatKeyword() {
-        if(isHeaderProfile) {
+        if (isHeaderProfile) {
             // CGMES 2.4.15 file header profiles do not have a keyword.
             return "DH"; // Use "DH" for compatibility with old CGMES 2.4.15 file header profiles.
         }
