@@ -5,6 +5,7 @@
 
 - [Overview](#overview)
 - [Features](#features)
+- [Installation](#installation)
 - [Quick Start](#quick-start)
     - [Basic Usage](#basic-usage)
     - [Working with CIM Profiles](#working-with-cim-profiles)
@@ -34,6 +35,7 @@
 - [License](#license)
 - [References](#references)
 - [Support](#support)
+- [Acknowledgments](#acknowledgments)
 
 ## Overview
 
@@ -48,6 +50,22 @@ The `jena-iec61970-552` module provides a specialized parser and data structures
 - **Graph Operations**: Specialized graph implementations for efficient handling of large CIM models
 - **UUID Handling**: Automatic normalization of CIM UUIDs (with and without underscores/dashes)
 - **Datatype Resolution**: Automatic resolution of CIM datatypes from registered profiles
+- **Apache Jena Integration**: Full compatibility with Apache Jena 5.5.0 for SPARQL queries and RDF operations
+
+## Installation
+
+### Maven
+```xml
+<dependency>
+    <groupId>de.soptim.opencgmes</groupId>
+    <artifactId>cimxml</artifactId>
+    <version>1.0.0</version>
+</dependency>
+
+### Gradle
+```gradle
+implementation 'de.soptim.opencgmes:cimxml:1.0.0'
+```
 
 ## Quick Start
 
@@ -309,10 +327,23 @@ Licensed under the Apache License, Version 2.0. See LICENSE file for details.
 - [CIM Users Group](https://cimug.ucaiug.org/)
 - [Apache Jena Documentation](https://jena.apache.org/)
 - [CGMES (Common Grid Model Exchange Standard)](https://www.entsoe.eu/digital/cim/)
+- [OpenCGMES Project](https://github.com/SOPTIM/OpenCGME)
 
 ## Support
 
 For issues and questions:
-- GitHub Issues: [Apache Jena GitHub](https://github.com/apache/jena)
-- Mailing List: users@jena.apache.org
-- Stack Overflow: Tag with `apache-jena` and `cim`
+- GitHub Issues: [OpenCGMES GitHub](https://github.com/SOPTIM/OpenCGMES/issues)
+
+## Acknowledgments
+This project is based on the Apache Jena IEC 61970-552 module, originally developed by the Apache Jena team. 
+We thank the Apache Software Foundation and all contributors to the original project
+
+### W3C RDF/XML Test Suite
+This module includes example files from the [W3C RDF/XML Syntax Specification](https://www.w3.org/TR/rdf-syntax-grammar/)
+(W3C Recommendation 10 February 2004) in the `testing/w3c-rdf-syntax-grammar/` directory.
+
+Copyright © 2004 [World Wide Web Consortium](https://www.w3.org/).
+
+These files are used under the [W3C Software License](https://www.w3.org/copyright/software-license-2023/)
+exclusively for testing the conformance of the CIMXML parser with standard RDF/XML syntax. The test files
+ensure that the IEC 61970-552 extensions are compatible with standard RDF/XML processing.

@@ -211,6 +211,7 @@
 
         <module>jena-core</module>
         <module>jena-arq</module>
+        <module>jena-iec61970-552</module>
         <module>jena-ontapi</module>
         <module>jena-shacl</module>
         <module>jena-shex</module>

@@ -27,604 +27,136 @@ import org.apache.jena.riot.RDFParser;
 import org.apache.jena.riot.system.PrefixMap;
 import org.apache.jena.shared.PrefixMapping;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-import java.io.StringReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.stream.Stream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
+/**
+ * RDF/XML parser conformity tests using W3C examples.
+ *
+ * <p>This software includes material copied from or derived from the
+ * W3C RDF/XML Syntax Specification (Revised), W3C Recommendation 10 February 2004.
+ * Copyright © 2004 World Wide Web Consortium.
+ * <a href="https://www.w3.org/copyright/software-license-2023/">https://www.w3.org/copyright/software-license-2023/</a></p>
+ *
+ * <p>Original source: <a href="https://www.w3.org/TR/rdf-syntax-grammar/">
+ * https://www.w3.org/TR/rdf-syntax-grammar/</a></p>
+ *
+ * @see <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/">
+ *      W3C RDF/XML Syntax Specification (Revised)</a>
+ */
+@RunWith(Parameterized.class)
 public class TestParserRDFXMLConformity {
 
 
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 02.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example02.rdf">example02.rdf</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample02() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-            <!-- START -->
-            <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar">
-              <ex:editor>
-                <rdf:Description>
-                  <ex:homePage>
-                    <rdf:Description rdf:about="http://purl.org/net/dajobe/">
-                    </rdf:Description>
-                  </ex:homePage>
-                </rdf:Description>
-              </ex:editor>
-            </rdf:Description>
-            <!-- END -->
-            </rdf:RDF>
-            """;
-        parseAndCompare(rdfxml);
+    private static final Path W3C_TEST_DIR = Paths.get("testing", "w3c-rdf-syntax-grammar");
+
+    // Parameterized test fields
+    public final String testName;
+    public final Path rdfXmlPath;
+    public final Path nTriplesPath;
+    private final boolean skipTest;
+
+    public TestParserRDFXMLConformity(String testName, Path rdfXmlPath, Path nTriplesPath, boolean skipTest) {
+        this.testName = testName;
+        this.rdfXmlPath = rdfXmlPath;
+        this.nTriplesPath = nTriplesPath;
+        this.skipTest = skipTest;
     }
 
     /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 03.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example03.rdf">example03.rdf</a>
+     * Provides test cases for the parameterized test.
+     * Scans the w3c-examples directory for .rdf files and their corresponding .nt files.
+     * Provides test parameters for the parameterized test.
+     * Returns a collection of test cases, each containing:
+     * [0] = test name (String)
+     * [1] = RDF/XML file path (Path)
+     * [2] = N-Triples file path (Path, can be null)
      */
+    @Parameterized.Parameters(name = "{0}")
+    public static Collection<Object[]> discoverW3cTestCases() throws IOException {
+        final List<Object[]> testCases = new ArrayList<>();
+
+        // Check if test files are available
+        if (!Files.exists(W3C_TEST_DIR) && Files.isDirectory(W3C_TEST_DIR)) {
+            System.err.println("W3C test files not found at: " + W3C_TEST_DIR.toAbsolutePath());
+            System.err.println("To run these tests, extract W3C RDF/XML examples to: testing/w3c-rdf-syntax-grammar/");
+            System.err.println("Download from: https://www.w3.org/TR/rdf-syntax-grammar/");
+
+            // Add dummy test case that will be skipped
+            testCases.add(new Object[] {
+                    "W3C test files not available",
+                    null,
+                    null,
+                    true  // skipTest = true
+            });
+            return testCases;
+        }
+
+        // Find all .rdf files in the directory
+        try (Stream<Path> paths = Files.walk(W3C_TEST_DIR, 1)) {
+            paths.filter(path -> path.toString().endsWith(".rdf"))
+                    .sorted()
+                    .forEach(rdfPath -> {
+                        final String fileName = rdfPath.getFileName().toString();
+                        final String baseName = fileName.substring(0, fileName.lastIndexOf('.'));
+
+                        // Check for corresponding .nt file
+                        final Path ntPath = rdfPath.getParent().resolve(baseName + ".nt");
+                        final boolean hasNTriples = Files.exists(ntPath);
+
+                        // Create display name
+                        final String displayName = baseName.replace("example", "W3C Example ");
+
+                        testCases.add(new Object[]{
+                                displayName,
+                                rdfPath,
+                                hasNTriples ? ntPath : null,
+                                false  // skipTest = false
+                        });
+                    });
+        }
+
+        // If no test cases found, add a dummy case that will be skipped
+        if (testCases.isEmpty()) {
+            testCases.add(new Object[] { "No test files", null, null, true } );
+        }
+
+        return testCases;
+    }
+
     @Test
-    public void w3cRdfSyntaxGrammarExample03() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-            <!-- START -->
-            <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar">
-              <ex:editor>
-                <rdf:Description>
-                  <ex:homePage>
-                    <rdf:Description rdf:about="http://purl.org/net/dajobe/">
-                    </rdf:Description>
-                  </ex:homePage>
-                </rdf:Description>
-              </ex:editor>
-            </rdf:Description>
-    
-            <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar">
-              <ex:editor>
-                <rdf:Description>
-                  <ex:fullName>Dave Beckett</ex:fullName>
-                </rdf:Description>
-              </ex:editor>
-            </rdf:Description>
-    
-            <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar">
-              <dc:title>RDF/XML Syntax Specification (Revised)</dc:title>
-            </rdf:Description>
-            <!-- END -->
-            </rdf:RDF>
-            """;
-        parseAndCompare(rdfxml);
+    public void testW3cRdfXmlExample() throws Exception {
+        // Skip if test files are not available
+        assertFalse("W3C test files not available", skipTest);
+        assertNotNull("Test file path is null", rdfXmlPath);
+        // Run the test
+        parseAndCompare(rdfXmlPath, nTriplesPath);
     }
 
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 04.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example04.rdf">example04.rdf</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample04() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-            <!-- START -->
-            <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar">
-              <ex:editor>
-                <rdf:Description>
-                  <ex:homePage>
-                    <rdf:Description rdf:about="http://purl.org/net/dajobe/">
-                    </rdf:Description>
-                  </ex:homePage>
-                  <ex:fullName>Dave Beckett</ex:fullName>
-                </rdf:Description>
-              </ex:editor>
-              <dc:title>RDF/XML Syntax Specification (Revised)</dc:title>
-            </rdf:Description>
-            <!-- END -->
-            </rdf:RDF>
-            """;
-        parseAndCompare(rdfxml);
-    }
 
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 05.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example05.rdf">example05.rdf</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample05() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-            <!-- START -->
-            <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar">
-              <ex:editor>
-                <rdf:Description>
-                  <ex:homePage rdf:resource="http://purl.org/net/dajobe/"/>
-                  <ex:fullName>Dave Beckett</ex:fullName>
-                </rdf:Description>
-              </ex:editor>
-              <dc:title>RDF/XML Syntax Specification (Revised)</dc:title>
-            </rdf:Description>
-            <!-- END -->
-            </rdf:RDF>
-            """;
-        parseAndCompare(rdfxml);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 06.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example06.rdf">example06.rdf</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample06() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-            <!-- START -->
-            <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar"
-                             dc:title="RDF/XML Syntax Specification (Revised)">
-              <ex:editor>
-                <rdf:Description ex:fullName="Dave Beckett">
-                  <ex:homePage rdf:resource="http://purl.org/net/dajobe/"/>
-                </rdf:Description>
-              </ex:editor>
-            </rdf:Description>
-            <!-- END -->
-            </rdf:RDF>
-            """;
-        parseAndCompare(rdfxml);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 07.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example07.rdf">example07.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example07.nt">example07.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample07() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-              <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar"
-                       dc:title="RDF/XML Syntax Specification (Revised)">
-                <ex:editor>
-                  <rdf:Description ex:fullName="Dave Beckett">
-                <ex:homePage rdf:resource="http://purl.org/net/dajobe/" />
-                  </rdf:Description>
-                </ex:editor>
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://purl.org/dc/elements/1.1/title> "RDF/XML Syntax Specification (Revised)" .
-            _:genid1 <http://example.org/stuff/1.0/fullName> "Dave Beckett" .
-            _:genid1 <http://example.org/stuff/1.0/homePage> <http://purl.org/net/dajobe/> .
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://example.org/stuff/1.0/editor> _:genid1 .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 08.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example08.rdf">example08.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example08.nt">example08.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample08() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0" encoding="utf-8"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/">
-              <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar">
-                <dc:title>RDF/XML Syntax Specification (Revised)</dc:title>
-                <dc:title xml:lang="en">RDF/XML Syntax Specification (Revised)</dc:title>
-                <dc:title xml:lang="en-US">RDF/XML Syntax Specification (Revised)</dc:title>
-              </rdf:Description>
-            
-              <rdf:Description rdf:about="http://example.org/buecher/baum" xml:lang="de">
-                <dc:title>Der Baum</dc:title>
-                <dc:description>Das Buch ist außergewöhnlich</dc:description>
-                <dc:title xml:lang="en">The Tree</dc:title>
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://purl.org/dc/elements/1.1/title> "RDF/XML Syntax Specification (Revised)" .
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://purl.org/dc/elements/1.1/title> "RDF/XML Syntax Specification (Revised)"@en .
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://purl.org/dc/elements/1.1/title> "RDF/XML Syntax Specification (Revised)"@en-us .
-            <http://example.org/buecher/baum> <http://purl.org/dc/elements/1.1/title> "Der Baum"@de .
-            <http://example.org/buecher/baum> <http://purl.org/dc/elements/1.1/description> "Das Buch ist au\\u00DFergew\\u00F6hnlich"@de .
-            <http://example.org/buecher/baum> <http://purl.org/dc/elements/1.1/title> "The Tree"@en .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 09.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example09.rdf">example09.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example09.nt">example09.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample09() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-              <rdf:Description rdf:about="http://example.org/item01">
-                <ex:prop rdf:parseType="Literal"
-                         xmlns:a="http://example.org/a#"><a:Box required="true">
-                     <a:widget size="10" />
-                     <a:grommit id="23" /></a:Box>
-                </ex:prop>
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://example.org/item01> <http://example.org/stuff/1.0/prop> "<a:Box xmlns:a=\\"http://example.org/a#\\" required=\\"true\\">\\n         <a:widget size=\\"10\\"></a:widget>\\n         <a:grommit id=\\"23\\"></a:grommit></a:Box>\\n    "^^<http://www.w3.org/1999/02/22-rdf-syntax-ns#XMLLiteral> .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 10.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example10.rdf">example10.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example10.nt">example10.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample10() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-              <rdf:Description rdf:about="http://example.org/item01">
-                <ex:size rdf:datatype="http://www.w3.org/2001/XMLSchema#int">123</ex:size>
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://example.org/item01> <http://example.org/stuff/1.0/size> "123"^^<http://www.w3.org/2001/XMLSchema#int> .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 11.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example11.rdf">example11.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example11.nt">example11.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample11() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-              <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar"
-                       dc:title="RDF/XML Syntax Specification (Revised)">
-                <ex:editor rdf:nodeID="abc"/>
-              </rdf:Description>
-            
-              <rdf:Description rdf:nodeID="abc"
-                               ex:fullName="Dave Beckett">
-                <ex:homePage rdf:resource="http://purl.org/net/dajobe/"/>
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://purl.org/dc/elements/1.1/title> "RDF/XML Syntax Specification (Revised)" .
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://example.org/stuff/1.0/editor> _:abc .
-            _:abc <http://example.org/stuff/1.0/fullName> "Dave Beckett" .
-            _:abc <http://example.org/stuff/1.0/homePage> <http://purl.org/net/dajobe/> .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 12.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example12.rdf">example12.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example12.nt">example12.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample12() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-              <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar"
-                       dc:title="RDF/XML Syntax Specification (Revised)">
-                <ex:editor rdf:parseType="Resource">
-                  <ex:fullName>Dave Beckett</ex:fullName>
-                  <ex:homePage rdf:resource="http://purl.org/net/dajobe/"/>
-                </ex:editor>
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://purl.org/dc/elements/1.1/title> "RDF/XML Syntax Specification (Revised)" .
-            _:genid1 <http://example.org/stuff/1.0/fullName> "Dave Beckett" .
-            _:genid1 <http://example.org/stuff/1.0/homePage> <http://purl.org/net/dajobe/> .
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://example.org/stuff/1.0/editor> _:genid1 .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 13.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example13.rdf">example13.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example13.nt">example13.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample13() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-              <rdf:Description rdf:about="http://www.w3.org/TR/rdf-syntax-grammar"
-                       dc:title="RDF/XML Syntax Specification (Revised)">
-                <ex:editor ex:fullName="Dave Beckett" />
-                <!-- Note the ex:homePage property has been ignored for this example -->
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://purl.org/dc/elements/1.1/title> "RDF/XML Syntax Specification (Revised)" .
-            _:genid1 <http://example.org/stuff/1.0/fullName> "Dave Beckett" .
-            <http://www.w3.org/TR/rdf-syntax-grammar> <http://example.org/stuff/1.0/editor> _:genid1 .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 14.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example14.rdf">example14.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example14.nt">example14.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample14() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-              <rdf:Description rdf:about="http://example.org/thing">
-                <rdf:type rdf:resource="http://example.org/stuff/1.0/Document"/>
-                <dc:title>A marvelous thing</dc:title>
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://example.org/thing> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/stuff/1.0/Document> .
-            <http://example.org/thing> <http://purl.org/dc/elements/1.1/title> "A marvelous thing" .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 15.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example15.rdf">example15.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example15.nt">example15.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample15() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:dc="http://purl.org/dc/elements/1.1/"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-              <ex:Document rdf:about="http://example.org/thing">
-                <dc:title>A marvelous thing</dc:title>
-              </ex:Document>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://example.org/thing> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/stuff/1.0/Document> .
-            <http://example.org/thing> <http://purl.org/dc/elements/1.1/title> "A marvelous thing" .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 16.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example16.rdf">example16.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example16.nt">example16.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample16() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:ex="http://example.org/stuff/1.0/"
-                     xml:base="http://example.org/here/">
-              <rdf:Description rdf:ID="snack">
-                <ex:prop rdf:resource="fruit/apple"/>
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://example.org/here/#snack> <http://example.org/stuff/1.0/prop> <http://example.org/here/fruit/apple> .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 17.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example17.rdf">example17.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example17.nt">example17.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample17() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-              <rdf:Seq rdf:about="http://example.org/favourite-fruit">
-                <rdf:_1 rdf:resource="http://example.org/banana"/>
-                <rdf:_2 rdf:resource="http://example.org/apple"/>
-                <rdf:_3 rdf:resource="http://example.org/pear"/>
-              </rdf:Seq>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://example.org/favourite-fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq> .
-            <http://example.org/favourite-fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1> <http://example.org/banana> .
-            <http://example.org/favourite-fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#_2> <http://example.org/apple> .
-            <http://example.org/favourite-fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#_3> <http://example.org/pear> .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 18.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example18.rdf">example18.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example18.nt">example18.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample18() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-              <rdf:Seq rdf:about="http://example.org/favourite-fruit">
-                <rdf:li rdf:resource="http://example.org/banana"/>
-                <rdf:li rdf:resource="http://example.org/apple"/>
-                <rdf:li rdf:resource="http://example.org/pear"/>
-              </rdf:Seq>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://example.org/favourite-fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/1999/02/22-rdf-syntax-ns#Seq> .
-            <http://example.org/favourite-fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#_1> <http://example.org/banana> .
-            <http://example.org/favourite-fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#_2> <http://example.org/apple> .
-            <http://example.org/favourite-fruit> <http://www.w3.org/1999/02/22-rdf-syntax-ns#_3> <http://example.org/pear> .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 19.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example19.rdf">example19.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example19.nt">example19.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample19() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:ex="http://example.org/stuff/1.0/">
-              <rdf:Description rdf:about="http://example.org/basket">
-                <ex:hasFruit rdf:parseType="Collection">
-                  <rdf:Description rdf:about="http://example.org/banana"/>
-                  <rdf:Description rdf:about="http://example.org/apple"/>
-                  <rdf:Description rdf:about="http://example.org/pear"/>
-                </ex:hasFruit>
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            _:genid1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <http://example.org/banana> .
-            _:genid2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <http://example.org/apple> .
-            _:genid1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:genid2 .
-            _:genid3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <http://example.org/pear> .
-            _:genid2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:genid3 .
-            _:genid3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
-            <http://example.org/basket> <http://example.org/stuff/1.0/hasFruit> _:genid1 .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    /**
-     * Test case for the <a href="https://www.w3.org/TR/rdf-syntax-grammar/">W3C RDF Syntax Grammar</a> example 20.
-     * <p>
-     * Download links:
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example20.rdf">example20.rdf</a>
-     * <a href="https://www.w3.org/TR/2004/REC-rdf-syntax-grammar-20040210/example20.nt">example20.nt</a>
-     */
-    @Test
-    public void w3cRdfSyntaxGrammarExample20() throws Exception {
-        final var rdfxml = """
-            <?xml version="1.0"?>
-            <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                     xmlns:ex="http://example.org/stuff/1.0/"
-                     xml:base="http://example.org/triples/">
-              <rdf:Description rdf:about="http://example.org/">
-                <ex:prop rdf:ID="triple1">blah</ex:prop>
-              </rdf:Description>
-            </rdf:RDF>
-            """;
-        final var sameAsNTriples = """
-            <http://example.org/> <http://example.org/stuff/1.0/prop> "blah" .
-            <http://example.org/triples/#triple1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/1999/02/22-rdf-syntax-ns#Statement> .
-            <http://example.org/triples/#triple1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#subject> <http://example.org/> .
-            <http://example.org/triples/#triple1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#predicate> <http://example.org/stuff/1.0/prop> .
-            <http://example.org/triples/#triple1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#object> "blah" .
-            """;
-        parseAndCompare(rdfxml, sameAsNTriples);
-    }
-
-    public void parseAndCompare(String rdfxml) throws Exception {
-        parseAndCompare(rdfxml, null);
-    }
-
-    public void parseAndCompare(String rdfxml, String nTriples) throws Exception {
+    public void parseAndCompare(Path rdfxml, Path nTriples) throws Exception {
+        Objects.requireNonNull(rdfxml);
         final var expectedGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
         final var parser = new ReaderCIMXML_StAX_SR();
         final var streamRDF = new StreamCIMXMLToDatasetGraph();
 
-        parser.read(new StringReader(rdfxml), streamRDF);
+        try(var fileReader = new FileReader(rdfxml.toFile())) {
+            parser.read(fileReader, streamRDF);
+        }
         var graph = streamRDF.getCIMDatasetGraph().getDefaultGraph();
 
         RDFParser.create()
-                .source(new StringReader(rdfxml))
+                .source(rdfxml)
                 .lang(org.apache.jena.riot.Lang.RDFXML)
                 .checking(false)
                 .parse(expectedGraph);
@@ -635,7 +167,7 @@ public class TestParserRDFXMLConformity {
         if (nTriples != null) {
             final var nTriplesGraph = new GraphMem2Roaring(IndexingStrategy.LAZY);
             RDFParser.create()
-                    .source(new StringReader(nTriples))
+                    .source(nTriples)
                     .lang(org.apache.jena.riot.Lang.NTRIPLES)
                     .checking(false)
                     .parse(nTriplesGraph);

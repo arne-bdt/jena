@@ -15,7 +15,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 -->
-
+<!--
+  This module includes test examples from the W3C RDF/XML Syntax Specification
+  Copyright © 2004 World Wide Web Consortium
+  Used under W3C Software License for testing purposes only
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
