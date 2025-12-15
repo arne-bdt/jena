@@ -22,7 +22,6 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.helper.JMHDefaultOptions;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -37,8 +36,8 @@ public class TestMapAdd {
 
     @Param({
             "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/pizza.owl.rdf",
+//            "../testing/BSBM/bsbm-1m.nt.gz",
     })
     public String param0_GraphUri;
 
@@ -85,7 +84,7 @@ public class TestMapAdd {
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         triples = Releases.current.readTriples(param0_GraphUri);
         switch (param1_SetImplementation) {
             case "HashMap":

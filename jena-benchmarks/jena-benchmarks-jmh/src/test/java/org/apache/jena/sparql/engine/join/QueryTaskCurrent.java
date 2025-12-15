@@ -17,8 +17,6 @@
  */
 package org.apache.jena.sparql.engine.join;
 
-import java.util.function.BiConsumer;
-
 import org.apache.jena.query.ARQ;
 import org.apache.jena.query.ResultSet;
 import org.apache.jena.query.ResultSetFormatter;
@@ -32,6 +30,8 @@ import org.apache.jena.sparql.engine.benchmark.QueryTask;
 import org.apache.jena.sparql.engine.benchmark.QueryTaskResult;
 import org.apache.jena.sparql.exec.QueryExec;
 import org.apache.jena.sparql.util.Context;
+
+import java.util.function.BiConsumer;
 
 public class QueryTaskCurrent
     extends QueryTask

@@ -17,21 +17,21 @@
  */
 package org.apache.jena.sparql.engine.benchmark;
 
+import org.apache.jena.atlas.lib.Creator;
+import org.apache.jena.sparql.engine.join.QueryTaskBuilder560;
+import org.apache.jena.sparql.engine.join.QueryTaskBuilderCurrent;
+
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.jena.atlas.lib.Creator;
-import org.apache.jena.sparql.engine.join.QueryTaskBuilder480;
-import org.apache.jena.sparql.engine.join.QueryTaskBuilderCurrent;
-
 public class QueryTaskBuilderRegistry {
     private static final QueryTaskBuilderRegistry INSTANCE = new QueryTaskBuilderRegistry();
 
     static {
-        INSTANCE.put("current", () -> new QueryTaskBuilderCurrent());
-        INSTANCE.put("4.8.0", () -> new QueryTaskBuilder480());
+        INSTANCE.put("current", QueryTaskBuilderCurrent::new);
+        INSTANCE.put("5.6.0", QueryTaskBuilder560::new);
     }
 
     private final Map<String, Creator<QueryTaskBuilder>> registry = new ConcurrentHashMap<>();

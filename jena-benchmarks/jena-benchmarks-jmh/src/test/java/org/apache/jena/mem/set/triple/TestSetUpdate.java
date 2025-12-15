@@ -21,7 +21,6 @@ package org.apache.jena.mem.set.triple;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.helper.JMHDefaultOptions;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -64,8 +63,7 @@ public class TestSetUpdate {
         for (int i = 0; i < triplesToRemove.size(); i += 10) {
             triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
                     .forEach(t -> this.hashSet.remove(t));
-            triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size()))
-                    .forEach(t -> this.hashSet.add(t));
+            this.hashSet.addAll(triplesToRemove.subList(i, Math.min(i + 10, triplesToRemove.size())));
             assert this.hashSet.size() == triples.size();
         }
         return this.hashSet.size();
@@ -99,7 +97,7 @@ public class TestSetUpdate {
         switch (param1_SetImplementation) {
             case "HashSet":
                 this.hashSet = new HashSet<>(triples.size());
-                this.triples.forEach(hashSet::add);
+                hashSet.addAll(this.triples);
                 break;
             case "HashCommonTripleSet":
                 this.hashCommonTripleSet = new HashCommonTripleSet(triples.size());
@@ -115,7 +113,7 @@ public class TestSetUpdate {
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         this.triples = Releases.current.readTriples(param0_GraphUri);
         this.triplesToRemove = Releases.current.cloneTriples(triples);
         Collections.shuffle(triplesToRemove, new Random(4721));

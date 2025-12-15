@@ -17,13 +17,13 @@
  */
 package org.apache.jena.sparql.engine.join;
 
-import java.util.Collection;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.results.RunResult;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
+
+import java.util.Collection;
 
 public class TestBenchmarkHashJoin {
     @Test

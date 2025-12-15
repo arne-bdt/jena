@@ -24,9 +24,9 @@
         <version>6.0.0-SNAPSHOT</version>
     </parent>
 
-    <name>Apache Jena - Benchmarks Shaded Jena 4.8.0</name>
-    <artifactId>jena-benchmarks-shadedJena480</artifactId>
-    <description>Shaded Apache Jena 4.8.0 for regression benchmarks</description>
+    <name>Apache Jena - Benchmarks Shaded Jena 5.6.0</name>
+    <artifactId>jena-benchmarks-shadedJena560</artifactId>
+    <description>Shaded Apache Jena 5.6.0 for regression benchmarks</description>
     <packaging>jar</packaging>
 
     <url>https://jena.apache.org/</url>
@@ -45,31 +45,43 @@
 
     <properties>
         <build.time.xsd>${maven.build.timestamp}</build.time.xsd>
-        <automatic.module.name>org.apache.jena.benchmarks.shadedJena480</automatic.module.name>
+        <automatic.module.name>org.apache.jena.benchmarks.shadedJena560</automatic.module.name>
         <maven.test.skip>true</maven.test.skip>
         <scope>test</scope>
+        <!-- shaded jena version -->
+        <ver.shadedJena>5.6.0</ver.shadedJena>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-base</artifactId>
-            <version>4.8.0</version>
+            <version>${ver.shadedJena}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-iri</artifactId>
-            <version>4.8.0</version>
+            <version>${ver.shadedJena}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.jena</groupId>
+            <artifactId>jena-iri3986</artifactId>
+            <version>${ver.shadedJena}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-core</artifactId>
-            <version>4.8.0</version>
+            <version>${ver.shadedJena}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-arq</artifactId>
-            <version>4.8.0</version>
+            <version>${ver.shadedJena}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.jena</groupId>
+            <artifactId>jena-geosparql</artifactId>
+            <version>${ver.shadedJena}</version>
         </dependency>
     </dependencies>
 
@@ -101,7 +113,7 @@
                             <relocations>
                                 <relocation>
                                     <pattern>org.apache.jena</pattern>
-                                    <shadedPattern>org.apache.shadedJena480</shadedPattern>
+                                    <shadedPattern>org.apache.shadedJena560</shadedPattern>
                                 </relocation>
                             </relocations>
                             <filters>
@@ -114,6 +126,7 @@
                                         <exclude>META-INF/DEPENDENCIES</exclude>
                                         <exclude>META-INF/MANIFEST.MF</exclude>
                                         <exclude>**/module-info.class</exclude>
+                                        <exclude>META-INF/LICENSE-notice.md</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
