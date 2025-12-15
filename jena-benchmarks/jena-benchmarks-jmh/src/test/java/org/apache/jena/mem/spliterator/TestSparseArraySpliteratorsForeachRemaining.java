@@ -47,8 +47,8 @@ public class TestSparseArraySpliteratorsForeachRemaining {
             "mem2.SparseArraySpliterator"
     })
     public String param1_iteratorImplementation;
-    List<Object[]> arraysWithNulls = new ArrayList<>(stepsWithNull.length);
-    List<Integer> elementsCounts = new ArrayList<>(stepsWithNull.length);
+    final List<Object[]> arraysWithNulls = new ArrayList<>(stepsWithNull.length);
+    final List<Integer> elementsCounts = new ArrayList<>(stepsWithNull.length);
 
     @Benchmark
     public long testSpliteratorForeachRemaining() {
@@ -60,7 +60,7 @@ public class TestSparseArraySpliteratorsForeachRemaining {
 
             var sut = createSut(arrayWithNulls, elementsCount);
 
-            sut.forEachRemaining(actionCounter::accept);
+            sut.forEachRemaining(actionCounter);
 
             total += actionCounter.getCount();
             Assert.assertEquals(elementsCount.longValue(), actionCounter.getCount());
@@ -69,24 +69,24 @@ public class TestSparseArraySpliteratorsForeachRemaining {
     }
 
     public Spliterator<Object> createSut(Object[] arrayWithNulls, int elementsCount) {
-        var count = elementsCount;
+        @SuppressWarnings("UnnecessaryLocalVariable") var count = elementsCount;
         Runnable checkForConcurrentModification = () -> {
             if (count != elementsCount) {
                 throw new RuntimeException("Concurrent modification detected");
             }
         };
-        switch (param1_iteratorImplementation) {
-            case "memvalue.SparseArraySpliterator":
-                return new org.apache.jena.memvalue.SparseArraySpliterator<>(arrayWithNulls, count, checkForConcurrentModification);
-            case "mem2.SparseArraySpliterator":
-                return new SparseArraySpliterator<>(arrayWithNulls, checkForConcurrentModification);
-            default:
-                throw new IllegalArgumentException("Unknown spliterator implementation: " + param1_iteratorImplementation);
-        }
+        return switch (param1_iteratorImplementation) {
+            case "memvalue.SparseArraySpliterator" ->
+                    new org.apache.jena.memvalue.SparseArraySpliterator<>(arrayWithNulls, count, checkForConcurrentModification);
+            case "mem2.SparseArraySpliterator" ->
+                    new SparseArraySpliterator<>(arrayWithNulls, checkForConcurrentModification);
+            default ->
+                    throw new IllegalArgumentException("Unknown spliterator implementation: " + param1_iteratorImplementation);
+        };
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         for (int i = 0; i < stepsWithNull.length; i++) {
             var arrayWithNulls = new Object[param0_arraySize];
             var stepsWithNull = TestSparseArraySpliteratorsForeachRemaining.stepsWithNull[i];

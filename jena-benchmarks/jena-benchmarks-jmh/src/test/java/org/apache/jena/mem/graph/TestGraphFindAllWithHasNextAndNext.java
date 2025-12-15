@@ -36,23 +36,23 @@ public class TestGraphFindAllWithHasNextAndNext {
 
     @Param({
             "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/pizza.owl.rdf",
+//            "../testing/BSBM/bsbm-1m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
             "GraphMemFast (current)",
-            "GraphMemRoaring EAGER (current)",
+//            "GraphMemRoaring EAGER (current)",
 //            "GraphMemRoaring LAZY (current)",
-            "GraphMemRoaring LAZY_PARALLEL (current)",
-            "GraphMemRoaring MINIMAL (current)",
-//            "GraphMem (Jena 4.8.0)",
+//            "GraphMemRoaring LAZY_PARALLEL (current)",
+//            "GraphMemRoaring MINIMAL (current)",
+            "GraphMem (Jena 5.6.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Long> graphFindAll;
     private Graph sutCurrent;
-    private org.apache.shadedJena480.graph.Graph sut480;
+    private org.apache.shadedJena560.graph.Graph sut560;
 
     @Benchmark
     public Long graphFindAll() {
@@ -70,19 +70,19 @@ public class TestGraphFindAllWithHasNextAndNext {
         return actionCounter.getCount();
     }
 
-    private Long graphFindAll480() {
+    private Long graphFindAll560() {
         var actionCounter = new ActionCount<>();
-        var iter = sut480.find();
+        var iter = sut560.find();
         while (iter.hasNext()) {
             actionCounter.accept(iter.next());
         }
         iter.close();
-        assertEquals(sut480.size(), actionCounter.getCount());
+        assertEquals(sut560.size(), actionCounter.getCount());
         return actionCounter.getCount();
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         Context trialContext = new Context(param1_GraphImplementation);
         switch (trialContext.getJenaVersion()) {
             case CURRENT: {
@@ -93,12 +93,12 @@ public class TestGraphFindAllWithHasNextAndNext {
                 triples.forEach(this.sutCurrent::add);
             }
             break;
-            case JENA_4_8_0: {
-                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-                this.graphFindAll = this::graphFindAll480;
+            case JENA_5_6_0: {
+                this.sut560 = Releases.v560.createGraph(trialContext.getGraphClass());
+                this.graphFindAll = this::graphFindAll560;
 
-                var triples = Releases.v480.readTriples(param0_GraphUri);
-                triples.forEach(this.sut480::add);
+                var triples = Releases.v560.readTriples(param0_GraphUri);
+                triples.forEach(this.sut560::add);
             }
             break;
             default:

@@ -18,17 +18,16 @@
 
 package org.apache.jena.mem.graph;
 
-import static org.junit.Assert.assertEquals;
-
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.apache.jena.graph.Graph;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
+import org.junit.Assert;
+import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
+
+import static org.junit.Assert.assertEquals;
 
 
 @State(Scope.Benchmark)
@@ -36,24 +35,24 @@ public class TestGraphStreamAll {
 
     @Param({
             "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/pizza.owl.rdf",
+//            "../testing/BSBM/bsbm-1m.nt.gz",
     })
     public String param0_GraphUri;
 
     @Param({
             "GraphMemFast (current)",
-            "GraphMemRoaring EAGER (current)",
-            "GraphMemRoaring LAZY (current)",
-            "GraphMemRoaring LAZY_PARALLEL (current)",
-            "GraphMemRoaring MINIMAL (current)",
-//            "GraphMem (Jena 4.8.0)",
+//            "GraphMemRoaring EAGER (current)",
+//            "GraphMemRoaring LAZY (current)",
+//            "GraphMemRoaring LAZY_PARALLEL (current)",
+//            "GraphMemRoaring MINIMAL (current)",
+            "GraphMem (Jena 5.6.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Object> graphStream;
     java.util.function.Supplier<Object> graphStreamParallel;
     private Graph sutCurrent;
-    private org.apache.shadedJena480.graph.Graph sut480;
+    private org.apache.shadedJena560.graph.Graph sut560;
 
     @Benchmark
     public Object graphStream() {
@@ -71,9 +70,9 @@ public class TestGraphStreamAll {
         return list;
     }
 
-    private Object graphStream480() {
-        var list = sut480.stream().toList();
-        assertEquals(sut480.size(), list.size());
+    private Object graphStream560() {
+        var list = sut560.stream().toList();
+        assertEquals(sut560.size(), list.size());
         return list;
     }
 
@@ -83,14 +82,14 @@ public class TestGraphStreamAll {
         return list;
     }
 
-    private Object graphStreamParallel480() {
-        var list = sut480.stream().parallel().toList();
-        assertEquals(sut480.size(), list.size());
+    private Object graphStreamParallel560() {
+        var list = sut560.stream().parallel().toList();
+        assertEquals(sut560.size(), list.size());
         return list;
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         Context trialContext = new Context(param1_GraphImplementation);
         switch (trialContext.getJenaVersion()) {
             case CURRENT: {
@@ -102,13 +101,13 @@ public class TestGraphStreamAll {
                 triples.forEach(this.sutCurrent::add);
             }
             break;
-            case JENA_4_8_0: {
-                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-                this.graphStream = this::graphStream480;
-                this.graphStreamParallel = this::graphStreamParallel480;
+            case JENA_5_6_0: {
+                this.sut560 = Releases.v560.createGraph(trialContext.getGraphClass());
+                this.graphStream = this::graphStream560;
+                this.graphStreamParallel = this::graphStreamParallel560;
 
-                var triples = Releases.v480.readTriples(param0_GraphUri);
-                triples.forEach(this.sut480::add);
+                var triples = Releases.v560.readTriples(param0_GraphUri);
+                triples.forEach(this.sut560::add);
             }
             break;
             default:

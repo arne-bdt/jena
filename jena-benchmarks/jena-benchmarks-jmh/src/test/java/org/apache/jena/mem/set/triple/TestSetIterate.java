@@ -22,7 +22,6 @@ import org.apache.jena.atlas.iterator.ActionCount;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.helper.JMHDefaultOptions;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -92,12 +91,12 @@ public class TestSetIterate {
 
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         this.triples = Releases.current.readTriples(param0_GraphUri);
         switch (param1_SetImplementation) {
             case "HashSet":
                 this.hashSet = new HashSet<>(triples.size());
-                triples.forEach(hashSet::add);
+                hashSet.addAll(triples);
                 this.getIterator = this::getIteratorFromHashSet;
                 break;
             case "HashCommonTripleSet":

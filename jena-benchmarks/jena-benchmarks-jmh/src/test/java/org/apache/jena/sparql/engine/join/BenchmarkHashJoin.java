@@ -17,20 +17,10 @@
  */
 package org.apache.jena.sparql.engine.join;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.jena.sparql.engine.benchmark.QueryTask;
 import org.apache.jena.sparql.engine.benchmark.QueryTaskReader;
 import org.apache.jena.sparql.engine.benchmark.QueryTaskTestUtils;
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Mode;
-import org.openjdk.jmh.annotations.Param;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -39,12 +29,16 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.concurrent.TimeUnit;
+
 /** Benchmark implementation for hash joins. The junit runner is {@link TestBenchmarkHashJoin}. */
 @State(Scope.Benchmark)
 public class BenchmarkHashJoin {
     @Param({
         "current",
-        "4.8.0"
+        "5.6.0"
     })
     public String param0_jenaVersion;
 
@@ -63,12 +57,12 @@ public class BenchmarkHashJoin {
     private QueryTask task;
 
     @Benchmark
-    public void runTask() throws Exception {
+    public void runTask() {
         QueryTaskTestUtils.execAndAssert(task);
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         task = QueryTaskReader.loadOne(param1_queryFile, param0_jenaVersion);
     }
 

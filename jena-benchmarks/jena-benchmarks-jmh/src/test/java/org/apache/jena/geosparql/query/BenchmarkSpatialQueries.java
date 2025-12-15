@@ -17,15 +17,6 @@
  */
 package org.apache.jena.geosparql.query;
 
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
-
 import org.apache.jena.geosparql.implementation.GeometryWrapper;
 import org.apache.jena.geosparql.implementation.jts.CustomGeometryFactory;
 import org.apache.jena.geosparql.implementation.vocabulary.Geo;
@@ -43,14 +34,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.util.AffineTransformation;
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Mode;
-import org.openjdk.jmh.annotations.Param;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -59,16 +43,25 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
+
 /**
  * Benchmarking of spatial queries against test data.
  */
 @State(Scope.Benchmark)
 public class BenchmarkSpatialQueries {
 
-    private static Map<String, String> idToQuery = new LinkedHashMap<>();
+    private static final Map<String, String> idToQuery = new LinkedHashMap<>();
 
-    private Node featureNode = NodeFactory.createURI("urn:test:geosparql:feature1");
-    private Node geometryNode = NodeFactory.createURI("urn:test:geosparql:geometry1");
+    private final Node featureNode = NodeFactory.createURI("urn:test:geosparql:feature1");
+    private final Node geometryNode = NodeFactory.createURI("urn:test:geosparql:geometry1");
 
     private static final String q1 = """
         PREFIX geo: <http://www.opengis.net/ont/geosparql#>
@@ -123,23 +116,20 @@ public class BenchmarkSpatialQueries {
 
     @Param({
         "current",
-        "5.5.0"
+        "5.6.0"
     })
     public String p5_jenaVersion;
 
     private SpatialQueryTask task;
 
     @Benchmark
-    public void run() throws Exception {
+    public void run() {
         long count = task.exec();
-        if (true) {
-            System.out.println("Counted: " + count);
-        }
+        System.out.println("Counted: " + count);
     }
 
     private static GeometryWrapper toWrapperWkt(Geometry geometry) {
-        GeometryWrapper result = new GeometryWrapper(geometry, Geo.WKT);
-        return result;
+        return new GeometryWrapper(geometry, Geo.WKT);
     }
 
     @Setup(Level.Trial)
@@ -183,12 +173,12 @@ public class BenchmarkSpatialQueries {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             RDFDataMgr.write(out, graph, fmt);
             out.flush();
-            data = new String(out.toByteArray(), StandardCharsets.UTF_8);
+            data = out.toString(StandardCharsets.UTF_8);
         }
 
         task = switch (p5_jenaVersion) {
         case "current" -> new SpatialQueryTaskCurrent();
-        case "5.5.0" -> new SpatialQueryTask550();
+        case "5.6.0" -> new SpatialQueryTask560();
         default -> throw new RuntimeException("No task registered for this jena version:" + p5_jenaVersion);
         };
 
@@ -206,10 +196,6 @@ public class BenchmarkSpatialQueries {
 
         String queryString = idToQuery.get(p2_queryId);
         task.setQuery(queryString);
-    }
-
-    @TearDown(Level.Trial)
-    public void tearDownTrial() throws Exception {
     }
 
     public static ChainedOptionsBuilder getDefaults(Class<?> c) {

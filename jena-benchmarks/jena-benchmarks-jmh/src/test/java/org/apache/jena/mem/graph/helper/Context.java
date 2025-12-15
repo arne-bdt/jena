@@ -42,9 +42,6 @@ public class Context {
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
             case "GraphMemRoaring (current)":
-                this.graphClass = GraphClass.GraphMemRoaringEager;
-                this.jenaVersion = JenaVersion.CURRENT;
-                break;
             case "GraphMemRoaring EAGER (current)":
                 this.graphClass = GraphClass.GraphMemRoaringEager;
                 this.jenaVersion = JenaVersion.CURRENT;
@@ -65,9 +62,9 @@ public class Context {
                 this.graphClass = GraphClass.GraphMemRoaringManual;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
-            case "GraphMem (Jena 4.8.0)":
+            case "GraphMem (Jena 5.6.0)":
                 this.graphClass = GraphClass.GraphMemValue;
-                this.jenaVersion = JenaVersion.JENA_4_8_0;
+                this.jenaVersion = JenaVersion.JENA_5_6_0;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown graph implementation: " + graphImplementation);
