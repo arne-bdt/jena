@@ -28,6 +28,7 @@ import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashSet;
 import java.util.List;
 
@@ -37,7 +38,6 @@ public class TestSetMemoryConsumption {
     @Param({
             "../testing/cheeses-0.1.ttl",
             "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
     })
     public String param0_GraphUri;
 
@@ -56,11 +56,9 @@ public class TestSetMemoryConsumption {
      * @return the memory consumption in MB
      */
     private static double runGcAndGetUsedMemoryInMB() {
-        System.runFinalization();
         System.gc();
-        Runtime.getRuntime().runFinalization();
         Runtime.getRuntime().gc();
-        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024L)).divide(BigDecimal.valueOf(1024L)).doubleValue();
+        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024L), 3, RoundingMode.HALF_UP).divide(BigDecimal.valueOf(1024L), 3, RoundingMode.HALF_UP).doubleValue();
     }
 
     @Benchmark
@@ -78,8 +76,7 @@ public class TestSetMemoryConsumption {
     }
 
     private Object fillHashSet() {
-        var sut = new HashSet<Triple>();
-        triples.forEach(sut::add);
+        var sut = new HashSet<>(triples);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
@@ -100,7 +97,7 @@ public class TestSetMemoryConsumption {
 
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         triples = Releases.current.readTriples(param0_GraphUri);
         switch (param1_SetImplementation) {
             case "HashSet":

@@ -23,7 +23,6 @@ import org.apache.jena.mem.GraphMemRoaring;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -36,9 +35,8 @@ import java.util.List;
 public class TestGraphInitializeIndex {
 
     @Param({
-//            "../testing/cheeses-0.1.ttl",
+            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
     })
     public String param0_GraphUri;
 
@@ -73,13 +71,14 @@ public class TestGraphInitializeIndex {
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         this.trialContext = new Context(param1_GraphImplementation);
         switch (this.trialContext.getJenaVersion()) {
             case CURRENT:
                 triplesCurrent = Releases.current.readTriples(param0_GraphUri);
                 this.graphAdd = this::graphAddCurrent;
                 break;
+            case JENA_5_6_0:
             default:
                 throw new IllegalArgumentException("Unknown Jena version: " + this.trialContext.getJenaVersion());
         }

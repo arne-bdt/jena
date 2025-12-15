@@ -22,7 +22,6 @@ import org.apache.jena.mem.GraphMem;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -36,17 +35,16 @@ public class TestGraphCopy {
 
     @Param({
             "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/pizza.owl.rdf",
     })
     public String param0_GraphUri;
 
     @Param({
             "GraphMemFast (current)",
-            "GraphMemRoaring EAGER (current)",
-            "GraphMemRoaring LAZY (current)",
-            "GraphMemRoaring LAZY_PARALLEL (current)",
-            "GraphMemRoaring MINIMAL (current)",
+//            "GraphMemRoaring EAGER (current)",
+//            "GraphMemRoaring LAZY (current)",
+//            "GraphMemRoaring LAZY_PARALLEL (current)",
+//            "GraphMemRoaring MINIMAL (current)",
     })
     public String param1_GraphImplementation;
 
@@ -77,7 +75,7 @@ public class TestGraphCopy {
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         var trialContext = new Context(param1_GraphImplementation);
         switch (trialContext.getJenaVersion()) {
             case CURRENT: {
@@ -88,6 +86,7 @@ public class TestGraphCopy {
                 triples.forEach(this.sutCurrent::add);
             }
             break;
+            case JENA_5_6_0:
             default:
                 throw new IllegalArgumentException("Unsupported Jena version: " + trialContext.getJenaVersion());
         }

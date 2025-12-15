@@ -35,26 +35,16 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
     @SuppressWarnings("deprecation")
     @Override
     public Graph createGraph(Context.GraphClass graphClass) {
-        switch (graphClass) {
-            case GraphMemValue:
-                return new org.apache.jena.memvalue.GraphMemValue();
-            case GraphMemFast:
-                return new GraphMemFast();
-            case GraphMemLegacy:
-                return new GraphMemLegacy();
-            case GraphMemRoaringEager:
-                return new GraphMemRoaring(IndexingStrategy.EAGER);
-            case GraphMemRoaringLazy:
-                return new GraphMemRoaring(IndexingStrategy.LAZY);
-            case GraphMemRoaringLazyParallel:
-                return new GraphMemRoaring(IndexingStrategy.LAZY_PARALLEL);
-            case GraphMemRoaringMinimal:
-                return new GraphMemRoaring(IndexingStrategy.MINIMAL);
-            case GraphMemRoaringManual:
-                return  new GraphMemRoaring(IndexingStrategy.MANUAL);
-            default:
-                throw new IllegalArgumentException("Unknown graph class: " + graphClass);
-        }
+        return switch (graphClass) {
+            case GraphMemValue -> new org.apache.jena.memvalue.GraphMemValue();
+            case GraphMemFast -> new GraphMemFast();
+            case GraphMemLegacy -> new GraphMemLegacy();
+            case GraphMemRoaringEager -> new GraphMemRoaring(IndexingStrategy.EAGER);
+            case GraphMemRoaringLazy -> new GraphMemRoaring(IndexingStrategy.LAZY);
+            case GraphMemRoaringLazyParallel -> new GraphMemRoaring(IndexingStrategy.LAZY_PARALLEL);
+            case GraphMemRoaringMinimal -> new GraphMemRoaring(IndexingStrategy.MINIMAL);
+            case GraphMemRoaringManual -> new GraphMemRoaring(IndexingStrategy.MANUAL);
+        };
     }
 
     @Override

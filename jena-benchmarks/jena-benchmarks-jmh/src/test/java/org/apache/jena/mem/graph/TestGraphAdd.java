@@ -35,24 +35,26 @@ public class TestGraphAdd {
 
     @Param({
             "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/pizza.owl.rdf",
     })
     public String param0_GraphUri;
 
     @Param({
             "GraphMemFast (current)",
-            "GraphMemRoaring EAGER (current)",
+            "GraphMemValue (current)",
+//            "GraphMemRoaring EAGER (current)",
 //            "GraphMemRoaring LAZY (current)",
-            "GraphMemRoaring LAZY_PARALLEL (current)",
-            "GraphMemRoaring MINIMAL (current)",
-//            "GraphMem (Jena 4.8.0)",
+//            "GraphMemRoaring LAZY_PARALLEL (current)",
+//            "GraphMemRoaring MINIMAL (current)",
+//            "GraphMemValue (Jena 5.6.0)",
+            "GraphMemFast (Jena 5.6.0)",
+            "GraphMemValue (Jena 5.6.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Object> graphAdd;
     private Context trialContext;
     private List<Triple> triplesCurrent;
-    private List<org.apache.shadedJena480.graph.Triple> triples480;
+    private List<org.apache.shadedJena560.graph.Triple> triples560;
 
     @Benchmark
     public Object graphAdd() {
@@ -66,25 +68,25 @@ public class TestGraphAdd {
         return sutCurrent;
     }
 
-    private Object graphAdd480() {
-        var sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-        triples480.forEach(sut480::add);
-        Assert.assertEquals(triples480.size(), sut480.size());
-        return sut480;
+    private Object graphAdd560() {
+        var sut560 = Releases.v560.createGraph(trialContext.getGraphClass());
+        triples560.forEach(sut560::add);
+        Assert.assertEquals(triples560.size(), sut560.size());
+        return sut560;
     }
 
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         this.trialContext = new Context(param1_GraphImplementation);
         switch (this.trialContext.getJenaVersion()) {
             case CURRENT:
                 triplesCurrent = Releases.current.readTriples(param0_GraphUri);
                 this.graphAdd = this::graphAddCurrent;
                 break;
-            case JENA_4_8_0:
-                triples480 = Releases.v480.readTriples(param0_GraphUri);
-                this.graphAdd = this::graphAdd480;
+            case JENA_5_6_0:
+                triples560 = Releases.v560.readTriples(param0_GraphUri);
+                this.graphAdd = this::graphAdd560;
                 break;
             default:
                 throw new IllegalArgumentException("Unknown Jena version: " + this.trialContext.getJenaVersion());

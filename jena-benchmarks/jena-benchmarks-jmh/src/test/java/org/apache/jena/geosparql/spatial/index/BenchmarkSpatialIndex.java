@@ -17,13 +17,6 @@
  */
 package org.apache.jena.geosparql.spatial.index;
 
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.jena.geosparql.implementation.vocabulary.SRS_URI;
 import org.apache.jena.geosparql.spatial.index.v2.GeometryGenerator;
 import org.apache.jena.geosparql.spatial.index.v2.GeometryGenerator.GeometryType;
@@ -32,14 +25,7 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.sparql.graph.GraphFactory;
 import org.locationtech.jts.geom.Envelope;
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Mode;
-import org.openjdk.jmh.annotations.Param;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
+import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.results.format.ResultFormatType;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -47,6 +33,13 @@ import org.openjdk.jmh.runner.options.ChainedOptionsBuilder;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
+
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Benchmarking of the spatial index.
@@ -56,7 +49,7 @@ import org.openjdk.jmh.runner.options.TimeValue;
 public class BenchmarkSpatialIndex {
     @Param({
         "current",
-        "5.1.0"
+        "5.6.0"
     })
     public String param0_jenaVersion;
 
@@ -92,7 +85,7 @@ public class BenchmarkSpatialIndex {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             RDFDataMgr.write(out, graph, fmt);
             out.flush();
-            data = new String(out.toByteArray(), StandardCharsets.UTF_8);
+            data = out.toString(StandardCharsets.UTF_8);
         }
 
         String srs = param2_srs.isEmpty() ? null : param2_srs;
@@ -101,11 +94,11 @@ public class BenchmarkSpatialIndex {
         case "current":
             spatialIndexLifeCycle = SpatialIndexCurrent.setup(data, envelope, srs, false);
             break;
-        case "5.1.0":
-            spatialIndexLifeCycle = SpatialIndex510.setup(data, envelope, srs, false);
+        case "5.6.0":
+            spatialIndexLifeCycle = SpatialIndex560.setup(data, envelope, srs, false);
             break;
         default:
-            throw new RuntimeException("No task registered for this jena version:" + param0_jenaVersion);
+            throw new RuntimeException("No task registered for this Jena version:" + param0_jenaVersion);
         }
 
         spatialIndexLifeCycle.init();

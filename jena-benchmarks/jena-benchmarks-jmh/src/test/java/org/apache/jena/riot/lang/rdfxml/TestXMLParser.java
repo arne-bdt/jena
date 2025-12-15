@@ -46,47 +46,26 @@ public class TestXMLParser {
             "RRX.RDFXML_SAX",
             "RRX.RDFXML_StAX_ev",
             "RRX.RDFXML_StAX_sr",
-
-//            "RRX.RDFXML_ARP0",
-            "RRX.RDFXML_ARP1"
     })
     public String param1_ParserLang;
 
 
-    @SuppressWarnings("removal")
     private static Lang getLang(String langName) {
-        switch (langName) {
-            case "RRX.RDFXML_SAX":
-                return RRX.RDFXML_SAX;
-            case "RRX.RDFXML_StAX_ev":
-                return RRX.RDFXML_StAX_ev;
-            case "RRX.RDFXML_StAX_sr":
-                return RRX.RDFXML_StAX_sr;
-            case "RRX.RDFXML_ARP1":
-                return RRX.RDFXML_ARP1;
-            default:
-                throw new IllegalArgumentException("Unknown lang: " + langName);
-        }
+        return switch (langName) {
+            case "RRX.RDFXML_SAX" -> RRX.RDFXML_SAX;
+            case "RRX.RDFXML_StAX_ev" -> RRX.RDFXML_StAX_ev;
+            case "RRX.RDFXML_StAX_sr" -> RRX.RDFXML_StAX_sr;
+            default -> throw new IllegalArgumentException("Unknown lang: " + langName);
+        };
     }
 
-    @SuppressWarnings("removal")
-    private static org.apache.shadedJena510.riot.Lang getLangJena510(String langName) {
-        switch (langName) {
-            case "RRX.RDFXML_SAX":
-                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_SAX;
-            case "RRX.RDFXML_StAX_ev":
-                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_StAX_ev;
-            case "RRX.RDFXML_StAX_sr":
-                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_StAX_sr;
-
-            case "RRX.RDFXML_ARP0":
-                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_ARP0;
-            case "RRX.RDFXML_ARP1":
-                return org.apache.shadedJena510.riot.lang.rdfxml.RRX.RDFXML_ARP1;
-
-            default:
-                throw new IllegalArgumentException("Unknown lang: " + langName);
-        }
+    private static org.apache.shadedJena560.riot.Lang getLangJena560(String langName) {
+        return switch (langName) {
+            case "RRX.RDFXML_SAX" -> org.apache.shadedJena560.riot.lang.rdfxml.RRX.RDFXML_SAX;
+            case "RRX.RDFXML_StAX_ev" -> org.apache.shadedJena560.riot.lang.rdfxml.RRX.RDFXML_StAX_ev;
+            case "RRX.RDFXML_StAX_sr" -> org.apache.shadedJena560.riot.lang.rdfxml.RRX.RDFXML_StAX_sr;
+            default -> throw new IllegalArgumentException("Unknown lang: " + langName);
+        };
     }
 
     @Benchmark
@@ -107,16 +86,16 @@ public class TestXMLParser {
     }
 
     @Benchmark
-    public org.apache.shadedJena510.graph.Graph parseXMLJena510() throws Exception {
-        final var graph = new org.apache.shadedJena510.mem2.GraphMem2Fast();
+    public org.apache.shadedJena560.graph.Graph parseXMLJena560() throws Exception {
+        final var graph = new org.apache.shadedJena560.mem2.GraphMem2Fast();
         try(final var is = new BufferedFileChannelInputStream.Builder()
                 .setFile(this.param0_GraphUri)
                 .setOpenOptions(StandardOpenOption.READ)
                 .setBufferSize(64*4096)
                 .get()) {
-            org.apache.shadedJena510.riot.RDFParser.source(is)
+            org.apache.shadedJena560.riot.RDFParser.source(is)
                     .base("xx:")
-                    .forceLang(getLangJena510(this.param1_ParserLang))
+                    .forceLang(getLangJena560(this.param1_ParserLang))
                     .checking(false)
                     .parse(graph);
         }
@@ -125,7 +104,7 @@ public class TestXMLParser {
 
     @Setup(Level.Trial)
     public void setup() {
-        org.apache.shadedJena510.riot.lang.rdfxml.RRX.register();
+        org.apache.shadedJena560.riot.lang.rdfxml.RRX.register();
     }
 
     @Test

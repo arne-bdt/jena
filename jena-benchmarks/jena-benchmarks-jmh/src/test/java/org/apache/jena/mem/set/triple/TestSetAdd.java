@@ -21,7 +21,6 @@ package org.apache.jena.mem.set.triple;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Releases;
 import org.apache.jena.mem.helper.JMHDefaultOptions;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -37,7 +36,6 @@ public class TestSetAdd {
     @Param({
             "../testing/cheeses-0.1.ttl",
             "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
     })
     public String param0_GraphUri;
 
@@ -56,8 +54,7 @@ public class TestSetAdd {
     }
 
     private Object addToHashSet() {
-        var sut = new HashSet<Triple>();
-        triples.forEach(sut::add);
+        var sut = new HashSet<>(triples);
         Assert.assertEquals(triples.size(), sut.size());
         return sut;
     }
@@ -77,7 +74,7 @@ public class TestSetAdd {
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         triples = Releases.current.readTriples(param0_GraphUri);
         switch (param1_SetImplementation) {
             case "HashSet":

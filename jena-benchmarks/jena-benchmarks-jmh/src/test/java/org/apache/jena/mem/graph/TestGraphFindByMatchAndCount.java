@@ -25,7 +25,6 @@ import org.apache.jena.mem.GraphMemRoaring;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
@@ -44,17 +43,20 @@ public class TestGraphFindByMatchAndCount {
 
     @Param({
             "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/pizza.owl.rdf",
     })
     public String param0_GraphUri;
 
     @Param({
             "GraphMemFast (current)",
-            "GraphMemRoaring EAGER (current)",
+            "GraphMemValue (current)",
+//            "GraphMemRoaring EAGER (current)",
 //            "GraphMemRoaring LAZY (current)",
-            "GraphMemRoaring LAZY_PARALLEL (current)",
-//            "GraphMem (Jena 4.8.0)",
+//            "GraphMemRoaring LAZY_PARALLEL (current)",
+//            "GraphMemRoaring MINIMAL (current)",
+//            "GraphMemValue (Jena 5.6.0)",
+            "GraphMemFast (Jena 5.6.0)",
+            "GraphMemValue (Jena 5.6.0)",
     })
     public String param1_GraphImplementation;
 
@@ -62,9 +64,9 @@ public class TestGraphFindByMatchAndCount {
     public int param2_sampleSize;
     Function<String, Object> graphFindByMatchesAndCount;
     private Graph sutCurrent;
-    private org.apache.shadedJena480.graph.Graph sut480;
+    private org.apache.shadedJena560.graph.Graph sut560;
     private List<Triple> triplesToFindCurrent;
-    private List<org.apache.shadedJena480.graph.Triple> triplesToFind480;
+    private List<org.apache.shadedJena560.graph.Triple> triplesToFind560;
 
     @Benchmark
     public Object graphFindS__() {
@@ -101,60 +103,46 @@ public class TestGraphFindByMatchAndCount {
         var findFunction = getFindFunctionByPatternCurrent(pattern);
         var total = 0;
         for (Triple sample : this.triplesToFindCurrent) {
-            total += Iter.count(findFunction.apply(sample));
+            total += (int) Iter.count(findFunction.apply(sample));
         }
         return total;
     }
 
-    private Object graphFindByMatchesAndCount480(String pattern) {
-        var findFunction = getFindFunctionByPattern480(pattern);
+    private Object graphFindByMatchesAndCount560(String pattern) {
+        var findFunction = getFindFunctionByPattern560(pattern);
         var total = 0;
-        for (org.apache.shadedJena480.graph.Triple sample : this.triplesToFind480) {
-            total += Iter.count(findFunction.apply(sample));
+        for (org.apache.shadedJena560.graph.Triple sample : this.triplesToFind560) {
+            total += (int) Iter.count(findFunction.apply(sample));
         }
         return total;
     }
 
     Function<Triple, Iterator<Triple>> getFindFunctionByPatternCurrent(String pattern) {
-        switch (pattern) {
-            case "S__":
-                return t -> sutCurrent.find(t.getSubject(), null, null);
-            case "_P_":
-                return t -> sutCurrent.find(null, t.getPredicate(), null);
-            case "__O":
-                return t -> sutCurrent.find(null, null, t.getObject());
-            case "SP_":
-                return t -> sutCurrent.find(t.getSubject(), t.getPredicate(), null);
-            case "S_O":
-                return t -> sutCurrent.find(t.getSubject(), null, t.getObject());
-            case "_PO":
-                return t -> sutCurrent.find(null, t.getPredicate(), t.getObject());
-            default:
-                throw new IllegalArgumentException("Unknown pattern: " + pattern);
-        }
+        return switch (pattern) {
+            case "S__" -> t -> sutCurrent.find(t.getSubject(), null, null);
+            case "_P_" -> t -> sutCurrent.find(null, t.getPredicate(), null);
+            case "__O" -> t -> sutCurrent.find(null, null, t.getObject());
+            case "SP_" -> t -> sutCurrent.find(t.getSubject(), t.getPredicate(), null);
+            case "S_O" -> t -> sutCurrent.find(t.getSubject(), null, t.getObject());
+            case "_PO" -> t -> sutCurrent.find(null, t.getPredicate(), t.getObject());
+            default -> throw new IllegalArgumentException("Unknown pattern: " + pattern);
+        };
     }
 
-    Function<org.apache.shadedJena480.graph.Triple, Iterator<org.apache.shadedJena480.graph.Triple>> getFindFunctionByPattern480(String pattern) {
-        switch (pattern) {
-            case "S__":
-                return t -> sut480.find(t.getSubject(), null, null);
-            case "_P_":
-                return t -> sut480.find(null, t.getPredicate(), null);
-            case "__O":
-                return t -> sut480.find(null, null, t.getObject());
-            case "SP_":
-                return t -> sut480.find(t.getSubject(), t.getPredicate(), null);
-            case "S_O":
-                return t -> sut480.find(t.getSubject(), null, t.getObject());
-            case "_PO":
-                return t -> sut480.find(null, t.getPredicate(), t.getObject());
-            default:
-                throw new IllegalArgumentException("Unknown pattern: " + pattern);
-        }
+    Function<org.apache.shadedJena560.graph.Triple, Iterator<org.apache.shadedJena560.graph.Triple>> getFindFunctionByPattern560(String pattern) {
+        return switch (pattern) {
+            case "S__" -> t -> sut560.find(t.getSubject(), null, null);
+            case "_P_" -> t -> sut560.find(null, t.getPredicate(), null);
+            case "__O" -> t -> sut560.find(null, null, t.getObject());
+            case "SP_" -> t -> sut560.find(t.getSubject(), t.getPredicate(), null);
+            case "S_O" -> t -> sut560.find(t.getSubject(), null, t.getObject());
+            case "_PO" -> t -> sut560.find(null, t.getPredicate(), t.getObject());
+            default -> throw new IllegalArgumentException("Unknown pattern: " + pattern);
+        };
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         Context trialContext = new Context(param1_GraphImplementation);
         switch (trialContext.getJenaVersion()) {
             case CURRENT: {
@@ -181,22 +169,22 @@ public class TestGraphFindByMatchAndCount {
                 java.util.Collections.shuffle(this.triplesToFindCurrent, new Random(4721));
             }
             break;
-            case JENA_4_8_0: {
-                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-                this.graphFindByMatchesAndCount = this::graphFindByMatchesAndCount480;
+            case JENA_5_6_0: {
+                this.sut560 = Releases.v560.createGraph(trialContext.getGraphClass());
+                this.graphFindByMatchesAndCount = this::graphFindByMatchesAndCount560;
 
-                var triples = Releases.v480.readTriples(param0_GraphUri);
-                triples.forEach(this.sut480::add);
+                var triples = Releases.v560.readTriples(param0_GraphUri);
+                triples.forEach(this.sut560::add);
 
                 /*clone the triples because they should not be the same objects*/
-                this.triplesToFind480 = new ArrayList<>(param2_sampleSize);
+                this.triplesToFind560 = new ArrayList<>(param2_sampleSize);
                 var sampleIncrement = triples.size() / param2_sampleSize;
                 for (var i = 0; i < triples.size(); i += sampleIncrement) {
-                    this.triplesToFind480.add(Releases.v480.cloneTriple(triples.get(i)));
+                    this.triplesToFind560.add(Releases.v560.cloneTriple(triples.get(i)));
                 }
                     /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                java.util.Collections.shuffle(this.triplesToFind480, new Random(4721));
+                java.util.Collections.shuffle(this.triplesToFind560, new Random(4721));
             }
             break;
             default:

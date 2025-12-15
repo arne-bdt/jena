@@ -24,7 +24,6 @@ import org.apache.jena.mem.GraphMemRoaring;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
-
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -41,24 +40,27 @@ public class TestGraphContainsAnything {
 
     @Param({
             "../testing/cheeses-0.1.ttl",
-            "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/pizza.owl.rdf",
     })
     public String param0_GraphUri;
 
     @Param({
             "GraphMemFast (current)",
-            "GraphMemRoaring EAGER (current)",
+            "GraphMemValue (current)",
+//            "GraphMemRoaring EAGER (current)",
 //            "GraphMemRoaring LAZY (current)",
-            "GraphMemRoaring LAZY_PARALLEL (current)",
-//            "GraphMem (Jena 4.8.0)",
+//            "GraphMemRoaring LAZY_PARALLEL (current)",
+//            "GraphMemRoaring MINIMAL (current)",
+//            "GraphMemValue (Jena 5.6.0)",
+            "GraphMemFast (Jena 5.6.0)",
+            "GraphMemValue (Jena 5.6.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Function<String, Boolean> graphContains;
     private Graph sutCurrent;
-    private org.apache.shadedJena480.graph.Graph sut480;
+    private org.apache.shadedJena560.graph.Graph sut560;
     private List<Triple> triplesToFindCurrent;
-    private List<org.apache.shadedJena480.graph.Triple> triplesToFind480;
+    private List<org.apache.shadedJena560.graph.Triple> triplesToFind560;
 
     @Benchmark
     public boolean graphContainsS__() {
@@ -102,10 +104,10 @@ public class TestGraphContainsAnything {
         return found;
     }
 
-    private boolean graphContains480(String pattern) {
-        var containsPredicate = getContainsPredicateByPattern480(pattern);
+    private boolean graphContains560(String pattern) {
+        var containsPredicate = getContainsPredicateByPattern560(pattern);
         var found = false;
-        for (var t : triplesToFind480) {
+        for (var t : triplesToFind560) {
             found = containsPredicate.test(t);
             Assert.assertTrue(found);
         }
@@ -113,45 +115,31 @@ public class TestGraphContainsAnything {
     }
 
     Predicate<Triple> getContainsPredicateByPatternCurrent(String pattern) {
-        switch (pattern) {
-            case "S__":
-                return t -> sutCurrent.contains(t.getSubject(), null, null);
-            case "_P_":
-                return t -> sutCurrent.contains(null, t.getPredicate(), null);
-            case "__O":
-                return t -> sutCurrent.contains(null, null, t.getObject());
-            case "SP_":
-                return t -> sutCurrent.contains(t.getSubject(), t.getPredicate(), null);
-            case "S_O":
-                return t -> sutCurrent.contains(t.getSubject(), null, t.getObject());
-            case "_PO":
-                return t -> sutCurrent.contains(null, t.getPredicate(), t.getObject());
-            default:
-                throw new IllegalArgumentException("Unknown pattern: " + pattern);
-        }
+        return switch (pattern) {
+            case "S__" -> t -> sutCurrent.contains(t.getSubject(), null, null);
+            case "_P_" -> t -> sutCurrent.contains(null, t.getPredicate(), null);
+            case "__O" -> t -> sutCurrent.contains(null, null, t.getObject());
+            case "SP_" -> t -> sutCurrent.contains(t.getSubject(), t.getPredicate(), null);
+            case "S_O" -> t -> sutCurrent.contains(t.getSubject(), null, t.getObject());
+            case "_PO" -> t -> sutCurrent.contains(null, t.getPredicate(), t.getObject());
+            default -> throw new IllegalArgumentException("Unknown pattern: " + pattern);
+        };
     }
 
-    Predicate<org.apache.shadedJena480.graph.Triple> getContainsPredicateByPattern480(String pattern) {
-        switch (pattern) {
-            case "S__":
-                return t -> sut480.contains(t.getSubject(), null, null);
-            case "_P_":
-                return t -> sut480.contains(null, t.getPredicate(), null);
-            case "__O":
-                return t -> sut480.contains(null, null, t.getObject());
-            case "SP_":
-                return t -> sut480.contains(t.getSubject(), t.getPredicate(), null);
-            case "S_O":
-                return t -> sut480.contains(t.getSubject(), null, t.getObject());
-            case "_PO":
-                return t -> sut480.contains(null, t.getPredicate(), t.getObject());
-            default:
-                throw new IllegalArgumentException("Unknown pattern: " + pattern);
-        }
+    Predicate<org.apache.shadedJena560.graph.Triple> getContainsPredicateByPattern560(String pattern) {
+        return switch (pattern) {
+            case "S__" -> t -> sut560.contains(t.getSubject(), null, null);
+            case "_P_" -> t -> sut560.contains(null, t.getPredicate(), null);
+            case "__O" -> t -> sut560.contains(null, null, t.getObject());
+            case "SP_" -> t -> sut560.contains(t.getSubject(), t.getPredicate(), null);
+            case "S_O" -> t -> sut560.contains(t.getSubject(), null, t.getObject());
+            case "_PO" -> t -> sut560.contains(null, t.getPredicate(), t.getObject());
+            default -> throw new IllegalArgumentException("Unknown pattern: " + pattern);
+        };
     }
 
     @Setup(Level.Trial)
-    public void setupTrial() throws Exception {
+    public void setupTrial() {
         var trialContext = new Context(param1_GraphImplementation);
         switch (trialContext.getJenaVersion()) {
             case CURRENT: {
@@ -175,17 +163,17 @@ public class TestGraphContainsAnything {
                 Collections.shuffle(this.triplesToFindCurrent, new Random(4721));
             }
             break;
-            case JENA_4_8_0: {
-                this.sut480 = Releases.v480.createGraph(trialContext.getGraphClass());
-                this.graphContains = this::graphContains480;
+            case JENA_5_6_0: {
+                this.sut560 = Releases.v560.createGraph(trialContext.getGraphClass());
+                this.graphContains = this::graphContains560;
 
-                var triples = Releases.v480.readTriples(param0_GraphUri);
-                triples.forEach(this.sut480::add);
+                var triples = Releases.v560.readTriples(param0_GraphUri);
+                triples.forEach(this.sut560::add);
 
                     /* Shuffle is import because the order might play a role. We want to test the performance of the
                        contains method regardless of the order */
-                this.triplesToFind480 = Releases.v480.cloneTriples(triples);
-                Collections.shuffle(this.triplesToFind480, new Random(4721));
+                this.triplesToFind560 = Releases.v560.cloneTriples(triples);
+                Collections.shuffle(this.triplesToFind560, new Random(4721));
             }
             break;
             default:
