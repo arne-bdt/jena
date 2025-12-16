@@ -20,9 +20,18 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.apache.jena</groupId>
-    <artifactId>jena</artifactId>
+    <artifactId>jena-dependencies</artifactId>
     <version>6.0.0-SNAPSHOT</version>
+    <relativePath>../dependencies-pom.xml</relativePath>
   </parent>
+
+  <properties>
+    <!--
+         See ./jena-benchmarks-jmh/pom.xml
+         Overidden by command line "-Dbenchmark.skip=false"
+    -->
+    <benchmark.skip>true</benchmark.skip>
+  </properties>
 
   <name>Apache Jena - Benchmark Suite</name>
   <artifactId>jena-benchmarks</artifactId>
@@ -44,8 +53,13 @@
       <url>https://www.apache.org/licenses/LICENSE-2.0</url>
     </license>
   </licenses>
-
   <modules>
+    <module>../jena-iri3986</module>
+    <module>../jena-langtag</module>
+    <module>../jena-base</module>
+    <module>../jena-core</module>
+    <module>../jena-arq</module>
+    <module>../jena-geosparql</module>
     <module>jena-benchmarks-jmh</module>
     <module>jena-benchmarks-shadedJena560</module>
   </modules>
