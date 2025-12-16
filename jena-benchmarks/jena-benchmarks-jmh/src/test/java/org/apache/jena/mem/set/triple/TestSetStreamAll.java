@@ -40,7 +40,6 @@ public class TestSetStreamAll {
     @Param({
             "../testing/cheeses-0.1.ttl",
             "../testing/pizza.owl.rdf",
-            "../testing/BSBM/bsbm-1m.nt.gz",
     })
     public String param0_GraphUri;
 
