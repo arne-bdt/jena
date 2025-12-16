@@ -205,8 +205,6 @@
         -->
         <module>jena-integration-tests</module>
 
-        <module>jena-benchmarks</module>
-
         <!-- Binary distribution -->
         <module>apache-jena</module>
 
@@ -222,9 +220,6 @@
   </profiles>
 
 
-    </dependencies>
-
-  </dependencyManagement>
 
   <build>
     <defaultGoal>clean test install</defaultGoal>
