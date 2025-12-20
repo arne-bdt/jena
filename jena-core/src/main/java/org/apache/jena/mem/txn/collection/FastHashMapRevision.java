@@ -29,7 +29,7 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 
-public class FastHashMapRevision<K, V> extends FastHashRevisionedBase<K> implements Revision<FastHashMapRevision<K, V>>, JenaMap<K, V> {
+public class FastHashMapRevision<K, V> extends FastHashRevisionedBase<K> implements Revision<FastHashMapRevisionReadonly<K, V>>, JenaMap<K, V> {
 
     protected V[] values;
 
@@ -54,10 +54,10 @@ public class FastHashMapRevision<K, V> extends FastHashRevisionedBase<K> impleme
     }
 
     @Override
-    public final FastHashMapRevisionReadonly<K, V> createRevision() {
-        final var revision = new FastHashMapRevisionReadonly<>(this, true);
-        this.revisionNumber++;
-        return revision;
+    public final FastHashMapRevisionReadonly<K, V> getSnapshot(final int newRevisionNumber) {
+        final var snapshot = new FastHashMapRevisionReadonly<>(this, true);
+        this.revisionNumber = newRevisionNumber;
+        return snapshot;
     }
 
     protected FastHashMapRevision(final FastHashMapRevision<K, V> mapToCopy, final UnaryOperator<V> valueProcessor) {
@@ -110,38 +110,28 @@ public class FastHashMapRevision<K, V> extends FastHashRevisionedBase<K> impleme
     public boolean tryPut(K key, V value) {
         final var hashCode = key.hashCode();
         var pIndex = findPosition(key, hashCode);
-        if (pIndex < 0) {
+        final var isNewKey = pIndex < 0;
+        if(isNewKey) {
             if (tryGrowPositionsArrayIfNeeded()) {
                 pIndex = findPosition(key, hashCode);
             }
-            final var eIndex = getFreeKeyIndex();
-            keys[eIndex] = key;
-            values[eIndex] = value;
-            hashCodesOrDeletedIndices[eIndex] = hashCode;
-            positions[~pIndex] = ~eIndex;
-            return true;
         } else {
-            values[~positions[pIndex]] = value;
-            return false;
+            deleted[~positions[pIndex]] = true;
+            pIndex = ~pIndex;
+            removedKeysCount++;
         }
+        final var eIndex = getFreeKeyIndex();
+        keys[eIndex] = key;
+        values[eIndex] = value;
+        hashCodesOrDeletedIndices[eIndex] = hashCode;
+        positions[~pIndex] = ~eIndex;
+
+        return isNewKey;
     }
 
     @Override
     public void put(K key, V value) {
-        final var hashCode = key.hashCode();
-        var pIndex = findPosition(key, hashCode);
-        if (pIndex < 0) {
-            if (tryGrowPositionsArrayIfNeeded()) {
-                pIndex = findPosition(key, hashCode);
-            }
-            final var eIndex = getFreeKeyIndex();
-            keys[eIndex] = key;
-            values[eIndex] = value;
-            hashCodesOrDeletedIndices[eIndex] = hashCode;
-            positions[~pIndex] = ~eIndex;
-        } else {
-            values[~positions[pIndex]] = value;
-        }
+        tryPut(key, value);
     }
 
     /**

@@ -123,7 +123,7 @@ public class FastHashMapTest2 {
         assertEquals(1, (int) original.get(node("s1")));
         assertEquals(2, (int) original.get(node("s2")));
 
-        var rev0 = original.createRevision();
+        var rev0 = original.getSnapshot(1);
 
         assertEquals(0, rev0.getRevisionNumber());
         assertEquals(1, original.getRevisionNumber());
@@ -160,7 +160,7 @@ public class FastHashMapTest2 {
         assertEquals(0, original.size());
         assertEquals(0, original.getRevisionNumber());
 
-        var rev0 = original.createRevision();
+        var rev0 = original.getSnapshot(1);
         assertEquals(0, rev0.getRevisionNumber());
         assertEquals(1, original.getRevisionNumber());
 
@@ -171,5 +171,24 @@ public class FastHashMapTest2 {
 
         assertTrue(original.containsKey(node("s1")));
         assertFalse(rev0.containsKey(node("s1")));
+    }
+
+    @Test
+    public void testRevisionsHaveNoSideEffects2() {
+        var original = new FastHashMapRevision<Node, Integer>();
+        original.put(node("s1"), 1);
+
+        var snapshot = original.getSnapshot(1);
+
+        assertEquals(1, original.size());
+        assertEquals(1, snapshot.size());
+
+        assertEquals(Integer.valueOf(1), original.get(node("s1")));
+        assertEquals(Integer.valueOf(1), snapshot.get(node("s1")));
+
+        original.put(node("s1"), 2);
+
+        assertEquals(Integer.valueOf(2), original.get(node("s1")));
+        assertEquals(Integer.valueOf(1), snapshot.get(node("s1")));
     }
 }
