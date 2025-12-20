@@ -24,5 +24,5 @@ package org.apache.jena.mem.txn.collection;
  */
 public interface Revision<E> {
     int getRevisionNumber();
-    E createRevision();
+    E getSnapshot(final int newRevisionNumber);
 }

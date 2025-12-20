@@ -44,10 +44,10 @@ public class FastHashSetRevision<K> extends FastHashRevisionedBase<K> implements
     }
 
     @Override
-    public final FastHashSetRevisionReadonly<K> createRevision() {
-        final var revision = new FastHashSetRevisionReadonly<>(this, true);
-        this.revisionNumber++;
-        return revision;
+    public final FastHashSetRevisionReadonly<K> getSnapshot(final int newRevisionNumber) {
+        final var snapshot = new FastHashSetRevisionReadonly<>(this, true);
+        this.revisionNumber = newRevisionNumber;
+        return snapshot;
     }
 
     @Override
