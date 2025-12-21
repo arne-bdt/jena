@@ -33,12 +33,12 @@ public class FastHashMapRevision<K, V> extends FastHashRevisionedBase<K> impleme
 
     protected V[] values;
 
-    protected FastHashMapRevision(int initialSize) {
+    public FastHashMapRevision(int initialSize) {
         super(initialSize);
         this.values = newValuesArray(keys.length);
     }
 
-    protected FastHashMapRevision() {
+    public FastHashMapRevision() {
         super();
         this.values = newValuesArray(keys.length);
     }
