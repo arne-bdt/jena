@@ -18,12 +18,13 @@
 package org.apache.jena.mem.txn.collection;
 
 import org.apache.jena.graph.Node;
+import org.apache.jena.mem.collection.AbstractJenaMapNodeTest;
 import org.apache.jena.mem.collection.JenaMap;
 
-public class FastHashMapTest extends AbstractJenaMapNodeTest {
+public class FastHashMapPersistableTest extends AbstractJenaMapNodeTest {
 
     @Override
     protected JenaMap<Node, Object> createNodeMap() {
-        return new FastHashMapRevision<>();
+        return new FastHashMapPersistable<>();
     }
 }

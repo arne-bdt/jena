@@ -22,7 +22,8 @@ package org.apache.jena.mem.txn.collection;
  *
  * @param <E> The type of the revision object.
  */
-public interface Revision<E> {
-    int getRevisionNumber();
-    E getSnapshot(final int newRevisionNumber);
+public interface Persistable<E extends Persistable<E>> {
+    boolean isImmutable();
+    E getMutableParent();
+    E createImmutableChild();
 }

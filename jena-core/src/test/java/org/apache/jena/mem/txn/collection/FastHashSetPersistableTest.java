@@ -18,15 +18,16 @@
 package org.apache.jena.mem.txn.collection;
 
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.collection.AbstractJenaSetTripleTest;
 import org.apache.jena.mem.collection.FastHashSet;
 import org.apache.jena.mem.collection.JenaSet;
 
 /**
  * This test shall test only the parts of the {@link FastHashSet} which are not tested by the {@link AbstractJenaSetTripleTest}.
  */
-public class FastHashSetTest extends AbstractJenaSetTripleTest {
+public class FastHashSetPersistableTest extends AbstractJenaSetTripleTest {
     @Override
     protected JenaSet<Triple> createTripleSet() {
-        return new FastHashSetRevision<>();
+        return new FastHashSetPersistable<>();
     }
 }

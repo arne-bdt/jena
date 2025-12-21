@@ -31,13 +31,13 @@ import static org.junit.Assert.*;
 /**
  * This test shall test only the parts of the {@link FastHashSet} which are not tested by the {@link AbstractJenaSetTripleTest}.
  */
-public class FastHashSetTest2 {
+public class FastHashSetTestPersistable2 {
 
-    private FastHashSetRevision<String> sut;
+    private FastHashSetPersistable<String> sut;
 
     @Before
     public void setUp() {
-        sut = new FastHashSetRevision<>();
+        sut = new FastHashSetPersistable<>();
     }
 
     @Test
@@ -89,7 +89,7 @@ public class FastHashSetTest2 {
             }
         };
 
-        var objectHashSet = new FastHashSetRevision<>();
+        var objectHashSet = new FastHashSetPersistable<>();
         assertEquals(0, objectHashSet.addAndGetIndex(a));
         assertEquals(1, objectHashSet.addAndGetIndex(b));
         assertEquals(2, objectHashSet.addAndGetIndex(c));
@@ -102,7 +102,7 @@ public class FastHashSetTest2 {
 
     @Test
     public void testAddAndGetIndexWithInitialSize() {
-        sut = new FastHashSetRevision<>(3);
+        sut = new FastHashSetPersistable<>(3);
         assertEquals(0, sut.addAndGetIndex("a"));
         assertEquals(1, sut.addAndGetIndex("b"));
         assertEquals(2, sut.addAndGetIndex("c"));
@@ -143,13 +143,13 @@ public class FastHashSetTest2 {
 
     @Test
     public void testCopyConstructor() {
-        var original = new FastHashSetRevision<>();
+        var original = new FastHashSetPersistable<>();
         original.addAndGetIndex(node("s"));
         original.addAndGetIndex(node("s1"));
         original.addAndGetIndex(node("s2"));
         assertEquals(3, original.size());
 
-        var copy = new FastHashSetRevision<>(original, false);
+        var copy = new FastHashSetPersistable<>(original, false);
         assertEquals(3, copy.size());
         assertTrue(copy.containsKey(node("s")));
         assertTrue(copy.containsKey(node("s1")));
@@ -159,13 +159,13 @@ public class FastHashSetTest2 {
 
     @Test
     public void testCopyConstructorAddAndDeleteHasNoSideEffects() {
-        var original = new FastHashSetRevision<>();
+        var original = new FastHashSetPersistable<>();
         original.addAndGetIndex(node("s"));
         original.addAndGetIndex(node("s1"));
         original.addAndGetIndex(node("s2"));
         assertEquals(3, original.size());
 
-        var copy = new FastHashSetRevision<>(original, false);
+        var copy = new FastHashSetPersistable<>(original, false);
         copy.removeAndGetIndex(node("s1"));
         copy.addAndGetIndex(node("s3"));
         copy.addAndGetIndex(node("s4"));
@@ -189,7 +189,7 @@ public class FastHashSetTest2 {
     public void testindexedKeyIterator() {
         var items = List.of("a", "b", "c", "d", "e");
 
-        sut = new FastHashSetRevision<>(3);
+        sut = new FastHashSetPersistable<>(3);
         for (String item : items) {
             sut.addAndGetIndex(item);
         }
@@ -206,7 +206,7 @@ public class FastHashSetTest2 {
 
     @Test
     public void testindexedKeyIteratorEmpty() {
-        sut = new FastHashSetRevision<>(3);
+        sut = new FastHashSetPersistable<>(3);
         var iterator = sut.indexedKeyIterator();
         assertFalse(iterator.hasNext());
     }
@@ -215,7 +215,7 @@ public class FastHashSetTest2 {
     public void testIndexedKeySpliterator() {
         var items = List.of("a", "b", "c", "d", "e");
 
-        sut = new FastHashSetRevision<>(3);
+        sut = new FastHashSetPersistable<>(3);
         for (String item : items) {
             sut.addAndGetIndex(item);
         }
@@ -237,7 +237,7 @@ public class FastHashSetTest2 {
     public void testIndexedKeyStream() {
         var items = List.of("a", "b", "c", "d", "e");
 
-        sut = new FastHashSetRevision<>(3);
+        sut = new FastHashSetPersistable<>(3);
         for (String item : items) {
             sut.addAndGetIndex(item);
         }
@@ -259,7 +259,7 @@ public class FastHashSetTest2 {
             checkSum+= i;
         }
 
-        sut = new FastHashSetRevision<>();
+        sut = new FastHashSetPersistable<>();
         for (var value : items) {
             sut.addAndGetIndex(value.toString());
         }
@@ -272,7 +272,7 @@ public class FastHashSetTest2 {
 
     @Test
     public void testIndexedKeySpliteratorAdvanceThrowsConcurrentModificationException() {
-        sut = new FastHashSetRevision<>(3);
+        sut = new FastHashSetPersistable<>(3);
         sut.tryAdd("a");
         var spliterator = sut.indexedKeySpliterator();
         sut.tryAdd("b");
@@ -282,7 +282,7 @@ public class FastHashSetTest2 {
 
     @Test
     public void testIndexedKeySpliteratorForEachRemainingThrowsConcurrentModificationException() {
-        sut = new FastHashSetRevision<>(3);
+        sut = new FastHashSetPersistable<>(3);
         sut.tryAdd("a");
         var spliterator = sut.indexedKeySpliterator();
         sut.tryAdd("b");
@@ -292,7 +292,7 @@ public class FastHashSetTest2 {
 
     @Test
     public void testIndexedKeyIteratorForEachRemainingThrowsConcurrentModificationException() {
-        sut = new FastHashSetRevision<>(3);
+        sut = new FastHashSetPersistable<>(3);
         sut.tryAdd("a");
         var spliterator = sut.indexedKeyIterator();
         sut.tryAdd("b");
@@ -302,7 +302,7 @@ public class FastHashSetTest2 {
 
     @Test
     public void testIndexedKeyIteratorNextThrowsConcurrentModificationException() {
-        sut = new FastHashSetRevision<>(3);
+        sut = new FastHashSetPersistable<>(3);
         sut.tryAdd("a");
         var spliterator = sut.indexedKeyIterator();
         sut.tryAdd("b");
