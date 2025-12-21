@@ -20,10 +20,28 @@ package org.apache.jena.mem.txn.collection;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-public final class FastHashMapRevisionReadonly<K, V> extends FastHashMapRevision<K, V> {
+public final class FastHashMapPersistableImmutable<K, V> extends FastHashMapPersistable<K, V> {
 
-    public FastHashMapRevisionReadonly(FastHashMapRevision<K, V> base, boolean createRevision) {
-        super(base, createRevision);
+    private final FastHashMapPersistable<K, V> mutableParent;
+
+    public FastHashMapPersistableImmutable(FastHashMapPersistable<K, V> base, boolean createImmutableChild) {
+        super(base, createImmutableChild);
+        this.mutableParent = createImmutableChild ? base : base.getMutableParent();
+    }
+
+    @Override
+    public boolean isImmutable() {
+        return true;
+    }
+
+    @Override
+    public FastHashMapPersistable<K, V> getMutableParent() {
+        return mutableParent;
+    }
+
+    @Override
+    public final FastHashMapPersistable<K, V> createImmutableChild() {
+        throw new UnsupportedOperationException("This map is already immutable");
     }
 
     @Override

@@ -17,9 +17,28 @@
  */
 package org.apache.jena.mem.txn.collection;
 
-public final class FastHashSetRevisionReadonly<K> extends FastHashSetRevision<K> {
-    public FastHashSetRevisionReadonly(FastHashSetRevision<K> base, boolean createRevision) {
-        super(base, createRevision);
+public final class FastHashSetPersistableImmutable<K> extends FastHashSetPersistable<K> {
+
+    private final FastHashSetPersistable<K> mutableParent;
+
+    public FastHashSetPersistableImmutable(FastHashSetPersistable<K> base, boolean createImmutableChild) {
+        super(base, createImmutableChild);
+        this.mutableParent = createImmutableChild ? base : base.getMutableParent();
+    }
+
+    @Override
+    public boolean isImmutable() {
+        return true;
+    }
+
+    @Override
+    public FastHashSetPersistable<K> getMutableParent() {
+        return mutableParent;
+    }
+
+    @Override
+    public FastHashSetPersistable<K> createImmutableChild() {
+        throw new UnsupportedOperationException("This map is already immutable");
     }
 
     @Override

@@ -29,25 +29,33 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 
-public class FastHashSetRevision<K> extends FastHashRevisionedBase<K> implements Revision<FastHashSetRevisionReadonly<K>>, JenaSetHashOptimized<K> {
+public class FastHashSetPersistable<K> extends FastHashPersistableBase<K> implements Persistable<FastHashSetPersistable<K>>, JenaSetHashOptimized<K> {
 
-    public FastHashSetRevision(int initialSize) {
+    public FastHashSetPersistable(int initialSize) {
         super(initialSize);
     }
 
-    public FastHashSetRevision() {
+    public FastHashSetPersistable() {
         super();
     }
 
-    protected FastHashSetRevision(final FastHashSetRevision<K> base, boolean createRevision) {
-        super(base, createRevision);
+    protected FastHashSetPersistable(final FastHashSetPersistable<K> base, boolean createImmutableChild) {
+        super(base, createImmutableChild);
     }
 
     @Override
-    public final FastHashSetRevisionReadonly<K> getSnapshot(final int newRevisionNumber) {
-        final var snapshot = new FastHashSetRevisionReadonly<>(this, true);
-        this.revisionNumber = newRevisionNumber;
-        return snapshot;
+    public boolean isImmutable() {
+        return false;
+    }
+
+    @Override
+    public FastHashSetPersistable<K> getMutableParent() {
+        throw new UnsupportedOperationException("This map is already mutable");
+    }
+
+    @Override
+    public FastHashSetPersistable<K> createImmutableChild() {
+        return new FastHashSetPersistableImmutable<>(this, true);
     }
 
     @Override
