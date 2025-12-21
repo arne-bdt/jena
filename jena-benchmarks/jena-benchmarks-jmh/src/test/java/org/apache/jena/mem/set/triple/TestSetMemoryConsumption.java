@@ -58,7 +58,7 @@ public class TestSetMemoryConsumption {
     private static double runGcAndGetUsedMemoryInMB() {
         System.gc();
         Runtime.getRuntime().gc();
-        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024L), RoundingMode.HALF_UP).divide(BigDecimal.valueOf(1024L), RoundingMode.HALF_UP).doubleValue();
+        return BigDecimal.valueOf(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()).divide(BigDecimal.valueOf(1024L), 3, RoundingMode.HALF_UP).divide(BigDecimal.valueOf(1024L), 3, RoundingMode.HALF_UP).doubleValue();
     }
 
     @Benchmark
