@@ -176,7 +176,9 @@ public abstract class FastHashRevisionedBase<K> implements JenaMapSetCommon<K> {
         if (lastDeletedIndex == -1) {
             index = keysPos++;
             if (index == keys.length) {
+                keysPos--;
                 growKeysAndHashCodeArrays();
+                return getFreeKeyIndex();
             }
         } else {
             index = lastDeletedIndex;
@@ -196,6 +198,9 @@ public abstract class FastHashRevisionedBase<K> implements JenaMapSetCommon<K> {
         if (newSize < 0) {
             newSize = Integer.MAX_VALUE;
         }
+        if (newSize < keys.length) {
+            newSize = keys.length;
+        }
         final var oldKeys = this.keys;
         final var oldHashCodes = this.hashCodesOrDeletedIndices;
         final var oldDeleted = this.deleted;
@@ -213,12 +218,14 @@ public abstract class FastHashRevisionedBase<K> implements JenaMapSetCommon<K> {
 
     protected void afterGrowKeysAndHashCodeArraysProcessDeletedIndices(final boolean[] oldDeleted) {
         lastDeletedIndex = -1;
+        removedKeysCount = 0;
         var deletedIndex = oldDeleted.length;
         while (0 < deletedIndex--) {
             if (oldDeleted[deletedIndex]) {
                 keys[deletedIndex] = null;
                 hashCodesOrDeletedIndices[deletedIndex] = lastDeletedIndex;
                 lastDeletedIndex = deletedIndex;
+                removedKeysCount++;
                 break;
             }
         }
