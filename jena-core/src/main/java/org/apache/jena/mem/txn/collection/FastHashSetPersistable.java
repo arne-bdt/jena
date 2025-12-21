@@ -19,6 +19,7 @@
 package org.apache.jena.mem.txn.collection;
 
 import org.apache.jena.mem.collection.JenaSetHashOptimized;
+import org.apache.jena.mem.txn.Persistable;
 import org.apache.jena.mem.txn.iterator.SparseArrayIndexedIterator;
 import org.apache.jena.mem.txn.spliterator.SparseArrayIndexedSpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -29,7 +30,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 
-public class FastHashSetPersistable<K> extends FastHashPersistableBase<K> implements Persistable<FastHashSetPersistable<K>>, JenaSetHashOptimized<K> {
+public class FastHashSetPersistable<K> extends FastHashPersistableBase<K> implements JenaSetHashOptimized<K> {
 
     public FastHashSetPersistable(int initialSize) {
         super(initialSize);
@@ -43,18 +44,15 @@ public class FastHashSetPersistable<K> extends FastHashPersistableBase<K> implem
         super(base, createImmutableChild);
     }
 
-    @Override
     public boolean isImmutable() {
         return false;
     }
 
-    @Override
     public FastHashSetPersistable<K> getMutableParent() {
         throw new UnsupportedOperationException("This map is already mutable");
     }
 
-    @Override
-    public FastHashSetPersistable<K> createImmutableChild() {
+    public FastHashSetPersistableImmutable<K> createImmutableChild() {
         return new FastHashSetPersistableImmutable<>(this, true);
     }
 

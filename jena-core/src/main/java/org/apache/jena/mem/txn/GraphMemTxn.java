@@ -15,15 +15,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem.txn.collection;
 
-/**
- * An object that supports revisions.
- *
- * @param <E> The type of the revision object.
- */
-public interface Persistable<E extends Persistable<E>> {
-    boolean isImmutable();
-    E getMutableParent();
-    E createImmutableChild();
+package org.apache.jena.mem.txn;
+
+import org.apache.jena.mem.GraphMem;
+import org.apache.jena.mem.GraphMemLegacy;
+import org.apache.jena.mem.store.TripleStore;
+import org.apache.jena.mem.store.fast.FastTripleStore;
+import org.apache.jena.mem.txn.store.FastTripleStorePersistable;
+import org.apache.jena.mem.txn.store.TripleStorePersistable;
+
+public class GraphMemTxn extends GraphMem {
+
+    public GraphMemTxn() {
+        super(new FastTripleStorePersistable());
+    }
+
+    private GraphMemTxn(final TripleStorePersistable tripleStore) {
+        super(tripleStore);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public GraphMemTxn copy() {
+        return new GraphMemTxn((TripleStorePersistable) this.tripleStore.copy());
+    }
 }

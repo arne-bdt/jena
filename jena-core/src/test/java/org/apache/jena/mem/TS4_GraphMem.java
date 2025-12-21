@@ -33,6 +33,7 @@ import org.apache.jena.mem.store.legacy.*;
 import org.apache.jena.mem.store.roaring.RoaringBitmapTripleIteratorTest;
 import org.apache.jena.mem.store.roaring.RoaringTripleStoreTest;
 
+import org.apache.jena.mem.txn.GraphMemTxnTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
@@ -71,6 +72,9 @@ import org.junit.runners.Suite;
     NodeToTriplesMapMemTest.class,
     FieldFilterTest.class,
     HashedTripleBunchTest.class,
+
+    // txn
+    GraphMemTxnTest.class,
 
     // pattern/
     PatternClassifierTest.class,

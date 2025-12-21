@@ -29,18 +29,16 @@ public final class FastHashMapPersistableImmutable<K, V> extends FastHashMapPers
         this.mutableParent = createImmutableChild ? base : base.getMutableParent();
     }
 
-    @Override
     public boolean isImmutable() {
         return true;
     }
 
-    @Override
     public FastHashMapPersistable<K, V> getMutableParent() {
         return mutableParent;
     }
 
     @Override
-    public final FastHashMapPersistable<K, V> createImmutableChild() {
+    public FastHashMapPersistableImmutable<K, V> createImmutableChild() {
         throw new UnsupportedOperationException("This map is already immutable");
     }
 

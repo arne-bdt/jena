@@ -216,7 +216,16 @@ public class Triple implements Serializable
      * etc.
      */
     public static int hashCode( Node s, Node p, Node o )
-    { return (s.hashCode() >> 1) ^ p.hashCode() ^ (o.hashCode() << 1); }
+    { return hashCode( s.hashCode(), p.hashCode(), o.hashCode() ); }
+
+    /**
+     * Return the munged hashCodes of the specified nodes, an exclusive-or of the
+     * slightly-shifted component hashcodes; this means (almost) all of the bits
+     * count, and the order matters, so (S P O) has a different hash from (O P S),
+     * etc.
+     */
+    public static int hashCode(int sHash, int pHash, int oHash)
+    { return (sHash >> 1) ^ pHash ^ (oHash << 1); }
 
     /**
         A Field is a selector from Triples; it allows selectors to be passed
