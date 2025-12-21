@@ -37,7 +37,7 @@ import org.apache.jena.util.iterator.ExtendedIterator;
  */
 public class GraphMem extends GraphBase implements GraphWithPerform, Copyable<GraphMem> {
 
-    final TripleStore tripleStore;
+    protected final TripleStore tripleStore;
 
     protected GraphMem(TripleStore tripleStore) {
         super();

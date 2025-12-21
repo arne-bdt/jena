@@ -15,87 +15,103 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.jena.mem.txn.collection;
+package org.apache.jena.mem.txn.store;
 
-public final class FastHashSetPersistableImmutable<K> extends FastHashSetPersistable<K> {
+import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.collection.FastHashSet;
+import org.apache.jena.mem.collection.JenaSet;
+import org.apache.jena.mem.txn.collection.FastHashSetPersistable;
 
-    private final FastHashSetPersistable<K> mutableParent;
+/**
+ * A set of triples - backed by {@link FastHashSet}.
+ */
+public class FastHashedTripleBunchPersistableImmutable extends FastHashedTripleBunchPersistable {
 
-    public FastHashSetPersistableImmutable(FastHashSetPersistable<K> base, boolean createImmutableChild) {
-        super(base, createImmutableChild);
-        this.mutableParent = createImmutableChild ? base : base.getMutableParent();
-    }
+    private final FastHashedTripleBunchPersistable mutableParentBunch;
 
-    public boolean isImmutable() {
-        return true;
-    }
-
-    public FastHashSetPersistable<K> getMutableParent() {
-        return mutableParent;
+    /**
+     * Copy constructor.
+     * The new bunch will contain all the same triples of the bunch to copy.
+     *
+     * @param bunchToCopy
+     */
+    private FastHashedTripleBunchPersistableImmutable(final FastHashedTripleBunchPersistable bunchToCopy, boolean createImmutableChild) {
+        super(bunchToCopy, createImmutableChild);
+        this.mutableParentBunch = createImmutableChild ? bunchToCopy : bunchToCopy.getMutableParentBunch();
     }
 
     @Override
-    public FastHashSetPersistableImmutable<K> createImmutableChild() {
-        throw new UnsupportedOperationException("This map is already immutable");
+    public FastHashedTripleBunchPersistable getMutableParentBunch() {
+        return mutableParentBunch;
     }
 
     @Override
-    public boolean tryAdd(K key) {
+    public FastHashedTripleBunchPersistable createImmutableChildBunch() {
+        throw new UnsupportedOperationException("This bunch is already immutable.");
+    }
+
+    @Override
+    public FastHashedTripleBunchPersistableImmutable copy() {
+        return new FastHashedTripleBunchPersistableImmutable(this, false);
+    }
+
+    @Override
+    public boolean tryAdd(Triple key) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public boolean tryAdd(K value, int hashCode) {
+    public boolean tryAdd(Triple value, int hashCode) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public int addAndGetIndex(K value) {
+    public int addAndGetIndex(Triple value) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public int addAndGetIndex(K value, int hashCode) {
+    public int addAndGetIndex(Triple value, int hashCode) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public void addUnchecked(K key) {
+    public void addUnchecked(Triple key) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public void addUnchecked(K value, int hashCode) {
+    public void addUnchecked(Triple value, int hashCode) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public boolean tryRemove(K o) {
+    public boolean tryRemove(Triple o) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public boolean tryRemove(K e, int hashCode) {
+    public boolean tryRemove(Triple e, int hashCode) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public int removeAndGetIndex(K e) {
+    public int removeAndGetIndex(Triple e) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public int removeAndGetIndex(K e, int hashCode) {
+    public int removeAndGetIndex(Triple e, int hashCode) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public void removeUnchecked(K e) {
+    public void removeUnchecked(Triple e) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 
     @Override
-    public void removeUnchecked(K e, int hashCode) {
+    public void removeUnchecked(Triple e, int hashCode) {
         throw new UnsupportedOperationException("This set is read-only");
     }
 

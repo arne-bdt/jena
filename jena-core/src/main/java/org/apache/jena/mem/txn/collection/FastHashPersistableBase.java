@@ -392,7 +392,7 @@ public abstract class FastHashPersistableBase<K> implements JenaMapSetCommon<K> 
         return new SparseArrayIterator<>(keys, deleted, keysPos, checkForConcurrentModification);
     }
 
-    protected final int findPosition(final K e, final int hashCode) {
+    public final int findPosition(final K e, final int hashCode) {
         var pIndex = calcStartIndexByHashCode(hashCode);
         while (true) {
             if (0 == positions[pIndex]) {
