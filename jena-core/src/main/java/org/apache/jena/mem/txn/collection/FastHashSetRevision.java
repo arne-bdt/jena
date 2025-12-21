@@ -31,11 +31,11 @@ import java.util.stream.StreamSupport;
 
 public class FastHashSetRevision<K> extends FastHashRevisionedBase<K> implements Revision<FastHashSetRevisionReadonly<K>>, JenaSetHashOptimized<K> {
 
-    protected FastHashSetRevision(int initialSize) {
+    public FastHashSetRevision(int initialSize) {
         super(initialSize);
     }
 
-    protected FastHashSetRevision() {
+    public FastHashSetRevision() {
         super();
     }
 
