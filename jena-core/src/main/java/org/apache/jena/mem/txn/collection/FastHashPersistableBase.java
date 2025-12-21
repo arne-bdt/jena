@@ -27,7 +27,7 @@ import java.util.Spliterator;
 import java.util.function.Predicate;
 
 
-public abstract class FastHashRevisionedBase<K> implements JenaMapSetCommon<K> {
+public abstract class FastHashPersistableBase<K> implements JenaMapSetCommon<K> {
     protected static final int MINIMUM_HASHES_SIZE = 16;
     protected static final int MINIMUM_ELEMENTS_SIZE = 8;
     protected int keysPos = 0;
@@ -36,11 +36,10 @@ public abstract class FastHashRevisionedBase<K> implements JenaMapSetCommon<K> {
     protected boolean[] deleted;
     protected int lastDeletedIndex = -1;
     protected int removedKeysCount = 0;
-    protected int revisionNumber = 0;
 
     protected int[] positions;
 
-    protected FastHashRevisionedBase(int initialSize) {
+    protected FastHashPersistableBase(int initialSize) {
         if(initialSize < 2) {
             initialSize = 2;
         }
@@ -59,21 +58,21 @@ public abstract class FastHashRevisionedBase<K> implements JenaMapSetCommon<K> {
         return size;
     }
 
-    protected FastHashRevisionedBase() {
+    protected FastHashPersistableBase() {
         this.positions = new int[MINIMUM_HASHES_SIZE];
         this.keys = newKeysArray(MINIMUM_ELEMENTS_SIZE);
         this.hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
         this.deleted = new boolean[MINIMUM_ELEMENTS_SIZE];
     }
 
-    protected <T extends FastHashRevisionedBase<K>> FastHashRevisionedBase(final T base, boolean createRevision)  {
+    protected <T extends FastHashPersistableBase<K>> FastHashPersistableBase(final T base, boolean createImmutableChild)  {
         this.positions = new int[base.positions.length];
         this.deleted = new boolean[base.deleted.length];
 
         System.arraycopy(base.positions, 0, this.positions, 0, base.positions.length);
         System.arraycopy(base.deleted, 0, this.deleted, 0, base.deleted.length);
 
-        if(createRevision) {
+        if(createImmutableChild) {
             this.keys = base.keys;
             this.hashCodesOrDeletedIndices = base.hashCodesOrDeletedIndices;
         } else {
@@ -87,11 +86,6 @@ public abstract class FastHashRevisionedBase<K> implements JenaMapSetCommon<K> {
         this.keysPos = base.keysPos;
         this.lastDeletedIndex = base.lastDeletedIndex;
         this.removedKeysCount = base.removedKeysCount;
-        this.revisionNumber = base.revisionNumber;
-    }
-
-    public final int getRevisionNumber() {
-        return revisionNumber;
     }
 
     /**

@@ -23,11 +23,11 @@ import org.junit.Test;
 import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.junit.Assert.*;
 
-public class FastHashMapTest2 {
+public class FastHashMapPersistableTest2 {
 
     @Test
     public void testConstructWithInitialSizeAndAdd() {
-        var sut = new FastHashMapRevision<Node, Object>(3);
+        var sut = new FastHashMapPersistable<Node, Object>(3);
         sut.put(node("s"), null);
         sut.put(node("s1"), null);
         sut.put(node("s2"), null);
@@ -38,7 +38,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testGetValueAt() {
-        var sut = new FastHashMapRevision<Node, Integer>();
+        var sut = new FastHashMapPersistable<Node, Integer>();
         sut.put(node("s"), 0);
         sut.put(node("s1"), 1);
         sut.put(node("s2"), 2);
@@ -50,13 +50,13 @@ public class FastHashMapTest2 {
 
     @Test
     public void testCopyConstructor() {
-        var original = new FastHashMapRevision<Node, Integer>();
+        var original = new FastHashMapPersistable<Node, Integer>();
         original.put(node("s"), 0);
         original.put(node("s1"), 1);
         original.put(node("s2"), 2);
         assertEquals(3, original.size());
 
-        var copy = new FastHashMapRevision<>(original, false);
+        var copy = new FastHashMapPersistable<>(original, false);
         assertEquals(3, copy.size());
         assertEquals(0, (int) copy.get(node("s")));
         assertEquals(1, (int) copy.get(node("s1")));
@@ -65,13 +65,13 @@ public class FastHashMapTest2 {
 
     @Test
     public void testCopyConstructorWithValueMapping() {
-        var original = new FastHashMapRevision<Node, Integer>();
+        var original = new FastHashMapPersistable<Node, Integer>();
         original.put(node("s"), 0);
         original.put(node("s1"), 1);
         original.put(node("s2"), 2);
         assertEquals(3, original.size());
 
-        var copy = new FastHashMapRevision<Node, Integer>(original, i -> (int) i + 1);
+        var copy = new FastHashMapPersistable<Node, Integer>(original, i -> (int) i + 1);
         assertEquals(3, copy.size());
         assertEquals(1, (int) copy.get(node("s")));
         assertEquals(2, (int) copy.get(node("s1")));
@@ -84,13 +84,13 @@ public class FastHashMapTest2 {
 
     @Test
     public void testCopyConstructorAddAndDeleteHasNoSideEffects() {
-        var original = new FastHashMapRevision<Node, Integer>();
+        var original = new FastHashMapPersistable<Node, Integer>();
         original.put(node("s"), 0);
         original.put(node("s1"), 1);
         original.put(node("s2"), 2);
         assertEquals(3, original.size());
 
-        var copy = new FastHashMapRevision<Node, Integer>(original, false);
+        var copy = new FastHashMapPersistable<Node, Integer>(original, false);
         copy.removeAndGetIndex(node("s1"));
         copy.put(node("s3"), 3);
         copy.put(node("s4"), 4);
@@ -110,23 +110,18 @@ public class FastHashMapTest2 {
 
     @Test
     public void testRevisionsHaveNoSideEffects() {
-        var original = new FastHashMapRevision<Node, Integer>();
+        var original = new FastHashMapPersistable<Node, Integer>();
         original.put(node("s"), 0);
         original.put(node("s1"), 1);
         original.put(node("s2"), 2);
         assertEquals(3, original.size());
-
-        assertEquals(0, original.getRevisionNumber());
 
         assertEquals(3, original.size());
         assertEquals(0, (int) original.get(node("s")));
         assertEquals(1, (int) original.get(node("s1")));
         assertEquals(2, (int) original.get(node("s2")));
 
-        var rev0 = original.getSnapshot(1);
-
-        assertEquals(0, rev0.getRevisionNumber());
-        assertEquals(1, original.getRevisionNumber());
+        var rev0 = original.createImmutableChild();
 
         assertEquals(3, original.size());
         assertEquals(0, (int) original.get(node("s")));
@@ -156,13 +151,10 @@ public class FastHashMapTest2 {
 
     @Test
     public void testRevisionsHaveNoSideEffects1() {
-        var original = new FastHashMapRevision<Node, Integer>();
+        var original = new FastHashMapPersistable<Node, Integer>();
         assertEquals(0, original.size());
-        assertEquals(0, original.getRevisionNumber());
 
-        var rev0 = original.getSnapshot(1);
-        assertEquals(0, rev0.getRevisionNumber());
-        assertEquals(1, original.getRevisionNumber());
+        var rev0 = original.createImmutableChild();
 
         original.put(node("s1"), 1);
 
@@ -175,10 +167,10 @@ public class FastHashMapTest2 {
 
     @Test
     public void testRevisionsHaveNoSideEffects2() {
-        var original = new FastHashMapRevision<Node, Integer>();
+        var original = new FastHashMapPersistable<Node, Integer>();
         original.put(node("s1"), 1);
 
-        var snapshot = original.getSnapshot(1);
+        var snapshot = original.createImmutableChild();
 
         assertEquals(1, original.size());
         assertEquals(1, snapshot.size());
@@ -217,7 +209,7 @@ public class FastHashMapTest2 {
                 return key.equals(that.key);
             }
         }
-        var sut = new FastHashMapRevision<KeyWithCollidingHash, Integer>(4);
+        var sut = new FastHashMapPersistable<KeyWithCollidingHash, Integer>(4);
         sut.put(new KeyWithCollidingHash("A"), 1);
         assertEquals(1, sut.size());
         assertEquals(Integer.valueOf(1), sut.get(new KeyWithCollidingHash("A")));
@@ -264,7 +256,7 @@ public class FastHashMapTest2 {
                 return key.equals(that.key);
             }
         }
-        var sut = new FastHashMapRevision<KeyWithCollidingHash, Integer>(16);
+        var sut = new FastHashMapPersistable<KeyWithCollidingHash, Integer>(16);
         sut.put(new KeyWithCollidingHash("A"), 1);
         sut.put(new KeyWithCollidingHash("B"), 2);
         sut.put(new KeyWithCollidingHash("C"), 3);
@@ -287,6 +279,4 @@ public class FastHashMapTest2 {
         assertEquals(Integer.valueOf(2), sut.get(new KeyWithCollidingHash("B")));
         assertEquals(Integer.valueOf(3), sut.get(new KeyWithCollidingHash("C")));
     }
-
-
 }

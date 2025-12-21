@@ -29,21 +29,21 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 
-public class FastHashMapRevision<K, V> extends FastHashRevisionedBase<K> implements Revision<FastHashMapRevisionReadonly<K, V>>, JenaMap<K, V> {
+public class FastHashMapPersistable<K, V> extends FastHashPersistableBase<K> implements Persistable<FastHashMapPersistable<K, V>>, JenaMap<K, V> {
 
     protected V[] values;
 
-    public FastHashMapRevision(int initialSize) {
+    public FastHashMapPersistable(int initialSize) {
         super(initialSize);
         this.values = newValuesArray(keys.length);
     }
 
-    public FastHashMapRevision() {
+    public FastHashMapPersistable() {
         super();
         this.values = newValuesArray(keys.length);
     }
 
-    protected FastHashMapRevision(final FastHashMapRevision<K, V> base, boolean createRevision) {
+    protected FastHashMapPersistable(final FastHashMapPersistable<K, V> base, boolean createRevision) {
         super(base, createRevision);
         if(createRevision) {
             this.values = base.values;
@@ -53,14 +53,7 @@ public class FastHashMapRevision<K, V> extends FastHashRevisionedBase<K> impleme
         }
     }
 
-    @Override
-    public final FastHashMapRevisionReadonly<K, V> getSnapshot(final int newRevisionNumber) {
-        final var snapshot = new FastHashMapRevisionReadonly<>(this, true);
-        this.revisionNumber = newRevisionNumber;
-        return snapshot;
-    }
-
-    protected FastHashMapRevision(final FastHashMapRevision<K, V> mapToCopy, final UnaryOperator<V> valueProcessor) {
+    protected FastHashMapPersistable(final FastHashMapPersistable<K, V> mapToCopy, final UnaryOperator<V> valueProcessor) {
         super(mapToCopy, false);
         this.values = newValuesArray(keys.length);
         for (int i = 0; i < mapToCopy.values.length; i++) {
@@ -69,6 +62,21 @@ public class FastHashMapRevision<K, V> extends FastHashRevisionedBase<K> impleme
                 this.values[i] = valueProcessor.apply(value);
             }
         }
+    }
+
+    @Override
+    public boolean isImmutable() {
+        return false;
+    }
+
+    @Override
+    public FastHashMapPersistable<K, V> getMutableParent() {
+        throw new UnsupportedOperationException("This map is already mutable");
+    }
+
+    @Override
+    public FastHashMapPersistable<K, V> createImmutableChild() {
+        return new FastHashMapPersistableImmutable<>(this, true);
     }
 
     protected final V[] newValuesArray(int size) {
