@@ -18,9 +18,9 @@
 
 package org.apache.jena.mem.txn.collection;
 
-import org.apache.jena.mem.collection.JenaMap;
 import org.apache.jena.mem.iterator.SparseArrayIterator;
 import org.apache.jena.mem.spliterator.SparseArraySpliterator;
+import org.apache.jena.mem.txn.Persistable;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
@@ -29,7 +29,7 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 
-public class FastHashMapPersistable<K, V> extends FastHashPersistableBase<K> implements Persistable<FastHashMapPersistable<K, V>>, JenaMap<K, V> {
+public class FastHashMapPersistable<K, V> extends FastHashPersistableBase<K> implements JenaHashMapOptimized<K, V> {
 
     protected V[] values;
 
@@ -43,9 +43,9 @@ public class FastHashMapPersistable<K, V> extends FastHashPersistableBase<K> imp
         this.values = newValuesArray(keys.length);
     }
 
-    protected FastHashMapPersistable(final FastHashMapPersistable<K, V> base, boolean createRevision) {
-        super(base, createRevision);
-        if(createRevision) {
+    protected FastHashMapPersistable(final FastHashMapPersistable<K, V> base, boolean createImmutableChild) {
+        super(base, createImmutableChild);
+        if(createImmutableChild) {
             this.values = base.values;
         } else  {
             this.values = newValuesArray(keys.length);
@@ -64,17 +64,14 @@ public class FastHashMapPersistable<K, V> extends FastHashPersistableBase<K> imp
         }
     }
 
-    @Override
     public boolean isImmutable() {
         return false;
     }
 
-    @Override
     public FastHashMapPersistable<K, V> getMutableParent() {
         throw new UnsupportedOperationException("This map is already mutable");
     }
 
-    @Override
     public FastHashMapPersistable<K, V> createImmutableChild() {
         return new FastHashMapPersistableImmutable<>(this, true);
     }
@@ -115,8 +112,7 @@ public class FastHashMapPersistable<K, V> extends FastHashPersistableBase<K> imp
     }
 
     @Override
-    public boolean tryPut(K key, V value) {
-        final var hashCode = key.hashCode();
+    public boolean tryPut(K key, int hashCode, V value) {
         var pIndex = findPosition(key, hashCode);
         final var isNewKey = pIndex < 0;
         if(isNewKey) {
@@ -138,6 +134,16 @@ public class FastHashMapPersistable<K, V> extends FastHashPersistableBase<K> imp
     }
 
     @Override
+    public boolean put(K key, int hashCode, V value) {
+        return tryPut(key, key.hashCode(), value);
+    }
+
+    @Override
+    public boolean tryPut(K key, V value) {
+        return tryPut(key, key.hashCode(), value);
+    }
+
+    @Override
     public void put(K key, V value) {
         tryPut(key, value);
     }
@@ -153,13 +159,18 @@ public class FastHashMapPersistable<K, V> extends FastHashPersistableBase<K> imp
     }
 
     @Override
-    public final V get(K key) {
-        var pIndex = findPosition(key, key.hashCode());
+    public final V get(K key, int hashCode) {
+        var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             return null;
         } else {
             return values[~positions[pIndex]];
         }
+    }
+
+    @Override
+    public final V get(K key) {
+        return get(key, key.hashCode());
     }
 
     @Override
