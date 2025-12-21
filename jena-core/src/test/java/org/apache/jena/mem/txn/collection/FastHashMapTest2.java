@@ -191,4 +191,102 @@ public class FastHashMapTest2 {
         assertEquals(Integer.valueOf(2), original.get(node("s1")));
         assertEquals(Integer.valueOf(1), snapshot.get(node("s1")));
     }
+
+
+
+    @Test
+    public void overrideSideEffects() {
+        class KeyWithCollidingHash {
+
+            public final String key;
+
+            public KeyWithCollidingHash(String key) {
+                this.key = key;
+            }
+
+            @Override
+            public int hashCode() {
+                return 42;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj) return true;
+                if (obj == null || getClass() != obj.getClass()) return false;
+                KeyWithCollidingHash that = (KeyWithCollidingHash) obj;
+                return key.equals(that.key);
+            }
+        }
+        var sut = new FastHashMapRevision<KeyWithCollidingHash, Integer>(4);
+        sut.put(new KeyWithCollidingHash("A"), 1);
+        assertEquals(1, sut.size());
+        assertEquals(Integer.valueOf(1), sut.get(new KeyWithCollidingHash("A")));
+
+        sut.put(new KeyWithCollidingHash("A"), 11);
+        assertEquals(1, sut.size());
+        assertEquals(Integer.valueOf(11), sut.get(new KeyWithCollidingHash("A")));
+
+        sut.put(new KeyWithCollidingHash("B"), 2);
+        assertEquals(2, sut.size());
+        assertEquals(Integer.valueOf(2), sut.get(new KeyWithCollidingHash("B")));
+
+        sut.put(new KeyWithCollidingHash("A"), 111);
+        assertEquals(2, sut.size());
+        assertEquals(Integer.valueOf(111), sut.get(new KeyWithCollidingHash("A")));
+        assertEquals(Integer.valueOf(2), sut.get(new KeyWithCollidingHash("B")));
+
+        sut.put(new KeyWithCollidingHash("B"), 22);
+        assertEquals(2, sut.size());
+        assertEquals(Integer.valueOf(111), sut.get(new KeyWithCollidingHash("A")));
+        assertEquals(Integer.valueOf(22), sut.get(new KeyWithCollidingHash("B")));
+    }
+
+    @Test
+    public void overrideSideEffects2() {
+        class KeyWithCollidingHash {
+
+            public final String key;
+
+            public KeyWithCollidingHash(String key) {
+                this.key = key;
+            }
+
+            @Override
+            public int hashCode() {
+                return 42;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj) return true;
+                if (obj == null || getClass() != obj.getClass()) return false;
+                KeyWithCollidingHash that = (KeyWithCollidingHash) obj;
+                return key.equals(that.key);
+            }
+        }
+        var sut = new FastHashMapRevision<KeyWithCollidingHash, Integer>(16);
+        sut.put(new KeyWithCollidingHash("A"), 1);
+        sut.put(new KeyWithCollidingHash("B"), 2);
+        sut.put(new KeyWithCollidingHash("C"), 3);
+        assertEquals(3, sut.size());
+        assertEquals(Integer.valueOf(1), sut.get(new KeyWithCollidingHash("A")));
+        assertEquals(Integer.valueOf(2), sut.get(new KeyWithCollidingHash("B")));
+        assertEquals(Integer.valueOf(3), sut.get(new KeyWithCollidingHash("C")));
+
+        sut.tryRemove(new KeyWithCollidingHash("A"));
+        sut.tryRemove(new KeyWithCollidingHash("B"));
+        sut.tryRemove(new KeyWithCollidingHash("C"));
+        assertEquals(0, sut.size());
+        assertFalse(sut.containsKey(new KeyWithCollidingHash("A")));
+        assertFalse(sut.containsKey(new KeyWithCollidingHash("B")));
+        assertFalse(sut.containsKey(new KeyWithCollidingHash("C")));
+
+        sut.put(new KeyWithCollidingHash("B"), 2);
+        sut.put(new KeyWithCollidingHash("C"), 3);
+        assertEquals(2, sut.size());
+        assertEquals(Integer.valueOf(2), sut.get(new KeyWithCollidingHash("B")));
+        assertEquals(Integer.valueOf(3), sut.get(new KeyWithCollidingHash("C")));
+    }
+
+
 }
