@@ -26,6 +26,7 @@ import org.apache.jena.mem.GraphMemLegacy;
 import org.apache.jena.mem.GraphMemRoaring;
 import org.apache.jena.mem.IndexingStrategy;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.sparql.core.mem.DatasetGraphInMemory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,15 +37,18 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
     @Override
     public Graph createGraph(Context.GraphClass graphClass) {
         return switch (graphClass) {
+            case DatasetGraphInMemory -> new DatasetGraphInMemory().getDefaultGraph();
             case GraphMemValue -> new org.apache.jena.memvalue.GraphMemValue();
             case GraphMemFast -> new GraphMemFast();
             case GraphMemLegacy -> new GraphMemLegacy();
+            case GraphMemTxn -> new org.apache.jena.mem.txn.GraphMemTxn();
             case GraphMemRoaringEager -> new GraphMemRoaring(IndexingStrategy.EAGER);
             case GraphMemRoaringLazy -> new GraphMemRoaring(IndexingStrategy.LAZY);
             case GraphMemRoaringLazyParallel -> new GraphMemRoaring(IndexingStrategy.LAZY_PARALLEL);
             case GraphMemRoaringMinimal -> new GraphMemRoaring(IndexingStrategy.MINIMAL);
             case GraphMemRoaringManual -> new GraphMemRoaring(IndexingStrategy.MANUAL);
         };
+
     }
 
     @Override

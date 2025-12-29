@@ -34,21 +34,24 @@ import java.util.List;
 public class TestGraphAdd {
 
     @Param({
-            "../testing/cheeses-0.1.ttl",
+            "C:/temp/CGMES_ConformityAssessmentScheme_r3-0-2/CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3/v3.0/RealGrid/RealGrid-Merged/RealGrid_EQ.xml"
+//            "../testing/cheeses-0.1.ttl",
 //            "../testing/pizza.owl.rdf",
     })
     public String param0_GraphUri;
 
     @Param({
             "GraphMemFast (current)",
-            "GraphMemValue (current)",
+            "DatasetGraphInMemory (current)",
+            "GraphMemTxn (current)",
+//            "GraphMemValue (current)",
 //            "GraphMemRoaring EAGER (current)",
 //            "GraphMemRoaring LAZY (current)",
 //            "GraphMemRoaring LAZY_PARALLEL (current)",
 //            "GraphMemRoaring MINIMAL (current)",
 //            "GraphMemValue (Jena 5.6.0)",
-            "GraphMemFast (Jena 5.6.0)",
-            "GraphMemValue (Jena 5.6.0)",
+//            "GraphMemFast (Jena 5.6.0)",
+//            "GraphMemValue (Jena 5.6.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Object> graphAdd;
