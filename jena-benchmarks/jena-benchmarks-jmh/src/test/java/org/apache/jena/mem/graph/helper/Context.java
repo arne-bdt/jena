@@ -29,6 +29,10 @@ public class Context {
 
     public Context(String graphImplementation) {
         switch (graphImplementation) {
+            case "DatasetGraphInMemory (current)":
+                this.graphClass = GraphClass.DatasetGraphInMemory;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
             case "GraphMemValue (current)":
                 this.graphClass = GraphClass.GraphMemValue;
                 this.jenaVersion = JenaVersion.CURRENT;
@@ -39,6 +43,10 @@ public class Context {
                 break;
             case "GraphMemLegacy (current)":
                 this.graphClass = GraphClass.GraphMemLegacy;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemTxn (current)":
+                this.graphClass = GraphClass.GraphMemValue;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
             case "GraphMemRoaring (current)":
@@ -90,9 +98,11 @@ public class Context {
 
 
     public enum GraphClass {
+        DatasetGraphInMemory,
         GraphMemValue,
         GraphMemFast,
         GraphMemLegacy,
+        GraphMemTxn,
         GraphMemRoaringEager,
         GraphMemRoaringLazy,
         GraphMemRoaringLazyParallel,
