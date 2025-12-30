@@ -46,11 +46,14 @@ public class TestGraphContainsAnything {
 
     @Param({
             "GraphMemFast (current)",
+            "GraphMemValue (current)",
 //            "GraphMemRoaring EAGER (current)",
 //            "GraphMemRoaring LAZY (current)",
 //            "GraphMemRoaring LAZY_PARALLEL (current)",
 //            "GraphMemRoaring MINIMAL (current)",
-            "GraphMem (Jena 5.6.0)",
+//            "GraphMemValue (Jena 5.6.0)",
+            "GraphMemFast (Jena 5.6.0)",
+            "GraphMemValue (Jena 5.6.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Function<String, Boolean> graphContains;
@@ -101,8 +104,8 @@ public class TestGraphContainsAnything {
         return found;
     }
 
-    private boolean graphContains480(String pattern) {
-        var containsPredicate = getContainsPredicateByPattern480(pattern);
+    private boolean graphContains560(String pattern) {
+        var containsPredicate = getContainsPredicateByPattern560(pattern);
         var found = false;
         for (var t : triplesToFind560) {
             found = containsPredicate.test(t);
@@ -123,7 +126,7 @@ public class TestGraphContainsAnything {
         };
     }
 
-    Predicate<org.apache.shadedJena560.graph.Triple> getContainsPredicateByPattern480(String pattern) {
+    Predicate<org.apache.shadedJena560.graph.Triple> getContainsPredicateByPattern560(String pattern) {
         return switch (pattern) {
             case "S__" -> t -> sut560.contains(t.getSubject(), null, null);
             case "_P_" -> t -> sut560.contains(null, t.getPredicate(), null);
@@ -162,7 +165,7 @@ public class TestGraphContainsAnything {
             break;
             case JENA_5_6_0: {
                 this.sut560 = Releases.v560.createGraph(trialContext.getGraphClass());
-                this.graphContains = this::graphContains480;
+                this.graphContains = this::graphContains560;
 
                 var triples = Releases.v560.readTriples(param0_GraphUri);
                 triples.forEach(this.sut560::add);

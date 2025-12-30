@@ -49,11 +49,14 @@ public class TestGraphStreamByMatchAndCount {
 
     @Param({
             "GraphMemFast (current)",
+            "GraphMemValue (current)",
 //            "GraphMemRoaring EAGER (current)",
 //            "GraphMemRoaring LAZY (current)",
 //            "GraphMemRoaring LAZY_PARALLEL (current)",
 //            "GraphMemRoaring MINIMAL (current)",
-            "GraphMem (Jena 5.6.0)",
+//            "GraphMemValue (Jena 5.6.0)",
+            "GraphMemFast (Jena 5.6.0)",
+            "GraphMemValue (Jena 5.6.0)",
     })
     public String param1_GraphImplementation;
 
@@ -110,8 +113,8 @@ public class TestGraphStreamByMatchAndCount {
         return total;
     }
 
-    private Object graphStreamByMatchAndCount480(String pattern) {
-        var streamFunction = getStreamFunctionByPattern480(pattern);
+    private Object graphStreamByMatchAndCount560(String pattern) {
+        var streamFunction = getStreamFunctionByPattern560(pattern);
         var total = 0;
         for (org.apache.shadedJena560.graph.Triple sample : this.triplesToFind560) {
             total += count(streamFunction.apply(sample));
@@ -131,7 +134,7 @@ public class TestGraphStreamByMatchAndCount {
         };
     }
 
-    Function<org.apache.shadedJena560.graph.Triple, Stream<org.apache.shadedJena560.graph.Triple>> getStreamFunctionByPattern480(String pattern) {
+    Function<org.apache.shadedJena560.graph.Triple, Stream<org.apache.shadedJena560.graph.Triple>> getStreamFunctionByPattern560(String pattern) {
         return switch (pattern) {
             case "S__" -> t -> sut560.stream(t.getSubject(), null, null);
             case "_P_" -> t -> sut560.stream(null, t.getPredicate(), null);
@@ -172,7 +175,7 @@ public class TestGraphStreamByMatchAndCount {
             break;
             case JENA_5_6_0: {
                 this.sut560 = Releases.v560.createGraph(trialContext.getGraphClass());
-                this.graphStreamByMatchAndCount = this::graphStreamByMatchAndCount480;
+                this.graphStreamByMatchAndCount = this::graphStreamByMatchAndCount560;
 
                 var triples = Releases.v560.readTriples(param0_GraphUri);
                 triples.forEach(this.sut560::add);

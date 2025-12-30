@@ -41,11 +41,14 @@ public class TestGraphAdd {
 
     @Param({
             "GraphMemFast (current)",
+            "GraphMemValue (current)",
 //            "GraphMemRoaring EAGER (current)",
 //            "GraphMemRoaring LAZY (current)",
 //            "GraphMemRoaring LAZY_PARALLEL (current)",
 //            "GraphMemRoaring MINIMAL (current)",
-            "GraphMem (Jena 5.6.0)",
+//            "GraphMemValue (Jena 5.6.0)",
+            "GraphMemFast (Jena 5.6.0)",
+            "GraphMemValue (Jena 5.6.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Supplier<Object> graphAdd;

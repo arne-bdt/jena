@@ -48,11 +48,14 @@ public class TestGraphFindByMatchAndGetFirst {
 
     @Param({
             "GraphMemFast (current)",
+            "GraphMemValue (current)",
 //            "GraphMemRoaring EAGER (current)",
 //            "GraphMemRoaring LAZY (current)",
 //            "GraphMemRoaring LAZY_PARALLEL (current)",
 //            "GraphMemRoaring MINIMAL (current)",
-            "GraphMem (Jena 5.6.0)",
+//            "GraphMemValue (Jena 5.6.0)",
+            "GraphMemFast (Jena 5.6.0)",
+            "GraphMemValue (Jena 5.6.0)",
     })
     public String param1_GraphImplementation;
     java.util.function.Function<String, Object> graphFind;
@@ -103,8 +106,8 @@ public class TestGraphFindByMatchAndGetFirst {
         return t;
     }
 
-    private Object graphFindByMatchesAndGetFirst480(String pattern) {
-        var findFunction = getFindFunctionByPattern480(pattern);
+    private Object graphFindByMatchesAndGetFirst560(String pattern) {
+        var findFunction = getFindFunctionByPattern560(pattern);
         org.apache.shadedJena560.graph.Triple t = null;
         for (org.apache.shadedJena560.graph.Triple sample : this.triplesToFind560) {
             final Iterator<org.apache.shadedJena560.graph.Triple> it = findFunction.apply(sample);
@@ -127,7 +130,7 @@ public class TestGraphFindByMatchAndGetFirst {
         };
     }
 
-    Function<org.apache.shadedJena560.graph.Triple, Iterator<org.apache.shadedJena560.graph.Triple>> getFindFunctionByPattern480(String pattern) {
+    Function<org.apache.shadedJena560.graph.Triple, Iterator<org.apache.shadedJena560.graph.Triple>> getFindFunctionByPattern560(String pattern) {
         return switch (pattern) {
             case "S__" -> t -> sut560.find(t.getSubject(), null, null);
             case "_P_" -> t -> sut560.find(null, t.getPredicate(), null);
@@ -165,7 +168,7 @@ public class TestGraphFindByMatchAndGetFirst {
             break;
             case JENA_5_6_0: {
                 this.sut560 = Releases.v560.createGraph(trialContext.getGraphClass());
-                this.graphFind = this::graphFindByMatchesAndGetFirst480;
+                this.graphFind = this::graphFindByMatchesAndGetFirst560;
 
                 var triples = Releases.v560.readTriples(param0_GraphUri);
                 triples.forEach(this.sut560::add);

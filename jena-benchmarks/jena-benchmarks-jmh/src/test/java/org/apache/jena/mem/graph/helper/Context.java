@@ -29,7 +29,7 @@ public class Context {
 
     public Context(String graphImplementation) {
         switch (graphImplementation) {
-            case "GraphMem (current)":
+            case "GraphMemValue (current)":
                 this.graphClass = GraphClass.GraphMemValue;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
@@ -62,8 +62,17 @@ public class Context {
                 this.graphClass = GraphClass.GraphMemRoaringManual;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
-            case "GraphMem (Jena 5.6.0)":
+            case "GraphMemValue (Jena 5.6.0)":
                 this.graphClass = GraphClass.GraphMemValue;
+                this.jenaVersion = JenaVersion.JENA_5_6_0;
+                break;
+            case "GraphMemFast (Jena 5.6.0)":
+                this.graphClass = GraphClass.GraphMemFast;
+                this.jenaVersion = JenaVersion.JENA_5_6_0;
+                break;
+            case "GraphMemRoaring (Jena 5.6.0)":
+            case "GraphMemRoaring EAGER (Jena 5.6.0)":
+                this.graphClass = GraphClass.GraphMemRoaringEager;
                 this.jenaVersion = JenaVersion.JENA_5_6_0;
                 break;
             default:
