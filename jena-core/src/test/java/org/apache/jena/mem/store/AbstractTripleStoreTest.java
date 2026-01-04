@@ -33,9 +33,9 @@ import static org.junit.Assert.*;
 
 public abstract class AbstractTripleStoreTest {
 
-    protected TripleStore sut;
+    protected TripleStore<?> sut;
 
-    protected abstract TripleStore createTripleStore();
+    protected abstract TripleStore<?> createTripleStore();
 
     @Before
     public void setUp() throws Exception {

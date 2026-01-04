@@ -20,7 +20,7 @@ package org.apache.jena.mem.txn.collection;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
-public final class FastHashMapPersistableImmutable<K, V> extends FastHashMapPersistable<K, V> {
+public class FastHashMapPersistableImmutable<K, V> extends FastHashMapPersistable<K, V> {
 
     private final FastHashMapPersistable<K, V> mutableParent;
 
@@ -29,6 +29,7 @@ public final class FastHashMapPersistableImmutable<K, V> extends FastHashMapPers
         this.mutableParent = createImmutableChild ? base : base.getMutableParent();
     }
 
+    @Override
     public boolean isImmutable() {
         return true;
     }

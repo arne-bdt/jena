@@ -57,7 +57,12 @@ public class FastHashedBunchMapPersistable
     }
 
     @Override
-    public FastHashedBunchMapPersistable createImmutableChild() {
+    public FastHashedBunchMapPersistableImmutable createImmutableChild() {
         return new FastHashedBunchMapPersistableImmutable(this, true);
+    }
+
+    @Override
+    public FastHashedBunchMapPersistable getMutableParent() {
+        throw new UnsupportedOperationException("This map is already mutable");
     }
 }

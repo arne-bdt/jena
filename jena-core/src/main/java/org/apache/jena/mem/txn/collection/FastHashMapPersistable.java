@@ -100,7 +100,6 @@ public class FastHashMapPersistable<K, V> extends FastHashPersistableBase<K> imp
                 values[deletedIndex] = null;
                 hashCodesOrDeletedIndices[deletedIndex] = lastDeletedIndex;
                 lastDeletedIndex = deletedIndex;
-                break;
             }
         }
     }

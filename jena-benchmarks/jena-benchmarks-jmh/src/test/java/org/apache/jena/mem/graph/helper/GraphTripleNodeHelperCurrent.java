@@ -25,8 +25,11 @@ import org.apache.jena.mem.GraphMemFast;
 import org.apache.jena.mem.GraphMemLegacy;
 import org.apache.jena.mem.GraphMemRoaring;
 import org.apache.jena.mem.IndexingStrategy;
+import org.apache.jena.mem.txn.GraphMemTxn;
+import org.apache.jena.memvalue.GraphMemValue;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemory;
+import org.apache.jena.sparql.core.mem.GraphMemTransactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,10 +41,11 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
     public Graph createGraph(Context.GraphClass graphClass) {
         return switch (graphClass) {
             case DatasetGraphInMemory -> new DatasetGraphInMemory().getDefaultGraph();
-            case GraphMemValue -> new org.apache.jena.memvalue.GraphMemValue();
+            case GraphMemValue -> new GraphMemValue();
             case GraphMemFast -> new GraphMemFast();
             case GraphMemLegacy -> new GraphMemLegacy();
-            case GraphMemTxn -> new org.apache.jena.mem.txn.GraphMemTxn();
+            case GraphMemTxn -> new GraphMemTxn();
+            case GraphMemTransactional -> new GraphMemTransactional();
             case GraphMemRoaringEager -> new GraphMemRoaring(IndexingStrategy.EAGER);
             case GraphMemRoaringLazy -> new GraphMemRoaring(IndexingStrategy.LAZY);
             case GraphMemRoaringLazyParallel -> new GraphMemRoaring(IndexingStrategy.LAZY_PARALLEL);
@@ -55,7 +59,7 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
     public List<Triple> readTriples(String graphUri) {
         var list = new ArrayList<Triple>();
         @SuppressWarnings("deprecation")
-        var g1 = new org.apache.jena.memvalue.GraphMemValue() {
+        var g1 = new GraphMemValue() {
             @Override
             public void add(Triple t) {
                 list.add(t);
@@ -67,7 +71,7 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
 
     @Override
     public List<Triple> cloneTriples(List<Triple> triples) {
-        var list = new java.util.ArrayList<Triple>(triples.size());
+        var list = new ArrayList<Triple>(triples.size());
         triples.forEach(triple -> list.add(cloneTriple(triple)));
         return list;
     }

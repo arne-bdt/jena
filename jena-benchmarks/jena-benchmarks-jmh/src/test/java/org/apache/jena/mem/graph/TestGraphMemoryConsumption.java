@@ -23,6 +23,8 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.graph.helper.Context;
 import org.apache.jena.mem.graph.helper.JMHDefaultOptions;
 import org.apache.jena.mem.graph.helper.Releases;
+import org.apache.jena.query.TxnType;
+import org.apache.jena.sparql.core.Transactional;
 import org.junit.Assert;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.*;
@@ -46,6 +48,7 @@ public class TestGraphMemoryConsumption {
             "GraphMemFast (current)",
             "DatasetGraphInMemory (current)",
             "GraphMemTxn (current)",
+            "GraphMemTransactional (current)",
 //            "GraphMemValue (current)",
 //            "GraphMemRoaring EAGER (current)",
 //            "GraphMemRoaring LAZY (current)",
@@ -81,11 +84,21 @@ public class TestGraphMemoryConsumption {
         var memoryBefore = runGcAndGetUsedMemoryInMB();
         var stopwatch = StopWatch.createStarted();
         var sut = Releases.current.createGraph(trialContext.getGraphClass());
+        Transactional transactional = null;
+        if(sut instanceof Transactional t) {
+            transactional = t;
+            transactional.begin(TxnType.WRITE);
+        }
         allTriplesCurrent.forEach(sut::add);
+        final var size = sut.size();
+        if(transactional != null) {
+            transactional.commit();
+            transactional.end();
+        }
         stopwatch.stop();
         var memoryAfter = runGcAndGetUsedMemoryInMB();
         System.out.printf("graphs: %d time to fill graphs: %s additional memory: %5.3f MB%n",
-                sut.size(),
+                size,
                 stopwatch.formatTime(),
                 (memoryAfter - memoryBefore));
         return sut;

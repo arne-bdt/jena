@@ -15,29 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.jena.mem.txn.collection;
 
-package org.apache.jena.mem.txn;
+import org.apache.jena.mem.collection.FastHashMap;
 
-import org.apache.jena.mem.GraphMem;
-import org.apache.jena.mem.GraphMemLegacy;
-import org.apache.jena.mem.store.TripleStore;
-import org.apache.jena.mem.store.fast.FastTripleStore;
-import org.apache.jena.mem.txn.store.FastTripleStorePersistable;
-import org.apache.jena.mem.txn.store.TripleStorePersistable;
+public class JenaHashMap<K, V> extends FastHashMap<K, V> {
 
-public class GraphMemTxn extends GraphMem<TripleStorePersistable> {
-
-    public GraphMemTxn() {
-        super(new FastTripleStorePersistable());
-    }
-
-    protected GraphMemTxn(final TripleStorePersistable tripleStore) {
-        super(tripleStore);
-    }
-
-    @SuppressWarnings("unchecked")
     @Override
-    public GraphMemTxn copy() {
-        return new GraphMemTxn(this.tripleStore.copy());
+    protected V[] newValuesArray(int size) {
+        @SuppressWarnings("unchecked")
+        final V[] newArray = (V[]) new Object[size];
+        return newArray;
+    }
+
+    @Override
+    protected K[] newKeysArray(int size) {
+        @SuppressWarnings("unchecked")
+        final K[] newArray = (K[]) new Object[size];
+        return newArray;
     }
 }

@@ -36,9 +36,9 @@ import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 
 public abstract class AbstractGraphMemTest {
 
-    protected GraphMem sut;
+    protected GraphMem<?> sut;
 
-    protected abstract GraphMem createGraph();
+    protected abstract GraphMem<?> createGraph();
 
     @Before
     public void setUp() throws Exception {

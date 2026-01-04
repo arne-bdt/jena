@@ -52,7 +52,7 @@ import java.util.stream.Stream;
  * {@link RoaringBitmap#intersects(RoaringBitmap, RoaringBitmap)} are used to find matches for the pattern
  * S_O, SP_, and _PO pretty fast, even in large graphs.
  */
-public class RoaringTripleStore implements TripleStore {
+public class RoaringTripleStore implements TripleStore<RoaringTripleStore> {
 
     private static final String UNKNOWN_PATTERN_CLASSIFIER = "Unknown pattern classifier: %s";
     final TripleSet triples; // In this special set, each element has an index

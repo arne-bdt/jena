@@ -35,7 +35,7 @@ public class FastHashedTripleBunchPersistableImmutable extends FastHashedTripleB
      *
      * @param bunchToCopy
      */
-    private FastHashedTripleBunchPersistableImmutable(final FastHashedTripleBunchPersistable bunchToCopy, boolean createImmutableChild) {
+    protected FastHashedTripleBunchPersistableImmutable(final FastHashedTripleBunchPersistable bunchToCopy, boolean createImmutableChild) {
         super(bunchToCopy, createImmutableChild);
         this.mutableParentBunch = createImmutableChild ? bunchToCopy : bunchToCopy.getMutableParentBunch();
     }
@@ -43,6 +43,11 @@ public class FastHashedTripleBunchPersistableImmutable extends FastHashedTripleB
     @Override
     public FastHashedTripleBunchPersistable getMutableParentBunch() {
         return mutableParentBunch;
+    }
+
+    @Override
+    public boolean isImmutable() {
+        return true;
     }
 
     @Override

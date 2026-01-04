@@ -28,7 +28,7 @@ import java.util.stream.Stream;
  * A triple store is a collection of triples that supports access to
  * triples matching a triple pattern.
  */
-public interface TripleStore extends Copyable<TripleStore> {
+public interface TripleStore<T extends TripleStore> extends Copyable<TripleStore> {
 
     /**
      * Add a triple to the map.
@@ -96,5 +96,5 @@ public interface TripleStore extends Copyable<TripleStore> {
      * @return an independent copy of this store
      */
     @Override
-    TripleStore copy();
+    T copy();
 }

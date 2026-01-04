@@ -123,16 +123,19 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     @Override
     public void put(K key, V value) {
-        final var hashCode = key.hashCode();
-        var pIndex = findPosition(key, hashCode);
+        put(key, key.hashCode(), value);
+    }
+
+    public void put(K key, int hashCodeOfKey, V value) {
+        var pIndex = findPosition(key, hashCodeOfKey);
         if (pIndex < 0) {
             if (tryGrowPositionsArrayIfNeeded()) {
-                pIndex = findPosition(key, hashCode);
+                pIndex = findPosition(key, hashCodeOfKey);
             }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             values[eIndex] = value;
-            hashCodesOrDeletedIndices[eIndex] = hashCode;
+            hashCodesOrDeletedIndices[eIndex] = hashCodeOfKey;
             positions[~pIndex] = ~eIndex;
         } else {
             values[~positions[pIndex]] = value;

@@ -35,11 +35,11 @@ import org.apache.jena.util.iterator.ExtendedIterator;
  * Implementation must always comply to term-equality semantics. The characteristics of the
  * implementations always have handlesLiteralTyping() == false.
  */
-public class GraphMem extends GraphBase implements GraphWithPerform, Copyable<GraphMem> {
+public class GraphMem<T extends TripleStore<T>> extends GraphBase implements GraphWithPerform, Copyable<GraphMem> {
 
-    protected final TripleStore tripleStore;
+    protected final T tripleStore;
 
-    protected GraphMem(TripleStore tripleStore) {
+    protected GraphMem(T tripleStore) {
         super();
         this.tripleStore = tripleStore;
     }
@@ -140,7 +140,7 @@ public class GraphMem extends GraphBase implements GraphWithPerform, Copyable<Gr
      * @return independent copy of the current graph
      */
     @Override
-    public GraphMem copy() {
-        return new GraphMem(this.tripleStore.copy());
+    public GraphMem<T> copy() {
+        return new GraphMem<T>(this.tripleStore.copy());
     }
 }

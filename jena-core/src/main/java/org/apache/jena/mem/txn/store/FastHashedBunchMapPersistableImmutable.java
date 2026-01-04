@@ -21,6 +21,7 @@ import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Node;
 import org.apache.jena.mem.txn.Persistable;
 import org.apache.jena.mem.txn.collection.FastHashMapPersistable;
+import org.apache.jena.mem.txn.collection.FastHashMapPersistableImmutable;
 
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -31,97 +32,94 @@ import java.util.function.UnaryOperator;
 public class FastHashedBunchMapPersistableImmutable
         extends FastHashedBunchMapPersistable {
 
-    public FastHashedBunchMapPersistableImmutable() {
-        super();
-    }
+    private final FastHashedBunchMapPersistable mutableParent;
 
-    /**
-     * Copy constructor.
-     * The new map will contain all the same nodes as keys of the map to copy, but copies of the bunches as values .
-     *
-     * @param mapToCopy
-     */
-    private FastHashedBunchMapPersistableImmutable(final FastHashedBunchMapPersistable mapToCopy) {
-        super(mapToCopy, FastTripleBunchPersistable::copy);
-    }
-
-    protected FastHashedBunchMapPersistableImmutable(FastHashedBunchMapPersistable base, boolean createRevision) {
-        super(base, createRevision);
+    public FastHashedBunchMapPersistableImmutable(FastHashedBunchMapPersistable base, boolean createImmutableChild) {
+        super(base, createImmutableChild);
+        this.mutableParent = createImmutableChild ? base : base.getMutableParent();
     }
 
     @Override
-    public FastHashedBunchMapPersistableImmutable copy() {
-        return new FastHashedBunchMapPersistableImmutable(this);
+    public boolean isImmutable() {
+        return true;
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public FastHashedBunchMapPersistableImmutable createImmutableChild() {
-        return new FastHashedBunchMapPersistableImmutable(this, true);
+    public FastHashedBunchMapPersistable getMutableParent() {
+        return mutableParent;
     }
 
     @Override
-    public boolean tryPut(Node key, int hashCode, FastTripleBunchPersistable value) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public boolean put(Node key, int hashCode, FastTripleBunchPersistable value) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public boolean tryPut(Node key, FastTripleBunchPersistable value) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public void put(Node key, FastTripleBunchPersistable value) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public FastTripleBunchPersistable computeIfAbsent(Node key, Supplier<FastTripleBunchPersistable> absentValueSupplier) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public void compute(Node key, UnaryOperator<FastTripleBunchPersistable> valueProcessor) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public boolean tryRemove(Node o) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public boolean tryRemove(Node e, int hashCode) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public int removeAndGetIndex(Node e) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public int removeAndGetIndex(Node e, int hashCode) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public void removeUnchecked(Node e) {
-        throw new UnsupportedOperationException("This set is read-only");
-    }
-
-    @Override
-    public void removeUnchecked(Node e, int hashCode) {
-        throw new UnsupportedOperationException("This set is read-only");
+    public FastHashedBunchMapPersistableImmutable createImmutableChild() {
+        throw new UnsupportedOperationException("This map is already immutable");
     }
 
     @Override
     public void clear() {
-        throw new UnsupportedOperationException("This set is read-only");
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public boolean tryPut(Node key, int hashCode, FastTripleBunchPersistable value) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public boolean put(Node key, int hashCode, FastTripleBunchPersistable value) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public boolean tryPut(Node key, FastTripleBunchPersistable value) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public void put(Node key, FastTripleBunchPersistable value) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public FastTripleBunchPersistable computeIfAbsent(Node key, Supplier<FastTripleBunchPersistable> absentValueSupplier) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public void compute(Node key, UnaryOperator<FastTripleBunchPersistable> valueProcessor) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public boolean tryRemove(Node o) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public boolean tryRemove(Node e, int hashCode) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public int removeAndGetIndex(Node e) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public int removeAndGetIndex(Node e, int hashCode) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public void removeUnchecked(Node e) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public void removeUnchecked(Node e, int hashCode) {
+        throw new UnsupportedOperationException("This map is read-only");
+    }
+
+    @Override
+    public FastHashedBunchMapPersistable copy() {
+        return new FastHashedBunchMapPersistableImmutable(this, false);
     }
 }

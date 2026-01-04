@@ -63,7 +63,12 @@ public class FastHashedTripleBunchPersistable extends FastHashSetPersistable<Tri
 
     @Override
     public FastHashedTripleBunchPersistable createImmutableChildBunch() {
-        return null;
+        return new FastHashedTripleBunchPersistableImmutable(this, true);
+    }
+
+    @Override
+    public FastTripleBunchPersistable createMutableCopy() {
+        return new FastHashedTripleBunchPersistable(this, false);
     }
 
     @Override

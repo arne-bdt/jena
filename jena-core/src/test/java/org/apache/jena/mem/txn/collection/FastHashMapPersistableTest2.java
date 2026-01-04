@@ -279,4 +279,23 @@ public class FastHashMapPersistableTest2 {
         assertEquals(Integer.valueOf(2), sut.get(new KeyWithCollidingHash("B")));
         assertEquals(Integer.valueOf(3), sut.get(new KeyWithCollidingHash("C")));
     }
+
+    @Test
+    public void testOverrideKeysMultipleTiples() {
+        var sut = new FastHashMapPersistable(3);
+        sut.put(node("s1"), "s1v1");
+        sut.put(node("s2"), "s2v1");
+        sut.put(node("s3"), "s3v1");
+        sut.put(node("s1"), "s1v2");
+        sut.put(node("s2"), "s2v2");
+        sut.put(node("s1"), "s1v3");
+        sut.put(node("s4"), "s4v1");
+
+
+        assertEquals(4, sut.size());
+        assertEquals("s1v3", sut.get(node("s1")));
+        assertEquals("s2v2", sut.get(node("s2")));
+        assertEquals("s3v1", sut.get(node("s3")));
+        assertEquals("s4v1", sut.get(node("s4")));
+    }
 }

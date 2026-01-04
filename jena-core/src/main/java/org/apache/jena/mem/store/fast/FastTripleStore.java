@@ -63,7 +63,7 @@ import java.util.stream.StreamSupport;
  * - for the FastArrayBunches, the equals method of the triple is not called. Instead, only the two nodes that are
  *   not part of the key of the containing map are compared.
  */
-public class FastTripleStore implements TripleStore {
+public class FastTripleStore implements TripleStore<FastTripleStore> {
 
     protected static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 400;
     protected static final int MAX_ARRAY_BUNCH_SIZE_SUBJECT = 16;

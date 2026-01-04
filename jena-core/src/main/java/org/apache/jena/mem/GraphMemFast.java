@@ -39,13 +39,13 @@ import org.apache.jena.mem.store.fast.FastTripleStore;
  * <li>Values of the maps also switch from arrays to hash sets for the triples
  * </ul>
  */
-public class GraphMemFast extends GraphMem {
+public class GraphMemFast extends GraphMem<FastTripleStore> {
 
     public GraphMemFast() {
         super(new FastTripleStore());
     }
 
-    private GraphMemFast(final TripleStore tripleStore) {
+    private GraphMemFast(final FastTripleStore tripleStore) {
         super(tripleStore);
     }
 

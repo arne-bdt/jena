@@ -46,7 +46,11 @@ public class Context {
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
             case "GraphMemTxn (current)":
-                this.graphClass = GraphClass.GraphMemValue;
+                this.graphClass = GraphClass.GraphMemTxn;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemTransactional (current)":
+                this.graphClass = GraphClass.GraphMemTransactional;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
             case "GraphMemRoaring (current)":
@@ -103,6 +107,7 @@ public class Context {
         GraphMemFast,
         GraphMemLegacy,
         GraphMemTxn,
+        GraphMemTransactional,
         GraphMemRoaringEager,
         GraphMemRoaringLazy,
         GraphMemRoaringLazyParallel,

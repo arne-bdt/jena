@@ -45,7 +45,7 @@ public abstract class FastArrayBunchPersistableImmutable extends FastArrayBunchP
      */
     protected FastArrayBunchPersistableImmutable(final FastArrayBunchPersistable bunchToCopy) {
         super(bunchToCopy);
-        this.mutableParent = bunchToCopy;
+        this.mutableParent = bunchToCopy.isImmutable() ? bunchToCopy.getMutableParentBunch() : bunchToCopy;
     }
 
     @Override

@@ -54,4 +54,5 @@ public interface FastTripleBunchPersistable extends JenaSetHashOptimized<Triple>
     boolean isImmutable();
     FastTripleBunchPersistable getMutableParentBunch();
     FastTripleBunchPersistable createImmutableChildBunch();
+    FastTripleBunchPersistable createMutableCopy();
 }

@@ -220,7 +220,6 @@ public abstract class FastHashPersistableBase<K> implements JenaMapSetCommon<K> 
                 hashCodesOrDeletedIndices[deletedIndex] = lastDeletedIndex;
                 lastDeletedIndex = deletedIndex;
                 removedKeysCount++;
-                break;
             }
         }
     }

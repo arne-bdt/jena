@@ -51,7 +51,33 @@ public class FastArrayBunchPersistableTest extends AbstractJenaSetTripleTest {
 
         @Override
         public FastTripleBunchPersistable createImmutableChildBunch() {
-            return null;
+            return new FastTripleArrayBunchImmutable(this);
+        }
+    }
+
+    private static class FastTripleArrayBunchImmutable extends FastTripleArrayBunch {
+
+        public FastTripleArrayBunchImmutable() {
+            super();
+        }
+
+        private FastTripleArrayBunchImmutable(FastTripleArrayBunch bunchToCopy) {
+            super(bunchToCopy);
+        }
+
+        @Override
+        public FastTripleArrayBunch copy() {
+            return new FastTripleArrayBunch(this);
+        }
+
+        @Override
+        public boolean areEqual(final Triple a, final Triple b) {
+            return a.equals(b);
+        }
+
+        @Override
+        public FastTripleBunchPersistable createImmutableChildBunch() {
+            return new FastTripleArrayBunchImmutable(this);
         }
     }
 }

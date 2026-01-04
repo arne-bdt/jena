@@ -21,11 +21,14 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.iterator.IteratorOfJenaSets;
 import org.apache.jena.mem.pattern.PatternClassifier;
+import org.apache.jena.mem.txn.collection.FastHashMapPersistable;
+import org.apache.jena.mem.txn.collection.JenaHashMap;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.SingletonIterator;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -34,12 +37,12 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
     protected static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 400;
     protected static final int MAX_ARRAY_BUNCH_SIZE_SUBJECT = 16;
     protected static final int MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT = 32;
-    final FastHashedBunchMapPersistable subjects;
-    final FastHashedBunchMapPersistable predicates;
-    final FastHashedBunchMapPersistable objects;
-    protected ArrayList<Mutations> subjectsMutations = new ArrayList<>();
-    protected ArrayList<Mutations> predicatesMutations = new ArrayList<>();
-    protected ArrayList<Mutations> objectsMutations = new ArrayList<>();
+    protected final FastHashedBunchMapPersistable subjects;
+    protected final FastHashedBunchMapPersistable predicates;
+    protected final FastHashedBunchMapPersistable objects;
+    protected final JenaHashMap<Node, Mutations> subjectsMutations = new JenaHashMap<>();
+    protected final JenaHashMap<Node, Mutations> predicatesMutations = new JenaHashMap<>();
+    protected final JenaHashMap<Node, Mutations> objectsMutations = new JenaHashMap<>();
     private int size = 0;
 
     public FastTripleStorePersistable() {
@@ -48,15 +51,15 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
         objects = new FastHashedBunchMapPersistable();
     }
 
-    protected FastTripleStorePersistable(final FastTripleStorePersistable base, boolean createImmutableChild) {
+    public FastTripleStorePersistable(final FastTripleStorePersistable base, boolean createImmutableChild) {
         if(createImmutableChild) {
             subjects = base.subjects.createImmutableChild();
             predicates = base.predicates.createImmutableChild();
             objects = base.objects.createImmutableChild();
         } else {
-            subjects = base.subjects.copy();
-            predicates = base.predicates.copy();
-            objects = base.objects.copy();
+            subjects = new FastHashedBunchMapPersistable(base.subjects, FastTripleBunchPersistable::createMutableCopy);
+            predicates = new FastHashedBunchMapPersistable(base.predicates, FastTripleBunchPersistable::createMutableCopy);
+            objects = new FastHashedBunchMapPersistable(base.objects, FastTripleBunchPersistable::createMutableCopy);
         }
         size = base.size;
     }
@@ -89,7 +92,7 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
             added = sBunch.tryAdd(triple, hashCodeOfTriple);
         }
         if (added) {
-            this.subjectsMutations.add(new Mutations(triple.getSubject(), sHashCode, sBunch));
+            this.subjectsMutations.put(triple.getSubject(), sHashCode, new Mutations(triple.getSubject(), sHashCode, sBunch));
             {
                 var pBunch = predicates.get(triple.getPredicate(), pHashCode);
                 if (pBunch == null) {
@@ -107,7 +110,7 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
                     }
                     pBunch.addUnchecked(triple, hashCodeOfTriple);
                 }
-                this.predicatesMutations.add(new Mutations(triple.getPredicate(), pHashCode, pBunch));
+                this.predicatesMutations.put(triple.getPredicate(), pHashCode, new Mutations(triple.getPredicate(), pHashCode, pBunch));
             }
             {
                 var oBunch = objects.get(triple.getObject(), oHashCode);
@@ -126,7 +129,7 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
                     }
                     oBunch.addUnchecked(triple, hashCodeOfTriple);
                 }
-                this.objectsMutations.add(new Mutations(triple.getObject(), oHashCode, oBunch));
+                this.objectsMutations.put(triple.getObject(), oHashCode, new Mutations(triple.getObject(), oHashCode, oBunch));
             }
             size++;
         }
@@ -153,7 +156,7 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
                 subjects.removeUnchecked(triple.getSubject(), sHashCode);
             } else {
                 subjects.put(triple.getSubject(), sHashCode, sBunch);
-                subjectsMutations.add(new Mutations(triple.getSubject(), sHashCode, sBunch));
+                subjectsMutations.put(triple.getSubject(), sHashCode, new Mutations(triple.getSubject(), sHashCode, sBunch));
             }
             var pBunch = predicates.get(triple.getPredicate());
             if(pBunch.isImmutable()) {
@@ -164,7 +167,7 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
                 predicates.removeUnchecked(triple.getPredicate(), pHashCode);
             } else {
                 predicates.put(triple.getPredicate(), pHashCode, pBunch);
-                predicatesMutations.add(new Mutations(triple.getPredicate(), pHashCode, pBunch));
+                predicatesMutations.put(triple.getPredicate(), pHashCode, new Mutations(triple.getPredicate(), pHashCode, pBunch));
             }
             var oBunch = objects.get(triple.getObject());
             if(oBunch.isImmutable()) {
@@ -175,7 +178,7 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
                 objects.removeUnchecked(triple.getObject(), oHashCode);
             } else {
                 objects.put(triple.getObject(), oHashCode, oBunch);
-                objectsMutations.add(new Mutations(triple.getObject(), oHashCode, oBunch));
+                objectsMutations.put(triple.getObject(), oHashCode, new Mutations(triple.getObject(), oHashCode, oBunch));
             }
             size--;
         }
@@ -186,9 +189,9 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
         subjects.clear();
         predicates.clear();
         objects.clear();
-        subjectsMutations = new ArrayList<>();
-        predicatesMutations = new ArrayList<>();
-        objectsMutations = new ArrayList<>();
+        subjectsMutations.clear();
+        predicatesMutations.clear();
+        objectsMutations.clear();
         size = 0;
     }
 
@@ -428,18 +431,18 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
 
     @Override
     public FastTripleStorePersistableImmutable createImmutableChild() {
-        for(var mut : subjectsMutations) {
+        subjectsMutations.valueIterator().forEach(mut -> {
             subjects.put(mut.node, mut.hashCodeOfNode, mut.mutableTripleBunch.createImmutableChildBunch());
-        }
-        for(var mut : predicatesMutations) {
+        });
+        predicatesMutations.valueIterator().forEach(mut -> {
             predicates.put(mut.node, mut.hashCodeOfNode, mut.mutableTripleBunch.createImmutableChildBunch());
-        }
-        for(var mut : objectsMutations) {
+        });
+        objectsMutations.valueIterator().forEach(mut -> {
             objects.put(mut.node, mut.hashCodeOfNode, mut.mutableTripleBunch.createImmutableChildBunch());
-        }
-        subjectsMutations = new ArrayList<>();
-        predicatesMutations = new ArrayList<>();
-        objectsMutations = new ArrayList<>();
+        });
+        subjectsMutations.clear();
+        predicatesMutations.clear();
+        objectsMutations.clear();
         return new FastTripleStorePersistableImmutable(this);
     }
 
@@ -449,7 +452,7 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
             super();
         }
 
-        private ArrayBunchWithSameSubject(ArrayBunchWithSameSubject bunchToCopy) {
+        protected ArrayBunchWithSameSubject(FastArrayBunchPersistable bunchToCopy) {
             super(bunchToCopy);
         }
 
@@ -467,6 +470,11 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
         @Override
         public ArrayBunchImmutableWithSameSubject createImmutableChildBunch() {
             return new ArrayBunchImmutableWithSameSubject(this);
+        }
+
+        @Override
+        public FastTripleBunchPersistable createMutableCopy() {
+            return new ArrayBunchWithSameSubject(this);
         }
     }
 
@@ -491,6 +499,11 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
         public ArrayBunchImmutableWithSameSubject createImmutableChildBunch() {
             throw new UnsupportedOperationException("This bunch is already immutable");
         }
+
+        @Override
+        public FastTripleBunchPersistable createMutableCopy() {
+            return new ArrayBunchWithSameSubject(this);
+        }
     }
 
 
@@ -500,7 +513,7 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
             super();
         }
 
-        private ArrayBunchWithSamePredicate(ArrayBunchWithSamePredicate bunchToCopy) {
+        protected ArrayBunchWithSamePredicate(FastArrayBunchPersistable bunchToCopy) {
             super(bunchToCopy);
         }
 
@@ -518,6 +531,11 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
         @Override
         public ArrayBunchImmutableWithSamePredicate createImmutableChildBunch() {
             return new ArrayBunchImmutableWithSamePredicate(this);
+        }
+
+        @Override
+        public FastTripleBunchPersistable createMutableCopy() {
+            return new ArrayBunchWithSamePredicate(this);
         }
     }
 
@@ -542,6 +560,11 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
         public ArrayBunchImmutableWithSamePredicate createImmutableChildBunch() {
             throw new UnsupportedOperationException("This bunch is already immutable");
         }
+
+        @Override
+        public FastTripleBunchPersistable createMutableCopy() {
+            return new ArrayBunchWithSamePredicate(this);
+        }
     }
 
     protected static class ArrayBunchWithSameObject extends FastArrayBunchPersistable {
@@ -550,7 +573,7 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
             super();
         }
 
-        private ArrayBunchWithSameObject(ArrayBunchWithSameObject bunchToCopy) {
+        protected ArrayBunchWithSameObject(FastArrayBunchPersistable bunchToCopy) {
             super(bunchToCopy);
         }
 
@@ -568,6 +591,11 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
         @Override
         public ArrayBunchImmutableWithSameObject createImmutableChildBunch() {
             return new ArrayBunchImmutableWithSameObject(this);
+        }
+
+        @Override
+        public FastTripleBunchPersistable createMutableCopy() {
+            return new ArrayBunchWithSameObject(this);
         }
     }
 
@@ -591,6 +619,11 @@ public class FastTripleStorePersistable implements TripleStorePersistable {
         @Override
         public ArrayBunchImmutableWithSameObject createImmutableChildBunch() {
             throw new UnsupportedOperationException("This bunch is already immutable");
+        }
+
+        @Override
+        public FastTripleBunchPersistable createMutableCopy() {
+            return new ArrayBunchWithSameObject(this);
         }
     }
 }

@@ -30,7 +30,7 @@ import java.util.stream.Stream;
  * A triple store is a collection of triples that supports access to
  * triples matching a triple pattern.
  */
-public interface TripleStorePersistable extends TripleStore, Persistable<TripleStorePersistable> {
+public interface TripleStorePersistable extends TripleStore<TripleStorePersistable>, Persistable<TripleStorePersistable> {
 
 
 }

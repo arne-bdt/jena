@@ -45,7 +45,7 @@ import java.util.stream.Stream;
  * {@link org.apache.jena.mem.collection.JenaMapSetCommon#removeUnchecked(java.lang.Object)} methods to avoid
  * unnecessary checks.
  */
-public class LegacyTripleStore implements TripleStore {
+public class LegacyTripleStore implements TripleStore<LegacyTripleStore> {
 
     private final NodeToTriplesMap subjects;
     private final NodeToTriplesMap predicates;

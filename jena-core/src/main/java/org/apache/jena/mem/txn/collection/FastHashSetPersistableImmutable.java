@@ -26,10 +26,12 @@ public final class FastHashSetPersistableImmutable<K> extends FastHashSetPersist
         this.mutableParent = createImmutableChild ? base : base.getMutableParent();
     }
 
+    @Override
     public boolean isImmutable() {
         return true;
     }
 
+    @Override
     public FastHashSetPersistable<K> getMutableParent() {
         return mutableParent;
     }
