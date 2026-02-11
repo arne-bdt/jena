@@ -30,7 +30,7 @@
     "@vue/compat": "^3.5.26",
     "@zazuko/yasqe": "^4.6.0",
     "@zazuko/yasr": "^4.6.0",
-    "axios": "^1.6.1",
+    "axios": "^1.13.5",
     "bootstrap": "^5.3.2",
     "codemirror": "6.0.2",
     "follow-redirects": "^1.15.4",
