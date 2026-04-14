@@ -38,26 +38,26 @@ public class FastTripleStoreTest extends AbstractTripleStoreTest {
 
     @Test
     public void testAddMoreTriplesThanFitInArrayBunchSameSubject() {
-        for (int i = 0; i < FastTripleStore.MAX_ARRAY_BUNCH_SIZE_SUBJECT + 1; i++) {
+        for (int i = 0; i < FastTripleStore.MAX_ARRAY_BUNCH_SIZE + 1; i++) {
             sut.add(triple("s P" + i + " o" + i));
         }
-        assertEquals(FastTripleStore.MAX_ARRAY_BUNCH_SIZE_SUBJECT + 1, sut.countTriples());
+        assertEquals(FastTripleStore.MAX_ARRAY_BUNCH_SIZE + 1, sut.countTriples());
     }
 
     @Test
     public void testAddMoreTriplesThanFitInArrayBunchSamePredicate() {
-        for (int i = 0; i < FastTripleStore.MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT + 1; i++) {
+        for (int i = 0; i < FastTripleStore.MAX_ARRAY_BUNCH_SIZE + 1; i++) {
             sut.add(triple("s" + i + " P o" + i));
         }
-        assertEquals(FastTripleStore.MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT + 1, sut.countTriples());
+        assertEquals(FastTripleStore.MAX_ARRAY_BUNCH_SIZE + 1, sut.countTriples());
     }
 
     @Test
     public void testAddMoreTriplesThanFitInArrayBunchSameObject() {
-        for (int i = 0; i < FastTripleStore.MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT + 1; i++) {
+        for (int i = 0; i < FastTripleStore.MAX_ARRAY_BUNCH_SIZE + 1; i++) {
             sut.add(triple("s" + i + " P" + i + " o"));
         }
-        assertEquals(FastTripleStore.MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT + 1, sut.countTriples());
+        assertEquals(FastTripleStore.MAX_ARRAY_BUNCH_SIZE + 1, sut.countTriples());
     }
 
     @Test

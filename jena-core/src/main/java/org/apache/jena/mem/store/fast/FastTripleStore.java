@@ -69,8 +69,7 @@ import java.util.stream.StreamSupport;
 public class FastTripleStore implements TripleStore {
 
     protected static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 400;
-    protected static final int MAX_ARRAY_BUNCH_SIZE_SUBJECT = 16;
-    protected static final int MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT = 32;
+    protected static final int MAX_ARRAY_BUNCH_SIZE = 16;
     final FastHashedBunchMap subjects;
     final FastHashedBunchMap predicates;
     final FastHashedBunchMap objects;
@@ -100,7 +99,7 @@ public class FastTripleStore implements TripleStore {
             subjects.put(triple.getSubject(), sBunch);
             added = true;
         } else {
-            if (sBunch.isArray() && sBunch.size() == MAX_ARRAY_BUNCH_SIZE_SUBJECT) {
+            if (sBunch.isArray() && sBunch.size() == MAX_ARRAY_BUNCH_SIZE) {
                 sBunch = new FastHashedTripleBunch(sBunch);
                 subjects.put(triple.getSubject(), sBunch);
             }
@@ -109,13 +108,13 @@ public class FastTripleStore implements TripleStore {
         if (added) {
             size++;
             var pBunch = predicates.computeIfAbsent(triple.getPredicate(), ArrayBunchWithSamePredicate::new);
-            if (pBunch.isArray() && pBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
+            if (pBunch.isArray() && pBunch.size() == MAX_ARRAY_BUNCH_SIZE) {
                 pBunch = new FastHashedTripleBunch(pBunch);
                 predicates.put(triple.getPredicate(), pBunch);
             }
             pBunch.addUnchecked(triple, hashCodeOfTriple);
             var oBunch = objects.computeIfAbsent(triple.getObject(), ArrayBunchWithSameObject::new);
-            if (oBunch.isArray() && oBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
+            if (oBunch.isArray() && oBunch.size() == MAX_ARRAY_BUNCH_SIZE) {
                 oBunch = new FastHashedTripleBunch(oBunch);
                 objects.put(triple.getObject(), oBunch);
             }

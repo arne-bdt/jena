@@ -95,9 +95,9 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
      * Copy constructor.
      * The new map will contain all the same keys of the map to copy.
      *
-     * @param baseToCopy
+     * @param baseToCopy instance to copy
      */
-    protected <T extends FastHashBase<?>> FastHashBase(final T baseToCopy)  {
+    protected <T extends FastHashBase<K>> FastHashBase(final T baseToCopy)  {
         this.positions = new int[baseToCopy.positions.length];
         System.arraycopy(baseToCopy.positions, 0, this.positions, 0, baseToCopy.positions.length);
 
@@ -143,6 +143,17 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         return -1;
     }
 
+    private void fillPositionsArray(int newSize) {
+        this.positions = new int[newSize];
+        var pos = keysPos - 1;
+        while (-1 < pos) {
+            if (null != keys[pos]) {
+                this.positions[findEmptySlotWithoutEqualityCheck(hashCodesOrDeletedIndices[pos])] = ~pos;
+            }
+            pos--;
+        }
+    }
+
     /**
      * Grows the positions array if needed.
      */
@@ -151,13 +162,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         if (newSize < 0) {
             return;
         }
-        final var oldPositions = this.positions;
-        this.positions = new int[newSize];
-        for (int oldPosition : oldPositions) {
-            if (0 != oldPosition) {
-                this.positions[findEmptySlotWithoutEqualityCheck(hashCodesOrDeletedIndices[~oldPosition])] = oldPosition;
-            }
-        }
+        fillPositionsArray(newSize);
     }
 
     /**
@@ -170,13 +175,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         if (newSize < 0) {
             return false;
         }
-        final var oldPositions = this.positions;
-        this.positions = new int[newSize];
-        for (int oldPosition : oldPositions) {
-            if (0 != oldPosition) {
-                this.positions[findEmptySlotWithoutEqualityCheck(hashCodesOrDeletedIndices[~oldPosition])] = oldPosition;
-            }
-        }
+        fillPositionsArray(newSize);
         return true;
     }
 
