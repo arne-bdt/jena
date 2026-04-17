@@ -29,16 +29,16 @@ import org.roaringbitmap.RoaringBitmap;
 /**
  * Map from {@link Node} to {@link RoaringBitmap}.
  */
-public class NodesToBitmapsMap
-        extends FastHashMap<Node, RoaringBitmap>
-        implements Copyable<NodesToBitmapsMap> {
+public class NodesToIndices
+        extends FastHashMap<Node, IndexList>
+        implements Copyable<NodesToIndices> {
 
-    public NodesToBitmapsMap() {
+    public NodesToIndices() {
         super();
     }
 
-    public NodesToBitmapsMap(final NodesToBitmapsMap mapToCopy) {
-        super(mapToCopy, RoaringBitmap::clone);
+    public NodesToIndices(final NodesToIndices mapToCopy) {
+        super(mapToCopy, IndexList::clone);
     }
 
     @Override
@@ -47,8 +47,8 @@ public class NodesToBitmapsMap
     }
 
     @Override
-    protected RoaringBitmap[] newValuesArray(int size) {
-        return new RoaringBitmap[size];
+    protected IndexList[] newValuesArray(int size) {
+        return new IndexList[size];
     }
 
     /**
@@ -58,7 +58,7 @@ public class NodesToBitmapsMap
      * @return a copy of this map
      */
     @Override
-    public NodesToBitmapsMap copy() {
-        return new NodesToBitmapsMap(this);
+    public NodesToIndices copy() {
+        return new NodesToIndices(this);
     }
 }

@@ -39,7 +39,7 @@ import java.util.function.UnaryOperator;
  * Only remove operations are not as fast as in {@link java.util.HashMap}
  * Iterating over this map does not get much faster again after removing elements because the map is not compacted.
  */
-public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaMap<K, V> {
+public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimized<K, V> {
 
     protected V[] values;
 
@@ -105,8 +105,12 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
     }
 
     @Override
-    public boolean tryPut(K key, V value) {
-        final var hashCode = key.hashCode();
+    public boolean tryPut(K key,  V value) {
+        return tryPut(key, key.hashCode(), value);
+    }
+
+    @Override
+    public boolean tryPut(K key, int hashCode, V value) {
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             if (tryGrowPositionsArrayIfNeeded()) {
@@ -126,7 +130,11 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     @Override
     public void put(K key, V value) {
-        final var hashCode = key.hashCode();
+        put(key, key.hashCode(), value);
+    }
+
+    @Override
+    public void put(K key, int hashCode, V value) {
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             if (tryGrowPositionsArrayIfNeeded()) {
@@ -154,7 +162,12 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     @Override
     public V get(K key) {
-        var pIndex = findPosition(key, key.hashCode());
+        return get(key, key.hashCode());
+    }
+
+    @Override
+    public V get(K key, int hashCode) {
+        var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             return null;
         } else {
@@ -164,7 +177,12 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     @Override
     public V getOrDefault(K key, V defaultValue) {
-        var pIndex = findPosition(key, key.hashCode());
+        return getOrDefault(key, key.hashCode(), defaultValue);
+    }
+
+    @Override
+    public V getOrDefault(K key, int hashCode, V defaultValue) {
+        var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             return defaultValue;
         } else {
@@ -174,7 +192,11 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     @Override
     public V computeIfAbsent(K key, Supplier<V> absentValueSupplier) {
-        final var hashCode = key.hashCode();
+        return computeIfAbsent(key, key.hashCode(), absentValueSupplier);
+    }
+
+    @Override
+    public V computeIfAbsent(K key, int hashCode, Supplier<V> absentValueSupplier) {
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             if (tryGrowPositionsArrayIfNeeded()) {
@@ -194,7 +216,11 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     @Override
     public void compute(K key, UnaryOperator<V> valueProcessor) {
-        final int hashCode = key.hashCode();
+        compute(key, key.hashCode(), valueProcessor);
+    }
+
+    @Override
+    public void compute(K key, int hashCode, UnaryOperator<V> valueProcessor) {
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             final var value = valueProcessor.apply(null);

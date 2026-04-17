@@ -32,7 +32,7 @@ import java.util.function.Consumer;
  *
  * @param <E> the type of the array elements
  */
-public class SparseArrayIterator<E> extends NiceIterator<E> implements Iterator<E> {
+public class SparseArrayIterator<E> extends NiceIterator<E> {
 
     private final E[] entries;
     private final Runnable checkForConcurrentModification;

@@ -25,16 +25,15 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.pattern.MatchPattern;
 import org.apache.jena.mem2.pattern.PatternClassifier;
-import org.apache.jena.mem2.store.roaring.NodesToBitmapsMap;
-import org.apache.jena.mem2.store.roaring.RoaringBitmapTripleIterator;
-import org.apache.jena.mem2.store.roaring.TripleSet;
+import org.apache.jena.mem2.store.roaring.*;
 import org.apache.jena.util.iterator.ExtendedIterator;
-import org.roaringbitmap.FastAggregation;
-import org.roaringbitmap.ImmutableBitmapDataProvider;
-import org.roaringbitmap.RoaringBitmap;
+import org.apache.jena.util.iterator.NullIterator;
 
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * Eager store strategy that indexes all triples immediately.
@@ -42,10 +41,9 @@ import java.util.stream.Stream;
  * It builds the index by adding all triples to the index at once.
  */
 public class EagerStoreStrategy implements StoreStrategy {
-    private static final RoaringBitmap EMPTY_BITMAP = new RoaringBitmap();
     private static final String UNSUPPORTED_PATTERN_CLASSIFIER = "Unsupported pattern classifier: %s";
 
-    final NodesToBitmapsMap[] spoBitmaps;
+    final NodesToIndices[] spoIndices;
     final TripleSet triples;
 
     /**
@@ -67,10 +65,10 @@ public class EagerStoreStrategy implements StoreStrategy {
      */
     public EagerStoreStrategy(final TripleSet triples) {
         this.triples = triples;
-        this.spoBitmaps = new NodesToBitmapsMap[]{
-                new NodesToBitmapsMap(), // Subject bitmaps
-                new NodesToBitmapsMap(), // Predicate bitmaps
-                new NodesToBitmapsMap()  // Object bitmaps
+        this.spoIndices = new NodesToIndices[]{
+                new NodesToIndices(), // Subject bitmaps
+                new NodesToIndices(), // Predicate bitmaps
+                new NodesToIndices()  // Object bitmaps
         };
     }
 
@@ -84,10 +82,10 @@ public class EagerStoreStrategy implements StoreStrategy {
      */
     public EagerStoreStrategy(final TripleSet triples, EagerStoreStrategy strategyToCopyBitmapsFrom) {
         this.triples = triples;
-        this.spoBitmaps = new NodesToBitmapsMap[]{
-                strategyToCopyBitmapsFrom.spoBitmaps[0].copy(), // Subject bitmaps
-                strategyToCopyBitmapsFrom.spoBitmaps[1].copy(), // Predicate bitmaps
-                strategyToCopyBitmapsFrom.spoBitmaps[2].copy()  // Object bitmaps
+        this.spoIndices = new NodesToIndices[]{
+                strategyToCopyBitmapsFrom.spoIndices[0].copy(), // Subject bitmaps
+                strategyToCopyBitmapsFrom.spoIndices[1].copy(), // Predicate bitmaps
+                strategyToCopyBitmapsFrom.spoIndices[2].copy()  // Object bitmaps
         };
     }
 
@@ -109,65 +107,75 @@ public class EagerStoreStrategy implements StoreStrategy {
     private void indexAllParallel() {
         final var futureIndexSubjects = CompletableFuture.runAsync(() ->
                 triples.indexedKeyIterator().forEachRemaining(entry ->
-                        addIndex(spoBitmaps[0], entry.key().getSubject(), entry.index())));
+                        addIndex(0, entry.key().getSubject(), entry.index())));
 
         final var futureIndexPredicates = CompletableFuture.runAsync(() ->
                 triples.indexedKeyIterator().forEachRemaining(entry ->
-                        addIndex(spoBitmaps[1], entry.key().getPredicate(), entry.index())));
+                        addIndex(1, entry.key().getPredicate(), entry.index())));
 
         triples.indexedKeyIterator().forEachRemaining(entry ->
-                addIndex(spoBitmaps[2], entry.key().getObject(), entry.index()));
+                addIndex(2, entry.key().getObject(), entry.index()));
 
         CompletableFuture.allOf(futureIndexSubjects, futureIndexPredicates).join();
     }
 
-    /**
-     * Add an index for a given node and index in the specified map.
-     * If the node does not exist in the map, it will be created.
-     *
-     * @param map   the map to add the index to
-     * @param node  the node to add
-     * @param index the index to add for the node
-     */
-    private static void addIndex(final NodesToBitmapsMap map, final Node node, final int index) {
-        final var bitmap = map.computeIfAbsent(node, RoaringBitmap::new);
-        bitmap.add(index);
+    private void addIndex(final int spoIndex, final Node node, final int tripleIndex) {
+        addIndex(spoIndex, node, node.hashCode(), tripleIndex);
+    }
+
+        /**
+         * Add an index for a given node and index in the specified map.
+         * If the node does not exist in the map, it will be created.
+         *
+         * @param node  the node to add
+         * @param tripleIndex, final int the index to add for the node
+         */
+    private void addIndex(final int spoIndex, final Node node, final int nodeHashCode, final int tripleIndex) {
+        final var indices = spoIndices[spoIndex].computeIfAbsent(node, nodeHashCode, IndexList::new);
+        var positon = indices.add(tripleIndex);
+        this.triples.setListPosition(tripleIndex, spoIndex, positon);
     }
 
     /**
      * Remove an index for a given node and index in the specified map.
      * If the bitmap for the node becomes empty, the node will be removed from the map.
      *
-     * @param map   the map to remove the index from
      * @param node  the node to remove
      * @param index the index to remove for the node
      */
-    private static void removeIndex(final NodesToBitmapsMap map, final Node node, final int index) {
-        final var bitmap = map.get(node);
-        bitmap.remove(index);
-        if (bitmap.isEmpty()) {
-            map.removeUnchecked(node);
+    private void removeIndex(final int spoIndex, final Node node, final int nodeHashCode, final int index) {
+        final var indexList = spoIndices[spoIndex].get(node, nodeHashCode);
+        final var switched = indexList.removeAt(this.triples.getListPosition(index, spoIndex));
+        if (indexList.isEmpty()) {
+            spoIndices[spoIndex].removeUnchecked(node, nodeHashCode);
+        } else if (switched.length != 0) {
+            this.triples.setListPosition(switched[0], spoIndex, switched[1]);
         }
     }
 
-    @Override
-    public void addToIndex(final Triple triple, final int index) {
-        addIndex(spoBitmaps[0], triple.getSubject(), index);
-        addIndex(spoBitmaps[1], triple.getPredicate(), index);
-        addIndex(spoBitmaps[2], triple.getObject(), index);
+    private void addToIndex(final Triple triple, final int index) {
+        addIndex(0, triple.getSubject(), index);
+        addIndex(1, triple.getPredicate(), index);
+        addIndex(2, triple.getObject(), index);
     }
 
     @Override
-    public void removeFromIndex(final Triple triple, final int index) {
-        removeIndex(spoBitmaps[0], triple.getSubject(), index);
-        removeIndex(spoBitmaps[1], triple.getPredicate(), index);
-        removeIndex(spoBitmaps[2], triple.getObject(), index);
+    public void addToIndex(final Triple triple, final int index, final int[] nodeHashCodes) {
+        addIndex(0, triple.getSubject(), nodeHashCodes[0], index);
+        addIndex(1, triple.getPredicate(), nodeHashCodes[1], index);
+        addIndex(2, triple.getObject(), nodeHashCodes[2], index);
+    }
 
+    @Override
+    public void removeFromIndex(final Triple triple, final int index, final int[] nodeHashCodes) {
+        removeIndex(0, triple.getSubject(), nodeHashCodes[0], index);
+        removeIndex(1, triple.getPredicate(), nodeHashCodes[1], index);
+        removeIndex(2, triple.getObject(), nodeHashCodes[2], index);
     }
 
     @Override
     public void clearIndex() {
-        for (var bitmapMap : spoBitmaps) {
+        for (var bitmapMap : spoIndices) {
             bitmapMap.clear();
         }
     }
@@ -177,46 +185,46 @@ public class EagerStoreStrategy implements StoreStrategy {
         switch (pattern) {
 
             case SUB_ANY_ANY:
-                return spoBitmaps[0].containsKey(tripleMatch.getSubject());
+                return spoIndices[0].containsKey(tripleMatch.getSubject());
             case ANY_PRE_ANY:
-                return spoBitmaps[1].containsKey(tripleMatch.getPredicate());
+                return spoIndices[1].containsKey(tripleMatch.getPredicate());
             case ANY_ANY_OBJ:
-                return spoBitmaps[2].containsKey(tripleMatch.getObject());
+                return spoIndices[2].containsKey(tripleMatch.getObject());
 
             case SUB_PRE_ANY: {
-                final var subjectBitmap = spoBitmaps[0].get(tripleMatch.getSubject());
+                final var subjectBitmap = spoIndices[0].get(tripleMatch.getSubject());
                 if (null == subjectBitmap)
                     return false;
 
-                final var predicateBitmap = spoBitmaps[1].get(tripleMatch.getPredicate());
+                final var predicateBitmap = spoIndices[1].get(tripleMatch.getPredicate());
                 if (null == predicateBitmap)
                     return false;
 
-                return RoaringBitmap.intersects(subjectBitmap, predicateBitmap);
+                return triples.intersects(0, subjectBitmap, 1, predicateBitmap);
             }
 
             case ANY_PRE_OBJ: {
-                final var predicateBitmap = spoBitmaps[1].get(tripleMatch.getPredicate());
+                final var predicateBitmap = spoIndices[1].get(tripleMatch.getPredicate());
                 if (null == predicateBitmap)
                     return false;
 
-                final var objectBitmap = spoBitmaps[2].get(tripleMatch.getObject());
+                final var objectBitmap = spoIndices[2].get(tripleMatch.getObject());
                 if (null == objectBitmap)
                     return false;
 
-                return RoaringBitmap.intersects(objectBitmap, predicateBitmap);
+                return triples.intersects(1, predicateBitmap, 2, objectBitmap);
             }
 
             case SUB_ANY_OBJ: {
-                final var subjectBitmap = spoBitmaps[0].get(tripleMatch.getSubject());
+                final var subjectBitmap = spoIndices[0].get(tripleMatch.getSubject());
                 if (null == subjectBitmap)
                     return false;
 
-                final var objectBitmap = spoBitmaps[2].get(tripleMatch.getObject());
+                final var objectBitmap = spoIndices[2].get(tripleMatch.getObject());
                 if (null == objectBitmap)
                     return false;
 
-                return RoaringBitmap.intersects(subjectBitmap, objectBitmap);
+                return triples.intersects(0, subjectBitmap, 2, objectBitmap);
             }
 
             default:
@@ -226,72 +234,75 @@ public class EagerStoreStrategy implements StoreStrategy {
 
     @Override
     public Stream<Triple> streamMatch(final Triple tripleMatch, final MatchPattern pattern) {
-        return this.getBitmapForMatch(tripleMatch, pattern)
-                .stream().mapToObj(triples::getKeyAt);
+        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(findMatch(tripleMatch, pattern), Spliterator.IMMUTABLE | Spliterator.DISTINCT), false);
     }
 
     @Override
     public ExtendedIterator<Triple> findMatch(final Triple tripleMatch, final MatchPattern pattern) {
-        return new RoaringBitmapTripleIterator(this.getBitmapForMatch(tripleMatch, pattern), triples);
-    }
-
-    /**
-     * Get the bitmap for the given triple match and pattern.
-     * This method retrieves the appropriate bitmap based on the match pattern.
-     *
-     * @param tripleMatch  the triple to match
-     * @param matchPattern the pattern to match against
-     * @return the bitmap for the match
-     */
-    private ImmutableBitmapDataProvider getBitmapForMatch(final Triple tripleMatch, final MatchPattern matchPattern) {
-        switch (matchPattern) {
+        final IndexList indexList;
+        switch (pattern) {
 
             case SUB_ANY_ANY:
-                return spoBitmaps[0].getOrDefault(tripleMatch.getSubject(), EMPTY_BITMAP);
+                indexList = spoIndices[0].get(tripleMatch.getSubject());
+                if(indexList == null) {
+                    return NullIterator.instance();
+                }
+                return new IndexListIterator(triples,  indexList);
+
             case ANY_PRE_ANY:
-                return spoBitmaps[1].getOrDefault(tripleMatch.getPredicate(), EMPTY_BITMAP);
+                indexList = spoIndices[1].get(tripleMatch.getPredicate());
+                if(indexList == null) {
+                    return NullIterator.instance();
+                }
+                return new IndexListIterator(triples,  indexList);
+
             case ANY_ANY_OBJ:
-                return spoBitmaps[2].getOrDefault(tripleMatch.getObject(), EMPTY_BITMAP);
+                indexList = spoIndices[2].get(tripleMatch.getObject());
+                if(indexList == null) {
+                    return NullIterator.instance();
+                }
+                return new IndexListIterator(triples,  indexList);
 
             case SUB_PRE_ANY: {
-                final var subjectBitmap = spoBitmaps[0].get(tripleMatch.getSubject());
+                final var subjectBitmap = spoIndices[0].get(tripleMatch.getSubject());
                 if (null == subjectBitmap)
-                    return EMPTY_BITMAP;
+                    return NullIterator.instance();
 
-                final var predicateBitmap = spoBitmaps[1].get(tripleMatch.getPredicate());
+                final var predicateBitmap = spoIndices[1].get(tripleMatch.getPredicate());
                 if (null == predicateBitmap)
-                    return EMPTY_BITMAP;
+                    return NullIterator.instance();
 
-                return FastAggregation.naive_and(subjectBitmap, predicateBitmap);
+                return new IndexListsIterator(triples, subjectBitmap, 0, predicateBitmap, 1);
             }
 
             case ANY_PRE_OBJ: {
-                final var predicateBitmap = spoBitmaps[1].get(tripleMatch.getPredicate());
+                final var predicateBitmap = spoIndices[1].get(tripleMatch.getPredicate());
                 if (null == predicateBitmap)
-                    return EMPTY_BITMAP;
+                    return NullIterator.instance();
 
-                final var objectBitmap = spoBitmaps[2].get(tripleMatch.getObject());
+                final var objectBitmap = spoIndices[2].get(tripleMatch.getObject());
                 if (null == objectBitmap)
-                    return EMPTY_BITMAP;
+                    return NullIterator.instance();
 
-                return FastAggregation.naive_and(predicateBitmap, objectBitmap);
+                return new IndexListsIterator(triples, predicateBitmap, 1, objectBitmap, 2);
             }
 
             case SUB_ANY_OBJ: {
-                final var subjectBitmap = spoBitmaps[0].get(tripleMatch.getSubject());
+                final var subjectBitmap = spoIndices[0].get(tripleMatch.getSubject());
                 if (null == subjectBitmap)
-                    return EMPTY_BITMAP;
+                    return NullIterator.instance();
 
-                final var objectBitmap = spoBitmaps[2].get(tripleMatch.getObject());
+                final var objectBitmap = spoIndices[2].get(tripleMatch.getObject());
                 if (null == objectBitmap)
-                    return EMPTY_BITMAP;
+                    return NullIterator.instance();
 
-                return FastAggregation.naive_and(subjectBitmap, objectBitmap);
+                return new IndexListsIterator(triples, subjectBitmap, 0, objectBitmap, 2);
             }
 
             default:
                 throw new IllegalStateException(String.format(UNSUPPORTED_PATTERN_CLASSIFIER, PatternClassifier.classify(tripleMatch)));
         }
     }
+
 
 }
