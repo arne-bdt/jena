@@ -176,23 +176,36 @@ public class RoaringTripleStore implements TripleStore {
         currentStrategy = new EagerStoreStrategy(this.triples, true);
     }
 
+    private static int[] getNodeHashCodes(final Triple triple) {
+        return new int[] {
+                triple.getSubject().hashCode(),
+                triple.getPredicate().hashCode(),
+                triple.getObject().hashCode()
+         };
+    }
+
+    private static int calcTripleHashCode(final int[] nodeHashCodes) {
+        return (nodeHashCodes[0] >> 1) ^ nodeHashCodes[1] ^ (nodeHashCodes[2] << 1);
+    }
 
     @Override
     public void add(final Triple triple) {
-        final var index = triples.addAndGetIndex(triple);
+        final var nodeHashCodes = getNodeHashCodes(triple);
+        final var index = triples.addAndGetIndex(triple, calcTripleHashCode(nodeHashCodes));
         if (index < 0) { /*triple already exists*/
             return;
         }
-        currentStrategy.addToIndex(triple, index);
+        currentStrategy.addToIndex(triple, index, nodeHashCodes);
     }
 
     @Override
     public void remove(final Triple triple) {
-        final var index = triples.removeAndGetIndex(triple);
+        final var nodeHashCodes = getNodeHashCodes(triple);
+        final var index = triples.removeAndGetIndex(triple, calcTripleHashCode(nodeHashCodes));
         if (index < 0) { /*triple does not exist*/
             return;
         }
-        currentStrategy.removeFromIndex(triple, index);
+        currentStrategy.removeFromIndex(triple, index, nodeHashCodes);
     }
 
     @Override

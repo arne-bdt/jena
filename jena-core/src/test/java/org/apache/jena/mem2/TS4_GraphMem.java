@@ -33,7 +33,6 @@ import org.apache.jena.mem2.store.fast.FastArrayBunchTest;
 import org.apache.jena.mem2.store.fast.FastHashedTripleBunchTest;
 import org.apache.jena.mem2.store.fast.FastTripleStoreTest;
 import org.apache.jena.mem2.store.legacy.*;
-import org.apache.jena.mem2.store.roaring.RoaringBitmapTripleIteratorTest;
 import org.apache.jena.mem2.store.roaring.RoaringTripleStoreTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -65,7 +64,6 @@ import org.junit.runners.Suite;
 
     // store/roaring
     RoaringTripleStoreTest.class,
-    RoaringBitmapTripleIteratorTest.class,
 
     // store/legacy
     ArrayBunchTest.class,

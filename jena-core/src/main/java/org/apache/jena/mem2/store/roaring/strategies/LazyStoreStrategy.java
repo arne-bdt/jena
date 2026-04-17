@@ -42,12 +42,12 @@ public class LazyStoreStrategy implements StoreStrategy {
     }
 
     @Override
-    public void addToIndex(final Triple triple, final int index) {
+    public void addToIndex(final Triple triple, final int index, final int[] nodeHashCodes) {
         // No-op, as there is no index to add to.
     }
 
     @Override
-    public void removeFromIndex(final Triple triple, final int index) {
+    public void removeFromIndex(final Triple triple, final int index, final int[] nodeHashCodes) {
         // No-op, as there is no index to add to.
     }
 

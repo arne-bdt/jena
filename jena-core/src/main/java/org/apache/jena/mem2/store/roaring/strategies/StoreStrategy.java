@@ -41,7 +41,7 @@ public interface StoreStrategy {
      * @param triple the triple to add
      * @param index  the index of the triple in the store
      */
-    void addToIndex(Triple triple, int index);
+    void addToIndex(final Triple triple, final int index, final int[] nodeHashCodes);
 
     /**
      * Remove a triple from the index if the current strategy supports indexing.
@@ -49,7 +49,7 @@ public interface StoreStrategy {
      * @param triple the triple to remove
      * @param index  the index of the triple in the store
      */
-    void removeFromIndex(Triple triple, int index);
+    void removeFromIndex(final Triple triple, final int index, final int[] nodeHashCodes);
 
     /**
      * Clear the index of this store if the current strategy supports indexing.
@@ -65,7 +65,7 @@ public interface StoreStrategy {
      * @param pattern     the pattern to match against
      * @return true if there is a match, false otherwise
      */
-    boolean containsMatch(Triple tripleMatch, MatchPattern pattern);
+    boolean containsMatch(final Triple tripleMatch, final MatchPattern pattern);
 
     /**
      * Stream the triples that match the given triple and pattern.
@@ -75,7 +75,7 @@ public interface StoreStrategy {
      * @param pattern     the pattern to match against
      * @return a stream of triples that match the given pattern
      */
-    Stream<Triple> streamMatch(Triple tripleMatch, MatchPattern pattern);
+    Stream<Triple> streamMatch(final Triple tripleMatch, final MatchPattern pattern);
 
     /**
      * Find the triples that match the given triple and pattern.
@@ -85,5 +85,5 @@ public interface StoreStrategy {
      * @param pattern     the pattern to match against
      * @return an iterator over the triples that match the given pattern
      */
-    ExtendedIterator<Triple> findMatch(Triple tripleMatch, MatchPattern pattern);
+    ExtendedIterator<Triple> findMatch(final Triple tripleMatch, final MatchPattern pattern);
 }
