@@ -29,6 +29,7 @@ import org.apache.jena.mem2.store.roaring.*;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NullIterator;
 
+import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.CompletableFuture;
@@ -228,13 +229,99 @@ public class EagerStoreStrategy implements StoreStrategy {
             }
 
             default:
-                throw new IllegalStateException(String.format(UNSUPPORTED_PATTERN_CLASSIFIER, PatternClassifier.classify(tripleMatch)));
+                throw new IllegalStateException(String.format(UNSUPPORTED_PATTERN_CLASSIFIER,
+                        PatternClassifier.classify(tripleMatch)));
         }
     }
 
     @Override
     public Stream<Triple> streamMatch(final Triple tripleMatch, final MatchPattern pattern) {
-        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(findMatch(tripleMatch, pattern), Spliterator.IMMUTABLE | Spliterator.DISTINCT), false);
+        final IndexList indexList;
+        switch (pattern) {
+
+            case SUB_ANY_ANY:
+                indexList = spoIndices[0].get(tripleMatch.getSubject());
+                if(indexList == null) {
+                    return Stream.empty();
+                }
+                return StreamSupport.stream(
+                        new IndexListSpliterator(triples, indexList, createConcurrentModificationChecker()),
+                        false);
+
+            case ANY_PRE_ANY:
+                indexList = spoIndices[1].get(tripleMatch.getPredicate());
+                if(indexList == null) {
+                    return Stream.empty();
+                }
+                return StreamSupport.stream(
+                        new IndexListSpliterator(triples,  indexList, createConcurrentModificationChecker()),
+                        false);
+
+            case ANY_ANY_OBJ:
+                indexList = spoIndices[2].get(tripleMatch.getObject());
+                if(indexList == null) {
+                    return Stream.empty();
+                }
+                return StreamSupport.stream(
+                        new IndexListSpliterator(triples,  indexList, createConcurrentModificationChecker()),
+                        false);
+
+            case SUB_PRE_ANY: {
+                final var subjectBitmap = spoIndices[0].get(tripleMatch.getSubject());
+                if (null == subjectBitmap)
+                    return Stream.empty();
+
+                final var predicateBitmap = spoIndices[1].get(tripleMatch.getPredicate());
+                if (null == predicateBitmap)
+                    return Stream.empty();
+
+                return StreamSupport.stream(
+                        new IndexListsSpliterator(triples, subjectBitmap, 0, predicateBitmap, 1,
+                        createConcurrentModificationChecker()),
+                        false);
+            }
+
+            case ANY_PRE_OBJ: {
+                final var predicateBitmap = spoIndices[1].get(tripleMatch.getPredicate());
+                if (null == predicateBitmap)
+                    return Stream.empty();
+
+                final var objectBitmap = spoIndices[2].get(tripleMatch.getObject());
+                if (null == objectBitmap)
+                    return Stream.empty();
+
+                return StreamSupport.stream(
+                        new IndexListsSpliterator(triples, predicateBitmap, 1, objectBitmap, 2,
+                        createConcurrentModificationChecker()),
+                        false);
+            }
+
+            case SUB_ANY_OBJ: {
+                final var subjectBitmap = spoIndices[0].get(tripleMatch.getSubject());
+                if (null == subjectBitmap)
+                    return Stream.empty();
+
+                final var objectBitmap = spoIndices[2].get(tripleMatch.getObject());
+                if (null == objectBitmap)
+                    return Stream.empty();
+
+                return StreamSupport.stream(
+                        new IndexListsSpliterator(triples, subjectBitmap, 0, objectBitmap, 2,
+                        createConcurrentModificationChecker()),
+                        false);
+            }
+
+            default:
+                throw new IllegalStateException(String.format(UNSUPPORTED_PATTERN_CLASSIFIER,
+                        PatternClassifier.classify(tripleMatch)));
+        }
+    }
+
+    private Runnable createConcurrentModificationChecker() {
+        final var initialSize = triples.size();
+        return () -> {
+            if (triples.size() != initialSize) throw new ConcurrentModificationException();
+        };
     }
 
     @Override
@@ -244,24 +331,24 @@ public class EagerStoreStrategy implements StoreStrategy {
 
             case SUB_ANY_ANY:
                 indexList = spoIndices[0].get(tripleMatch.getSubject());
-                if(indexList == null) {
+                if (indexList == null) {
                     return NullIterator.instance();
                 }
-                return new IndexListIterator(triples,  indexList);
+                return new IndexListIterator(triples, indexList, createConcurrentModificationChecker());
 
             case ANY_PRE_ANY:
                 indexList = spoIndices[1].get(tripleMatch.getPredicate());
-                if(indexList == null) {
+                if (indexList == null) {
                     return NullIterator.instance();
                 }
-                return new IndexListIterator(triples,  indexList);
+                return new IndexListIterator(triples, indexList, createConcurrentModificationChecker());
 
             case ANY_ANY_OBJ:
                 indexList = spoIndices[2].get(tripleMatch.getObject());
-                if(indexList == null) {
+                if (indexList == null) {
                     return NullIterator.instance();
                 }
-                return new IndexListIterator(triples,  indexList);
+                return new IndexListIterator(triples, indexList, createConcurrentModificationChecker());
 
             case SUB_PRE_ANY: {
                 final var subjectBitmap = spoIndices[0].get(tripleMatch.getSubject());
@@ -272,7 +359,8 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == predicateBitmap)
                     return NullIterator.instance();
 
-                return new IndexListsIterator(triples, subjectBitmap, 0, predicateBitmap, 1);
+                return new IndexListsIterator(triples, subjectBitmap, 0, predicateBitmap, 1,
+                        createConcurrentModificationChecker());
             }
 
             case ANY_PRE_OBJ: {
@@ -284,7 +372,8 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == objectBitmap)
                     return NullIterator.instance();
 
-                return new IndexListsIterator(triples, predicateBitmap, 1, objectBitmap, 2);
+                return new IndexListsIterator(triples, predicateBitmap, 1, objectBitmap, 2,
+                        createConcurrentModificationChecker());
             }
 
             case SUB_ANY_OBJ: {
@@ -296,13 +385,13 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == objectBitmap)
                     return NullIterator.instance();
 
-                return new IndexListsIterator(triples, subjectBitmap, 0, objectBitmap, 2);
+                return new IndexListsIterator(triples, subjectBitmap, 0, objectBitmap, 2,
+                        createConcurrentModificationChecker());
             }
 
             default:
-                throw new IllegalStateException(String.format(UNSUPPORTED_PATTERN_CLASSIFIER, PatternClassifier.classify(tripleMatch)));
+                throw new IllegalStateException(String.format(UNSUPPORTED_PATTERN_CLASSIFIER,
+                        PatternClassifier.classify(tripleMatch)));
         }
     }
-
-
 }

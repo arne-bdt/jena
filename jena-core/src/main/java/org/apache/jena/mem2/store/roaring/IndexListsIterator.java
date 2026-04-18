@@ -3,6 +3,7 @@ package org.apache.jena.mem2.store.roaring;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.util.iterator.NiceIterator;
 
+import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 public class IndexListsIterator extends NiceIterator<Triple> {
@@ -11,11 +12,13 @@ public class IndexListsIterator extends NiceIterator<Triple> {
     private final int[] indicesSmaller;
     private final int[] indicesLarger;
     private final int[] positionsLarger;
+    private final Runnable checkForConcurrentModification;
     private int pos;
     private int tripleIndex;
     final int indicesLargerSize;
+    private boolean hasNext = false;
 
-    public IndexListsIterator(final TripleSet tripleSet, final IndexList indexListA, final int spoIndexA, final IndexList indexListB, final int spoIndexB) {
+    public IndexListsIterator(final TripleSet tripleSet, final IndexList indexListA, final int spoIndexA, final IndexList indexListB, final int spoIndexB, final Runnable checkForConcurrentModification) {
         triples = tripleSet.getTriples();
         if(indexListA.size() < indexListB.size()) {
             indicesSmaller = indexListA.getIndices();
@@ -30,25 +33,34 @@ public class IndexListsIterator extends NiceIterator<Triple> {
             pos = indexListB.lastPos();
             indicesLargerSize = indexListA.size();
         }
+        this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
     @Override
     public boolean hasNext() {
+        if(hasNext) {
+            return true;
+        }
         while(-1 < pos)  {
             tripleIndex = indicesSmaller[pos--];
             final var posLarger = positionsLarger[tripleIndex];
 
             if(posLarger < indicesLargerSize
                     && indicesLarger[posLarger] == tripleIndex) {
-                return true;
+                return hasNext = true;
             }
         }
-        return false;
+        return hasNext = false;
     }
 
     @Override
     public Triple next() {
-        return triples[tripleIndex];
+        checkForConcurrentModification.run();
+        if(hasNext || hasNext()) {
+            hasNext = false;
+            return triples[tripleIndex];
+        }
+        throw new NoSuchElementException();
     }
 
     @Override
@@ -61,5 +73,6 @@ public class IndexListsIterator extends NiceIterator<Triple> {
                 action.accept(triples[tripleIndex]);
             }
         }
+        checkForConcurrentModification.run();
     }
 }

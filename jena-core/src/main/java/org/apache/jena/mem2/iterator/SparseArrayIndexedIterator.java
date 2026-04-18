@@ -71,13 +71,11 @@ public class SparseArrayIndexedIterator<E> extends NiceIterator<FastHashSet.Inde
     public boolean hasNext() {
         while (toIndexExclusive > pos) {
             if (null != entries[pos]) {
-                hasNext = true;
-                return true;
+                return hasNext = true;
             }
             pos++;
         }
-        hasNext = false;
-        return false;
+        return hasNext = false;
     }
 
     /**
