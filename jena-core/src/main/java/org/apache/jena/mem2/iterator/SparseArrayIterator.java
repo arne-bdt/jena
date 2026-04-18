@@ -62,13 +62,11 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
     public boolean hasNext() {
         while (-1 < pos) {
             if (null != entries[pos]) {
-                hasNext = true;
-                return true;
+                return hasNext = true;
             }
             pos--;
         }
-        hasNext = false;
-        return false;
+        return hasNext = false;
     }
 
     /**
