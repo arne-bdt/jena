@@ -48,6 +48,15 @@ public class GraphMemRoaringTest extends AbstractGraphMemTest {
     }
 
     @Override
+    public void testDeleteAll() {
+        // the delete test takes almost a minute with MANUAL indexing
+        if(indexingStrategy == IndexingStrategy.MANUAL)
+            return;
+
+        super.testDeleteAll();
+    }
+
+    @Override
     protected GraphMem createGraph() {
         switch (indexingStrategy) {
             case EAGER, LAZY, LAZY_PARALLEL, MINIMAL:

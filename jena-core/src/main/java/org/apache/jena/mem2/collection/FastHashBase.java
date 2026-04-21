@@ -279,6 +279,12 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         removeFrom(findPosition(e, hashCode));
     }
 
+    public int removeAt(int index) {
+        var here = findPosition(keys[index], hashCodesOrDeletedIndices[index]);
+        removeFrom(here);
+        return -1;
+    }
+
     /**
      * Removes the element at the given position.
      * <p>
@@ -292,6 +298,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
      * <p>
      *
      * @param here the index in the positions array
+     * @return
      */
     protected void removeFrom(int here) {
         final var pIndex = ~positions[here];
@@ -440,5 +447,24 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
             if (this.size() != initialSize) throw new ConcurrentModificationException();
         };
         return new SparseArraySpliterator<>(keys, keysPos, checkForConcurrentModification);
+    }
+
+    /**
+     * Gets the key at the given index.
+     *
+     * @param i the index
+     * @return the key at the given index
+     */
+    public K getKeyAt(int i) {
+        return keys[i];
+    }
+
+    public int indexOf(K key) {
+        final var pIndex = findPosition(key, key.hashCode());
+        if (pIndex < 0) {
+            return -1;
+        } else {
+            return ~positions[pIndex];
+        }
     }
 }

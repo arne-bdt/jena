@@ -124,16 +124,6 @@ public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetH
     }
 
     /**
-     * Gets the key at the given index.
-     *
-     * @param i the index
-     * @return the key at the given index
-     */
-    public K getKeyAt(int i) {
-        return keys[i];
-    }
-
-    /**
      * Entry pairing a key with its index in the set.
      * @param index index of the key in the set
      * @param key the key

@@ -101,16 +101,15 @@ public class IndexList {
      * Removes the element at the given position, and returns an array of two ints:
      * The element that was moved to fill the gap, and the new position of that element.
      * @param position The position at which an element should be removed.
-     * @return An array of two ints: The element that was moved to fill the gap, and the new position of that element.
-     *         If no element was moved, an empty array is returned.
+     * @return The element that was moved to fill the gap.
      */
-    public int[] removeAt(final int position) {
+    public int removeAt(final int position) {
         if(pos == position) {
             elements[position] = --pos;
-            return EMPTY_ARRAY;
+            return -1;
         } else {
             elements[position] = elements[pos--];
-            return new int[] { elements[position], position };
+            return elements[position];
         }
     }
 

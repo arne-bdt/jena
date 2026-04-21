@@ -93,9 +93,9 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
     }
 
     @Override
-    protected void removeFrom(int here) {
-        values[~positions[here]] = null;
-        super.removeFrom(here);
+    public int removeAt(int index) {
+        values[index] = null;
+        return super.removeAt(index);
     }
 
     @Override
@@ -129,9 +129,47 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
     }
 
     @Override
+    public int putAndGetIndex(K key, V value) {
+        final int hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            if (tryGrowPositionsArrayIfNeeded()) {
+                pIndex = findPosition(key, hashCode);
+            }
+            final var eIndex = getFreeKeyIndex();
+            keys[eIndex] = key;
+            values[eIndex] = value;
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
+            positions[~pIndex] = ~eIndex;
+            return eIndex;
+        } else {
+            final var eIndex = ~positions[pIndex];
+            values[eIndex] = value;
+            return eIndex;
+        }
+    }
+
+    @Override
     public void put(K key, V value) {
         put(key, key.hashCode(), value);
     }
+
+//    @Override
+//    public void putAt(int index, K key, V value) {
+//        if (index < 0) {
+//            final var hashCode = key.hashCode();
+//            if (tryGrowPositionsArrayIfNeeded()) {
+//                index = findPosition(key, hashCode);
+//            }
+//            final var eIndex = getFreeKeyIndex();
+//            keys[eIndex] = key;
+//            values[eIndex] = value;
+//            hashCodesOrDeletedIndices[eIndex] = hashCode;
+//            positions[~index] = ~eIndex;
+//        } else {
+//            values[~positions[index]] = value;
+//        }
+//    }
 
     @Override
     public void put(K key, int hashCode, V value) {
@@ -167,7 +205,7 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     @Override
     public V get(K key, int hashCode) {
-        var pIndex = findPosition(key, hashCode);
+        final var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             return null;
         } else {

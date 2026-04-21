@@ -29,6 +29,8 @@ import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+
 import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -1040,5 +1042,37 @@ public abstract class AbstractGraphMemTest {
         assertTrue(sut.contains(triple("s2 p2 o2")));
         assertFalse(sut.contains(triple("s3 p3 o3")));
     }
+
+    @Test
+    public void testDeleteAll() {
+        for(var subjects=1; subjects <= 25 ; subjects++) {
+            for(var predicates=1; predicates <= 8 ; predicates++) {
+                for(var objects=1; objects <= 8 ; objects++) {
+                    sut = createGraph();
+                    var triples = new ArrayList<Triple>();
+                    for(var s=0; s < subjects ; s++) {
+                        for(var p=0; p < predicates ; p++) {
+                            for(var o=0; o < objects ; o++) {
+                                var t = triple("s" + s + " p" + p + " o" + o);
+                                triples.add(t);
+                                sut.add(t);
+                                assertTrue(sut.contains(t));
+                            }
+                        }
+                    }
+                    assertEquals(subjects*predicates*objects, sut.size());
+                    // print subjects, predicates, objects and size
+                    // System.out.println(subjects + " - " + predicates + " - " + objects + " : " + sut.size());
+                    for (var triple : triples) {
+                        assertTrue(sut.contains(triple));
+                        sut.delete(triple);
+                        assertFalse(sut.contains(triple));
+                    }
+                    assertEquals(0, sut.size());
+                }
+            }
+        }
+    }
+
 
 }
