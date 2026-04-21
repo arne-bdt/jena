@@ -28,11 +28,28 @@ package org.apache.jena.mem2.collection;
  * Attention: The hash code must be consistent with E::hashCode().
  */
 public interface JenaSetHashOptimized<E> extends JenaSet<E> {
+
+    /**
+     * Add and get the index of the added element.
+     *
+     * @param key    the key to add
+     * @param hashCode the hash code of the value. This is a performance optimization.
+     * @return the index of the added element
+     *         or a negative value, if the key already exists
+     */
+    int addAndGetIndex(final E key, final int hashCode);
+
     boolean tryAdd(E key, int hashCode);
 
     void addUnchecked(E key, int hashCode);
 
     boolean tryRemove(E key, int hashCode);
 
+    int removeAt(int index);
+
     void removeUnchecked(E key, int hashCode);
+
+    E getKeyAt(int index);
+
+    int indexOf(E key);
 }

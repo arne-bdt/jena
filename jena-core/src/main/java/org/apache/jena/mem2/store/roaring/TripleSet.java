@@ -34,10 +34,6 @@ public class TripleSet
 
     private int[][] indexListPositions;
 
-    public static final int IDX_SUB = 0;
-    public static final int IDX_PRD = 1;
-    public static final int IDX_OBJ = 2;
-
     public TripleSet() {
         super();
         indexListPositions = new int[3][keys.length];
@@ -50,9 +46,9 @@ public class TripleSet
     }
 
     private static void copyIndexPositions(int [][] source, int [][] target) {
-        System.arraycopy(source[IDX_SUB], 0, target[IDX_SUB], 0, source[IDX_SUB].length);
-        System.arraycopy(source[IDX_PRD], 0, target[IDX_PRD], 0, source[IDX_PRD].length);
-        System.arraycopy(source[IDX_OBJ], 0, target[IDX_OBJ], 0, source[IDX_OBJ].length);
+        System.arraycopy(source[0], 0, target[0], 0, source[0].length);
+        System.arraycopy(source[1], 0, target[1], 0, source[1].length);
+        System.arraycopy(source[2], 0, target[2], 0, source[2].length);
     }
 
     @Override
@@ -82,12 +78,12 @@ public class TripleSet
         return keys;
     }
 
-    public void setListPosition(final int tripleIndex, final int spoIndex, final int position) {
-        this.indexListPositions[spoIndex][tripleIndex] = position;
-    }
-
     public int getListPosition(final int tripleIndex, final int spoIndex) {
         return this.indexListPositions[spoIndex][tripleIndex];
+    }
+
+    public void setListPosition(final int tripleIndex, final int spoIndex, final int position) {
+        this.indexListPositions[spoIndex][tripleIndex] = position;
     }
 
     public int[] getListPositions(final int spoIndex) {

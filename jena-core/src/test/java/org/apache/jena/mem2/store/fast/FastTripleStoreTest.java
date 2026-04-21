@@ -46,18 +46,18 @@ public class FastTripleStoreTest extends AbstractTripleStoreTest {
 
     @Test
     public void testAddMoreTriplesThanFitInArrayBunchSamePredicate() {
-        for (int i = 0; i < org.apache.jena.mem2.store.fast.FastTripleStore.MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT + 1; i++) {
+        for (int i = 0; i < org.apache.jena.mem2.store.fast.FastTripleStore.MAX_ARRAY_BUNCH_SIZE_SUBJECT + 1; i++) {
             sut.add(triple("s" + i + " P o" + i));
         }
-        assertEquals(org.apache.jena.mem2.store.fast.FastTripleStore.MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT + 1, sut.countTriples());
+        assertEquals(org.apache.jena.mem2.store.fast.FastTripleStore.MAX_ARRAY_BUNCH_SIZE_SUBJECT + 1, sut.countTriples());
     }
 
     @Test
     public void testAddMoreTriplesThanFitInArrayBunchSameObject() {
-        for (int i = 0; i < org.apache.jena.mem2.store.fast.FastTripleStore.MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT + 1; i++) {
+        for (int i = 0; i < org.apache.jena.mem2.store.fast.FastTripleStore.MAX_ARRAY_BUNCH_SIZE_SUBJECT + 1; i++) {
             sut.add(triple("s" + i + " P" + i + " o"));
         }
-        assertEquals(org.apache.jena.mem2.store.fast.FastTripleStore.MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT + 1, sut.countTriples());
+        assertEquals(org.apache.jena.mem2.store.fast.FastTripleStore.MAX_ARRAY_BUNCH_SIZE_SUBJECT + 1, sut.countTriples());
     }
 
     @Test

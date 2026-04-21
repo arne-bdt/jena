@@ -36,6 +36,14 @@ import java.util.stream.StreamSupport;
  */
 public interface JenaMapOptimized<K, V> extends JenaMap<K, V> {
 
+    int removeAt(int index);
+
+    int indexOf(K key);
+
+    K getKeyAt(int index);
+
+    V getValueAt(int index);
+
     /**
      * Try to put a key-value pair into the map. If the key is already present, the value is updated.
      *
@@ -44,6 +52,10 @@ public interface JenaMapOptimized<K, V> extends JenaMap<K, V> {
      * @return true if the key-value pair was put into the map, false if the key was already present
      */
     boolean tryPut(K key, int hashCode, V value);
+
+    int putAndGetIndex(K key, V value);
+
+//    void putAt(int index, K key, V value);
 
     /**
      * Put a key-value pair into the map. If the key is already present, the value is updated.

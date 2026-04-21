@@ -146,11 +146,12 @@ public class EagerStoreStrategy implements StoreStrategy {
      */
     private void removeIndex(final int spoIndex, final Node node, final int nodeHashCode, final int index) {
         final var indexList = spoIndices[spoIndex].get(node, nodeHashCode);
-        final var switched = indexList.removeAt(this.triples.getListPosition(index, spoIndex));
+        var oldPosition = this.triples.getListPosition(index, spoIndex);
+        final var switched = indexList.removeAt(oldPosition);
         if (indexList.isEmpty()) {
             spoIndices[spoIndex].removeUnchecked(node, nodeHashCode);
-        } else if (switched.length != 0) {
-            this.triples.setListPosition(switched[0], spoIndex, switched[1]);
+        } else if (-1 < switched) {
+            this.triples.setListPosition(switched, spoIndex, oldPosition);
         }
     }
 
