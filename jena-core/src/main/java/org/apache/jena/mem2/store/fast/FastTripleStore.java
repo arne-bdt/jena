@@ -269,7 +269,7 @@ public class FastTripleStore implements TripleStore {
     }
 
     private boolean intersects(FastTripleBunch triples, int sIndex, DoubleIndexList list, int listIndex) {
-        final var triplesSize = list.size();
+        final var triplesSize = triples.size();
         final var listSize = list.size();
         if(triplesSize < listSize) {
             var i = triplesSize;
