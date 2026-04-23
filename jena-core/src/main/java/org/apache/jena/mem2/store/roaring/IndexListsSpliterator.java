@@ -18,19 +18,22 @@ public class IndexListsSpliterator implements Spliterator<Triple> {
     private int pos;
     final int indicesLargerSize;
 
-    public IndexListsSpliterator(final TripleSet tripleSet, final IndexList indexListA, final int spoIndexA, final IndexList indexListB, final int spoIndexB, final Runnable checkForConcurrentModification) {
+    public IndexListsSpliterator(final TripleSet tripleSet,
+                                 final IndexList indexListA, final int[] spoIndexA,
+                                 final IndexList indexListB, final int[] spoIndexB,
+                                 final Runnable checkForConcurrentModification) {
         triples = tripleSet.getTriples();
         if(indexListA.size() < indexListB.size()) {
             indicesSmaller = indexListA.getIndices();
             indicesLarger = indexListB.getIndices();
-            positionsLarger = tripleSet.getListPositions(spoIndexB);
+            positionsLarger = spoIndexB;
             toPositionExclusive = indexListA.size();
             pos = 0;
             indicesLargerSize = indexListB.size();
         } else {
             indicesSmaller = indexListB.getIndices();
             indicesLarger = indexListA.getIndices();
-            positionsLarger = tripleSet.getListPositions(spoIndexA);
+            positionsLarger = spoIndexA;
             toPositionExclusive = indexListB.size();
             pos = 0;
             indicesLargerSize = indexListA.size();

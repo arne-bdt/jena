@@ -93,9 +93,9 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
     }
 
     @Override
-    public int removeAt(int index) {
+    public void removeAt(int index) {
         values[index] = null;
-        return super.removeAt(index);
+        super.removeAt(index);
     }
 
     @Override

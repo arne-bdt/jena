@@ -32,23 +32,25 @@ public class TripleSet
         extends FastHashSet<Triple>
         implements Copyable<TripleSet> {
 
-    private int[][] indexListPositions;
+    private int[] sIndices;
+    private int[] pIndices;
+    private int[] oIndices;
 
     public TripleSet() {
         super();
-        indexListPositions = new int[3][keys.length];
+        sIndices = new int[keys.length];
+        pIndices = new int[keys.length];
+        oIndices = new int[keys.length];
     }
 
     private TripleSet(final TripleSet setToCopy) {
         super(setToCopy);
-        indexListPositions = new int[3][keys.length];
-        copyIndexPositions(setToCopy.indexListPositions, this.indexListPositions);
-    }
-
-    private static void copyIndexPositions(int [][] source, int [][] target) {
-        System.arraycopy(source[0], 0, target[0], 0, source[0].length);
-        System.arraycopy(source[1], 0, target[1], 0, source[1].length);
-        System.arraycopy(source[2], 0, target[2], 0, source[2].length);
+        sIndices = new int[keys.length];
+        pIndices = new int[keys.length];
+        oIndices = new int[keys.length];
+        System.arraycopy(setToCopy.sIndices, 0, sIndices, 0, setToCopy.keysPos);
+        System.arraycopy(setToCopy.pIndices, 0, pIndices, 0, setToCopy.keysPos);
+        System.arraycopy(setToCopy.oIndices, 0, oIndices, 0, setToCopy.keysPos);
     }
 
     @Override
@@ -69,41 +71,71 @@ public class TripleSet
     @Override
     protected void growKeysAndHashCodeArrays() {
         super.growKeysAndHashCodeArrays();
-        final var oldPositions = indexListPositions;
-        indexListPositions = new int[3][keys.length];
-        copyIndexPositions(oldPositions, indexListPositions);
+        final var oldSIndices = sIndices;
+        final var oldPIndices = pIndices;
+        final var oldOIndices = oIndices;
+        sIndices = new int[keys.length];
+        pIndices = new int[keys.length];
+        oIndices = new int[keys.length];
+        System.arraycopy(oldSIndices, 0, sIndices, 0, oldSIndices.length);
+        System.arraycopy(oldPIndices, 0, pIndices, 0, oldPIndices.length);
+        System.arraycopy(oldOIndices, 0, oIndices, 0, oldOIndices.length);
+    }
+
+    public int getFilledLength() {
+        return keysPos;
     }
 
     public Triple[] getTriples() {
         return keys;
     }
 
-    public int getListPosition(final int tripleIndex, final int spoIndex) {
-        return this.indexListPositions[spoIndex][tripleIndex];
+    public int getSIndex(final int tripleIndex) {
+        return this.sIndices[tripleIndex];
     }
 
-    public void setListPosition(final int tripleIndex, final int spoIndex, final int position) {
-        this.indexListPositions[spoIndex][tripleIndex] = position;
+    public int getPIndex(final int tripleIndex) {
+        return this.pIndices[tripleIndex];
     }
 
-    public int[] getListPositions(final int spoIndex) {
-        return this.indexListPositions[spoIndex];
+    public int getOIndex(final int tripleIndex) {
+        return this.oIndices[tripleIndex];
     }
 
-    public boolean intersects(final int spoIndexA, final IndexList a, final int spoIndexB, final IndexList b) {
+    public void setSIndex(final int tripleIndex, final int sIndex) {
+        this.sIndices[tripleIndex] = sIndex;
+    }
+    public void setPIndex(final int tripleIndex, final int pIndex) {
+        this.pIndices[tripleIndex] = pIndex;
+    }
+    public void setOIndex(final int tripleIndex, final int oIndex) {
+        this.oIndices[tripleIndex] = oIndex;
+    }
+
+    public int[] getSIndices() {
+        return this.sIndices;
+    }
+    public int[] getPIndices() {
+        return this.pIndices;
+    }
+    public int[] getOIndices() {
+        return this.oIndices;
+    }
+
+    public boolean intersects(final IndexList a, final int[] spoIndicesA, final IndexList b, final int[] spoIndicesB) {
         if (a.size() < b.size()) {
-            return intersectsSmallerWithLarger(a, b, this.getListPositions(spoIndexB));
+            return intersectsSmallerWithLarger(a, b, spoIndicesB);
         } else {
-            return intersectsSmallerWithLarger(b, a, this.getListPositions(spoIndexA));
+            return intersectsSmallerWithLarger(b, a, spoIndicesA);
         }
     }
 
-    private boolean intersectsSmallerWithLarger(final IndexList smaller, final IndexList larger, final int[] positionsLarger) {
+    private boolean intersectsSmallerWithLarger(final IndexList smaller, final IndexList larger, final int[] spoIndicesLarger) {
         final var largerSize = larger.size();
         var pos = smaller.lastPos();
         while (-1 < pos) {
             final var tripleIndex = smaller.getIndexAt(pos--);
-            final var potentialIndexInLarger = positionsLarger[tripleIndex];
+            final var potentialIndexInLarger = spoIndicesLarger[tripleIndex];
             if(potentialIndexInLarger < largerSize) {
                 if(tripleIndex == larger.getIndexAt(potentialIndexInLarger)) {
                     return true;

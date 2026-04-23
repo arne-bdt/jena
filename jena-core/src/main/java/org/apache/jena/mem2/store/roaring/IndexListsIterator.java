@@ -18,18 +18,21 @@ public class IndexListsIterator extends NiceIterator<Triple> {
     final int indicesLargerSize;
     private boolean hasNext = false;
 
-    public IndexListsIterator(final TripleSet tripleSet, final IndexList indexListA, final int spoIndexA, final IndexList indexListB, final int spoIndexB, final Runnable checkForConcurrentModification) {
+    public IndexListsIterator(final TripleSet tripleSet,
+                              final IndexList indexListA, final int[] spoIndexA,
+                              final IndexList indexListB, final int[] spoIndexB,
+                              final Runnable checkForConcurrentModification) {
         triples = tripleSet.getTriples();
         if(indexListA.size() < indexListB.size()) {
             indicesSmaller = indexListA.getIndices();
             indicesLarger = indexListB.getIndices();
-            positionsLarger = tripleSet.getListPositions(spoIndexB);
+            positionsLarger = spoIndexB;
             pos = indexListA.lastPos();
             indicesLargerSize = indexListB.size();
         } else {
             indicesSmaller = indexListB.getIndices();
             indicesLarger = indexListA.getIndices();
-            positionsLarger = tripleSet.getListPositions(spoIndexA);
+            positionsLarger = spoIndexA;
             pos = indexListB.lastPos();
             indicesLargerSize = indexListA.size();
         }

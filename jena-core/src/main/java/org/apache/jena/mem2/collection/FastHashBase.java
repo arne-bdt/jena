@@ -279,10 +279,8 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         removeFrom(findPosition(e, hashCode));
     }
 
-    public int removeAt(int index) {
-        var here = findPosition(keys[index], hashCodesOrDeletedIndices[index]);
-        removeFrom(here);
-        return -1;
+    public void removeAt(int index) {
+        removeFrom(findPosition(keys[index], hashCodesOrDeletedIndices[index]));
     }
 
     /**

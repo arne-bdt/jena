@@ -30,9 +30,6 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.SingletonIterator;
 
-import java.util.ConcurrentModificationException;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -72,17 +69,18 @@ import java.util.stream.StreamSupport;
  */
 public class FastTripleStore implements TripleStore {
 
-    protected static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 16;
+    protected static final int THRESHOLD_FOR_SECONDARY_LOOKUP = 400;
     protected static final int MAX_ARRAY_BUNCH_SIZE_SUBJECT = 16;
+    protected static final int MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT = 32;
     final FastHashedBunchMap subjects;
-    final IndexListMap predicates;
-    final IndexListMap objects;
+    final FastHashedBunchMap predicates;
+    final FastHashedBunchMap objects;
     private int size = 0;
 
     public FastTripleStore() {
         subjects = new FastHashedBunchMap();
-        predicates = new IndexListMap();
-        objects = new IndexListMap();
+        predicates = new FastHashedBunchMap();
+        objects = new FastHashedBunchMap();
     }
 
     private FastTripleStore(final FastTripleStore tripleStoreToCopy) {
@@ -94,87 +92,61 @@ public class FastTripleStore implements TripleStore {
 
     @Override
     public void add(Triple triple) {
-        FastTripleBunch sBunch;
-        int tripleIndex;
-        int subjectIndex = subjects.indexOf(triple.getSubject());
-        if (subjectIndex < 0) {
+        final int hashCodeOfTriple = triple.hashCode();
+        final boolean added;
+        var sBunch = subjects.get(triple.getSubject());
+        if (sBunch == null) {
             sBunch = new ArrayBunchWithSameSubject();
-            sBunch.addUnchecked(triple);
-            subjectIndex = subjects.putAndGetIndex(triple.getSubject(), sBunch);
-            tripleIndex = 0;
+            sBunch.addUnchecked(triple, hashCodeOfTriple);
+            subjects.put(triple.getSubject(), sBunch);
+            added = true;
         } else {
-            sBunch = subjects.getValueAt(subjectIndex);
             if (sBunch.isArray() && sBunch.size() == MAX_ARRAY_BUNCH_SIZE_SUBJECT) {
                 sBunch = new FastHashedTripleBunch(sBunch);
-                subjectIndex = subjects.putAndGetIndex(triple.getSubject(), sBunch);
+                subjects.put(triple.getSubject(), sBunch);
             }
-            tripleIndex = sBunch.addAndGetIndex(triple, triple.hashCode());
+            added = sBunch.tryAdd(triple, hashCodeOfTriple);
         }
-        if (-1 < tripleIndex) {
+        if (added) {
             size++;
-            var pList = predicates.get(triple.getPredicate());
-            if (pList == null) {
-                pList = new DoubleIndexList();
-                predicates.put(triple.getPredicate(), pList);
+            var pBunch = predicates.computeIfAbsent(triple.getPredicate(), ArrayBunchWithSamePredicate::new);
+            if (pBunch.isArray() && pBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
+                pBunch = new FastHashedTripleBunch(pBunch);
+                predicates.put(triple.getPredicate(), pBunch);
             }
-            var ptIndex = pList.add(subjectIndex, tripleIndex);
-
-            var oList = objects.get(triple.getObject());
-            if (oList == null) {
-                oList = new DoubleIndexList();
-                objects.put(triple.getObject(), oList);
+            pBunch.addUnchecked(triple, hashCodeOfTriple);
+            var oBunch = objects.computeIfAbsent(triple.getObject(), ArrayBunchWithSameObject::new);
+            if (oBunch.isArray() && oBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
+                oBunch = new FastHashedTripleBunch(oBunch);
+                objects.put(triple.getObject(), oBunch);
             }
-            var otIndex = oList.add(subjectIndex, tripleIndex);
-
-            sBunch.setIndices(tripleIndex, ptIndex, otIndex);
+            oBunch.addUnchecked(triple, hashCodeOfTriple);
         }
     }
 
     @Override
     public void remove(Triple triple) {
+        final int hashCodeOfTriple = triple.hashCode();
         final var sBunch = subjects.get(triple.getSubject());
-        if(sBunch == null)
-            return;
-        final var tIndex = sBunch.indexOf(triple);
-        if(tIndex < 0)
+        if (sBunch == null)
             return;
 
-        {
-            final var pBunch = predicates.get(triple.getPredicate());
-            final var pIndex = sBunch.getPIndex(tIndex);
-            final var posUpdate = pBunch.removeAt(pIndex);
-            if (posUpdate.length == 2) {
-                subjects.getValueAt(posUpdate[0]).setPIndex(posUpdate[1], pIndex);
+        if (sBunch.tryRemove(triple, hashCodeOfTriple)) {
+            if (sBunch.isEmpty()) {
+                subjects.removeUnchecked(triple.getSubject());
             }
+            final var pBunch = predicates.get(triple.getPredicate());
+            pBunch.removeUnchecked(triple, hashCodeOfTriple);
             if (pBunch.isEmpty()) {
                 predicates.removeUnchecked(triple.getPredicate());
             }
-        }
-        {
             final var oBunch = objects.get(triple.getObject());
-            final var oIndex = sBunch.getOIndex(tIndex);
-            final var posUpdate = oBunch.removeAt(oIndex);
-            if (posUpdate.length == 2) {
-                subjects.getValueAt(posUpdate[0]).setOIndex(posUpdate[1], oIndex);
-            }
+            oBunch.removeUnchecked(triple, hashCodeOfTriple);
             if (oBunch.isEmpty()) {
                 objects.removeUnchecked(triple.getObject());
             }
+            size--;
         }
-
-        var movedTripleIndex = sBunch.removeAt(tIndex);
-        if(-1 < movedTripleIndex) {
-            final var movedIndices = sBunch.getIndices(movedTripleIndex);
-            final var movedTriple = sBunch.getKeyAt(tIndex);
-            predicates.get(movedTriple.getPredicate()).getElementIndices()[movedIndices[0]] = tIndex;
-            objects.get(movedTriple.getObject()).getElementIndices()[movedIndices[1]] = tIndex;
-
-            sBunch.setIndices(tIndex, movedIndices);
-        }
-        if (sBunch.isEmpty()) {
-            subjects.removeUnchecked(triple.getSubject());
-        }
-        size--;
     }
 
     @Override
@@ -208,50 +180,44 @@ public class FastTripleStore implements TripleStore {
             }
 
             case SUB_PRE_ANY: {
-                var sIndex = subjects.indexOf(tripleMatch.getSubject());
-                if(sIndex < 0) {
+                final var triplesBySubject = subjects.get(tripleMatch.getSubject());
+                if (triplesBySubject == null) {
                     return false;
                 }
-                final var triplesBySubject = subjects.getValueAt(sIndex);
-                if(triplesBySubject.size() < THRESHOLD_FOR_SECONDARY_LOOKUP) {
-                    return triplesBySubject.anyMatch(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
-                }
-                final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
-                if (triplesByPredicate == null) {
-                    return false;
-                }
-                return intersects(triplesBySubject, sIndex, triplesByPredicate, 0);
+                return triplesBySubject.anyMatch(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
             case SUB_ANY_OBJ: {
-                var sIndex = subjects.indexOf(tripleMatch.getSubject());
-                if(sIndex < 0) {
+                final var triplesBySubject = subjects.get(tripleMatch.getSubject());
+                if (triplesBySubject == null) {
                     return false;
                 }
-                final var triplesBySubject = subjects.getValueAt(sIndex);
-                if(triplesBySubject.size() < THRESHOLD_FOR_SECONDARY_LOOKUP) {
-                    return triplesBySubject.anyMatch(t -> tripleMatch.getObject().equals(t.getObject()));
-                }
-                final var triplesByObject = objects.get(tripleMatch.getObject());
-                if (triplesByObject == null) {
-                    return false;
-                }
-                return intersects(triplesBySubject, sIndex, triplesByObject, 1);
+                return triplesBySubject.anyMatch(t -> tripleMatch.getObject().equals(t.getObject()));
             }
 
             case SUB_ANY_ANY:
                 return subjects.containsKey(tripleMatch.getSubject());
 
             case ANY_PRE_OBJ: {
-                final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
-                if (triplesByPredicate == null) {
-                    return false;
-                }
                 final var triplesByObject = objects.get(tripleMatch.getObject());
                 if (triplesByObject == null) {
                     return false;
                 }
-                return intersects(triplesByPredicate, 0, triplesByObject, 1);
+                // Optimization for typical RDF data, where there may be common values like "0" or "false"/"true".
+                // In this case, there may be many matches but due to the ordered nature of FastHashBase,
+                // the same predicates are often grouped together. If they are at the beginning of the bunch,
+                // we can avoid the linear scan of the bunch. This is a common case for RDF data.
+                // #anyMatchRandomOrder is a bit slower if the predicate is not found than #anyMatch, but not by much.
+                if (triplesByObject.size() > THRESHOLD_FOR_SECONDARY_LOOKUP) {
+                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
+                    if (triplesByPredicate == null) {
+                        return false;
+                    }
+                    if (triplesByPredicate.size() < triplesByObject.size()) {
+                        return triplesByPredicate.anyMatchRandomOrder(t -> tripleMatch.getObject().equals(t.getObject()));
+                    }
+                }
+                return triplesByObject.anyMatchRandomOrder(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
             case ANY_PRE_ANY:
@@ -268,61 +234,6 @@ public class FastTripleStore implements TripleStore {
         }
     }
 
-    private boolean intersects(FastTripleBunch triples, int sIndex, DoubleIndexList list, int listIndex) {
-        final var triplesSize = triples.size();
-        final var listSize = list.size();
-        if(triplesSize < listSize) {
-            var i = triplesSize;
-            while(-1 < --i) {
-                final var listIndexCandidate = triples.getIndex(i, listIndex);
-                if(listIndexCandidate < listSize) {
-                    if(list.getSubjectIndexAt(listIndexCandidate) == sIndex
-                        && list.getElementIndexAt(listIndexCandidate) == i) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        } else {
-            var i = listSize;
-            while (-1 < --i) {
-                if(list.getSubjectIndexAt(i) == sIndex) {
-                    final var tIndexCandidate = list.getElementIndexAt(i);
-                    if(tIndexCandidate < triplesSize
-                        && triples.getIndex(tIndexCandidate, listIndex) == i) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-    }
-
-    private boolean intersects(DoubleIndexList a, int listIndexA, DoubleIndexList b, int listIndexB) {
-        return a.size() < b.size()
-                ? intersectsSmallerWithLarger(a, b, listIndexB)
-                : intersectsSmallerWithLarger(b, a, listIndexA);
-    }
-
-    private boolean intersectsSmallerWithLarger(DoubleIndexList smallerList,
-                                                DoubleIndexList largerList, int  listIndexLarger) {
-        final int largerListSize = largerList.size();
-        var i = smallerList.size();
-        while (-1 < --i) {
-            final var sIndex = smallerList.getSubjectIndexAt(i);
-            final var tripleIndex = smallerList.getElementIndexAt(i);
-            final var largerListIndexCandidate = subjects.getValueAt(sIndex)
-                    .getIndex(tripleIndex, listIndexLarger);
-            if (largerListIndexCandidate < largerListSize) {
-                if(largerList.getSubjectIndexAt(largerListIndexCandidate) == sIndex
-                        && largerList.getElementIndexAt(largerListIndexCandidate) == tripleIndex) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     @Override
     public Stream<Triple> stream() {
         return StreamSupport.stream(subjects.valueSpliterator(), false)
@@ -331,79 +242,70 @@ public class FastTripleStore implements TripleStore {
 
     @Override
     public Stream<Triple> stream(Triple tripleMatch) {
-        return StreamSupport.stream(Spliterators.spliteratorUnknownSize(find(tripleMatch),
-                Spliterator.DISTINCT | Spliterator.NONNULL | Spliterator.IMMUTABLE), false);
-//        switch (PatternClassifier.classify(tripleMatch)) {
-//
-//            case SUB_PRE_OBJ: {
-//                final var triples = subjects.get(tripleMatch.getSubject());
-//                if (triples == null) {
-//                    return Stream.empty();
-//                }
-//                return triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
-//            }
-//
-//            case SUB_PRE_ANY: {
-//                final var triplesBySubject = subjects.get(tripleMatch.getSubject());
-//                if (triplesBySubject == null) {
-//                    return Stream.empty();
-//                }
-//                return triplesBySubject.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
-//            }
-//
-//            case SUB_ANY_OBJ: {
-//                final var triplesBySubject = subjects.get(tripleMatch.getSubject());
-//                if (triplesBySubject == null) {
-//                    return Stream.empty();
-//                }
-//                return triplesBySubject.keyStream().filter(t -> tripleMatch.getObject().equals(t.getObject()));
-//            }
-//
-//            case SUB_ANY_ANY: {
-//                final var triples = subjects.get(tripleMatch.getSubject());
-//                return triples == null ? Stream.empty() : triples.keyStream();
-//            }
-//
-//            case ANY_PRE_OBJ: {
-//                final var triplesByObject = objects.get(tripleMatch.getObject());
-//                if (triplesByObject == null) {
-//                    return Stream.empty();
-//                }
-//                if (triplesByObject.size() > THRESHOLD_FOR_SECONDARY_LOOKUP) {
-//                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
-//                    if (triplesByPredicate == null) {
-//                        return Stream.empty();
-//                    }
-//                    if (triplesByPredicate.size() < triplesByObject.size()) {
-//                        return triplesByPredicate.keyStream().filter(t -> tripleMatch.getObject().equals(t.getObject()));
-//                    }
-//                }
-//                return triplesByObject.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
-//            }
-//
-//            case ANY_PRE_ANY: {
-//                final var triples = predicates.get(tripleMatch.getPredicate());
-//                return triples == null ? Stream.empty() : triples.keyStream();
-//            }
-//
-//            case ANY_ANY_OBJ: {
-//                final var triples = objects.get(tripleMatch.getObject());
-//                return triples == null ? Stream.empty() : triples.keyStream();
-//            }
-//
-//            case ANY_ANY_ANY:
-//                return stream();
-//
-//            default:
-//                throw new IllegalStateException("Unexpected value: " + PatternClassifier.classify(tripleMatch));
-//        }
-    }
+        switch (PatternClassifier.classify(tripleMatch)) {
 
-    private Runnable createConcurrentModificationChecker() {
-        final var initialSize = this.size;
-        return () -> {
-            if (this.size != initialSize) throw new ConcurrentModificationException();
-        };
+            case SUB_PRE_OBJ: {
+                final var triples = subjects.get(tripleMatch.getSubject());
+                if (triples == null) {
+                    return Stream.empty();
+                }
+                return triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
+            }
+
+            case SUB_PRE_ANY: {
+                final var triplesBySubject = subjects.get(tripleMatch.getSubject());
+                if (triplesBySubject == null) {
+                    return Stream.empty();
+                }
+                return triplesBySubject.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
+            }
+
+            case SUB_ANY_OBJ: {
+                final var triplesBySubject = subjects.get(tripleMatch.getSubject());
+                if (triplesBySubject == null) {
+                    return Stream.empty();
+                }
+                return triplesBySubject.keyStream().filter(t -> tripleMatch.getObject().equals(t.getObject()));
+            }
+
+            case SUB_ANY_ANY: {
+                final var triples = subjects.get(tripleMatch.getSubject());
+                return triples == null ? Stream.empty() : triples.keyStream();
+            }
+
+            case ANY_PRE_OBJ: {
+                final var triplesByObject = objects.get(tripleMatch.getObject());
+                if (triplesByObject == null) {
+                    return Stream.empty();
+                }
+                if (triplesByObject.size() > THRESHOLD_FOR_SECONDARY_LOOKUP) {
+                    final var triplesByPredicate = predicates.get(tripleMatch.getPredicate());
+                    if (triplesByPredicate == null) {
+                        return Stream.empty();
+                    }
+                    if (triplesByPredicate.size() < triplesByObject.size()) {
+                        return triplesByPredicate.keyStream().filter(t -> tripleMatch.getObject().equals(t.getObject()));
+                    }
+                }
+                return triplesByObject.keyStream().filter(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
+            }
+
+            case ANY_PRE_ANY: {
+                final var triples = predicates.get(tripleMatch.getPredicate());
+                return triples == null ? Stream.empty() : triples.keyStream();
+            }
+
+            case ANY_ANY_OBJ: {
+                final var triples = objects.get(tripleMatch.getObject());
+                return triples == null ? Stream.empty() : triples.keyStream();
+            }
+
+            case ANY_ANY_ANY:
+                return stream();
+
+            default:
+                throw new IllegalStateException("Unexpected value: " + PatternClassifier.classify(tripleMatch));
+        }
     }
 
     @Override
@@ -449,27 +351,21 @@ public class FastTripleStore implements TripleStore {
                     if (triplesByPredicate == null) {
                         return NiceIterator.emptyIterator();
                     }
-                    return new TwoDoubleIndexListsIterator(subjects,
-                            triplesByPredicate, 0,
-                            triplesByObject, 1,
-                            createConcurrentModificationChecker());
+                    if (triplesByPredicate.size() < triplesByObject.size()) {
+                        return triplesByPredicate.keyIterator().filterKeep(t -> tripleMatch.getObject().equals(t.getObject()));
+                    }
                 }
-                return new DoubleIndexListsIterator(subjects, triplesByObject, createConcurrentModificationChecker())
-                        .filterKeep(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
+                return triplesByObject.keyIterator().filterKeep(t -> tripleMatch.getPredicate().equals(t.getPredicate()));
             }
 
             case ANY_PRE_ANY: {
                 final var triples = predicates.get(tripleMatch.getPredicate());
-                return triples == null
-                        ? NiceIterator.emptyIterator()
-                        : new DoubleIndexListsIterator(subjects, triples, createConcurrentModificationChecker());
+                return triples == null ? NiceIterator.emptyIterator() : triples.keyIterator();
             }
 
             case ANY_ANY_OBJ: {
                 final var triples = objects.get(tripleMatch.getObject());
-                return triples == null
-                        ? NiceIterator.emptyIterator()
-                        : new DoubleIndexListsIterator(subjects, triples, createConcurrentModificationChecker());
+                return triples == null ? NiceIterator.emptyIterator() : triples.keyIterator();
             }
 
             case ANY_ANY_ANY:

@@ -41,11 +41,9 @@ public abstract class FastArrayBunch implements FastTripleBunch {
 
     protected int size = 0;
     protected Triple[] elements;
-    private int[][] indexListPositions;
 
     protected FastArrayBunch() {
         elements = new Triple[INITIAL_SIZE];
-        indexListPositions = new int[2][INITIAL_SIZE];
     }
 
     /**
@@ -59,8 +57,6 @@ public abstract class FastArrayBunch implements FastTripleBunch {
         this.elements = new Triple[bunchToCopy.size];
         System.arraycopy(bunchToCopy.elements, 0, this.elements, 0, bunchToCopy.size);
         this.size = bunchToCopy.size;
-        this.indexListPositions = new int[2][bunchToCopy.indexListPositions.length];
-        FastTripleBunch.copyIndexPositions(bunchToCopy.indexListPositions, this.indexListPositions, bunchToCopy.size);
     }
 
     public abstract boolean areEqual(final Triple a, final Triple b);
@@ -109,15 +105,6 @@ public abstract class FastArrayBunch implements FastTripleBunch {
     }
 
     @Override
-    public int addAndGetIndex(Triple t, int hashCode) {
-        if (this.containsKey(t)) return -1;
-        if (size == elements.length) grow();
-        final var index = size++;
-        elements[index] = t;
-        return index;
-    }
-
-    @Override
     public void addUnchecked(final Triple t) {
         if (size == elements.length) grow();
         elements[size++] = t;
@@ -133,10 +120,6 @@ public abstract class FastArrayBunch implements FastTripleBunch {
         final var oldElements = elements;
         elements = new Triple[size << 1];
         System.arraycopy(oldElements, 0, elements, 0, size);
-
-        final var oldIndexListPositions = indexListPositions;
-        indexListPositions = new int[2][elements.length];
-        FastTripleBunch.copyIndexPositions(oldIndexListPositions, indexListPositions, size);
     }
 
     @Override
@@ -144,7 +127,6 @@ public abstract class FastArrayBunch implements FastTripleBunch {
         for (int i = 0; i < size; i++) {
             if (areEqual(t, elements[i])) {
                 elements[i] = elements[--size];
-                elements[size] = null;
                 return true;
             }
         }
@@ -152,23 +134,10 @@ public abstract class FastArrayBunch implements FastTripleBunch {
     }
 
     @Override
-    public int removeAt(int index) {
-        if(--size == index) {
-            elements[size] = null;
-            return -1;
-        } else {
-            elements[index] = elements[size];
-            elements[size] = null;
-            return size;
-        }
-    }
-
-    @Override
     public void removeUnchecked(final Triple t) {
         for (int i = 0; i < size; i++) {
             if (areEqual(t, elements[i])) {
                 elements[i] = elements[--size];
-                elements[size] = null;
                 return;
             }
         }
@@ -179,23 +148,23 @@ public abstract class FastArrayBunch implements FastTripleBunch {
         return new NiceIterator<>() {
             private final int initialSize = size;
 
-            private int i = 0;
+            private int i = size;
 
             @Override
             public boolean hasNext() {
-                return i < size;
+                return 0 < i;
             }
 
             @Override
             public Triple next() {
                 if (size != initialSize) throw new ConcurrentModificationException();
-                if (i == size) throw new NoSuchElementException();
-                return elements[i++];
+                if (i == 0) throw new NoSuchElementException();
+                return elements[--i];
             }
 
             @Override
             public void forEachRemaining(Consumer<? super Triple> action) {
-                while (i < size) action.accept(elements[i++]);
+                while (0 < i--) action.accept(elements[i]);
                 if (size != initialSize) throw new ConcurrentModificationException();
             }
         };
@@ -239,60 +208,21 @@ public abstract class FastArrayBunch implements FastTripleBunch {
 
     @Override
     public int indexOf(Triple key) {
-        int i = size;
-        while (-1 < --i) if (areEqual(key, elements[i])) return i;
-        return -1;
+        throw new UnsupportedOperationException("indexOf is not supported by FastArrayBunch");
+    }
+
+    @Override
+    public int addAndGetIndex(Triple key, int hashCode) {
+        throw new UnsupportedOperationException("addAndGetIndex is not supported by FastArrayBunch");
+    }
+
+    @Override
+    public void removeAt(int index) {
+        throw new UnsupportedOperationException("removeAt is not supported by FastArrayBunch");
     }
 
     @Override
     public Triple getKeyAt(int index) {
-        return elements[index];
-    }
-
-    @Override
-    public void setIndices(int atIndex, int[] opIndices) {
-        this.indexListPositions[0][atIndex] = opIndices[0];
-        this.indexListPositions[1][atIndex] = opIndices[1];
-    }
-
-    @Override
-    public void setIndices(int atIndex, int pIndex, int oIndex) {
-        this.indexListPositions[0][atIndex] = pIndex;
-        this.indexListPositions[1][atIndex] = oIndex;
-    }
-
-    @Override
-    public void setPIndex(int atIndex, int pIndex) {
-        this.indexListPositions[0][atIndex] = pIndex;
-    }
-
-    @Override
-    public void setOIndex(int atIndex, int oIndex) {
-        this.indexListPositions[1][atIndex] = oIndex;
-    }
-
-    @Override
-    public int getIndex(int atIndex, int listIndex) {
-        return indexListPositions[listIndex][atIndex];
-    }
-
-    @Override
-    public int getPIndex(int atIndex) {
-        return indexListPositions[0][atIndex];
-    }
-
-    @Override
-    public int getOIndex(int atIndex) {
-        return indexListPositions[1][atIndex];
-    }
-
-    @Override
-    public int[] getIndices(int atIndex) {
-        return new int[]{indexListPositions[0][atIndex], indexListPositions[1][atIndex]};
-    }
-
-    @Override
-    public int[][] getIndexListPositions() {
-        return indexListPositions;
+        throw new UnsupportedOperationException("getKeyAt is not supported by FastArrayBunch");
     }
 }
