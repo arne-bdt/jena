@@ -36,7 +36,7 @@ import java.util.stream.StreamSupport;
  */
 public interface JenaMapOptimized<K, V> extends JenaMap<K, V> {
 
-    int removeAt(int index);
+    void removeAt(int index);
 
     int indexOf(K key);
 

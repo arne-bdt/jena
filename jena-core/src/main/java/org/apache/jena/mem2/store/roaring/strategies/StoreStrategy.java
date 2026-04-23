@@ -36,20 +36,20 @@ import java.util.stream.Stream;
  */
 public interface StoreStrategy {
     /**
-     * Add a triple to the index if the cuurent strategy supports indexing.
+     * Add a triple to the index if the current strategy supports indexing.
      *
      * @param triple the triple to add
-     * @param index  the index of the triple in the store
+     * @param tripleIndex the index of the triple in the TripleSet, used for indexing purposes
      */
-    void addToIndex(final Triple triple, final int index, final int[] nodeHashCodes);
+    void addToIndex(final Triple triple, int tripleIndex);
 
     /**
      * Remove a triple from the index if the current strategy supports indexing.
      *
      * @param triple the triple to remove
-     * @param index  the index of the triple in the store
+     * @param tripleIndex the index of the triple in the TripleSet, used for indexing purposes
      */
-    void removeFromIndex(final Triple triple, final int index, final int[] nodeHashCodes);
+    void removeFromIndex(final Triple triple, int tripleIndex);
 
     /**
      * Clear the index of this store if the current strategy supports indexing.

@@ -45,7 +45,7 @@ public interface JenaSetHashOptimized<E> extends JenaSet<E> {
 
     boolean tryRemove(E key, int hashCode);
 
-    int removeAt(int index);
+    void removeAt(int index);
 
     void removeUnchecked(E key, int hashCode);
 

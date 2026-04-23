@@ -43,12 +43,12 @@ public class MinimalStoreStrategy implements StoreStrategy {
     }
 
     @Override
-    public void addToIndex(final Triple triple, final int index, final int[] nodeHashCodes) {
+    public void addToIndex(final Triple triple, int tripleIndex) {
         // No-op, as we do not store any bitmaps
     }
 
     @Override
-    public void removeFromIndex(final Triple triple, final int index, final int[] nodeHashCodes) {
+    public void removeFromIndex(final Triple triple, int tripleIndex) {
         // No-op, as we do not store any bitmaps
     }
 

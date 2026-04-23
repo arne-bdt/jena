@@ -52,26 +52,4 @@ public interface FastTripleBunch extends JenaSetHashOptimized<Triple>, Copyable<
      * @return true if any triple in the bunch matches the predicate
      */
     boolean anyMatchRandomOrder(Predicate<Triple> predicate);
-
-    void setIndices(int atIndex, int[] opIndices);
-
-    void setIndices(int atIndex, int pIndex, int oIndex);
-
-    void setPIndex(int atIndex, int pIndex);
-    void setOIndex(int atIndex, int oIndex);
-
-    int getIndex(int atIndex, int listIndex);
-
-    int getPIndex(int atIndex);
-
-    int getOIndex(int atIndex);
-
-    int[] getIndices(int atIndex);
-
-    static void copyIndexPositions(int [][] source, int [][] target, int size) {
-        System.arraycopy(source[0], 0, target[0], 0, size);
-        System.arraycopy(source[1], 0, target[1], 0, size);
-    }
-
-    int[][] getIndexListPositions();
 }
