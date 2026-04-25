@@ -30,13 +30,13 @@ import org.apache.jena.mem2.store.roaring.RoaringTripleStore;
  * RAM usage and performance for various operations.
  * See {@link IndexingStrategy} for details on the available strategies.
  * <p>
- * As long as the index has not been initialized, the memory consumption
+ * As long as the indexInBlock has not been initialized, the memory consumption
  * is very low and the following operations are extremely fast:
  * <ul>
  *     <li>{@link GraphMem#add} - adds a triple to the graph</li>
  *     <li>{@link GraphMem#delete} - removes a triple from the graph</li>
  *</ul>
- * One could start without the index, add all triples, and then initialize the index using
+ * One could start without the indexInBlock, add all triples, and then initialize the indexInBlock using
  * {@link #initializeIndexParallel()} for maximum performance.
  * <p>
  * Purpose: GraphMem2Roaring is ideal for handling extremely large graphs. If you frequently work with such massive
@@ -46,16 +46,16 @@ import org.apache.jena.mem2.store.roaring.RoaringTripleStore;
  * With the new strategies, this graph also works well for very small graphs, where pattern matching is not needed.
  * <p>
  * Graph#contains is faster than {@link GraphMemFast}.
- * Removing triples is a bit slower than {@link GraphMemLegacy} when the index is initialized.
+ * Removing triples is a bit slower than {@link GraphMemLegacy} when the indexInBlock is initialized.
  * Better performance than GraphMem2Fast for operations with triple matches for the pattern S_O, SP_, and _PO on
  * large graphs, due to bit-operations to find intersecting triples.
- * Memory consumption is about 7-99% higher than {@link GraphMemLegacy} when the index is initialized.
+ * Memory consumption is about 7-99% higher than {@link GraphMemLegacy} when the indexInBlock is initialized.
  * Suitable for really large graphs like bsbm-5m.nt.gz, bsbm-25m.nt.gz, and possibly even larger.
  * <p>
  * Internal structure:
  * <ul>
  *     <li>One indexed hash set (same as GraphMem2Fast uses) that holds all triples.
- *     <li>The index for pattern matching consists of three hash maps indexed by
+ *     <li>The indexInBlock for pattern matching consists of three hash maps indexed by
  *         subjects, predicates, and objects with RoaringBitmaps as values.
  *     <li>The bitmaps contain the indices of the triples in the central hash set.
  * </ul>
@@ -112,16 +112,16 @@ public class GraphMemRoaring extends GraphMem {
     }
 
     /**
-     * Clear the index of this graph.
-     * This will remove all triples from the index and reset the current strategy to the initial one.
+     * Clear the indexInBlock of this graph.
+     * This will remove all triples from the indexInBlock and reset the current strategy to the initial one.
      */
     public void clearIndex() {
         getRoaringTripleStore().clearIndex();
     }
 
     /**
-     * Initialize the index of this graph.
-     * This will build the index based on the current set of triples.
+     * Initialize the indexInBlock of this graph.
+     * This will build the indexInBlock based on the current set of triples.
      * After this call, the graph will behave like an EAGER indexed graph.
      */
     public void initializeIndex() {
@@ -129,8 +129,8 @@ public class GraphMemRoaring extends GraphMem {
     }
 
     /**
-     * Initialize the index of this graph in parallel.
-     * This will build the index based on the current set of triples using parallel processing.
+     * Initialize the indexInBlock of this graph in parallel.
+     * This will build the indexInBlock based on the current set of triples using parallel processing.
      * After this call, the graph will behave like an EAGER indexed graph.
      */
     public void initializeIndexParallel() {
@@ -138,10 +138,10 @@ public class GraphMemRoaring extends GraphMem {
     }
 
     /**
-     * Check if the index of this graph is initialized.
-     * This method returns true if the index has been initialized and is ready for use.
+     * Check if the indexInBlock of this graph is initialized.
+     * This method returns true if the indexInBlock has been initialized and is ready for use.
      *
-     * @return true if the index is initialized, false otherwise
+     * @return true if the indexInBlock is initialized, false otherwise
      */
     public boolean isIndexInitialized() {
         return getRoaringTripleStore().isIndexInitialized();

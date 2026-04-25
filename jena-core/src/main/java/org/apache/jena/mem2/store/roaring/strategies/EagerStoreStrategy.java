@@ -21,7 +21,6 @@
 
 package org.apache.jena.mem2.store.roaring.strategies;
 
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.pattern.MatchPattern;
 import org.apache.jena.mem2.pattern.PatternClassifier;
@@ -45,12 +44,12 @@ public class EagerStoreStrategy implements StoreStrategy {
     final NodesToIndices sNodeToIndices;
     final NodesToIndices pNodeToIndices;
     final NodesToIndices oNodeToIndices;
-    final TripleSet triples;
+    final BlockSet triples;
 
     /**
      * Create a new EagerStoreStrategy and initialize the index.
      */
-    public EagerStoreStrategy(final TripleSet triples, boolean parallel) {
+    public EagerStoreStrategy(final BlockSet triples, boolean parallel) {
         this(triples);
         if (parallel) {
             indexAllParallel();
@@ -64,7 +63,7 @@ public class EagerStoreStrategy implements StoreStrategy {
      * Initializes the bitmaps for subjects, predicates, and objects.
      * Note: This constructor does not index any triples.
      */
-    public EagerStoreStrategy(final TripleSet triples) {
+    public EagerStoreStrategy(final BlockSet triples) {
         this.triples = triples;
         this.sNodeToIndices = new NodesToIndices();
         this.pNodeToIndices = new NodesToIndices();
@@ -79,7 +78,7 @@ public class EagerStoreStrategy implements StoreStrategy {
      * @param triples                   the set of triples of the new store
      * @param strategyToCopyIndicesFrom the strategy to copy indices from
      */
-    public EagerStoreStrategy(final TripleSet triples, EagerStoreStrategy strategyToCopyIndicesFrom) {
+    public EagerStoreStrategy(final BlockSet triples, EagerStoreStrategy strategyToCopyIndicesFrom) {
         this.triples = triples;
         this.sNodeToIndices = strategyToCopyIndicesFrom.sNodeToIndices.copy();
         this.pNodeToIndices = strategyToCopyIndicesFrom.pNodeToIndices.copy();
@@ -92,15 +91,11 @@ public class EagerStoreStrategy implements StoreStrategy {
      */
     private void indexAll() {
         // Initialize the index by adding all triples to the index
-        var i=triples.getFilledLength();
-        while(-1 < --i) {
-            final var t = triples.getKeyAt(i);
-            if( t != null) {
-                addSIndex(t, i);
-                addPIndex(t, i);
-                addOIndex(t, i);
-            }
-        }
+        triples.forEachRow((row) -> {
+            addSIndex(row);
+            addPIndex(row);
+            addOIndex(row);
+        });
     }
 
     /**
@@ -109,100 +104,80 @@ public class EagerStoreStrategy implements StoreStrategy {
      * creating bitmaps for subjects, predicates, and objects.
      */
     private void indexAllParallel() {
-        final var futureIndexSubjects = CompletableFuture.runAsync(() -> {
-                    var i=triples.getFilledLength();
-                    while(-1 < --i) {
-                        final var t = triples.getKeyAt(i);
-                        if( t != null) {
-                            addSIndex(t, i);
-                        }
-                    }
-                });
+        final var futureIndexSubjects = CompletableFuture.runAsync(
+                () -> triples.forEachRow(this::addSIndex));
 
-        final var futureIndexPredicates = CompletableFuture.runAsync(() ->{
-            var i=triples.getFilledLength();
-            while(-1 < --i) {
-                final var t = triples.getKeyAt(i);
-                if( t != null) {
-                    addPIndex(t, i);
-                }
-            }
-        });
+        final var futureIndexPredicates = CompletableFuture.runAsync(
+                () -> triples.forEachRow(this::addPIndex));
 
-        var i=triples.getFilledLength();
-        while(-1 < --i) {
-            final var t = triples.getKeyAt(i);
-            if( t != null) {
-                addOIndex(t, i);
-            }
-        }
+        triples.forEachRow(this::addOIndex);
 
         CompletableFuture.allOf(futureIndexSubjects, futureIndexPredicates).join();
     }
 
-    private void addSIndex(final Triple triple, final int tripleIndex) {
-        final var indices = sNodeToIndices.computeIfAbsent(triple.getSubject(), IndexList::new);
-        var positon = indices.add(tripleIndex);
-        this.triples.setSIndex(tripleIndex, positon);
+    private void addSIndex(final BlockSet.BlockRow row) {
+        final var indices = sNodeToIndices.computeIfAbsent(row.getTriple().getSubject(), IndexList::new);
+        var positon = indices.add(row.index());
+        row.setSIndex(positon);
     }
 
-    private void addPIndex(final Triple triple, final int tripleIndex) {
-        final var indices = pNodeToIndices.computeIfAbsent(triple.getPredicate(), IndexList::new);
-        var positon = indices.add(tripleIndex);
-        this.triples.setPIndex(tripleIndex, positon);
+    private void addPIndex(final BlockSet.BlockRow row) {
+        final var indices = pNodeToIndices.computeIfAbsent(row.getTriple().getPredicate(), IndexList::new);
+        var positon = indices.add(row.index());
+        row.setPIndex(positon);
     }
 
-    private void addOIndex(final Triple triple, final int tripleIndex) {
-        final var indices = oNodeToIndices.computeIfAbsent(triple.getObject(), IndexList::new);
-        var positon = indices.add(tripleIndex);
-        this.triples.setOIndex(tripleIndex, positon);
+    private void addOIndex(final BlockSet.BlockRow row) {
+        final var indices = oNodeToIndices.computeIfAbsent(row.getTriple().getObject(), IndexList::new);
+        var positon = indices.add(row.index());
+        row.setOIndex(positon);
     }
 
-    private void removeIndexS(final Triple triple, final int tripleIndex) {
-        final var indices = sNodeToIndices.get(triple.getSubject());
-        var oldPosition = this.triples.getSIndex(tripleIndex);
+    private void removeIndexS(final BlockSet.BlockRow row) {
+        final var indices = sNodeToIndices.get(row.getTriple().getSubject());
+        var oldPosition = row.getSIndex();
         final var switched = indices.removeAt(oldPosition);
         if (indices.isEmpty()) {
-            sNodeToIndices.removeUnchecked(triple.getSubject());
+            sNodeToIndices.removeUnchecked(row.getTriple().getSubject());
         } else if (-1 < switched) {
             this.triples.setSIndex(switched, oldPosition);
         }
     }
 
-    private void removeIndexP(final Triple triple, final int tripleIndex) {
-        final var indices = pNodeToIndices.get(triple.getPredicate());
-        var oldPosition = this.triples.getPIndex(tripleIndex);
+    private void removeIndexP(final BlockSet.BlockRow row) {
+        final var indices = pNodeToIndices.get(row.getTriple().getPredicate());
+        var oldPosition = row.getPIndex();
         final var switched = indices.removeAt(oldPosition);
         if (indices.isEmpty()) {
-            pNodeToIndices.removeUnchecked(triple.getPredicate());
+            pNodeToIndices.removeUnchecked(row.getTriple().getPredicate());
         } else if (-1 < switched) {
             this.triples.setPIndex(switched, oldPosition);
         }
     }
 
-    private void removeIndexO(final Triple triple, final int tripleIndex) {
-        final var indices = oNodeToIndices.get(triple.getObject());
-        var oldPosition = this.triples.getOIndex(tripleIndex);
+    private void removeIndexO(final BlockSet.BlockRow row) {
+        final var indices = oNodeToIndices.get(row.getTriple().getObject());
+        var oldPosition = row.getOIndex();
         final var switched = indices.removeAt(oldPosition);
         if (indices.isEmpty()) {
-            oNodeToIndices.removeUnchecked(triple.getObject());
+            oNodeToIndices.removeUnchecked(row.getTriple().getObject());
         } else if (-1 < switched) {
             this.triples.setOIndex(switched, oldPosition);
         }
     }
 
     @Override
-    public void addToIndex(final Triple triple, final int tripleIndex) {
-        addSIndex(triple, tripleIndex);
-        addPIndex(triple, tripleIndex);
-        addOIndex(triple, tripleIndex);
+    public void addToIndex(final BlockSet.BlockRow row) {
+        addSIndex(row);
+        addPIndex(row);
+        addOIndex(row);
     }
 
     @Override
-    public void removeFromIndex(final Triple triple, final int tripleIndex) {
-        removeIndexS(triple, tripleIndex);
-        removeIndexP(triple, tripleIndex);
-        removeIndexO(triple, tripleIndex);
+    public void removeFromIndex(final BlockSet.BlockRow row) {
+        removeIndexS(row);
+        removeIndexP(row);
+        removeIndexO(row);
     }
 
     @Override
@@ -232,7 +207,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == pIndices)
                     return false;
 
-                return triples.intersects(sIndices, triples.getSIndices(), pIndices, triples.getPIndices());
+                return IndexList.intersects(sIndices, triples::getSIndex, pIndices, triples::getPIndex);
             }
 
             case ANY_PRE_OBJ: {
@@ -244,7 +219,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == oIndices)
                     return false;
 
-                return triples.intersects(pIndices, triples.getPIndices(), oIndices, triples.getOIndices());
+                return IndexList.intersects(pIndices, triples::getPIndex, oIndices, triples::getOIndex);
             }
 
             case SUB_ANY_OBJ: {
@@ -256,7 +231,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == oIndices)
                     return false;
 
-                return triples.intersects( sIndices, triples.getSIndices(), oIndices, triples.getOIndices());
+                return IndexList.intersects( sIndices, triples::getSIndex, oIndices, triples::getOIndex);
             }
 
             default:
@@ -307,8 +282,8 @@ public class EagerStoreStrategy implements StoreStrategy {
 
                 return StreamSupport.stream(
                         new IndexListsSpliterator(triples,
-                                sIndices, triples.getSIndices(),
-                                pIndices, triples.getPIndices(),
+                                sIndices, triples::getSIndex,
+                                pIndices, triples::getPIndex,
                         createConcurrentModificationChecker()),
                         false);
             }
@@ -324,8 +299,8 @@ public class EagerStoreStrategy implements StoreStrategy {
 
                 return StreamSupport.stream(
                         new IndexListsSpliterator(triples,
-                                pIndices, triples.getPIndices(),
-                                oIndices, triples.getOIndices(),
+                                pIndices, triples::getPIndex,
+                                oIndices, triples::getOIndex,
                         createConcurrentModificationChecker()),
                         false);
             }
@@ -341,8 +316,8 @@ public class EagerStoreStrategy implements StoreStrategy {
 
                 return StreamSupport.stream(
                         new IndexListsSpliterator(triples,
-                                sIndices, triples.getSIndices(),
-                                oIndices, triples.getOIndices(),
+                                sIndices, triples::getSIndex,
+                                oIndices, triples::getOIndex,
                         createConcurrentModificationChecker()),
                         false);
             }
@@ -395,8 +370,8 @@ public class EagerStoreStrategy implements StoreStrategy {
                     return NullIterator.instance();
 
                 return new IndexListsIterator(triples,
-                        sIndices, triples.getSIndices(),
-                        pIndices, triples.getPIndices(),
+                        sIndices, triples::getSIndex,
+                        pIndices, triples::getPIndex,
                         createConcurrentModificationChecker());
             }
 
@@ -410,8 +385,8 @@ public class EagerStoreStrategy implements StoreStrategy {
                     return NullIterator.instance();
 
                 return new IndexListsIterator(triples,
-                        pIndices, triples.getPIndices(),
-                        oIndices, triples.getOIndices(),
+                        pIndices, triples::getPIndex,
+                        oIndices, triples::getOIndex,
                         createConcurrentModificationChecker());
             }
 
@@ -425,8 +400,8 @@ public class EagerStoreStrategy implements StoreStrategy {
                     return NullIterator.instance();
 
                 return new IndexListsIterator(triples,
-                        sIndices, triples.getSIndices(),
-                        oIndices, triples.getOIndices(),
+                        sIndices, triples::getSIndex,
+                        oIndices, triples::getOIndex,
                         createConcurrentModificationChecker());
             }
 

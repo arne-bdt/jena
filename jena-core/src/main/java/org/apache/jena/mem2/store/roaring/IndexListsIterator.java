@@ -8,31 +8,31 @@ import java.util.function.Consumer;
 
 public class IndexListsIterator extends NiceIterator<Triple> {
 
-    private final Triple[] triples;
+    private final BlockSet triples;
     private final int[] indicesSmaller;
     private final int[] indicesLarger;
-    private final int[] positionsLarger;
+    private final IndexList.IndexLookup spoIndexLarger;
     private final Runnable checkForConcurrentModification;
     private int pos;
     private int tripleIndex;
     final int indicesLargerSize;
     private boolean hasNext = false;
 
-    public IndexListsIterator(final TripleSet tripleSet,
-                              final IndexList indexListA, final int[] spoIndexA,
-                              final IndexList indexListB, final int[] spoIndexB,
+    public IndexListsIterator(final BlockSet blockSet,
+                              final IndexList indexListA, final IndexList.IndexLookup spoIndexA,
+                              final IndexList indexListB, final IndexList.IndexLookup spoIndexB,
                               final Runnable checkForConcurrentModification) {
-        triples = tripleSet.getTriples();
+        triples = blockSet;
         if(indexListA.size() < indexListB.size()) {
             indicesSmaller = indexListA.getIndices();
             indicesLarger = indexListB.getIndices();
-            positionsLarger = spoIndexB;
+            spoIndexLarger = spoIndexB;
             pos = indexListA.lastPos();
             indicesLargerSize = indexListB.size();
         } else {
             indicesSmaller = indexListB.getIndices();
             indicesLarger = indexListA.getIndices();
-            positionsLarger = spoIndexA;
+            spoIndexLarger = spoIndexA;
             pos = indexListB.lastPos();
             indicesLargerSize = indexListA.size();
         }
@@ -41,19 +41,19 @@ public class IndexListsIterator extends NiceIterator<Triple> {
 
     @Override
     public boolean hasNext() {
-        if(hasNext) {
+        if(hasNext)
             return true;
-        }
+
         while(-1 < pos)  {
             tripleIndex = indicesSmaller[pos--];
-            final var posLarger = positionsLarger[tripleIndex];
+            final var posLarger = spoIndexLarger.get(tripleIndex);
 
             if(posLarger < indicesLargerSize
                     && indicesLarger[posLarger] == tripleIndex) {
                 return hasNext = true;
             }
         }
-        return hasNext = false;
+        return false;
     }
 
     @Override
@@ -61,7 +61,7 @@ public class IndexListsIterator extends NiceIterator<Triple> {
         checkForConcurrentModification.run();
         if(hasNext || hasNext()) {
             hasNext = false;
-            return triples[tripleIndex];
+            return triples.getTriple(tripleIndex);
         }
         throw new NoSuchElementException();
     }
@@ -70,10 +70,10 @@ public class IndexListsIterator extends NiceIterator<Triple> {
     public void forEachRemaining(Consumer<? super Triple> action) {
         while (-1 < pos) {
             tripleIndex = indicesSmaller[pos--];
-            final var posLarger = positionsLarger[tripleIndex];
+            final var posLarger = spoIndexLarger.get(tripleIndex);
             if(posLarger < indicesLargerSize
                     && indicesLarger[posLarger] == tripleIndex) {
-                action.accept(triples[tripleIndex]);
+                action.accept(triples.getTriple(tripleIndex));
             }
         }
         checkForConcurrentModification.run();

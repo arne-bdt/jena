@@ -38,40 +38,40 @@ import org.apache.jena.graph.Graph;
 public enum IndexingStrategy {
 
     /**
-     * Starts with an index as any other in-memory graph.
-     * {@link Graph#add}, {@link Graph#delete} and {@link Graph#clear()} update the index immediately.
-     * Clearing the index just rebuilds it from the set of triples.
+     * Starts with an indexInBlock as any other in-memory graph.
+     * {@link Graph#add}, {@link Graph#delete} and {@link Graph#clear()} update the indexInBlock immediately.
+     * Clearing the indexInBlock just rebuilds it from the set of triples.
      */
     EAGER,
 
     /**
-     * Starts with no index and builds it on demand when pattern matches are requested.
-     * After initialization, the index behaves like EAGER.
+     * Starts with no indexInBlock and builds it on demand when pattern matches are requested.
+     * After initialization, the indexInBlock behaves like EAGER.
      * Index may be cleared manually, then it is rebuilt on demand.
      */
     LAZY,
 
     /**
-     * Starts with no index and builds it on demand when pattern matches are requested.
-     * After initialization, the index behaves like EAGER.
+     * Starts with no indexInBlock and builds it on demand when pattern matches are requested.
+     * After initialization, the indexInBlock behaves like EAGER.
      * Index may be cleared manually, then it is rebuilt on demand.
-     * This strategy uses parallel processing to build the index.
+     * This strategy uses parallel processing to build the indexInBlock.
      */
     LAZY_PARALLEL,
 
     /**
-     * Starts with no index and throws an exception if a pattern match is requested,
-     * but the index has not been initialized manually yet.
-     * After initialization, the index behaves like EAGER.
+     * Starts with no indexInBlock and throws an exception if a pattern match is requested,
+     * but the indexInBlock has not been initialized manually yet.
+     * After initialization, the indexInBlock behaves like EAGER.
      * Index may be cleared manually, then it has to be initialized again manually.
      */
     MANUAL,
 
     /**
-     * Starts with no index and uses filtering on the triple set,
-     * as long as the index has not been initialized.
-     * After initialization, the index behaves like EAGER.
-     * Index may be cleared manually, then filtering is used again until the index is initialized again.
+     * Starts with no indexInBlock and uses filtering on the triple set,
+     * as long as the indexInBlock has not been initialized.
+     * After initialization, the indexInBlock behaves like EAGER.
+     * Index may be cleared manually, then filtering is used again until the indexInBlock is initialized again.
      */
     MINIMAL
 }

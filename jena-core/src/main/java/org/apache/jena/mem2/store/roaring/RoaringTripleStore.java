@@ -26,7 +26,6 @@ import org.apache.jena.mem2.IndexingStrategy;
 import org.apache.jena.mem2.pattern.PatternClassifier;
 import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.mem2.store.roaring.strategies.*;
-import org.apache.jena.mem2.store.roaring.strategies.*;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.SingletonIterator;
@@ -59,7 +58,7 @@ import java.util.stream.Stream;
 public class RoaringTripleStore implements TripleStore {
 
     private static final String UNKNOWN_PATTERN_CLASSIFIER = "Unknown pattern classifier: %s";
-    final TripleSet triples; // In this special set, each element has an index
+    final BlockSet triples; // In this special set, each element has an index
     private StoreStrategy currentStrategy;
     private final IndexingStrategy indexingStrategy;
 
@@ -80,7 +79,7 @@ public class RoaringTripleStore implements TripleStore {
      * @param indexingStrategy the indexing strategy to use
      */
     public RoaringTripleStore(final IndexingStrategy indexingStrategy) {
-        this.triples = new TripleSet();
+        this.triples = new BlockSet();
         this.indexingStrategy = indexingStrategy;
         this.currentStrategy = createStoreStrategy(indexingStrategy);
     }
@@ -178,20 +177,17 @@ public class RoaringTripleStore implements TripleStore {
 
     @Override
     public void add(final Triple triple) {
-        final var index = triples.addAndGetIndex(triple);
-        if (index < 0) { /*triple already exists*/
+        var oldSize = triples.size();
+        final var row = triples.addAndGetRow(triple);
+        if (triples.size() == oldSize) { /*triple already exists*/
             return;
         }
-        currentStrategy.addToIndex(triple, index);
+        currentStrategy.addToIndex(row);
     }
 
     @Override
     public void remove(final Triple triple) {
-        final var index = triples.removeAndGetIndex(triple);
-        if (index < 0) { /*triple does not exist*/
-            return;
-        }
-        currentStrategy.removeFromIndex(triple, index);
+        triples.remove(triple, currentStrategy::removeFromIndex);
     }
 
     @Override
@@ -224,7 +220,7 @@ public class RoaringTripleStore implements TripleStore {
                 return currentStrategy.containsMatch(tripleMatch, matchPattern);
 
             case SUB_PRE_OBJ:
-                return this.triples.containsKey(tripleMatch);
+                return this.triples.contains(tripleMatch);
 
             case ANY_ANY_ANY:
                 return !this.isEmpty();
@@ -236,7 +232,7 @@ public class RoaringTripleStore implements TripleStore {
 
     @Override
     public Stream<Triple> stream() {
-        return this.triples.keyStream();
+        return this.triples.stream();
     }
 
     @Override
@@ -245,7 +241,7 @@ public class RoaringTripleStore implements TripleStore {
         switch (pattern) {
 
             case SUB_PRE_OBJ:
-                return this.triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
+                return this.triples.contains(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
 
             case SUB_PRE_ANY,
                  SUB_ANY_OBJ,
@@ -269,7 +265,7 @@ public class RoaringTripleStore implements TripleStore {
         switch (pattern) {
 
             case SUB_PRE_OBJ:
-                return this.triples.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NiceIterator.emptyIterator();
+                return this.triples.contains(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NiceIterator.emptyIterator();
 
             case SUB_PRE_ANY,
                  SUB_ANY_OBJ,
