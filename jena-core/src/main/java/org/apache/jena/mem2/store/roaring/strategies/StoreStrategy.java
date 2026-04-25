@@ -23,6 +23,7 @@ package org.apache.jena.mem2.store.roaring.strategies;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.pattern.MatchPattern;
+import org.apache.jena.mem2.store.roaring.BlockSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.stream.Stream;
@@ -38,18 +39,14 @@ public interface StoreStrategy {
     /**
      * Add a triple to the index if the current strategy supports indexing.
      *
-     * @param triple the triple to add
-     * @param tripleIndex the index of the triple in the TripleSet, used for indexing purposes
      */
-    void addToIndex(final Triple triple, int tripleIndex);
+    void addToIndex(final BlockSet.BlockRow row);
 
     /**
      * Remove a triple from the index if the current strategy supports indexing.
      *
-     * @param triple the triple to remove
-     * @param tripleIndex the index of the triple in the TripleSet, used for indexing purposes
      */
-    void removeFromIndex(final Triple triple, int tripleIndex);
+    void removeFromIndex(final BlockSet.BlockRow row);
 
     /**
      * Clear the index of this store if the current strategy supports indexing.

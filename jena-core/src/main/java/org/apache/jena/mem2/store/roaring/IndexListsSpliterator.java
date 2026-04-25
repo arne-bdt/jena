@@ -1,39 +1,37 @@
 package org.apache.jena.mem2.store.roaring;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.util.iterator.NiceIterator;
 
-import java.util.NoSuchElementException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
 public class IndexListsSpliterator implements Spliterator<Triple> {
 
-    private final Triple[] triples;
+    private final BlockSet triples;
     private final int[] indicesSmaller;
     private final int[] indicesLarger;
-    private final int[] positionsLarger;
+    private final IndexList.IndexLookup spoIndexLarger;
     private final Runnable checkForConcurrentModification;
     private final int toPositionExclusive;
     private int pos;
     final int indicesLargerSize;
 
-    public IndexListsSpliterator(final TripleSet tripleSet,
-                                 final IndexList indexListA, final int[] spoIndexA,
-                                 final IndexList indexListB, final int[] spoIndexB,
+    public IndexListsSpliterator(final BlockSet blockSet,
+                                 final IndexList indexListA, final IndexList.IndexLookup spoIndexA,
+                                 final IndexList indexListB, final IndexList.IndexLookup spoIndexB,
                                  final Runnable checkForConcurrentModification) {
-        triples = tripleSet.getTriples();
+        triples = blockSet;
         if(indexListA.size() < indexListB.size()) {
             indicesSmaller = indexListA.getIndices();
             indicesLarger = indexListB.getIndices();
-            positionsLarger = spoIndexB;
+            spoIndexLarger = spoIndexB;
             toPositionExclusive = indexListA.size();
             pos = 0;
             indicesLargerSize = indexListB.size();
         } else {
             indicesSmaller = indexListB.getIndices();
             indicesLarger = indexListA.getIndices();
-            positionsLarger = spoIndexA;
+            spoIndexLarger = spoIndexA;
             toPositionExclusive = indexListB.size();
             pos = 0;
             indicesLargerSize = indexListA.size();
@@ -41,16 +39,16 @@ public class IndexListsSpliterator implements Spliterator<Triple> {
         this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
-    public IndexListsSpliterator(final Triple[] triples,
+    public IndexListsSpliterator(final BlockSet triples,
                                  final int[] indicesSmaller,
                                  final int[] indicesLarger, final int indicesLargerSize,
-                                 final int[] positionsLarger,
+                                 final IndexList.IndexLookup spoIndexLarger,
                                  final int from, final int toExclusive,
                                  final Runnable checkForConcurrentModification) {
         this.triples = triples;
         this.indicesSmaller = indicesSmaller;
         this.indicesLarger = indicesLarger;
-        this.positionsLarger = positionsLarger;
+        this.spoIndexLarger = spoIndexLarger;
         this.pos = from;
         this.toPositionExclusive = toExclusive;
         this.checkForConcurrentModification = checkForConcurrentModification;
@@ -63,10 +61,10 @@ public class IndexListsSpliterator implements Spliterator<Triple> {
         checkForConcurrentModification.run();
         while (pos < toPositionExclusive) {
             final var tripleIndex = indicesSmaller[pos++];
-            final var posLarger = positionsLarger[tripleIndex];
+            final var posLarger = spoIndexLarger.get(tripleIndex);
             if(posLarger < indicesLargerSize
                     && indicesLarger[posLarger] == tripleIndex) {
-                action.accept(triples[tripleIndex]);
+                action.accept(triples.getTriple(tripleIndex));
                 return true;
             }
         }
@@ -77,10 +75,10 @@ public class IndexListsSpliterator implements Spliterator<Triple> {
     public void forEachRemaining(Consumer<? super Triple> action) {
         while (pos < toPositionExclusive) {
             final var tripleIndex = indicesSmaller[pos++];
-            final var posLarger = positionsLarger[tripleIndex];
+            final var posLarger = spoIndexLarger.get(tripleIndex);
             if(posLarger < indicesLargerSize
                     && indicesLarger[posLarger] == tripleIndex) {
-                action.accept(triples[tripleIndex]);
+                action.accept(triples.getTriple(tripleIndex));
             }
         }
         checkForConcurrentModification.run();
@@ -96,7 +94,7 @@ public class IndexListsSpliterator implements Spliterator<Triple> {
         this.pos = pos + (remaining >>> 1);
         return new IndexListsSpliterator(triples,
                 indicesSmaller, indicesLarger, indicesLargerSize,
-                positionsLarger,
+                spoIndexLarger,
                 oldPos, this.pos,
                 checkForConcurrentModification);
     }

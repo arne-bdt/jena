@@ -116,4 +116,32 @@ public class IndexList {
     public IndexList clone() {
         return new IndexList(this);
     }
+
+    public static boolean intersects(final IndexList a, final IndexLookup spoIndicesA, final IndexList b, final IndexLookup spoIndicesB) {
+        if (a.size() < b.size()) {
+            return intersectsSmallerWithLarger(a, b, spoIndicesB);
+        } else {
+            return intersectsSmallerWithLarger(b, a, spoIndicesA);
+        }
+    }
+
+    private static boolean intersectsSmallerWithLarger(final IndexList smaller, final IndexList larger, final IndexLookup spoIndicesLarger) {
+        final var largerSize = larger.size();
+        var pos = smaller.lastPos();
+        while (-1 < pos) {
+            final var tripleIndex = smaller.getIndexAt(pos--);
+            final var potentialIndexInLarger = spoIndicesLarger.get(tripleIndex);
+            if(potentialIndexInLarger < largerSize) {
+                if(tripleIndex == larger.getIndexAt(potentialIndexInLarger)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @FunctionalInterface
+    public interface IndexLookup {
+        int get(int index);
+    }
 }

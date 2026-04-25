@@ -8,13 +8,13 @@ import java.util.function.Consumer;
 
 public class IndexListIterator extends NiceIterator<Triple> {
 
-    private final Triple[] triples;
+    private final BlockSet triples;
     private final int[] indices;
     private final Runnable checkForConcurrentModification;
     private int pos;
 
-    public IndexListIterator(final TripleSet tripleSet, final IndexList indexList, final Runnable checkForConcurrentModification) {
-        triples = tripleSet.getTriples();
+    public IndexListIterator(final BlockSet blockSet, final IndexList indexList, final Runnable checkForConcurrentModification) {
+        triples = blockSet;
         indices = indexList.getIndices();
         pos = indexList.getCurrentPosition();
         this.checkForConcurrentModification = checkForConcurrentModification;
@@ -31,13 +31,13 @@ public class IndexListIterator extends NiceIterator<Triple> {
         if(!hasNext()) {
             throw new NoSuchElementException();
         }
-        return triples[indices[pos--]];
+        return triples.getTriple(indices[pos--]);
     }
 
     @Override
     public void forEachRemaining(Consumer<? super Triple> action) {
         while (-1 < pos) {
-            action.accept(triples[indices[pos--]]);
+            action.accept(triples.getTriple(indices[pos--]));
         }
         checkForConcurrentModification.run();
     }

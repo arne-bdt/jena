@@ -23,6 +23,7 @@ package org.apache.jena.mem2.store.roaring.strategies;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.pattern.MatchPattern;
+import org.apache.jena.mem2.store.roaring.BlockSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.function.Supplier;
@@ -42,12 +43,12 @@ public class LazyStoreStrategy implements StoreStrategy {
     }
 
     @Override
-    public void addToIndex(final Triple triple, int tripleIndex) {
+    public void addToIndex(final BlockSet.BlockRow row) {
         // No-op, as there is no index to add to.
     }
 
     @Override
-    public void removeFromIndex(final Triple triple, int tripleIndex) {
+    public void removeFromIndex(final BlockSet.BlockRow row) {
         // No-op, as there is no index to add to.
     }
 
