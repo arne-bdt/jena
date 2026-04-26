@@ -21,7 +21,6 @@
 
 package org.apache.jena.mem2.store.roaring;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.iterator.SparseBlockIterator;
@@ -41,7 +40,7 @@ import java.util.stream.StreamSupport;
 public class BlockSet
         implements Copyable<BlockSet> {
 
-    private static final int BLOCK_SIZE = 4096;
+    private static final int BLOCK_SIZE = 131_072;
     private static final int MINIMUM_BLOCK_NUMBER = 8;
     private int currentBlock = 0;
     private int size = 0;

@@ -24,7 +24,6 @@ package org.apache.jena.mem2.spliterator;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.spliterator.SparseArraySubSpliterator;
 import org.apache.jena.mem2.store.roaring.BlockSet;
-import org.apache.jena.mem2.store.roaring.IndexListsSpliterator;
 
 import java.util.Spliterator;
 import java.util.function.Consumer;
@@ -34,11 +33,12 @@ public class SparseBlockSpliterator implements Spliterator<Triple> {
     private final BlockSet.Block[] blocks;
     private int lastBlock;
     private int block = 0;
-    private int row = 0;
+    private int row;
     private final Runnable checkForConcurrentModification;
 
-    public SparseBlockSpliterator(final BlockSet.Block[] blocks, final int startPos, final int lastBlock, final Runnable checkForConcurrentModification) {
+    public SparseBlockSpliterator(final BlockSet.Block[] blocks, final int startBlock, final int lastBlock, final Runnable checkForConcurrentModification) {
         this.blocks = blocks;
+        this.block = startBlock;
         this.lastBlock = lastBlock;
         this.checkForConcurrentModification = checkForConcurrentModification;
     }
@@ -87,7 +87,7 @@ public class SparseBlockSpliterator implements Spliterator<Triple> {
         if (remainingBlocks > 0) {
             var oldLastBlock = lastBlock;
             this.lastBlock = block + (remainingBlocks >>> 1);
-            return new SparseBlockSpliterator(blocks, block, oldLastBlock, checkForConcurrentModification);
+            return new SparseBlockSpliterator(blocks, this.lastBlock+1, oldLastBlock, checkForConcurrentModification);
         }
         // else split the remaining rows by increasing the current row
         // and using a SparseArraySubSpliterator for the skipped rows
@@ -101,7 +101,14 @@ public class SparseBlockSpliterator implements Spliterator<Triple> {
     }
 
     @Override
-    public long estimateSize() { return (long) blocks[block].currentIndexSize * (lastBlock+1); }
+    public long estimateSize() {
+        var remainingBlocks = lastBlock - block + 1;
+        if (remainingBlocks == 1) {
+            return blocks[block].currentIndexSize - row;
+        } else {
+            return (long) blocks[block].currentIndexSize * remainingBlocks;
+        }
+    }
 
     @Override
     public int characteristics() {
