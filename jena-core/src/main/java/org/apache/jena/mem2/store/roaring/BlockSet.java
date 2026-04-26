@@ -40,7 +40,10 @@ import java.util.stream.StreamSupport;
 public class BlockSet
         implements Copyable<BlockSet> {
 
-    private static final int BLOCK_SIZE = 131_072;
+    private static final int BLOCK_SIZE = 65_536;
+    private static final int SPO_INDEX_SIZE = BLOCK_SIZE * 3;
+    private static final int P_INDEX_OFFSET = BLOCK_SIZE;
+    private static final int O_INDEX_OFFSET = BLOCK_SIZE * 2;
     private static final int MINIMUM_BLOCK_NUMBER = 8;
     private int currentBlock = 0;
     private int size = 0;
@@ -434,27 +437,27 @@ public class BlockSet
     }
 
     public void setSIndex(int index, int sIndex) {
-        blocks[index / BLOCK_SIZE].sIndices[index % BLOCK_SIZE] = sIndex;
+        blocks[index / BLOCK_SIZE].spoIndices[index % BLOCK_SIZE] = sIndex;
     }
 
     public void setPIndex(int index, int pIndex) {
-        blocks[index / BLOCK_SIZE].pIndices[index % BLOCK_SIZE] = pIndex;
+        blocks[index / BLOCK_SIZE].spoIndices[P_INDEX_OFFSET + (index % BLOCK_SIZE)] = pIndex;
     }
 
     public void setOIndex(int index, int oIndex) {
-        blocks[index / BLOCK_SIZE].oIndices[index % BLOCK_SIZE] = oIndex;
+        blocks[index / BLOCK_SIZE].spoIndices[O_INDEX_OFFSET + (index % BLOCK_SIZE)] = oIndex;
     }
 
     public int getSIndex(int index) {
-        return blocks[index / BLOCK_SIZE].sIndices[index % BLOCK_SIZE];
+        return blocks[index / BLOCK_SIZE].spoIndices[index % BLOCK_SIZE];
     }
 
     public int getPIndex(int index) {
-        return blocks[index / BLOCK_SIZE].pIndices[index % BLOCK_SIZE];
+        return blocks[index / BLOCK_SIZE].spoIndices[P_INDEX_OFFSET + (index % BLOCK_SIZE)];
     }
 
     public int getOIndex(int index) {
-        return blocks[index / BLOCK_SIZE].oIndices[index % BLOCK_SIZE];
+        return blocks[index / BLOCK_SIZE].spoIndices[O_INDEX_OFFSET + (index % BLOCK_SIZE)];
     }
 
     public int getHashCodeOrDeletedIndex(int index) {
@@ -473,13 +476,13 @@ public class BlockSet
             return block.hashCodesOrDeletedIndices[indexInBlock];
         }
         public int getSIndex() {
-            return block.sIndices[indexInBlock];
+            return block.spoIndices[indexInBlock];
         }
         public int getPIndex() {
-            return block.pIndices[indexInBlock];
+            return block.spoIndices[P_INDEX_OFFSET + indexInBlock];
         }
         public int getOIndex() {
-            return block.oIndices[indexInBlock];
+            return block.spoIndices[O_INDEX_OFFSET + indexInBlock];
         }
 
         public void setTriple(Triple triple) {
@@ -489,38 +492,32 @@ public class BlockSet
             block.hashCodesOrDeletedIndices[indexInBlock] = hashCode;
         }
         public void setSIndex(int sIndex) {
-            block.sIndices[indexInBlock] = sIndex;
+            block.spoIndices[indexInBlock] = sIndex;
         }
         public void setPIndex(int pIndex) {
-            block.pIndices[indexInBlock] = pIndex;
+            block.spoIndices[P_INDEX_OFFSET + indexInBlock] = pIndex;
         }
         public void setOIndex(int oIndex) {
-            block.oIndices[indexInBlock] = oIndex;
+            block.spoIndices[O_INDEX_OFFSET + indexInBlock] = oIndex;
         }
     }
 
     public class Block {
         public final Triple[] triples;
         public final int[] hashCodesOrDeletedIndices;
-        public final int[] sIndices;
-        public final int[] pIndices;
-        public final int[] oIndices;
+        public final int[] spoIndices;
         public int currentIndexSize;
 
         public Block() {
             triples = new Triple[BLOCK_SIZE];
             hashCodesOrDeletedIndices = new int[BLOCK_SIZE];
-            sIndices = new int[BLOCK_SIZE];
-            pIndices = new int[BLOCK_SIZE];
-            oIndices = new int[BLOCK_SIZE];
+            spoIndices = new int[SPO_INDEX_SIZE];
         }
         public Block(final Block blockToCopy) {
             this();
             System.arraycopy(blockToCopy.triples, 0, triples, 0, BLOCK_SIZE);
             System.arraycopy(blockToCopy.hashCodesOrDeletedIndices, 0, hashCodesOrDeletedIndices, 0, BLOCK_SIZE);
-            System.arraycopy(blockToCopy.sIndices, 0, sIndices, 0, BLOCK_SIZE);
-            System.arraycopy(blockToCopy.pIndices, 0, pIndices, 0, BLOCK_SIZE);
-            System.arraycopy(blockToCopy.oIndices, 0, oIndices, 0, BLOCK_SIZE);
+            System.arraycopy(blockToCopy.spoIndices, 0, spoIndices, 0, SPO_INDEX_SIZE);
             this.currentIndexSize = blockToCopy.currentIndexSize;
         }
     }
