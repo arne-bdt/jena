@@ -105,7 +105,7 @@ public class IndexList {
      */
     public int removeAt(final int position) {
         if(pos == position) {
-            elements[position] = --pos;
+            pos--;
             return -1;
         } else {
             elements[position] = elements[pos--];

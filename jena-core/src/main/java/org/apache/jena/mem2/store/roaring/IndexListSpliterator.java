@@ -33,6 +33,7 @@ public class IndexListSpliterator implements Spliterator<Triple> {
         checkForConcurrentModification.run();
         if (pos < toPositionExclusive) {
             action.accept(triples.getTriple(indices[pos++]));
+            return true;
         }
         return false;
     }

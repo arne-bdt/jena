@@ -53,11 +53,11 @@ public class SparseBlockSpliterator implements Spliterator<Triple> {
         this.checkForConcurrentModification.run();
         while (block <= lastBlock) {
             while (row < blocks[block].currentIndexSize ) {
-                if (blocks[block].triples[row] != null) {
-                    action.accept(blocks[block].triples[row]);
+                final Triple triple;
+                if ((triple = blocks[block].triples[row++]) != null) {
+                    action.accept(triple);
                     return true;
                 }
-                row++;
             }
             row = 0;
             block++;
