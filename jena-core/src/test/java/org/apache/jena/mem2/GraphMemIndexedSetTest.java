@@ -35,14 +35,14 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
-public class GraphMemRoaring2Test extends AbstractGraphMemTest {
+public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
 
     @Parameterized.Parameter
-    public IndexingStrategy indexingStrategy;
+    public org.apache.jena.mem2.IndexingStrategy indexingStrategy;
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> data() {
-        return Arrays.stream(IndexingStrategy.values())
+        return Arrays.stream(org.apache.jena.mem2.IndexingStrategy.values())
                 .map(strategy -> new Object[]{strategy})
                 .toList();
     }
@@ -60,7 +60,7 @@ public class GraphMemRoaring2Test extends AbstractGraphMemTest {
     protected GraphMem createGraph() {
         switch (indexingStrategy) {
             case EAGER, LAZY, LAZY_PARALLEL, MINIMAL:
-                return new GraphMemRoaring2(indexingStrategy);
+                return new GraphMemIndexedSet(indexingStrategy);
             case MANUAL:
                 return setupGraphWithSpyForSpecialManualStrategy();
             default:
@@ -79,8 +79,8 @@ public class GraphMemRoaring2Test extends AbstractGraphMemTest {
         }
     }
 
-    private GraphMemRoaring2 setupGraphWithSpyForSpecialManualStrategy() {
-        final var realGraph = new GraphMemRoaring2(IndexingStrategy.MANUAL);
+    private GraphMemIndexedSet setupGraphWithSpyForSpecialManualStrategy() {
+        final var realGraph = new GraphMemIndexedSet(IndexingStrategy.MANUAL);
         // Spy setup for the minimal strategy
         final var spyGraph = Mockito.spy(realGraph);
 
@@ -173,8 +173,8 @@ public class GraphMemRoaring2Test extends AbstractGraphMemTest {
         }
     }
 
-    private GraphMemRoaring2 getSutAsGraphMem2Roaring() {
-        return (GraphMemRoaring2) super.sut;
+    private GraphMemIndexedSet getSutAsGraphMem2Roaring() {
+        return (GraphMemIndexedSet) super.sut;
     }
 
     @Test

@@ -19,7 +19,7 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.mem2.store.roaring2;
+package org.apache.jena.mem2.store.indexed;
 
 import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Triple;
