@@ -26,7 +26,6 @@ import org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator;
 import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
@@ -458,7 +457,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         }
     }
 
-    public int getInternalKeysLenght() {
+    public int getInternalKeysLength() {
         return keys.length;
     }
 
