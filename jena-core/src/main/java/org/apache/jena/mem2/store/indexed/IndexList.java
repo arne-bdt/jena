@@ -18,7 +18,7 @@
  *
  *   SPDX-License-Identifier: Apache-2.0
  */
-package org.apache.jena.mem2.store.roaring2;
+package org.apache.jena.mem2.store.indexed;
 
 /**
  * An ArrayBunch implements TripleBunch with a linear search of a short-ish
@@ -26,9 +26,7 @@ package org.apache.jena.mem2.store.roaring2;
  */
 public class IndexList {
 
-    private static final int[] EMPTY_ARRAY = new int[0];
-
-    private static final int INITIAL_SIZE = 4;
+    private static final int INITIAL_SIZE = 2;
 
     private int pos = -1;
     private int[] elements;

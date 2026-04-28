@@ -18,7 +18,7 @@
  *
  *   SPDX-License-Identifier: Apache-2.0
  */
-package org.apache.jena.mem2.store.roaring;
+package org.apache.jena.mem2.store.indexed;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.IndexingStrategy;
@@ -37,7 +37,7 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
-public class RoaringTripleStoreTest extends AbstractTripleStoreTest {
+public class IndexedSetTripleStoreTest extends AbstractTripleStoreTest {
 
     @Parameterized.Parameter
     public IndexingStrategy indexingStrategy;
@@ -53,7 +53,7 @@ public class RoaringTripleStoreTest extends AbstractTripleStoreTest {
     protected TripleStore createTripleStore() {
         switch (indexingStrategy) {
             case EAGER, LAZY, LAZY_PARALLEL, MINIMAL:
-                return new org.apache.jena.mem2.store.roaring.RoaringTripleStore(indexingStrategy);
+                return new IndexedSetTripleStore(indexingStrategy);
             case MANUAL:
                 return setupStoreWithSpyForSpecialManualStrategy();
             default:
@@ -72,8 +72,8 @@ public class RoaringTripleStoreTest extends AbstractTripleStoreTest {
         }
     }
 
-    private org.apache.jena.mem2.store.roaring.RoaringTripleStore setupStoreWithSpyForSpecialManualStrategy() {
-        final var realStore = new org.apache.jena.mem2.store.roaring.RoaringTripleStore(IndexingStrategy.MANUAL);
+    private IndexedSetTripleStore setupStoreWithSpyForSpecialManualStrategy() {
+        final var realStore = new IndexedSetTripleStore(IndexingStrategy.MANUAL);
         // Spy setup for the minimal strategy
         final var spyStore = Mockito.spy(realStore);
 
@@ -128,14 +128,14 @@ public class RoaringTripleStoreTest extends AbstractTripleStoreTest {
         return spyStore;
     }
 
-    private org.apache.jena.mem2.store.roaring.RoaringTripleStore getSutAsRoaringTripleStore() {
-        return (RoaringTripleStore) super.sut;
+    private IndexedSetTripleStore getSutAsIndexedSetTripleStore() {
+        return (IndexedSetTripleStore) super.sut;
     }
 
     @Test
     public void testGetIndexingStrategy() {
         // Given
-        final var sut = getSutAsRoaringTripleStore();
+        final var sut = getSutAsIndexedSetTripleStore();
 
         // Then
         assertEquals(indexingStrategy, sut.getIndexingStrategy());
@@ -144,7 +144,7 @@ public class RoaringTripleStoreTest extends AbstractTripleStoreTest {
     @Test
     public void testIsIndexInitialized() {
         // Given
-        final var sut = getSutAsRoaringTripleStore();
+        final var sut = getSutAsIndexedSetTripleStore();
 
         // Then
         switch (sut.getIndexingStrategy()) {
@@ -177,7 +177,7 @@ public class RoaringTripleStoreTest extends AbstractTripleStoreTest {
     @Test
     public void testLazyInitiallization() {
         // Given
-        final var sut = getSutAsRoaringTripleStore();
+        final var sut = getSutAsIndexedSetTripleStore();
         sut.add(triple("s p o"));
 
         // When
@@ -199,7 +199,7 @@ public class RoaringTripleStoreTest extends AbstractTripleStoreTest {
     @Test
     public void testManualInitialization() {
         // Given
-        final var sut = getSutAsRoaringTripleStore();
+        final var sut = getSutAsIndexedSetTripleStore();
 
         // When
         sut.initializeIndex();
@@ -217,7 +217,7 @@ public class RoaringTripleStoreTest extends AbstractTripleStoreTest {
     @Test
     public void testManualInitializationParallel() {
         // Given
-        final var sut = getSutAsRoaringTripleStore();
+        final var sut = getSutAsIndexedSetTripleStore();
 
         // When
         sut.initializeIndexParallel();
@@ -235,7 +235,7 @@ public class RoaringTripleStoreTest extends AbstractTripleStoreTest {
     @Test
     public void testClearIndex() {
         // Given
-        final var sut = getSutAsRoaringTripleStore();
+        final var sut = getSutAsIndexedSetTripleStore();
         sut.initializeIndex();
 
         // When

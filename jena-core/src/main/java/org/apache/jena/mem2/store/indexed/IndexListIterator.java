@@ -1,23 +1,24 @@
-package org.apache.jena.mem2.store.roaring;
+package org.apache.jena.mem2.store.indexed;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.util.iterator.NiceIterator;
 
+import java.util.ConcurrentModificationException;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 public class IndexListIterator extends NiceIterator<Triple> {
 
-    private final BlockSet triples;
+    private final TripleSet triples;
+    private final int sizeOfSetAtStart;
     private final int[] indices;
-    private final Runnable checkForConcurrentModification;
     private int pos;
 
-    public IndexListIterator(final BlockSet blockSet, final IndexList indexList, final Runnable checkForConcurrentModification) {
-        triples = blockSet;
+    public IndexListIterator(final TripleSet triples, final IndexList indexList) {
+        this.triples = triples;
         indices = indexList.getIndices();
         pos = indexList.getCurrentPosition();
-        this.checkForConcurrentModification = checkForConcurrentModification;
+        this.sizeOfSetAtStart = triples.size();
     }
 
     @Override
@@ -27,18 +28,18 @@ public class IndexListIterator extends NiceIterator<Triple> {
 
     @Override
     public Triple next() {
-        checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != triples.size()) throw new ConcurrentModificationException();
         if(!hasNext()) {
             throw new NoSuchElementException();
         }
-        return triples.getTriple(indices[pos--]);
+        return triples.getKeyAt(indices[pos--]);
     }
 
     @Override
     public void forEachRemaining(Consumer<? super Triple> action) {
         while (-1 < pos) {
-            action.accept(triples.getTriple(indices[pos--]));
+            action.accept(triples.getKeyAt(indices[pos--]));
         }
-        checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != triples.size()) throw new ConcurrentModificationException();
     }
 }

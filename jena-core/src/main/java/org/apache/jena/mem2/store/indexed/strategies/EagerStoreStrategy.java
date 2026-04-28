@@ -19,17 +19,16 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.mem2.store.roaring2.strategies;
+package org.apache.jena.mem2.store.indexed.strategies;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.pattern.MatchPattern;
 import org.apache.jena.mem2.pattern.PatternClassifier;
-import org.apache.jena.mem2.store.roaring2.*;
+import org.apache.jena.mem2.store.indexed.*;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NullIterator;
 
 import java.util.Arrays;
-import java.util.ConcurrentModificationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;

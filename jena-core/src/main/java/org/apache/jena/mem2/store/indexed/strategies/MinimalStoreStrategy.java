@@ -19,59 +19,56 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.mem2.store.roaring.strategies;
+package org.apache.jena.mem2.store.indexed.strategies;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.pattern.MatchPattern;
-import org.apache.jena.mem2.store.roaring.BlockSet;
+import org.apache.jena.mem2.store.indexed.TripleSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
- * A lazy store strategy that defers the initialization of the index until it is needed.
- * This strategy is useful when the index is not always required, allowing for more efficient memory usage.
- * It uses a supplier to create a new instance of {@link EagerStoreStrategy} when needed.
+ * A minimal store strategy that does not maintain any bitmaps or indexes.
+ * This strategy is used when no indexing is required.
+ * The matching operations are performed directly on the set of triples.
+ * This strategy is useful for scenarios where the overhead of maintaining an index is not justified,
+ * such as when the dataset is small or when the performance of match operations is not critical.
  */
-public class LazyStoreStrategy implements StoreStrategy {
+public class MinimalStoreStrategy implements StoreStrategy {
+    private final TripleSet triples;
 
-    private final Supplier<EagerStoreStrategy> setCurrentStrategyToNewEagerStoreStrategy;
-
-    public LazyStoreStrategy(final Supplier<EagerStoreStrategy> setCurrentStrategyToNewEagerStoreStrategy) {
-        this.setCurrentStrategyToNewEagerStoreStrategy = setCurrentStrategyToNewEagerStoreStrategy;
+    public MinimalStoreStrategy(final TripleSet triples) {
+        this.triples = triples;
     }
 
     @Override
-    public void addToIndex(final BlockSet.BlockRow row) {
-        // No-op, as there is no index to add to.
+    public void addToIndex(final Triple triple, final int index) {
+        // No-op, as we do not store any bitmaps
     }
 
     @Override
-    public void removeFromIndex(final BlockSet.BlockRow row) {
-        // No-op, as there is no index to add to.
+    public void removeFromIndex(final Triple triple, final int index) {
+        // No-op, as we do not store any bitmaps
     }
 
     @Override
     public void clearIndex() {
-        // No-op, as there is no index to add to.
+        // No-op, as we do not store any bitmaps
     }
 
     @Override
     public boolean containsMatch(final Triple tripleMatch, final MatchPattern pattern) {
-        return setCurrentStrategyToNewEagerStoreStrategy.get()
-                .containsMatch(tripleMatch, pattern);
+        return this.triples.anyMatch(tripleMatch::matches);
     }
 
     @Override
     public Stream<Triple> streamMatch(final Triple tripleMatch, final MatchPattern pattern) {
-        return setCurrentStrategyToNewEagerStoreStrategy.get()
-                .streamMatch(tripleMatch, pattern);
+        return this.triples.keyStream().filter(tripleMatch::matches);
     }
 
     @Override
     public ExtendedIterator<Triple> findMatch(final Triple tripleMatch, final MatchPattern pattern) {
-        return setCurrentStrategyToNewEagerStoreStrategy.get()
-                .findMatch(tripleMatch, pattern);
+        return this.triples.keyIterator().filterKeep(tripleMatch::matches);
     }
 }

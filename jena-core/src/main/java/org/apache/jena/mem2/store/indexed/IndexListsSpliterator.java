@@ -1,4 +1,4 @@
-package org.apache.jena.mem2.store.roaring2;
+package org.apache.jena.mem2.store.indexed;
 
 import org.apache.jena.graph.Triple;
 
