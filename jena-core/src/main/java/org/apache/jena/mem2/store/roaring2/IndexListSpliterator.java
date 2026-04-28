@@ -8,20 +8,20 @@ import java.util.function.Consumer;
 
 public class IndexListSpliterator implements Spliterator<Triple> {
 
-    private final BlockSet triples;
+    private final TripleSet triples;
     private final int[] indices;
     private final Runnable checkForConcurrentModification;
     private final int toPositionExclusive;
     private int pos;
 
-    public IndexListSpliterator(final BlockSet blockSet, final IndexList indexList, final Runnable checkForConcurrentModification) {
+    public IndexListSpliterator(final TripleSet blockSet, final IndexList indexList, final Runnable checkForConcurrentModification) {
         this(blockSet,
                 indexList.getIndices(),
                 0, indexList.size(),
                 checkForConcurrentModification);
     }
 
-    public IndexListSpliterator(final BlockSet triples, final int[] indices, final int from, final int toExclusive, final Runnable checkForConcurrentModification) {
+    public IndexListSpliterator(final TripleSet triples, final int[] indices, final int from, final int toExclusive, final Runnable checkForConcurrentModification) {
         this.triples = triples;
         this.indices = indices;
         this.pos = from;
@@ -33,7 +33,7 @@ public class IndexListSpliterator implements Spliterator<Triple> {
     public boolean tryAdvance(Consumer<? super Triple> action) {
         checkForConcurrentModification.run();
         if (pos < toPositionExclusive) {
-            action.accept(triples.getTriple(indices[pos++]));
+            action.accept(triples.getKeyAt(indices[pos++]));
             return true;
         }
         return false;
@@ -42,7 +42,7 @@ public class IndexListSpliterator implements Spliterator<Triple> {
     @Override
     public void forEachRemaining(Consumer<? super Triple> action) {
         while (pos < toPositionExclusive) {
-            action.accept(triples.getTriple(indices[pos++]));
+            action.accept(triples.getKeyAt(indices[pos++]));
         }
         checkForConcurrentModification.run();
     }

@@ -21,6 +21,7 @@
 
 package org.apache.jena.mem2.iterator;
 
+import org.apache.jena.mem2.collection.FastHashBase;
 import org.apache.jena.mem2.collection.FastHashSet;
 import org.apache.jena.util.iterator.NiceIterator;
 
@@ -85,11 +86,11 @@ public class SparseArrayIndexedIterator<E> extends NiceIterator<FastHashSet.Inde
      * @throws NoSuchElementException if the iteration has no more elements
      */
     @Override
-    public FastHashSet.IndexedKey<E> next() {
+    public FastHashBase.IndexedKey<E> next() {
         this.checkForConcurrentModification.run();
         if (hasNext || hasNext()) {
             hasNext = false;
-            return new FastHashSet.IndexedKey<>(pos, entries[pos++]);
+            return new FastHashBase.IndexedKey<>(pos, entries[pos++]);
         }
         throw new NoSuchElementException();
     }

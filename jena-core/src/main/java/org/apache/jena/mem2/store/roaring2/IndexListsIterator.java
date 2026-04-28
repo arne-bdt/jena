@@ -1,7 +1,6 @@
 package org.apache.jena.mem2.store.roaring2;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem2.store.roaring.BlockSet;
 import org.apache.jena.util.iterator.NiceIterator;
 
 import java.util.NoSuchElementException;
@@ -9,31 +8,31 @@ import java.util.function.Consumer;
 
 public class IndexListsIterator extends NiceIterator<Triple> {
 
-    private final BlockSet triples;
+    private final TripleSet triples;
     private final int[] indicesSmaller;
     private final int[] indicesLarger;
-    private final IndexList.IndexLookup spoIndexLarger;
+    private final int[] reverseIndicesLarger;
     private final Runnable checkForConcurrentModification;
     private int pos;
     private int tripleIndex;
     final int indicesLargerSize;
     private boolean hasNext = false;
 
-    public IndexListsIterator(final BlockSet blockSet,
-                              final IndexList indexListA, final IndexList.IndexLookup spoIndexA,
-                              final IndexList indexListB, final IndexList.IndexLookup spoIndexB,
+    public IndexListsIterator(final TripleSet triples,
+                              final IndexList indexListA, final int[] reverseIndicesA,
+                              final IndexList indexListB, final int[] reverseIndicesB,
                               final Runnable checkForConcurrentModification) {
-        triples = blockSet;
+        this.triples = triples;
         if(indexListA.size() < indexListB.size()) {
             indicesSmaller = indexListA.getIndices();
             indicesLarger = indexListB.getIndices();
-            spoIndexLarger = spoIndexB;
+            reverseIndicesLarger = reverseIndicesB;
             pos = indexListA.lastPos();
             indicesLargerSize = indexListB.size();
         } else {
             indicesSmaller = indexListB.getIndices();
             indicesLarger = indexListA.getIndices();
-            spoIndexLarger = spoIndexA;
+            reverseIndicesLarger = reverseIndicesA;
             pos = indexListB.lastPos();
             indicesLargerSize = indexListA.size();
         }
@@ -47,7 +46,7 @@ public class IndexListsIterator extends NiceIterator<Triple> {
 
         while(-1 < pos)  {
             tripleIndex = indicesSmaller[pos--];
-            final var posLarger = spoIndexLarger.get(tripleIndex);
+            final var posLarger = reverseIndicesLarger[tripleIndex];
 
             if(posLarger < indicesLargerSize
                     && indicesLarger[posLarger] == tripleIndex) {
@@ -62,7 +61,7 @@ public class IndexListsIterator extends NiceIterator<Triple> {
         checkForConcurrentModification.run();
         if(hasNext || hasNext()) {
             hasNext = false;
-            return triples.getTriple(tripleIndex);
+            return triples.getKeyAt(tripleIndex);
         }
         throw new NoSuchElementException();
     }
@@ -71,10 +70,10 @@ public class IndexListsIterator extends NiceIterator<Triple> {
     public void forEachRemaining(Consumer<? super Triple> action) {
         while (-1 < pos) {
             tripleIndex = indicesSmaller[pos--];
-            final var posLarger = spoIndexLarger.get(tripleIndex);
+            final var posLarger = reverseIndicesLarger[tripleIndex];
             if(posLarger < indicesLargerSize
                     && indicesLarger[posLarger] == tripleIndex) {
-                action.accept(triples.getTriple(tripleIndex));
+                action.accept(triples.getKeyAt(tripleIndex));
             }
         }
         checkForConcurrentModification.run();

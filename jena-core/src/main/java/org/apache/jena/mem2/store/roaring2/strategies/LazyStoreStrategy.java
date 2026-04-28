@@ -43,12 +43,12 @@ public class LazyStoreStrategy implements StoreStrategy {
     }
 
     @Override
-    public void addToIndex(final BlockSet.BlockRow row) {
+    public void addToIndex(final Triple triple, final int index) {
         // No-op, as there is no index to add to.
     }
 
     @Override
-    public void removeFromIndex(final BlockSet.BlockRow row) {
+    public void removeFromIndex(final Triple triple, final int index) {
         // No-op, as there is no index to add to.
     }
 

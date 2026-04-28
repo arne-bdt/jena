@@ -42,7 +42,9 @@ public class PatternClassifier {
     }
 
     public static MatchPattern classify(Triple tripleMatch) {
-        if (tripleMatch.isConcrete()) {
+        if (tripleMatch.getSubject().isConcrete()
+                && tripleMatch.getPredicate().isConcrete()
+                && tripleMatch.getObject().isConcrete()) {
             return MatchPattern.SUB_PRE_OBJ;
         } else {
             if (tripleMatch.getSubject().isConcrete()) {
