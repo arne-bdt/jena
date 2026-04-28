@@ -57,7 +57,7 @@ public class EagerStoreStrategy implements StoreStrategy {
         this.sNodeToIndices = new NodesToIndices();
         this.pNodeToIndices = new NodesToIndices();
         this.oNodeToIndices = new NodesToIndices();
-        final var indexSize = triples.getInternalKeysLenght();
+        final var indexSize = triples.getInternalKeysLength();
         this.sReverseIndices = new int[indexSize];
         this.pReverseIndices = new int[indexSize];
         this.oReverseIndices = new int[indexSize];
@@ -91,8 +91,8 @@ public class EagerStoreStrategy implements StoreStrategy {
         this.pNodeToIndices = strategyToCopyIndicesFrom.pNodeToIndices.copy();
         this.oNodeToIndices = strategyToCopyIndicesFrom.oNodeToIndices.copy();
         this.sReverseIndices = strategyToCopyIndicesFrom.sReverseIndices.clone();
-        this.oReverseIndices = strategyToCopyIndicesFrom.pReverseIndices.clone();
         this.pReverseIndices = strategyToCopyIndicesFrom.pReverseIndices.clone();
+        this.oReverseIndices = strategyToCopyIndicesFrom.oReverseIndices.clone();
     }
 
     /**
@@ -110,7 +110,7 @@ public class EagerStoreStrategy implements StoreStrategy {
      * creating bitmaps for subjects, predicates, and objects.
      */
     private void indexAllParallel() {
-        final var indexSize = triples.getInternalKeysLenght();
+        final var indexSize = triples.getInternalKeysLength();
         if(indexSize != sReverseIndices.length) {
             sReverseIndices = Arrays.copyOf(sReverseIndices, indexSize);
             pReverseIndices = Arrays.copyOf(pReverseIndices, indexSize);
@@ -177,7 +177,7 @@ public class EagerStoreStrategy implements StoreStrategy {
 
     @Override
     public void addToIndex(final Triple triple, final int index) {
-        final var indexSize = triples.getInternalKeysLenght();
+        final var indexSize = triples.getInternalKeysLength();
         if(indexSize != sReverseIndices.length) {
             sReverseIndices = Arrays.copyOf(sReverseIndices, indexSize);
             pReverseIndices = Arrays.copyOf(pReverseIndices, indexSize);
@@ -200,7 +200,7 @@ public class EagerStoreStrategy implements StoreStrategy {
         sNodeToIndices.clear();
         pNodeToIndices.clear();
         oNodeToIndices.clear();
-        final var indexSize = triples.getInternalKeysLenght();
+        final var indexSize = triples.getInternalKeysLength();
         this.sReverseIndices = new int[indexSize];
         this.pReverseIndices = new int[indexSize];
         this.oReverseIndices = new int[indexSize];

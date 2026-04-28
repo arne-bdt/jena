@@ -180,10 +180,10 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
             if (tryGrowPositionsArrayIfNeeded()) {
                 pIndex = findPosition(key, hashCode);
             }
+            final var value = absentValueSupplier.get();
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
-            final var value = absentValueSupplier.get();
             values[eIndex] = value;
             positions[~pIndex] = ~eIndex;
             return value;

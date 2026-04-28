@@ -97,9 +97,9 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
     }
 
     @Override
-    public void removeAt(int index) {
-        values[index] = null;
-        super.removeAt(index);
+    protected void removeFrom(int here) {
+        values[~positions[here]] = null;
+        super.removeFrom(here);
     }
 
     @Override
@@ -245,10 +245,10 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
             if (tryGrowPositionsArrayIfNeeded()) {
                 pIndex = findPosition(key, hashCode);
             }
+            final var value = absentValueSupplier.get();
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
-            final var value = absentValueSupplier.get();
             values[eIndex] = value;
             positions[~pIndex] = ~eIndex;
             return value;

@@ -68,6 +68,10 @@ public class IndexListsIterator extends NiceIterator<Triple> {
 
     @Override
     public void forEachRemaining(Consumer<? super Triple> action) {
+        if(hasNext) {
+            action.accept(next());
+            hasNext = false;
+        }
         while (-1 < pos) {
             tripleIndex = indicesSmaller[pos--];
             final var posLarger = reverseIndicesLarger[tripleIndex];
