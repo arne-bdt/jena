@@ -20,6 +20,8 @@
  */
 package org.apache.jena.mem2.spliterator;
 
+import org.apache.jena.mem2.collection.FastHashSet;
+import org.apache.jena.mem2.collection.JenaSet;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -30,18 +32,18 @@ import static org.junit.Assert.*;
 
 public class SparseArraySpliteratorTest {
 
+    private static final JenaSet<Object> dummySetForConcurrencyCheck = new FastHashSet<Object>();
+
     @Test
     public void tryAdvanceEmpty() {
         {
             Integer[] array = new Integer[0];
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             assertFalse(spliterator.tryAdvance(i -> fail("Should not have advanced")));
         }
         {
             Integer[] array = new Integer[1];
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             assertFalse(spliterator.tryAdvance(i -> fail("Should not have advanced")));
         }
     }
@@ -50,8 +52,7 @@ public class SparseArraySpliteratorTest {
     public void tryAdvanceOne() {
         {
             Integer[] array = new Integer[]{1};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance( itemsFound::add)) { /*empty*/ }
             assertEquals(1, itemsFound.size());
@@ -59,8 +60,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{1, null};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(1, itemsFound.size());
@@ -68,8 +68,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(1, itemsFound.size());
@@ -81,8 +80,7 @@ public class SparseArraySpliteratorTest {
     public void tryAdvanceTwo() {
         {
             Integer[] array = new Integer[]{1, 2};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(2, itemsFound.size());
@@ -91,8 +89,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{1, null, 2};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(2, itemsFound.size());
@@ -101,8 +98,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{1, null, null, 2};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(2, itemsFound.size());
@@ -111,8 +107,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1, null, 2};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(2, itemsFound.size());
@@ -121,8 +116,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1, null, null, 2};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(2, itemsFound.size());
@@ -135,8 +129,7 @@ public class SparseArraySpliteratorTest {
     public void tryAdvanceThree() {
         {
             Integer[] array = new Integer[]{1, 2, 3};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(3, itemsFound.size());
@@ -146,8 +139,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{1, null, 2, 3};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(3, itemsFound.size());
@@ -157,8 +149,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{1, null, null, 2, 3};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(3, itemsFound.size());
@@ -168,8 +159,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1, null, 2, null, 3};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(3, itemsFound.size());
@@ -179,8 +169,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1, null, null, 2, null, 3};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             while (spliterator.tryAdvance(itemsFound::add)) { /*empty*/ }
             assertEquals(3, itemsFound.size());
@@ -194,16 +183,14 @@ public class SparseArraySpliteratorTest {
     public void forEachRemainingEmpty() {
         {
             Integer[] array = new Integer[]{};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(0, itemsFound.size());
         }
         {
             Integer[] array = new Integer[]{null};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(0, itemsFound.size());
@@ -214,8 +201,7 @@ public class SparseArraySpliteratorTest {
     public void forEachRemainingOne() {
         {
             Integer[] array = new Integer[]{1};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(1, itemsFound.size());
@@ -223,8 +209,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(1, itemsFound.size());
@@ -232,8 +217,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{1, null};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(1, itemsFound.size());
@@ -245,8 +229,7 @@ public class SparseArraySpliteratorTest {
     public void forEachRemainingTwo() {
         {
             Integer[] array = new Integer[]{1, 2};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(2, itemsFound.size());
@@ -255,8 +238,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{1, null, 2};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(2, itemsFound.size());
@@ -265,8 +247,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{1, null, null, 2};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(2, itemsFound.size());
@@ -275,8 +256,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1, null, 2};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(2, itemsFound.size());
@@ -285,8 +265,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1, null, null, 2};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(2, itemsFound.size());
@@ -299,8 +278,7 @@ public class SparseArraySpliteratorTest {
     public void forEachRemainingThree() {
         {
             Integer[] array = new Integer[]{1, 2, 3};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(3, itemsFound.size());
@@ -310,8 +288,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{1, null, 2, 3};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(3, itemsFound.size());
@@ -321,8 +298,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{1, null, null, 2, 3};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(3, itemsFound.size());
@@ -332,8 +308,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1, null, 2, 3};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(3, itemsFound.size());
@@ -343,8 +318,7 @@ public class SparseArraySpliteratorTest {
         }
         {
             Integer[] array = new Integer[]{null, 1, null, null, 2, 3};
-            Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-            });
+            Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(3, itemsFound.size());
@@ -354,24 +328,21 @@ public class SparseArraySpliteratorTest {
     @Test
     public void trySplitEmpty() {
         Integer[] array = new Integer[]{};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         assertNull(spliterator.trySplit());
     }
 
     @Test
     public void trySplitOne() {
         Integer[] array = new Integer[]{1};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         assertNull(spliterator.trySplit());
     }
 
     @Test
     public void trySplitTwo() {
         Integer[] array = new Integer[]{1, 2};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         // Estimated size is not exact
         assertBetween(2, 3, spliterator.estimateSize());
         Spliterator<Integer> split = spliterator.trySplit();
@@ -382,8 +353,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void trySplitThree() {
         Integer[] array = new Integer[]{1, 2, 3};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         // Estimated size is not exact
         assertBetween(3, 4, spliterator.estimateSize());
         Spliterator<Integer> split = spliterator.trySplit();
@@ -394,8 +364,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void trySplitFour() {
         Integer[] array = new Integer[]{1, 2, 3, 4};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         // Estimated size is not exact
         assertBetween(4, 5, spliterator.estimateSize());
         Spliterator<Integer> split = spliterator.trySplit();
@@ -406,8 +375,7 @@ public class SparseArraySpliteratorTest {
     @Test
     public void trySplitFive() {
         Integer[] array = new Integer[]{1, 2, 3, 4, 5};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         // Estimated size is not exact
         assertBetween(5, 6, spliterator.estimateSize());
         Spliterator<Integer> split = spliterator.trySplit();
@@ -423,8 +391,7 @@ public class SparseArraySpliteratorTest {
                 array[i] = i;
             }
         }
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         // Estimated size is not exact
         assertEquals(array.length, spliterator.estimateSize());
         Spliterator<Integer> split = spliterator.trySplit();
@@ -440,56 +407,49 @@ public class SparseArraySpliteratorTest {
     @Test
     public void estimateSizeZero() {
         Integer[] array = new Integer[]{};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         assertBetween(0, 1, spliterator.estimateSize());
     }
 
     @Test
     public void estimateSizeOne() {
         Integer[] array = new Integer[]{1};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         assertBetween(1, 2, spliterator.estimateSize());
     }
 
     @Test
     public void estimateSizeTwo() {
         Integer[] array = new Integer[]{1, 2};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         assertBetween(2, 3, spliterator.estimateSize());
     }
 
     @Test
     public void estimateSizeFive() {
         Integer[] array = new Integer[]{1, 2, 3, 4, 5};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         assertBetween(5, 6, spliterator.estimateSize());
     }
 
     @Test
     public void characteristics() {
         Integer[] array = new Integer[]{1, 2, 3, 4, 5};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         assertEquals(DISTINCT | NONNULL | IMMUTABLE, spliterator.characteristics());
     }
 
     @Test
     public void splitWithOneElementNull() {
         Integer[] array = new Integer[]{null};
-        Spliterator<Integer> spliterator = new org.apache.jena.mem2.spliterator.SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         assertNull(spliterator.trySplit());
     }
 
     @Test
     public void splitWithOneRemainingElementNull() {
         Integer[] array = new Integer[]{1, null};
-        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, () -> {
-        });
+        Spliterator<Integer> spliterator = new SparseArraySpliterator<>(array, dummySetForConcurrencyCheck);
         spliterator.tryAdvance(i -> {
         });
         assertNull(spliterator.trySplit());

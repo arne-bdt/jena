@@ -3,16 +3,17 @@ package org.apache.jena.mem2.store.roaring2;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.util.iterator.NiceIterator;
 
+import java.util.ConcurrentModificationException;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 public class IndexListsIterator extends NiceIterator<Triple> {
 
     private final TripleSet triples;
+    private final int sizeOfSetAtStart;
     private final int[] indicesSmaller;
     private final int[] indicesLarger;
     private final int[] reverseIndicesLarger;
-    private final Runnable checkForConcurrentModification;
     private int pos;
     private int tripleIndex;
     final int indicesLargerSize;
@@ -20,9 +21,9 @@ public class IndexListsIterator extends NiceIterator<Triple> {
 
     public IndexListsIterator(final TripleSet triples,
                               final IndexList indexListA, final int[] reverseIndicesA,
-                              final IndexList indexListB, final int[] reverseIndicesB,
-                              final Runnable checkForConcurrentModification) {
+                              final IndexList indexListB, final int[] reverseIndicesB) {
         this.triples = triples;
+        this.sizeOfSetAtStart = triples.size();
         if(indexListA.size() < indexListB.size()) {
             indicesSmaller = indexListA.getIndices();
             indicesLarger = indexListB.getIndices();
@@ -36,7 +37,6 @@ public class IndexListsIterator extends NiceIterator<Triple> {
             pos = indexListB.lastPos();
             indicesLargerSize = indexListA.size();
         }
-        this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
     @Override
@@ -58,7 +58,7 @@ public class IndexListsIterator extends NiceIterator<Triple> {
 
     @Override
     public Triple next() {
-        checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != triples.size()) throw new ConcurrentModificationException();
         if(hasNext || hasNext()) {
             hasNext = false;
             return triples.getKeyAt(tripleIndex);
@@ -76,6 +76,6 @@ public class IndexListsIterator extends NiceIterator<Triple> {
                 action.accept(triples.getKeyAt(tripleIndex));
             }
         }
-        checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != triples.size()) throw new ConcurrentModificationException();
     }
 }

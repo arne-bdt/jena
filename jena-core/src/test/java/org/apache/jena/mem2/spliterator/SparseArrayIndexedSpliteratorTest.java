@@ -21,6 +21,7 @@
 package org.apache.jena.mem2.spliterator;
 
 import org.apache.jena.mem2.collection.FastHashSet;
+import org.apache.jena.mem2.collection.JenaSet;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -30,18 +31,18 @@ import static org.junit.Assert.*;
 
 public class SparseArrayIndexedSpliteratorTest {
 
+    private static final JenaSet<Object> dummySetForConcurrencyCheck = new FastHashSet<Object>();
+
     @Test
     public void tryAdvanceEmpty() {
         {
             final var array = new String[0];
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             assertFalse(spliterator.tryAdvance(i -> fail("Should not have advanced")));
         }
         {
             final var array = new String[1];
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             assertFalse(spliterator.tryAdvance(i -> fail("Should not have advanced")));
         }
     }
@@ -50,8 +51,7 @@ public class SparseArrayIndexedSpliteratorTest {
     public void tryAdvanceOne() {
         {
             final var array = new String[]{"a"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             for(int i=0; i<array.length; i++) {
                 final var index = i;
                 assertTrue(spliterator.tryAdvance(entry -> {
@@ -63,8 +63,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{"a", null};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var itemsFound = new ArrayList<>();
             while (true) {
                 if (!spliterator.tryAdvance(entry -> itemsFound.add(entry.key()))) {
@@ -76,8 +75,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{null, "a"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             assertTrue(spliterator.tryAdvance(entry -> {
                 assertEquals(1, entry.index());
                 assertEquals("a", entry.key());
@@ -90,8 +88,7 @@ public class SparseArrayIndexedSpliteratorTest {
     public void tryAdvanceTwo() {
         {
             final var array = new String[]{"a", "b"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             while (spliterator.tryAdvance(i -> {
@@ -106,8 +103,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{"a", null, "b"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             while (spliterator.tryAdvance(i -> {
@@ -122,8 +118,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{"a", null, null, "b"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             while (spliterator.tryAdvance(i -> {
@@ -138,8 +133,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{null, "a", null, "b"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             while (spliterator.tryAdvance(i -> {
@@ -154,8 +148,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{null, "a", null, null, "b"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             while (spliterator.tryAdvance(i -> {
@@ -174,8 +167,7 @@ public class SparseArrayIndexedSpliteratorTest {
     public void tryAdvanceThree() {
         {
             final var array = new String[]{"a", "b", "c"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             while (spliterator.tryAdvance(i -> {
@@ -192,8 +184,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{"a", null, "b", "c"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             while (spliterator.tryAdvance(i -> {
@@ -210,8 +201,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{"a", null, null, "b", "c"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             while (spliterator.tryAdvance(i -> {
@@ -228,8 +218,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{null, "a", null, "b", null, "c"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             while (spliterator.tryAdvance(i -> {
@@ -246,8 +235,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{null, "a", null, null, "b", null, "c"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             while (spliterator.tryAdvance(i -> {
@@ -268,16 +256,14 @@ public class SparseArrayIndexedSpliteratorTest {
     public void forEachRemainingEmpty() {
         {
             final var array = new String[]{};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<FastHashSet.IndexedKey<String>>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(0, itemsFound.size());
         }
         {
             final var array = new String[]{null};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             var itemsFound = new ArrayList<>();
             spliterator.forEachRemaining(itemsFound::add);
             assertEquals(0, itemsFound.size());
@@ -288,8 +274,7 @@ public class SparseArrayIndexedSpliteratorTest {
     public void forEachRemainingOne() {
         {
             final var array = new String[]{"a"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -302,8 +287,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{null, "a"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -316,8 +300,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{"a", null};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -334,8 +317,7 @@ public class SparseArrayIndexedSpliteratorTest {
     public void forEachRemainingTwo() {
         {
             final var array = new String[]{"a", "b"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -350,8 +332,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{"a", null, "b"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -366,8 +347,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{"a", null, null, "b"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -382,8 +362,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{null, "a", null, "b"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -398,8 +377,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{null, "a", null, null, "b"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -418,8 +396,7 @@ public class SparseArrayIndexedSpliteratorTest {
     public void forEachRemainingThree() {
         {
             final var array = new String[]{"a", "b", "c"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -436,8 +413,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{"a", null, "b", "c"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -454,8 +430,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{"a", null, null, "b", "c"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -472,8 +447,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{null, "a", null, "b", "c"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -490,8 +464,7 @@ public class SparseArrayIndexedSpliteratorTest {
         }
         {
             final var array = new String[]{null, "a", null, null, "b", "c"};
-            final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-            });
+            final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
             final var keysFound = new ArrayList<>();
             final var indicesFound = new ArrayList<>();
             spliterator.forEachRemaining(entry -> {
@@ -511,24 +484,21 @@ public class SparseArrayIndexedSpliteratorTest {
     @Test
     public void trySplitEmpty() {
         final var array = new String[]{};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         assertNull(spliterator.trySplit());
     }
 
     @Test
     public void trySplitOne() {
         final var array = new String[]{"a"};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         assertNull(spliterator.trySplit());
     }
 
     @Test
     public void trySplitTwo() {
         final var array = new String[]{"a", "b"};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         // Estimated size is not exact
         assertBetween(2, 3, spliterator.estimateSize());
         final var split = spliterator.trySplit();
@@ -539,8 +509,7 @@ public class SparseArrayIndexedSpliteratorTest {
     @Test
     public void trySplitThree() {
         final var array = new String[]{"a", "b", "c"};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         // Estimated size is not exact
         assertBetween(3, 4, spliterator.estimateSize());
         final var split = spliterator.trySplit();
@@ -551,8 +520,7 @@ public class SparseArrayIndexedSpliteratorTest {
     @Test
     public void trySplitFour() {
         final var array = new String[]{"a", "b", "c", "d"};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         // Estimated size is not exact
         assertBetween(4, 5, spliterator.estimateSize());
         final var split = spliterator.trySplit();
@@ -563,8 +531,7 @@ public class SparseArrayIndexedSpliteratorTest {
     @Test
     public void trySplitFive() {
         final var array = new String[]{"a", "b", "c", "d", "e"};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         // Estimated size is not exact
         assertBetween(5, 6, spliterator.estimateSize());
         final var split = spliterator.trySplit();
@@ -602,8 +569,7 @@ public class SparseArrayIndexedSpliteratorTest {
                 array[i] = i;
             }
         }
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         // Estimated size is not exact
         assertBetween(array.length, array.length+1, spliterator.estimateSize());
         final var split = spliterator.trySplit();
@@ -619,56 +585,49 @@ public class SparseArrayIndexedSpliteratorTest {
     @Test
     public void estimateSizeZero() {
         final var array = new String[]{};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         assertBetween(0, 1, spliterator.estimateSize());
     }
 
     @Test
     public void estimateSizeOne() {
         final var array = new String[]{"a"};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         assertBetween(1, 2, spliterator.estimateSize());
     }
 
     @Test
     public void estimateSizeTwo() {
         final var array = new String[]{"a", "b"};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         assertBetween(2, 3, spliterator.estimateSize());
     }
 
     @Test
     public void estimateSizeFive() {
         final var array = new String[]{"a", "b", "c", "d", "e"};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         assertBetween(5, 6, spliterator.estimateSize());
     }
 
     @Test
     public void characteristics() {
         final var array = new String[]{"a", "b", "c", "d", "e"};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         assertEquals(DISTINCT | NONNULL | IMMUTABLE, spliterator.characteristics());
     }
 
     @Test
     public void splitWithOneElementNull() {
         final var array = new String[]{null};
-        final var spliterator = new org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         assertNull(spliterator.trySplit());
     }
 
     @Test
     public void splitWithOneRemainingElementNull() {
         final var array = new String[]{"a", null};
-        final var spliterator = new SparseArrayIndexedSpliterator<>(array, () -> {
-        });
+        final var spliterator = new SparseArrayIndexedSpliterator<>(array, dummySetForConcurrencyCheck);
         spliterator.tryAdvance(i -> {});
         assertNull(spliterator.trySplit());
     }

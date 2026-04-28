@@ -41,16 +41,6 @@ public class NodesToIndices
         super(mapToCopy, IndexList::clone);
     }
 
-    @Override
-    protected Node[] newKeysArray(int size) {
-        return new Node[size];
-    }
-
-    @Override
-    protected IndexList[] newValuesArray(int size) {
-        return new IndexList[size];
-    }
-
     /**
      * Create a copy of this map.
      * The new map will contain all the same nodes as keys of this map, but clones of the bitmaps as values.

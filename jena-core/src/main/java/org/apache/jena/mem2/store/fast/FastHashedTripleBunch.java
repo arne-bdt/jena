@@ -53,11 +53,6 @@ public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTr
     }
 
     @Override
-    protected Triple[] newKeysArray(int size) {
-        return new Triple[size];
-    }
-
-    @Override
     public boolean isArray() {
         return false;
     }

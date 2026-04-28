@@ -21,6 +21,9 @@
 
 package org.apache.jena.mem2.spliterator;
 
+import org.apache.jena.mem2.collection.JenaMapSetCommon;
+
+import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
@@ -39,7 +42,8 @@ public class ArraySubSpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
     private final int fromIndex;
-    private final Runnable checkForConcurrentModification;
+    private final JenaMapSetCommon<?> set;
+    private final int sizeOfSetAtStart;
     private int pos;
 
     /**
@@ -48,28 +52,29 @@ public class ArraySubSpliterator<E> implements Spliterator<E> {
      * @param entries                        the array
      * @param fromIndex                      the index of the first element, inclusive
      * @param toIndex                        the index of the last element, exclusive
-     * @param checkForConcurrentModification runnable to check for concurrent modifications
+     * @param set                            the set to check for concurrent modifications
      */
-    public ArraySubSpliterator(final E[] entries, final int fromIndex, final int toIndex, final Runnable checkForConcurrentModification) {
+    public ArraySubSpliterator(final E[] entries, final int fromIndex, final int toIndex, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.fromIndex = fromIndex;
         this.pos = toIndex;
-        this.checkForConcurrentModification = checkForConcurrentModification;
+        this.set = set;
+        this.sizeOfSetAtStart = set.size();
     }
 
     /**
      * Create a spliterator for the given array, with the given size.
      *
      * @param entries                        the array
-     * @param checkForConcurrentModification runnable to check for concurrent modifications
+     * @param set                            the set to check for concurrent modifications
      */
-    public ArraySubSpliterator(final E[] entries, final Runnable checkForConcurrentModification) {
-        this(entries, 0, entries.length, checkForConcurrentModification);
+    public ArraySubSpliterator(final E[] entries, final JenaMapSetCommon<?> set) {
+        this(entries, 0, entries.length, set);
     }
 
     @Override
     public boolean tryAdvance(Consumer<? super E> action) {
-        this.checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != set.size()) throw new ConcurrentModificationException();
         if (fromIndex <= --pos) {
             action.accept(entries[pos]);
             return true;
@@ -82,7 +87,7 @@ public class ArraySubSpliterator<E> implements Spliterator<E> {
         while (fromIndex <= --pos) {
             action.accept(entries[pos]);
         }
-        this.checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != set.size()) throw new ConcurrentModificationException();
     }
 
     @Override
@@ -93,7 +98,7 @@ public class ArraySubSpliterator<E> implements Spliterator<E> {
         }
         final int toIndexOfSubIterator = this.pos;
         this.pos = fromIndex + (entriesCount >>> 1);
-        return new ArraySubSpliterator<>(entries, this.pos, toIndexOfSubIterator, checkForConcurrentModification);
+        return new ArraySubSpliterator<>(entries, this.pos, toIndexOfSubIterator, set);
     }
 
     @Override

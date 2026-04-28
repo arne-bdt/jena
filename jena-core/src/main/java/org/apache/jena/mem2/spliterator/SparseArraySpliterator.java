@@ -21,6 +21,9 @@
 
 package org.apache.jena.mem2.spliterator;
 
+import org.apache.jena.mem2.collection.JenaMapSetCommon;
+
+import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
@@ -39,35 +42,37 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
     private int pos;
-    private final Runnable checkForConcurrentModification;
+    private final JenaMapSetCommon<?> set;
+    private final int sizeOfSetAtStart;
 
     /**
      * Create a spliterator for the given array, with the given size.
      *
      * @param entries                        the array
      * @param toIndex                        the index of the last element, exclusive
-     * @param checkForConcurrentModification runnable to check for concurrent modifications
+     * @param set                            the set to check for concurrent modifications
      */
-    public SparseArraySpliterator(final E[] entries, final int toIndex, final Runnable checkForConcurrentModification) {
+    public SparseArraySpliterator(final E[] entries, final int toIndex, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.pos = toIndex;
-        this.checkForConcurrentModification = checkForConcurrentModification;
+        this.set = set;
+        this.sizeOfSetAtStart = set.size();
     }
 
     /**
      * Create a spliterator for the given array, with the given size.
      *
      * @param entries                        the array
-     * @param checkForConcurrentModification runnable to check for concurrent modifications
+     * @param set                            the set to check for concurrent modifications
      */
-    public SparseArraySpliterator(final E[] entries, final Runnable checkForConcurrentModification) {
-        this(entries, entries.length, checkForConcurrentModification);
+    public SparseArraySpliterator(final E[] entries, final JenaMapSetCommon<?> set) {
+        this(entries, entries.length, set);
     }
 
 
     @Override
     public boolean tryAdvance(Consumer<? super E> action) {
-        this.checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != set.size()) throw new ConcurrentModificationException();
         while (-1 < --pos) {
             if (null != entries[pos]) {
                 action.accept(entries[pos]);
@@ -86,7 +91,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
             }
             pos--;
         }
-        this.checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != set.size()) throw new ConcurrentModificationException();
     }
 
     @Override
@@ -96,7 +101,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
         }
         final int toIndexOfSubIterator = this.pos;
         this.pos = pos >>> 1;
-        return new SparseArraySubSpliterator<>(entries, this.pos, toIndexOfSubIterator, checkForConcurrentModification);
+        return new SparseArraySubSpliterator<>(entries, this.pos, toIndexOfSubIterator, set);
     }
 
     @Override

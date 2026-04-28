@@ -320,12 +320,6 @@ public class FastHashSetTest2 {
         public FastObjectHashSet(org.apache.jena.mem2.collection.FastHashSet<Object> setToCopy) {
             super(setToCopy);
         }
-
-        @Override
-        protected Object[] newKeysArray(int size) {
-            return new Object[size];
-        }
-
     }
 
     private static class FastStringHashSet extends FastHashSet<String> {
@@ -337,11 +331,5 @@ public class FastHashSetTest2 {
         public FastStringHashSet() {
             super();
         }
-
-        @Override
-        protected String[] newKeysArray(int size) {
-            return new String[size];
-        }
-
     }
 }

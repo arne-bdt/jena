@@ -46,16 +46,6 @@ public class FastHashedBunchMap
     }
 
     @Override
-    protected Node[] newKeysArray(int size) {
-        return new Node[size];
-    }
-
-    @Override
-    protected FastTripleBunch[] newValuesArray(int size) {
-        return new FastTripleBunch[size];
-    }
-
-    @Override
     public FastHashedBunchMap copy() {
         return new FastHashedBunchMap(this);
     }

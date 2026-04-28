@@ -86,13 +86,15 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
             positionsSize <<= 1;
         }
         this.positions = new int[positionsSize];
-        this.keys = newKeysArray(initialSize);
+        //noinspection unchecked
+        this.keys = (K[])new Object[initialSize];
         this.hashCodesOrDeletedIndices = new int[initialSize];
     }
 
     protected FastHashBase() {
         this.positions = new int[MINIMUM_HASHES_SIZE];
-        this.keys = newKeysArray(MINIMUM_ELEMENTS_SIZE);
+        //noinspection unchecked
+        this.keys = (K[])new Object[MINIMUM_ELEMENTS_SIZE];
         this.hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
     }
 
@@ -109,21 +111,14 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         this.hashCodesOrDeletedIndices = new int[baseToCopy.hashCodesOrDeletedIndices.length];
         System.arraycopy(baseToCopy.hashCodesOrDeletedIndices, 0, this.hashCodesOrDeletedIndices, 0, baseToCopy.keysPos);
 
-        this.keys = newKeysArray(baseToCopy.keys.length);
+        //noinspection unchecked
+        this.keys = (K[])new Object[baseToCopy.keys.length];
         System.arraycopy(baseToCopy.keys, 0, this.keys, 0, baseToCopy.keysPos);
 
         this.keysPos = baseToCopy.keysPos;
         this.lastDeletedIndex = baseToCopy.lastDeletedIndex;
         this.removedKeysCount = baseToCopy.removedKeysCount;
     }
-
-    /**
-     * Gets a new array of keys with the given size.
-     *
-     * @param size the size of the array
-     * @return the new array
-     */
-    protected abstract K[] newKeysArray(int size);
 
     /**
      * Calculates a position in the positions array by the hashCode.
@@ -227,7 +222,8 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
             newSize = Integer.MAX_VALUE;
         }
         final var oldKeys = this.keys;
-        this.keys = newKeysArray(newSize);
+        //noinspection unchecked
+        this.keys = (K[])new Object[newSize];
         System.arraycopy(oldKeys, 0, keys, 0, oldKeys.length);
         final var oldHashCodes = this.hashCodesOrDeletedIndices;
         this.hashCodesOrDeletedIndices = new int[newSize];
@@ -390,12 +386,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
 
     @Override
     public final ExtendedIterator<K> keyIterator() {
-        final var initialSize = size();
-        final Runnable checkForConcurrentModification = () ->
-        {
-            if (size() != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArrayIterator<>(keys, keysPos, checkForConcurrentModification);
+        return new SparseArrayIterator<>(keys, keysPos, this);
     }
 
     protected final int findPosition(final K e, final int hashCode) {
@@ -435,7 +426,8 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     @Override
     public void clear() {
         positions = new int[MINIMUM_HASHES_SIZE];
-        keys = newKeysArray(MINIMUM_ELEMENTS_SIZE);
+        //noinspection unchecked
+        keys = (K[])new Object[MINIMUM_ELEMENTS_SIZE];
         hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
         keysPos = 0;
         lastDeletedIndex = -1;
@@ -444,12 +436,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
 
     @Override
     public final Spliterator<K> keySpliterator() {
-        final var initialSize = this.size();
-        final Runnable checkForConcurrentModification = () ->
-        {
-            if (this.size() != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArraySpliterator<>(keys, keysPos, checkForConcurrentModification);
+        return new SparseArraySpliterator<>(keys, keysPos, this);
     }
 
     /**
@@ -490,12 +477,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
      * @return an iterator over pairs of keys and their indices in the set
      */
     public final ExtendedIterator<IndexedKey<K>> indexedKeyIterator() {
-        final var initialSize = size();
-        final Runnable checkForConcurrentModification = () ->
-        {
-            if (size() != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArrayIndexedIterator<>(keys, keysPos, checkForConcurrentModification);
+        return new SparseArrayIndexedIterator<>(keys, keysPos, this);
     }
 
     /**
@@ -505,12 +487,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
      * @return a spliterator over pairs of keys and their indices in the set
      */
     public final Spliterator<IndexedKey<K>> indexedKeySpliterator() {
-        final var initialSize = this.size();
-        final Runnable checkForConcurrentModification = () ->
-        {
-            if (this.size() != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArrayIndexedSpliterator<>(keys, keysPos, checkForConcurrentModification);
+        return new SparseArrayIndexedSpliterator<>(keys, keysPos, this);
     }
 
     /**
