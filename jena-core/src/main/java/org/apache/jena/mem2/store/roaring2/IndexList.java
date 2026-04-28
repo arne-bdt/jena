@@ -117,20 +117,20 @@ public class IndexList {
         return new IndexList(this);
     }
 
-    public static boolean intersects(final IndexList a, final IndexLookup spoIndicesA, final IndexList b, final IndexLookup spoIndicesB) {
+    public static boolean intersects(final IndexList a, final int[] reverseIndicesA, final IndexList b, final int[] reverseIndicesB) {
         if (a.size() < b.size()) {
-            return intersectsSmallerWithLarger(a, b, spoIndicesB);
+            return intersectsSmallerWithLarger(a, b, reverseIndicesB);
         } else {
-            return intersectsSmallerWithLarger(b, a, spoIndicesA);
+            return intersectsSmallerWithLarger(b, a, reverseIndicesA);
         }
     }
 
-    private static boolean intersectsSmallerWithLarger(final IndexList smaller, final IndexList larger, final IndexLookup spoIndicesLarger) {
+    private static boolean intersectsSmallerWithLarger(final IndexList smaller, final IndexList larger, final int[] reverseIndicesLarger) {
         final var largerSize = larger.size();
         var pos = smaller.lastPos();
         while (-1 < pos) {
             final var tripleIndex = smaller.getIndexAt(pos--);
-            final var potentialIndexInLarger = spoIndicesLarger.get(tripleIndex);
+            final var potentialIndexInLarger = reverseIndicesLarger[tripleIndex];
             if(potentialIndexInLarger < largerSize) {
                 if(tripleIndex == larger.getIndexAt(potentialIndexInLarger)) {
                     return true;

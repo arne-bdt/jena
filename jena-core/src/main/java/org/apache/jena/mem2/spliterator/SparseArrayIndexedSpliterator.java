@@ -21,6 +21,7 @@
 
 package org.apache.jena.mem2.spliterator;
 
+import org.apache.jena.mem2.collection.FastHashBase;
 import org.apache.jena.mem2.collection.FastHashSet;
 
 import java.util.Spliterator;
@@ -29,7 +30,7 @@ import java.util.function.Consumer;
 /**
  * A spliterator for sparse arrays. This spliterator will iterate over the array
  * skipping null entries.
- * This spliterator returns elements as {@link FastHashSet.IndexedKey} objects,
+ * This spliterator returns elements as {@link FastHashBase.IndexedKey} objects,
  * which contain both the index and the value of the element.
  * <p>
  * This spliterator works in ascending order, starting from the given start up to the specified exclusive index.
@@ -42,7 +43,7 @@ import java.util.function.Consumer;
  * @param <E> the type of the array elements
  */
 @SuppressWarnings("all")
-public class SparseArrayIndexedSpliterator<E> implements Spliterator<FastHashSet.IndexedKey<E>> {
+public class SparseArrayIndexedSpliterator<E> implements Spliterator<FastHashBase.IndexedKey<E>> {
 
     private final E[] entries;
     private int currentPositionMinusOne;

@@ -262,7 +262,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == predicateBitmap)
                     return EMPTY_BITMAP;
 
-                return FastAggregation.naive_and(subjectBitmap, predicateBitmap);
+                return RoaringBitmap.and(subjectBitmap, predicateBitmap);
             }
 
             case ANY_PRE_OBJ: {
@@ -274,7 +274,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == objectBitmap)
                     return EMPTY_BITMAP;
 
-                return FastAggregation.naive_and(predicateBitmap, objectBitmap);
+                return RoaringBitmap.and(predicateBitmap, objectBitmap);
             }
 
             case SUB_ANY_OBJ: {
@@ -286,7 +286,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == objectBitmap)
                     return EMPTY_BITMAP;
 
-                return FastAggregation.naive_and(subjectBitmap, objectBitmap);
+                return RoaringBitmap.and(subjectBitmap, objectBitmap);
             }
 
             default:

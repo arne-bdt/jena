@@ -24,6 +24,7 @@ package org.apache.jena.mem2.store.roaring2.strategies;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.pattern.MatchPattern;
 import org.apache.jena.mem2.store.roaring.BlockSet;
+import org.apache.jena.mem2.store.roaring2.TripleSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.stream.Stream;
@@ -36,19 +37,19 @@ import java.util.stream.Stream;
  * such as when the dataset is small or when the performance of match operations is not critical.
  */
 public class MinimalStoreStrategy implements StoreStrategy {
-    private final BlockSet triples;
+    private final TripleSet triples;
 
-    public MinimalStoreStrategy(final BlockSet triples) {
+    public MinimalStoreStrategy(final TripleSet triples) {
         this.triples = triples;
     }
 
     @Override
-    public void addToIndex(final BlockSet.BlockRow row) {
+    public void addToIndex(final Triple triple, final int index) {
         // No-op, as we do not store any bitmaps
     }
 
     @Override
-    public void removeFromIndex(final BlockSet.BlockRow row) {
+    public void removeFromIndex(final Triple triple, final int index) {
         // No-op, as we do not store any bitmaps
     }
 
@@ -64,7 +65,7 @@ public class MinimalStoreStrategy implements StoreStrategy {
 
     @Override
     public Stream<Triple> streamMatch(final Triple tripleMatch, final MatchPattern pattern) {
-        return this.triples.stream().filter(tripleMatch::matches);
+        return this.triples.keyStream().filter(tripleMatch::matches);
     }
 
     @Override

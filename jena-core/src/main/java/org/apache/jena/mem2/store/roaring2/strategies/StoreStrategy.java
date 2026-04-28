@@ -40,13 +40,13 @@ public interface StoreStrategy {
      * Add a triple to the index if the current strategy supports indexing.
      *
      */
-    void addToIndex(final BlockSet.BlockRow row);
+    void addToIndex(final Triple triple, final int index);
 
     /**
      * Remove a triple from the index if the current strategy supports indexing.
      *
      */
-    void removeFromIndex(final BlockSet.BlockRow row);
+    void removeFromIndex(final Triple triple, final int index);
 
     /**
      * Clear the index of this store if the current strategy supports indexing.

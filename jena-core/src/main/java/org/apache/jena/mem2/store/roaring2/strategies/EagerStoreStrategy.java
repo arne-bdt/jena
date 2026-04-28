@@ -24,11 +24,11 @@ package org.apache.jena.mem2.store.roaring2.strategies;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.pattern.MatchPattern;
 import org.apache.jena.mem2.pattern.PatternClassifier;
-import org.apache.jena.mem2.store.roaring.BlockSet;
 import org.apache.jena.mem2.store.roaring2.*;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NullIterator;
 
+import java.util.Arrays;
 import java.util.ConcurrentModificationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
@@ -42,16 +42,26 @@ import java.util.stream.StreamSupport;
 public class EagerStoreStrategy implements StoreStrategy {
     private static final String UNSUPPORTED_PATTERN_CLASSIFIER = "Unsupported pattern classifier: %s";
 
+    final TripleSet triples;
     final NodesToIndices sNodeToIndices;
     final NodesToIndices pNodeToIndices;
     final NodesToIndices oNodeToIndices;
-    final BlockSet triples;
+    private int[] sReverseIndices;
+    private int[] pReverseIndices;
+    private int[] oReverseIndices;
 
     /**
      * Create a new EagerStoreStrategy and initialize the index.
      */
-    public EagerStoreStrategy(final BlockSet triples, boolean parallel) {
-        this(triples);
+    public EagerStoreStrategy(final TripleSet triples, boolean parallel) {
+        this.triples = triples;
+        this.sNodeToIndices = new NodesToIndices();
+        this.pNodeToIndices = new NodesToIndices();
+        this.oNodeToIndices = new NodesToIndices();
+        final var indexSize = triples.getInternalKeysLenght();
+        this.sReverseIndices = new int[indexSize];
+        this.pReverseIndices = new int[indexSize];
+        this.oReverseIndices = new int[indexSize];
         if (parallel) {
             indexAllParallel();
         } else {
@@ -64,11 +74,8 @@ public class EagerStoreStrategy implements StoreStrategy {
      * Initializes the bitmaps for subjects, predicates, and objects.
      * Note: This constructor does not index any triples.
      */
-    public EagerStoreStrategy(final BlockSet triples) {
-        this.triples = triples;
-        this.sNodeToIndices = new NodesToIndices();
-        this.pNodeToIndices = new NodesToIndices();
-        this.oNodeToIndices = new NodesToIndices();
+    public EagerStoreStrategy(final TripleSet triples) {
+        this(triples, false);
     }
 
     /**
@@ -79,11 +86,14 @@ public class EagerStoreStrategy implements StoreStrategy {
      * @param triples                   the set of triples of the new store
      * @param strategyToCopyIndicesFrom the strategy to copy indices from
      */
-    public EagerStoreStrategy(final BlockSet triples, EagerStoreStrategy strategyToCopyIndicesFrom) {
+    public EagerStoreStrategy(final TripleSet triples, EagerStoreStrategy strategyToCopyIndicesFrom) {
         this.triples = triples;
         this.sNodeToIndices = strategyToCopyIndicesFrom.sNodeToIndices.copy();
         this.pNodeToIndices = strategyToCopyIndicesFrom.pNodeToIndices.copy();
         this.oNodeToIndices = strategyToCopyIndicesFrom.oNodeToIndices.copy();
+        this.sReverseIndices = strategyToCopyIndicesFrom.sReverseIndices.clone();
+        this.oReverseIndices = strategyToCopyIndicesFrom.pReverseIndices.clone();
+        this.pReverseIndices = strategyToCopyIndicesFrom.pReverseIndices.clone();
     }
 
     /**
@@ -92,11 +102,7 @@ public class EagerStoreStrategy implements StoreStrategy {
      */
     private void indexAll() {
         // Initialize the index by adding all triples to the index
-        triples.forEachRow((row) -> {
-            addSIndex(row);
-            addPIndex(row);
-            addOIndex(row);
-        });
+        triples.forEachKey(this::addToIndex);
     }
 
     /**
@@ -105,80 +111,89 @@ public class EagerStoreStrategy implements StoreStrategy {
      * creating bitmaps for subjects, predicates, and objects.
      */
     private void indexAllParallel() {
+        final var indexSize = triples.getInternalKeysLenght();
+        if(indexSize != sReverseIndices.length) {
+            sReverseIndices = Arrays.copyOf(sReverseIndices, indexSize);
+            pReverseIndices = Arrays.copyOf(pReverseIndices, indexSize);
+            oReverseIndices = Arrays.copyOf(oReverseIndices, indexSize);
+        }
         final var futureIndexSubjects = CompletableFuture.runAsync(
-                () -> triples.forEachRow(this::addSIndex));
+                () -> triples.forEachKey(this::addSIndex));
 
         final var futureIndexPredicates = CompletableFuture.runAsync(
-                () -> triples.forEachRow(this::addPIndex));
+                () -> triples.forEachKey(this::addPIndex));
 
-        triples.forEachRow(this::addOIndex);
+        triples.forEachKey(this::addOIndex);
 
         CompletableFuture.allOf(futureIndexSubjects, futureIndexPredicates).join();
     }
 
-    private void addSIndex(final BlockSet.BlockRow row) {
-        final var indices = sNodeToIndices.computeIfAbsent(row.getTriple().getSubject(), IndexList::new);
-        var positon = indices.add(row.index());
-        row.setSIndex(positon);
+    private void addSIndex(final Triple triple, final int index) {
+        final var indices = sNodeToIndices.computeIfAbsent(triple.getSubject(), IndexList::new);
+        sReverseIndices[index] = indices.add(index);
     }
 
-    private void addPIndex(final BlockSet.BlockRow row) {
-        final var indices = pNodeToIndices.computeIfAbsent(row.getTriple().getPredicate(), IndexList::new);
-        var positon = indices.add(row.index());
-        row.setPIndex(positon);
+    private void addPIndex(final Triple triple, final int index) {
+        final var indices = pNodeToIndices.computeIfAbsent(triple.getPredicate(), IndexList::new);
+        pReverseIndices[index] = indices.add(index);
     }
 
-    private void addOIndex(final BlockSet.BlockRow row) {
-        final var indices = oNodeToIndices.computeIfAbsent(row.getTriple().getObject(), IndexList::new);
-        var positon = indices.add(row.index());
-        row.setOIndex(positon);
+    private void addOIndex(final Triple triple, final int index) {
+        final var indices = oNodeToIndices.computeIfAbsent(triple.getObject(), IndexList::new);
+        oReverseIndices[index] = indices.add(index);
     }
 
-    private void removeIndexS(final BlockSet.BlockRow row) {
-        final var indices = sNodeToIndices.get(row.getTriple().getSubject());
-        var oldPosition = row.getSIndex();
+    private void removeIndexS(final Triple triple, final int index) {
+        final var indices = sNodeToIndices.get(triple.getSubject());
+        var oldPosition = sReverseIndices[index];
         final var switched = indices.removeAt(oldPosition);
         if (indices.isEmpty()) {
-            sNodeToIndices.removeUnchecked(row.getTriple().getSubject());
+            sNodeToIndices.removeUnchecked(triple.getSubject());
         } else if (-1 < switched) {
-            this.triples.setSIndex(switched, oldPosition);
+            sReverseIndices[switched] = oldPosition;
         }
     }
 
-    private void removeIndexP(final BlockSet.BlockRow row) {
-        final var indices = pNodeToIndices.get(row.getTriple().getPredicate());
-        var oldPosition = row.getPIndex();
+    private void removeIndexP(final Triple triple, final int index) {
+        final var indices = pNodeToIndices.get(triple.getPredicate());
+        var oldPosition = pReverseIndices[index];
         final var switched = indices.removeAt(oldPosition);
         if (indices.isEmpty()) {
-            pNodeToIndices.removeUnchecked(row.getTriple().getPredicate());
+            pNodeToIndices.removeUnchecked(triple.getPredicate());
         } else if (-1 < switched) {
-            this.triples.setPIndex(switched, oldPosition);
+            pReverseIndices[switched] = oldPosition;
         }
     }
 
-    private void removeIndexO(final BlockSet.BlockRow row) {
-        final var indices = oNodeToIndices.get(row.getTriple().getObject());
-        var oldPosition = row.getOIndex();
+    private void removeIndexO(final Triple triple, final int index) {
+        final var indices = oNodeToIndices.get(triple.getObject());
+        var oldPosition = oReverseIndices[index];
         final var switched = indices.removeAt(oldPosition);
         if (indices.isEmpty()) {
-            oNodeToIndices.removeUnchecked(row.getTriple().getObject());
+            oNodeToIndices.removeUnchecked(triple.getObject());
         } else if (-1 < switched) {
-            this.triples.setOIndex(switched, oldPosition);
+            oReverseIndices[switched] = oldPosition;
         }
     }
 
     @Override
-    public void addToIndex(final BlockSet.BlockRow row) {
-        addSIndex(row);
-        addPIndex(row);
-        addOIndex(row);
+    public void addToIndex(final Triple triple, final int index) {
+        final var indexSize = triples.getInternalKeysLenght();
+        if(indexSize != sReverseIndices.length) {
+            sReverseIndices = Arrays.copyOf(sReverseIndices, indexSize);
+            pReverseIndices = Arrays.copyOf(pReverseIndices, indexSize);
+            oReverseIndices = Arrays.copyOf(oReverseIndices, indexSize);
+        }
+        addSIndex(triple, index);
+        addPIndex(triple, index);
+        addOIndex(triple, index);
     }
 
     @Override
-    public void removeFromIndex(final BlockSet.BlockRow row) {
-        removeIndexS(row);
-        removeIndexP(row);
-        removeIndexO(row);
+    public void removeFromIndex(final Triple triple, final int index) {
+        removeIndexS(triple, index);
+        removeIndexP(triple, index);
+        removeIndexO(triple, index);
     }
 
     @Override
@@ -186,6 +201,10 @@ public class EagerStoreStrategy implements StoreStrategy {
         sNodeToIndices.clear();
         pNodeToIndices.clear();
         oNodeToIndices.clear();
+        final var indexSize = triples.getInternalKeysLenght();
+        this.sReverseIndices = new int[indexSize];
+        this.pReverseIndices = new int[indexSize];
+        this.oReverseIndices = new int[indexSize];
     }
 
     @Override
@@ -208,7 +227,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == pIndices)
                     return false;
 
-                return IndexList.intersects(sIndices, triples::getSIndex, pIndices, triples::getPIndex);
+                return IndexList.intersects(sIndices, sReverseIndices, pIndices, pReverseIndices);
             }
 
             case ANY_PRE_OBJ: {
@@ -220,7 +239,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == oIndices)
                     return false;
 
-                return IndexList.intersects(pIndices, triples::getPIndex, oIndices, triples::getOIndex);
+                return IndexList.intersects(pIndices, pReverseIndices, oIndices, oReverseIndices);
             }
 
             case SUB_ANY_OBJ: {
@@ -232,7 +251,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (null == oIndices)
                     return false;
 
-                return IndexList.intersects( sIndices, triples::getSIndex, oIndices, triples::getOIndex);
+                return IndexList.intersects(sIndices, sReverseIndices, oIndices, oReverseIndices);
             }
 
             default:
@@ -283,8 +302,8 @@ public class EagerStoreStrategy implements StoreStrategy {
 
                 return StreamSupport.stream(
                         new IndexListsSpliterator(triples,
-                                sIndices, triples::getSIndex,
-                                pIndices, triples::getPIndex,
+                                sIndices, sReverseIndices,
+                                pIndices, pReverseIndices,
                         createConcurrentModificationChecker()),
                         false);
             }
@@ -300,8 +319,8 @@ public class EagerStoreStrategy implements StoreStrategy {
 
                 return StreamSupport.stream(
                         new IndexListsSpliterator(triples,
-                                pIndices, triples::getPIndex,
-                                oIndices, triples::getOIndex,
+                                pIndices, pReverseIndices,
+                                oIndices, oReverseIndices,
                         createConcurrentModificationChecker()),
                         false);
             }
@@ -317,8 +336,8 @@ public class EagerStoreStrategy implements StoreStrategy {
 
                 return StreamSupport.stream(
                         new IndexListsSpliterator(triples,
-                                sIndices, triples::getSIndex,
-                                oIndices, triples::getOIndex,
+                                sIndices, sReverseIndices,
+                                oIndices, oReverseIndices,
                         createConcurrentModificationChecker()),
                         false);
             }
@@ -371,8 +390,8 @@ public class EagerStoreStrategy implements StoreStrategy {
                     return NullIterator.instance();
 
                 return new IndexListsIterator(triples,
-                        sIndices, triples::getSIndex,
-                        pIndices, triples::getPIndex,
+                        sIndices, sReverseIndices,
+                        pIndices, pReverseIndices,
                         createConcurrentModificationChecker());
             }
 
@@ -386,8 +405,8 @@ public class EagerStoreStrategy implements StoreStrategy {
                     return NullIterator.instance();
 
                 return new IndexListsIterator(triples,
-                        pIndices, triples::getPIndex,
-                        oIndices, triples::getOIndex,
+                        pIndices, pReverseIndices,
+                        oIndices, oReverseIndices,
                         createConcurrentModificationChecker());
             }
 
@@ -401,8 +420,8 @@ public class EagerStoreStrategy implements StoreStrategy {
                     return NullIterator.instance();
 
                 return new IndexListsIterator(triples,
-                        sIndices, triples::getSIndex,
-                        oIndices, triples::getOIndex,
+                        sIndices, sReverseIndices,
+                        oIndices, oReverseIndices,
                         createConcurrentModificationChecker());
             }
 

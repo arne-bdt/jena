@@ -20,13 +20,18 @@
  */
 package org.apache.jena.mem2.collection;
 
+import org.apache.jena.mem2.iterator.SparseArrayIndexedIterator;
 import org.apache.jena.mem2.iterator.SparseArrayIterator;
+import org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator;
 import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * This is the base class for {@link FastHashSet} and {@link FastHashSet}.
@@ -102,10 +107,10 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         System.arraycopy(baseToCopy.positions, 0, this.positions, 0, baseToCopy.positions.length);
 
         this.hashCodesOrDeletedIndices = new int[baseToCopy.hashCodesOrDeletedIndices.length];
-        System.arraycopy(baseToCopy.hashCodesOrDeletedIndices, 0, this.hashCodesOrDeletedIndices, 0, baseToCopy.hashCodesOrDeletedIndices.length);
+        System.arraycopy(baseToCopy.hashCodesOrDeletedIndices, 0, this.hashCodesOrDeletedIndices, 0, baseToCopy.keysPos);
 
         this.keys = newKeysArray(baseToCopy.keys.length);
-        System.arraycopy(baseToCopy.keys, 0, this.keys, 0, baseToCopy.keys.length);
+        System.arraycopy(baseToCopy.keys, 0, this.keys, 0, baseToCopy.keysPos);
 
         this.keysPos = baseToCopy.keysPos;
         this.lastDeletedIndex = baseToCopy.lastDeletedIndex;
@@ -464,5 +469,90 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         } else {
             return ~positions[pIndex];
         }
+    }
+
+    public int getInternalKeysLenght() {
+        return keys.length;
+    }
+
+    /**
+     * Entry pairing a key with its index in the set.
+     * @param index index of the key in the set
+     * @param key the key
+     * @param <K> the type of the key
+     */
+    public record IndexedKey<K>(int index, K key) {}
+
+    /**
+     * Get an iterator over pairs of keys and their indices in the set.
+     * The iterator is not thread safe.
+     *
+     * @return an iterator over pairs of keys and their indices in the set
+     */
+    public final ExtendedIterator<IndexedKey<K>> indexedKeyIterator() {
+        final var initialSize = size();
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (size() != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIndexedIterator<>(keys, keysPos, checkForConcurrentModification);
+    }
+
+    /**
+     * Get a spliterator over pairs of keys and their indices in the set.
+     * The spliterator is not thread safe.
+     *
+     * @return a spliterator over pairs of keys and their indices in the set
+     */
+    public final Spliterator<IndexedKey<K>> indexedKeySpliterator() {
+        final var initialSize = this.size();
+        final Runnable checkForConcurrentModification = () ->
+        {
+            if (this.size() != initialSize) throw new ConcurrentModificationException();
+        };
+        return new SparseArrayIndexedSpliterator<>(keys, keysPos, checkForConcurrentModification);
+    }
+
+    /**
+     * Get a stream over pairs of keys and their indices in the set.
+     * The stream is not thread safe.
+     *
+     * @return a stream over pairs of keys and their indices in the set
+     */
+    public final Stream<IndexedKey<K>> indexedKeyStream() {
+        return StreamSupport.stream(indexedKeySpliterator(), false);
+    }
+
+    /**
+     * Get a parallel stream over pairs of keys and their indices in the set.
+     * The stream is not thread safe.
+     *
+     * @return a parallel stream over pairs of keys and their indices in the set
+     */
+    public final Stream<IndexedKey<K>> indexedKeyStreamParallel() {
+        return StreamSupport.stream(indexedKeySpliterator(), true);
+    }
+
+    @FunctionalInterface
+    public interface KeyAndIndexConsumer<K> {
+        void accept(K key, int index);
+    }
+
+    public void forEachKey(KeyAndIndexConsumer<K> consumer) {
+        for (int i = 0; i < keysPos; i++) {
+            if(keys[i] != null) {
+                consumer.accept(keys[i], i);
+            }
+        }
+    }
+
+    public void forEachKeyParallel(KeyAndIndexConsumer<K> consumer) {
+        IntStream.range(0, keysPos)
+                .parallel()
+                .forEach(i -> {
+            if(keys[i] != null) {
+                consumer.accept(keys[i], i);
+            }
+        });
     }
 }
