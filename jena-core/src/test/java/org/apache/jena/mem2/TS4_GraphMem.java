@@ -32,7 +32,6 @@ import org.apache.jena.mem2.spliterator.SparseArraySubSpliteratorTest;
 import org.apache.jena.mem2.store.fast.FastArrayBunchTest;
 import org.apache.jena.mem2.store.fast.FastHashedTripleBunchTest;
 import org.apache.jena.mem2.store.fast.FastTripleStoreTest;
-import org.apache.jena.mem2.store.legacy.*;
 import org.apache.jena.mem2.store.roaring.RoaringTripleStoreTest;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
@@ -52,8 +51,6 @@ import org.junit.runners.Suite;
     // collection/
     FastHashMapTest.class,
     FastHashMapTest2.class,
-    HashCommonMapTest.class,
-    HashCommonSetTest.class,
     FastHashSetTest.class,
     FastHashSetTest2.class,
 
@@ -65,20 +62,13 @@ import org.junit.runners.Suite;
     // store/roaring
     RoaringTripleStoreTest.class,
 
-    // store/legacy
-    ArrayBunchTest.class,
-    LegacyTripleStoreTest.class,
-    NodeToTriplesMapMemTest.class,
-    FieldFilterTest.class,
-    HashedTripleBunchTest.class,
-
     // pattern/
     PatternClassifierTest.class,
 
     // --
-    GraphMemLegacyTest.class,
     GraphMemFastTest.class,
     GraphMemRoaringTest.class,
+    GraphMemRoaring2Test.class,
     GraphMemTest.class
 } )
 public class TS4_GraphMem {}

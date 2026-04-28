@@ -2,25 +2,26 @@ package org.apache.jena.mem2.store.roaring2;
 
 import org.apache.jena.graph.Triple;
 
+import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
 public class IndexListsSpliterator implements Spliterator<Triple> {
 
     private final TripleSet triples;
+    private final int sizeOfSetAtStart;
     private final int[] indicesSmaller;
     private final int[] indicesLarger;
     private final int[] reverseIndicesLarger;
-    private final Runnable checkForConcurrentModification;
     private final int toPositionExclusive;
     private int pos;
     final int indicesLargerSize;
 
     public IndexListsSpliterator(final TripleSet triples,
                                  final IndexList indexListA, final int[] reverseIndicesA,
-                                 final IndexList indexListB, final int[] reverseIndicesB,
-                                 final Runnable checkForConcurrentModification) {
+                                 final IndexList indexListB, final int[] reverseIndicesB) {
         this.triples = triples;
+        this.sizeOfSetAtStart = triples.size();
         if(indexListA.size() < indexListB.size()) {
             indicesSmaller = indexListA.getIndices();
             indicesLarger = indexListB.getIndices();
@@ -36,29 +37,28 @@ public class IndexListsSpliterator implements Spliterator<Triple> {
             pos = 0;
             indicesLargerSize = indexListA.size();
         }
-        this.checkForConcurrentModification = checkForConcurrentModification;
     }
 
-    public IndexListsSpliterator(final TripleSet triples,
-                                 final int[] indicesSmaller,
-                                 final int[] indicesLarger, final int indicesLargerSize,
-                                 final int[] reverseIndicesLarger,
-                                 final int from, final int toExclusive,
-                                 final Runnable checkForConcurrentModification) {
+    private IndexListsSpliterator(final TripleSet triples,
+                                  final int sizeOfSetAtStart,
+                                  final int[] indicesSmaller,
+                                  final int[] indicesLarger, final int indicesLargerSize,
+                                  final int[] reverseIndicesLarger,
+                                  final int from, final int toExclusive) {
         this.triples = triples;
+        this.sizeOfSetAtStart = sizeOfSetAtStart;
         this.indicesSmaller = indicesSmaller;
         this.indicesLarger = indicesLarger;
         this.reverseIndicesLarger = reverseIndicesLarger;
         this.pos = from;
         this.toPositionExclusive = toExclusive;
-        this.checkForConcurrentModification = checkForConcurrentModification;
         this.indicesLargerSize = indicesLargerSize;
     }
 
 
     @Override
     public boolean tryAdvance(Consumer<? super Triple> action) {
-        checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != triples.size()) throw new ConcurrentModificationException();
         while (pos < toPositionExclusive) {
             final var tripleIndex = indicesSmaller[pos++];
             final var posLarger = reverseIndicesLarger[tripleIndex];
@@ -81,7 +81,7 @@ public class IndexListsSpliterator implements Spliterator<Triple> {
                 action.accept(triples.getKeyAt(tripleIndex));
             }
         }
-        checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != triples.size()) throw new ConcurrentModificationException();
     }
 
     @Override
@@ -92,11 +92,10 @@ public class IndexListsSpliterator implements Spliterator<Triple> {
         }
         final var oldPos = pos;
         this.pos = pos + (remaining >>> 1);
-        return new IndexListsSpliterator(triples,
+        return new IndexListsSpliterator(triples, sizeOfSetAtStart,
                 indicesSmaller, indicesLarger, indicesLargerSize,
                 reverseIndicesLarger,
-                oldPos, this.pos,
-                checkForConcurrentModification);
+                oldPos, this.pos);
     }
 
     @Override

@@ -130,15 +130,5 @@ public class FastHashMapTest2 {
         public FastNodeHashMap(FastHashMap<Node, Object> mapToCopy, UnaryOperator<Object> valueProcessor) {
             super(mapToCopy, valueProcessor);
         }
-
-        @Override
-        protected Object[] newValuesArray(int size) {
-            return new Object[size];
-        }
-
-        @Override
-        protected Node[] newKeysArray(int size) {
-            return new Node[size];
-        }
     }
 }

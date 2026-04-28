@@ -174,11 +174,7 @@ public abstract class FastArrayBunch implements FastTripleBunch {
 
     @Override
     public Spliterator<Triple> keySpliterator() {
-        final var initialSize = size;
-        final Runnable checkForConcurrentModification = () -> {
-            if (size != initialSize) throw new ConcurrentModificationException();
-        };
-        return new ArraySpliterator<>(elements, size, checkForConcurrentModification);
+        return new ArraySpliterator<>(elements, size, this);
     }
 
     @Override

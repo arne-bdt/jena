@@ -39,13 +39,13 @@ import java.util.stream.StreamSupport;
  * Only remove operations are not as fast as in {@link java.util.HashSet}
  * Iterating over this set not get much faster again after removing elements because the set is not compacted.
  */
-public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimized<K> {
+public class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimized<K> {
 
-    protected FastHashSet(int initialSize) {
+    public FastHashSet(int initialSize) {
         super(initialSize);
     }
 
-    protected FastHashSet() {
+    public FastHashSet() {
         super();
     }
 

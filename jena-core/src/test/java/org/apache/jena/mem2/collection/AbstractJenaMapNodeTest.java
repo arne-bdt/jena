@@ -613,38 +613,4 @@ public abstract class AbstractJenaMapNodeTest {
         }
         assertTrue(sut.isEmpty());
     }
-
-
-    private static class HashCommonNodeMap extends HashCommonMap<Node, Object> {
-        public HashCommonNodeMap() {
-            super(10);
-        }
-
-        @Override
-        protected Node[] newKeysArray(int size) {
-            return new Node[size];
-        }
-
-        @Override
-        public void clear() {
-            super.clear(10);
-        }
-
-        @Override
-        protected Object[] newValuesArray(int size) {
-            return new Object[size];
-        }
-    }
-
-    private static class FastNodeHashMap extends FastHashMap<Node, Object> {
-        @Override
-        protected Node[] newKeysArray(int size) {
-            return new Node[size];
-        }
-
-        @Override
-        protected Object[] newValuesArray(int size) {
-            return new Object[size];
-        }
-    }
 }

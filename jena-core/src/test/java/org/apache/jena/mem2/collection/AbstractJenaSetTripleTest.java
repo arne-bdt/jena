@@ -362,29 +362,4 @@ public abstract class AbstractJenaSetTripleTest {
         }
         assertTrue(sut.isEmpty());
     }
-
-
-    private static class HashCommonTripleSet extends HashCommonSet<Triple> {
-        public HashCommonTripleSet() {
-            super(10);
-        }
-
-        @Override
-        protected Triple[] newKeysArray(int size) {
-            return new Triple[size];
-        }
-
-        @Override
-        public void clear() {
-            super.clear(10);
-        }
-    }
-
-    private static class FastTripleHashSet extends FastHashSet<Triple> {
-        @Override
-        protected Triple[] newKeysArray(int size) {
-            return new Triple[size];
-        }
-    }
-
 }

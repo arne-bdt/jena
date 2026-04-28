@@ -21,9 +21,10 @@
 
 package org.apache.jena.mem2.iterator;
 
+import org.apache.jena.mem2.collection.JenaMapSetCommon;
 import org.apache.jena.util.iterator.NiceIterator;
 
-import java.util.Iterator;
+import java.util.ConcurrentModificationException;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
@@ -35,20 +36,23 @@ import java.util.function.Consumer;
 public class SparseArrayIterator<E> extends NiceIterator<E> {
 
     private final E[] entries;
-    private final Runnable checkForConcurrentModification;
+    private final JenaMapSetCommon<?> set;
+    private final int sizeOfSetAtStart;
     private int pos;
     private boolean hasNext = false;
 
-    public SparseArrayIterator(final E[] entries, final Runnable checkForConcurrentModification) {
+    public SparseArrayIterator(final E[] entries, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.pos = entries.length - 1;
-        this.checkForConcurrentModification = checkForConcurrentModification;
+        this.set = set;
+        this.sizeOfSetAtStart = set.size();
     }
 
-    public SparseArrayIterator(final E[] entries, int toIndexExclusive, final Runnable checkForConcurrentModification) {
+    public SparseArrayIterator(final E[] entries, int toIndexExclusive, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.pos = toIndexExclusive - 1;
-        this.checkForConcurrentModification = checkForConcurrentModification;
+        this.set = set;
+        this.sizeOfSetAtStart = set.size();
     }
 
     /**
@@ -77,7 +81,7 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
      */
     @Override
     public E next() {
-        this.checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != set.size()) throw new ConcurrentModificationException();
         if (hasNext || hasNext()) {
             hasNext = false;
             return entries[pos--];
@@ -93,6 +97,6 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
             }
             pos--;
         }
-        this.checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != set.size()) throw new ConcurrentModificationException();
     }
 }

@@ -101,10 +101,5 @@ public class IteratorOfJenaSetsTest {
                 tryAdd(s);
             }
         }
-
-        @Override
-        protected String[] newKeysArray(int size) {
-            return new String[size];
-        }
     }
 }

@@ -23,9 +23,10 @@ package org.apache.jena.mem2.iterator;
 
 import org.apache.jena.mem2.collection.FastHashBase;
 import org.apache.jena.mem2.collection.FastHashSet;
+import org.apache.jena.mem2.collection.JenaMapSetCommon;
 import org.apache.jena.util.iterator.NiceIterator;
 
-import java.util.Iterator;
+import java.util.ConcurrentModificationException;
 import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
@@ -44,21 +45,24 @@ import java.util.function.Consumer;
 public class SparseArrayIndexedIterator<E> extends NiceIterator<FastHashSet.IndexedKey<E>> {
 
     private final E[] entries;
-    private final Runnable checkForConcurrentModification;
+    private final JenaMapSetCommon<?> set;
+    private final int sizeOfSetAtStart;
     private int pos = 0;
     private final int toIndexExclusive;
     private boolean hasNext = false;
 
-    public SparseArrayIndexedIterator(final E[] entries, final Runnable checkForConcurrentModification) {
+    public SparseArrayIndexedIterator(final E[] entries, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.toIndexExclusive = entries.length;
-        this.checkForConcurrentModification = checkForConcurrentModification;
+        this.set = set;
+        this.sizeOfSetAtStart = set.size();
     }
 
-    public SparseArrayIndexedIterator(final E[] entries, int toIndexExclusive, final Runnable checkForConcurrentModification) {
+    public SparseArrayIndexedIterator(final E[] entries, int toIndexExclusive, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.toIndexExclusive = toIndexExclusive;
-        this.checkForConcurrentModification = checkForConcurrentModification;
+        this.set = set;
+        this.sizeOfSetAtStart = set.size();
     }
 
     /**
@@ -87,7 +91,7 @@ public class SparseArrayIndexedIterator<E> extends NiceIterator<FastHashSet.Inde
      */
     @Override
     public FastHashBase.IndexedKey<E> next() {
-        this.checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != set.size()) throw new ConcurrentModificationException();
         if (hasNext || hasNext()) {
             hasNext = false;
             return new FastHashBase.IndexedKey<>(pos, entries[pos++]);
@@ -103,6 +107,6 @@ public class SparseArrayIndexedIterator<E> extends NiceIterator<FastHashSet.Inde
             }
             pos++;
         }
-        this.checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != set.size()) throw new ConcurrentModificationException();
     }
 }

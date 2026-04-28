@@ -270,7 +270,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                     return Stream.empty();
                 }
                 return StreamSupport.stream(
-                        new IndexListSpliterator(triples, indexList, createConcurrentModificationChecker()),
+                        new IndexListSpliterator(triples, indexList),
                         false);
             }
             case ANY_PRE_ANY: {
@@ -279,7 +279,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                     return Stream.empty();
                 }
                 return StreamSupport.stream(
-                        new IndexListSpliterator(triples, indexList, createConcurrentModificationChecker()),
+                        new IndexListSpliterator(triples, indexList),
                         false);
             }
             case ANY_ANY_OBJ: {
@@ -288,7 +288,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                     return Stream.empty();
                 }
                 return StreamSupport.stream(
-                        new IndexListSpliterator(triples,  indexList, createConcurrentModificationChecker()),
+                        new IndexListSpliterator(triples,  indexList),
                         false);
             }
             case SUB_PRE_ANY: {
@@ -303,8 +303,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 return StreamSupport.stream(
                         new IndexListsSpliterator(triples,
                                 sIndices, sReverseIndices,
-                                pIndices, pReverseIndices,
-                        createConcurrentModificationChecker()),
+                                pIndices, pReverseIndices),
                         false);
             }
 
@@ -320,8 +319,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 return StreamSupport.stream(
                         new IndexListsSpliterator(triples,
                                 pIndices, pReverseIndices,
-                                oIndices, oReverseIndices,
-                        createConcurrentModificationChecker()),
+                                oIndices, oReverseIndices),
                         false);
             }
 
@@ -337,8 +335,7 @@ public class EagerStoreStrategy implements StoreStrategy {
                 return StreamSupport.stream(
                         new IndexListsSpliterator(triples,
                                 sIndices, sReverseIndices,
-                                oIndices, oReverseIndices,
-                        createConcurrentModificationChecker()),
+                                oIndices, oReverseIndices),
                         false);
             }
 
@@ -346,13 +343,6 @@ public class EagerStoreStrategy implements StoreStrategy {
                 throw new IllegalStateException(String.format(UNSUPPORTED_PATTERN_CLASSIFIER,
                         PatternClassifier.classify(tripleMatch)));
         }
-    }
-
-    private Runnable createConcurrentModificationChecker() {
-        final var initialSize = triples.size();
-        return () -> {
-            if (triples.size() != initialSize) throw new ConcurrentModificationException();
-        };
     }
 
     @Override
@@ -364,21 +354,21 @@ public class EagerStoreStrategy implements StoreStrategy {
                 if (indexList == null) {
                     return NullIterator.instance();
                 }
-                return new IndexListIterator(triples, indexList, createConcurrentModificationChecker());
+                return new IndexListIterator(triples, indexList);
             }
             case ANY_PRE_ANY: {
                 final IndexList indexList = pNodeToIndices.get(tripleMatch.getPredicate());
                 if (indexList == null) {
                     return NullIterator.instance();
                 }
-                return new IndexListIterator(triples, indexList, createConcurrentModificationChecker());
+                return new IndexListIterator(triples, indexList);
             }
             case ANY_ANY_OBJ: {
                 final IndexList indexList = oNodeToIndices.get(tripleMatch.getObject());
                 if (indexList == null) {
                     return NullIterator.instance();
                 }
-                return new IndexListIterator(triples, indexList, createConcurrentModificationChecker());
+                return new IndexListIterator(triples, indexList);
             }
             case SUB_PRE_ANY: {
                 final var sIndices = sNodeToIndices.get(tripleMatch.getSubject());
@@ -391,8 +381,7 @@ public class EagerStoreStrategy implements StoreStrategy {
 
                 return new IndexListsIterator(triples,
                         sIndices, sReverseIndices,
-                        pIndices, pReverseIndices,
-                        createConcurrentModificationChecker());
+                        pIndices, pReverseIndices);
             }
 
             case ANY_PRE_OBJ: {
@@ -406,8 +395,7 @@ public class EagerStoreStrategy implements StoreStrategy {
 
                 return new IndexListsIterator(triples,
                         pIndices, pReverseIndices,
-                        oIndices, oReverseIndices,
-                        createConcurrentModificationChecker());
+                        oIndices, oReverseIndices);
             }
 
             case SUB_ANY_OBJ: {
@@ -421,8 +409,7 @@ public class EagerStoreStrategy implements StoreStrategy {
 
                 return new IndexListsIterator(triples,
                         sIndices, sReverseIndices,
-                        oIndices, oReverseIndices,
-                        createConcurrentModificationChecker());
+                        oIndices, oReverseIndices);
             }
 
             default:

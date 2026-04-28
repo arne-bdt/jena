@@ -39,18 +39,20 @@ import java.util.function.UnaryOperator;
  * Only remove operations are not as fast as in {@link java.util.HashMap}
  * Iterating over this map does not get much faster again after removing elements because the map is not compacted.
  */
-public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimized<K, V> {
+public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimized<K, V> {
 
     protected V[] values;
 
-    protected FastHashMap(int initialSize) {
+    public FastHashMap(int initialSize) {
         super(initialSize);
-        this.values = newValuesArray(keys.length);
+        //noinspection unchecked
+        this.values = (V[])new Object[keys.length];
     }
 
-    protected FastHashMap() {
+    public FastHashMap() {
         super();
-        this.values = newValuesArray(keys.length);
+        //noinspection unchecked
+        this.values = (V[])new Object[keys.length];
     }
 
     /**
@@ -59,9 +61,10 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
      *
      * @param mapToCopy
      */
-    protected FastHashMap(final FastHashMap<K, V> mapToCopy) {
+    public FastHashMap(final FastHashMap<K, V> mapToCopy) {
         super(mapToCopy);
-        this.values = newValuesArray(keys.length);
+        //noinspection unchecked
+        this.values = (V[])new Object[keys.length];
         System.arraycopy(mapToCopy.values, 0, this.values, 0, mapToCopy.values.length);
     }
 
@@ -71,9 +74,10 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
      * @param mapToCopy
      * @param valueProcessor
      */
-    protected FastHashMap(final FastHashMap<K, V> mapToCopy, final UnaryOperator<V> valueProcessor) {
+    public FastHashMap(final FastHashMap<K, V> mapToCopy, final UnaryOperator<V> valueProcessor) {
         super(mapToCopy);
-        this.values = newValuesArray(keys.length);
+        //noinspection unchecked
+        this.values = (V[])new Object[keys.length];
         for (int i = 0; i < mapToCopy.values.length; i++) {
             final var value = mapToCopy.values[i];
             if (value != null) {
@@ -82,13 +86,13 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
         }
     }
 
-    protected abstract V[] newValuesArray(int size);
 
     @Override
     protected void growKeysAndHashCodeArrays() {
         super.growKeysAndHashCodeArrays();
         final var oldValues = values;
-        values = newValuesArray(keys.length);
+        //noinspection unchecked
+        values = (V[])new Object[keys.length];
         System.arraycopy(oldValues, 0, values, 0, oldValues.length);
     }
 
@@ -101,7 +105,8 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
     @Override
     public void clear() {
         super.clear();
-        values = newValuesArray(keys.length);
+        //noinspection unchecked
+        this.values = (V[])new Object[keys.length];
     }
 
     @Override
@@ -284,21 +289,11 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     @Override
     public ExtendedIterator<V> valueIterator() {
-        final var initialSize = size();
-        final Runnable checkForConcurrentModification = () ->
-        {
-            if (size() != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArrayIterator<>(values, keysPos, checkForConcurrentModification);
+        return new SparseArrayIterator<>(values, keysPos, this);
     }
 
     @Override
     public Spliterator<V> valueSpliterator() {
-        final var initialSize = this.size();
-        final Runnable checkForConcurrentModification = () ->
-        {
-            if (this.size() != initialSize) throw new ConcurrentModificationException();
-        };
-        return new SparseArraySpliterator<>(values, keysPos, checkForConcurrentModification);
+        return new SparseArraySpliterator<>(values, keysPos, this);
     }
 }

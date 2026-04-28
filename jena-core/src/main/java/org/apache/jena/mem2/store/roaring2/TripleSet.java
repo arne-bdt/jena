@@ -32,19 +32,12 @@ public class TripleSet
         extends FastHashSet<Triple>
         implements Copyable<TripleSet> {
 
-
-
     public TripleSet() {
         super();
     }
 
     private TripleSet(final TripleSet setToCopy) {
         super(setToCopy);
-    }
-
-    @Override
-    protected Triple[] newKeysArray(int size) {
-        return new Triple[size];
     }
 
     /**

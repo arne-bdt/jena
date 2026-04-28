@@ -23,7 +23,9 @@ package org.apache.jena.mem2.spliterator;
 
 import org.apache.jena.mem2.collection.FastHashBase;
 import org.apache.jena.mem2.collection.FastHashSet;
+import org.apache.jena.mem2.collection.JenaMapSetCommon;
 
+import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 
@@ -48,7 +50,8 @@ public class SparseArrayIndexedSpliterator<E> implements Spliterator<FastHashBas
     private final E[] entries;
     private int currentPositionMinusOne;
     private final int toIndexExclusive;
-    private final Runnable checkForConcurrentModification;
+    private final JenaMapSetCommon<?> set;
+    private final int sizeOfSetAtStart;
 
     /**
      * Create a spliterator for the given array, with the given size.
@@ -56,13 +59,14 @@ public class SparseArrayIndexedSpliterator<E> implements Spliterator<FastHashBas
      * @param entries                        the array
      * @param fromIndexInclusive             the index of the first element, inclusive
      * @param toIndexExclusive               the index of the last element, exclusive
-     * @param checkForConcurrentModification runnable to check for concurrent modifications
+     * @param set                            the set to check for concurrent modifications
      */
-    public SparseArrayIndexedSpliterator(final E[] entries, final int fromIndexInclusive, final int toIndexExclusive, final Runnable checkForConcurrentModification) {
+    public SparseArrayIndexedSpliterator(final E[] entries, final int fromIndexInclusive, final int toIndexExclusive, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.currentPositionMinusOne = fromIndexInclusive-1; // Start at fromIndexInclusive - 1, so that the first call to tryAdvance will increment pos to fromIndexInclusive
         this.toIndexExclusive = toIndexExclusive;
-        this.checkForConcurrentModification = checkForConcurrentModification;
+        this.set = set;
+        this.sizeOfSetAtStart = set.size();
     }
 
     /**
@@ -70,10 +74,10 @@ public class SparseArrayIndexedSpliterator<E> implements Spliterator<FastHashBas
      *
      * @param entries                        the array
      * @param toIndexExclusive               the index of the last element, exclusive
-     * @param checkForConcurrentModification runnable to check for concurrent modifications
+     * @param set                            the set to check for concurrent modifications
      */
-    public SparseArrayIndexedSpliterator(final E[] entries, final int toIndexExclusive, final Runnable checkForConcurrentModification) {
-        this(entries, 0, toIndexExclusive, checkForConcurrentModification);
+    public SparseArrayIndexedSpliterator(final E[] entries, final int toIndexExclusive, final JenaMapSetCommon<?> set) {
+        this(entries, 0, toIndexExclusive, set);
     }
 
     /**
@@ -82,14 +86,14 @@ public class SparseArrayIndexedSpliterator<E> implements Spliterator<FastHashBas
      * @param entries                        the array
      * @param checkForConcurrentModification runnable to check for concurrent modifications
      */
-    public SparseArrayIndexedSpliterator(final E[] entries, final Runnable checkForConcurrentModification) {
-        this(entries, entries.length, checkForConcurrentModification);
+    public SparseArrayIndexedSpliterator(final E[] entries, final JenaMapSetCommon<?> set) {
+        this(entries, entries.length, set);
     }
 
 
     @Override
     public boolean tryAdvance(Consumer<? super FastHashSet.IndexedKey<E>> action) {
-        this.checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != set.size()) throw new ConcurrentModificationException();
         while (toIndexExclusive > ++currentPositionMinusOne) {
             if (null != entries[currentPositionMinusOne]) {
                 action.accept(new FastHashSet.IndexedKey<>(currentPositionMinusOne, entries[currentPositionMinusOne]));
@@ -106,7 +110,7 @@ public class SparseArrayIndexedSpliterator<E> implements Spliterator<FastHashBas
                 action.accept(new FastHashSet.IndexedKey<>(currentPositionMinusOne, entries[currentPositionMinusOne]));
             }
         }
-        this.checkForConcurrentModification.run();
+        if (sizeOfSetAtStart != set.size()) throw new ConcurrentModificationException();
     }
 
     @Override
@@ -119,7 +123,7 @@ public class SparseArrayIndexedSpliterator<E> implements Spliterator<FastHashBas
         final var mid = nextPos + ( remaining >>> 1);
         final var fromIndexInclusive = nextPos;
         this.currentPositionMinusOne = mid-1;
-        return new SparseArrayIndexedSpliterator<>(entries, fromIndexInclusive, mid, checkForConcurrentModification);
+        return new SparseArrayIndexedSpliterator<>(entries, fromIndexInclusive, mid, set);
     }
 
     @Override
