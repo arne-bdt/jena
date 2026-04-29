@@ -25,45 +25,83 @@ import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.mem2.store.indexed.IndexedSetTripleStore;
 
 /**
- * A graph that stores triples in memory. This class is not thread-safe.
- * This in-memory graph supports different indexing strategies to balance
- * RAM usage and performance for various operations.
- * See {@link IndexingStrategy} for details on the available strategies.
+ * In-memory {@link GraphMem} implementation that stores all triples in a single
+ * indexed set ({@link IndexedSetTripleStore}). This class is not thread-safe.
  * <p>
- * As long as the indexInBlock has not been initialized, the memory consumption
- * is very low and the following operations are extremely fast:
+ * Different {@link IndexingStrategy indexing strategies} can be selected to
+ * balance memory usage and lookup performance. The triples themselves always live
+ * in a flat set; only the auxiliary subject/predicate/object indices are
+ * controlled by the strategy. See {@link IndexingStrategy} for the trade-offs of
+ * each variant.
+ * <p>
+ * While the index has not been built (e.g. with {@link IndexingStrategy#LAZY},
+ * {@link IndexingStrategy#LAZY_PARALLEL}, {@link IndexingStrategy#MANUAL} or
+ * {@link IndexingStrategy#MINIMAL}) the memory footprint is very low and the
+ * following operations are particularly fast:
  * <ul>
  *     <li>{@link GraphMem#add} - adds a triple to the graph</li>
  *     <li>{@link GraphMem#delete} - removes a triple from the graph</li>
- *</ul>
- * One could start without the indexInBlock, add all triples, and then initialize the indexInBlock using
- * {@link #initializeIndexParallel()} for maximum performance.
+ * </ul>
+ * A typical bulk-load pattern is to start without an index, add all triples and
+ * then call {@link #initializeIndexParallel()} to build the index in parallel.
  */
 public class GraphMemIndexedSet extends GraphMem {
 
+    /**
+     * Creates a new graph using the {@link IndexingStrategy#EAGER} default
+     * indexing strategy.
+     */
     public GraphMemIndexedSet() {
         this(IndexingStrategy.EAGER);
     }
 
+    /**
+     * Creates a new graph that uses the given indexing strategy.
+     *
+     * @param indexingStrategy the indexing strategy to use; controls when the
+     *                         subject/predicate/object index is built and how
+     *                         pattern lookups are evaluated
+     */
     public GraphMemIndexedSet(IndexingStrategy indexingStrategy) {
         super(new IndexedSetTripleStore(indexingStrategy));
     }
 
+    /**
+     * Internal constructor used by {@link #copy()} to wrap an already populated
+     * triple store.
+     *
+     * @param tripleStore the triple store to wrap (must be an
+     *                    {@link IndexedSetTripleStore})
+     */
     private GraphMemIndexedSet(final TripleStore tripleStore) {
         super(tripleStore);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Returns an independent copy that preserves the indexing strategy and,
+     * if the source has its index built, copies the index data structures
+     * directly to avoid rebuilding them.
+     */
     @Override
     public GraphMemIndexedSet copy() {
         return new GraphMemIndexedSet(this.tripleStore.copy());
     }
 
+    /**
+     * Convenience accessor for the typed underlying store.
+     *
+     * @return the {@link IndexedSetTripleStore} backing this graph
+     */
     private IndexedSetTripleStore getIndexedSetTripleStore() {
         return (IndexedSetTripleStore) this.tripleStore;
     }
 
     /**
-     * Returns the indexing strategy used by this graph.
+     * Returns the indexing strategy this graph was created with.
+     * The strategy is fixed for the lifetime of the graph; clearing or
+     * initializing the index does not change it.
      *
      * @return the indexing strategy
      */
@@ -72,31 +110,40 @@ public class GraphMemIndexedSet extends GraphMem {
     }
 
     /**
-     * Clear the indexInBlock of this graph.
-     * This will remove all triples from the indexInBlock and reset the current strategy to the initial one.
+     * Drops the current subject/predicate/object index and reverts to the
+     * initial strategy. Subsequent pattern lookups will trigger (re)building
+     * the index according to the configured {@link IndexingStrategy}.
      */
     public void clearIndex() {
         getIndexedSetTripleStore().clearIndex();
     }
 
+    /**
+     * Build (or rebuild) the index sequentially.
+     * After this call, pattern lookups will be served by the eager strategy
+     * regardless of the originally configured indexing strategy.
+     */
     public void initializeIndex() {
         getIndexedSetTripleStore().initializeIndex();
     }
 
     /**
-     * Initialize the indexInBlock of this graph in parallel.
-     * This will build the indexInBlock based on the current set of triples using parallel processing.
-     * After this call, the graph will behave like an EAGER indexed graph.
+     * Build (or rebuild) the index in parallel.
+     * This can be substantially faster than {@link #initializeIndex()} for
+     * larger graphs. After this call, pattern lookups will be served by the
+     * eager strategy regardless of the originally configured indexing strategy.
      */
     public void initializeIndexParallel() {
         getIndexedSetTripleStore().initializeIndexParallel();
     }
 
     /**
-     * Check if the indexInBlock of this graph is initialized.
-     * This method returns true if the indexInBlock has been initialized and is ready for use.
+     * Reports whether the index is currently built and ready to serve pattern
+     * lookups directly. For graphs configured with a non-eager strategy this
+     * may flip from {@code false} to {@code true} as soon as the first lookup
+     * is performed (or when {@link #initializeIndex()} is called explicitly).
      *
-     * @return true if the indexInBlock is initialized, false otherwise
+     * @return {@code true} iff the index is initialized
      */
     public boolean isIndexInitialized() {
         return getIndexedSetTripleStore().isIndexInitialized();

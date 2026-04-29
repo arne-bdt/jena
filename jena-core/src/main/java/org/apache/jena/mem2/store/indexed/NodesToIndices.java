@@ -26,25 +26,37 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.mem2.collection.FastHashMap;
 
 /**
- * Map from {@link Node} to {@link IndexList}.
+ * {@link FastHashMap} from {@link Node} to {@link IndexList}, used by the
+ * eager indexing strategy as one of the three subject/predicate/object
+ * indices ("for this node, here are the indices of all triples that mention
+ * it in the corresponding slot").
  */
 public class NodesToIndices
         extends FastHashMap<Node, IndexList>
         implements Copyable<NodesToIndices> {
 
+    /**
+     * Creates an empty map with the default initial capacity.
+     */
     public NodesToIndices() {
         super();
     }
 
+    /**
+     * Copy constructor. Each value in the new map is an independent clone
+     * of the corresponding {@link IndexList} in {@code mapToCopy}.
+     *
+     * @param mapToCopy the source map
+     */
     public NodesToIndices(final NodesToIndices mapToCopy) {
         super(mapToCopy, IndexList::clone);
     }
 
     /**
-     * Create a copy of this map.
-     * The new map will contain all the same nodes as keys of this map, but clones of the bitmaps as values.
+     * Returns an independent copy of this map. Keys are shared (nodes are
+     * immutable), values are cloned.
      *
-     * @return a copy of this map
+     * @return a deep copy of this map
      */
     @Override
     public NodesToIndices copy() {

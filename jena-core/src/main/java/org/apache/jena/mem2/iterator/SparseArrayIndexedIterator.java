@@ -31,13 +31,15 @@ import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 /**
- * An iterator over a sparse array, that skips null entries.
- * This iterator returns elements as {@link FastHashSet.IndexedKey} objects,
- * which contain both the index and the value of the element.
- *
- * The iterator works in ascending order, starting from index 0 up to the specified exclusive index.
- *
- * This iterator will check for concurrent modifications by invoking a {@link Runnable}
+ * Iterator over a sparse array, walking in ascending index order and skipping
+ * {@code null} entries. Each element is reported as a
+ * {@link FastHashBase.IndexedKey} pair so callers see both the value and the
+ * stable index it occupies.
+ * <p>
+ * Detects concurrent modifications by snapshotting {@code set.size()} at
+ * construction time and rechecking it on each call to {@link #next()} /
+ * {@link #forEachRemaining(Consumer)}; throws
+ * {@link ConcurrentModificationException} if the size has changed.
  *
  * @param <E> the type of the array elements
  */
@@ -51,6 +53,12 @@ public class SparseArrayIndexedIterator<E> extends NiceIterator<FastHashSet.Inde
     private final int toIndexExclusive;
     private boolean hasNext = false;
 
+    /**
+     * Iterate over the whole array.
+     *
+     * @param entries the backing array (not copied)
+     * @param set     the owning collection used to detect concurrent modifications
+     */
     public SparseArrayIndexedIterator(final E[] entries, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.toIndexExclusive = entries.length;
@@ -58,6 +66,13 @@ public class SparseArrayIndexedIterator<E> extends NiceIterator<FastHashSet.Inde
         this.sizeOfSetAtStart = set.size();
     }
 
+    /**
+     * Iterate over {@code entries[0 .. toIndexExclusive)}.
+     *
+     * @param entries          the backing array (not copied)
+     * @param toIndexExclusive exclusive upper bound on the iterated slice
+     * @param set              the owning collection used to detect concurrent modifications
+     */
     public SparseArrayIndexedIterator(final E[] entries, int toIndexExclusive, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.toIndexExclusive = toIndexExclusive;

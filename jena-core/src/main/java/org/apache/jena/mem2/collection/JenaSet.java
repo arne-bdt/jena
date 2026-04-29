@@ -21,9 +21,10 @@
 package org.apache.jena.mem2.collection;
 
 /**
- * Set interface specialized for the use cases in triple store implementations.
+ * Set interface specialized for the use cases in triple-store implementations.
+ * Not thread-safe; does not allow {@code null} elements.
  *
- * @param <E>
+ * @param <E> the element type of the set
  */
 public interface JenaSet<E> extends JenaMapSetCommon<E> {
 
@@ -31,13 +32,16 @@ public interface JenaSet<E> extends JenaMapSetCommon<E> {
      * Add the key to the set if it is not already present.
      *
      * @param key the key to add
-     * @return true if the key was added, false if it was already present
+     * @return {@code true} if the key was added, {@code false} if it was already present
      */
     boolean tryAdd(E key);
 
     /**
-     * Add the key to the set without checking if it is already present.
-     * Attention: This method must only be used if it is guaranteed that the key is not already present.
+     * Add the key to the set without checking whether it is already present.
+     * <p>
+     * Attention: this method must only be used if the caller has ensured that
+     * the key is not already in the set; otherwise the set's invariants will
+     * break (duplicates may be inserted).
      *
      * @param key the key to add
      */

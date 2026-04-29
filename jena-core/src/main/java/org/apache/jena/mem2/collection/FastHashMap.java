@@ -30,24 +30,42 @@ import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 /**
- * Map which grows, if needed but never shrinks.
- * This map does not guarantee any order. Although due to the way it is implemented the elements have a certain order.
- * This map does not allow null keys.
- * This map is not thread safe.
- * It´s purpose is to support fast add, remove, contains and stream / iterate operations.
- * Only remove operations are not as fast as in {@link java.util.HashMap}
- * Iterating over this map does not get much faster again after removing elements because the map is not compacted.
+ * Hash map specialization built on top of {@link FastHashBase}.
+ * Grows on demand but never shrinks, does not guarantee iteration order,
+ * does not allow {@code null} keys, and is not thread-safe.
+ * <p>
+ * Optimized for fast {@code add} / {@code containsKey} / {@code stream} /
+ * iterate operations. Removal is somewhat slower than in
+ * {@link java.util.HashMap} because of the back-shifting performed on the
+ * probe table. Iteration speed does not recover after many removals because
+ * the dense {@code keys} array is not compacted.
+ *
+ * @param <K> the key type
+ * @param <V> the value type
  */
 public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimized<K, V> {
 
+    /**
+     * Parallel array to {@code keys} holding the value associated with each
+     * stored key. {@code values[i]} is the value for {@code keys[i]} when
+     * {@code keys[i]} is non-null.
+     */
     protected V[] values;
 
+    /**
+     * Creates a map with the given initial key-array capacity.
+     *
+     * @param initialSize the initial capacity of the keys/values arrays
+     */
     public FastHashMap(int initialSize) {
         super(initialSize);
         //noinspection unchecked
         this.values = (V[])new Object[keys.length];
     }
 
+    /**
+     * Creates a map with the default initial capacity.
+     */
     public FastHashMap() {
         super();
         //noinspection unchecked
@@ -55,10 +73,10 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
     }
 
     /**
-     * Copy constructor.
-     * The new map will contain all the same keys and values of the map to copy.
+     * Copy constructor. The new map contains the same keys and the same
+     * value references as {@code mapToCopy}.
      *
-     * @param mapToCopy
+     * @param mapToCopy the source map
      */
     public FastHashMap(final FastHashMap<K, V> mapToCopy) {
         super(mapToCopy);
@@ -68,10 +86,13 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
     }
 
     /**
-     * Copy constructor with value processor.
+     * Copy constructor that transforms each value via {@code valueProcessor}.
+     * Useful when the values are mutable and need to be deep-copied to keep
+     * the new map independent from the source.
      *
-     * @param mapToCopy
-     * @param valueProcessor
+     * @param mapToCopy      the source map
+     * @param valueProcessor function applied to every non-null value to obtain
+     *                       the value to put in the new map
      */
     public FastHashMap(final FastHashMap<K, V> mapToCopy, final UnaryOperator<V> valueProcessor) {
         super(mapToCopy);

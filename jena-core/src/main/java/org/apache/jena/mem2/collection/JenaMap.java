@@ -29,7 +29,9 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * A map from keys of type {@code K} to values of type {@code V}.
+ * Map from keys of type {@code K} to values of type {@code V}, with the
+ * stripped-down operation set used by the {@code mem2} triple store
+ * implementations. Not thread-safe and does not allow {@code null} keys.
  *
  * @param <K> the type of the keys in the map
  * @param <V> the type of the values in the map

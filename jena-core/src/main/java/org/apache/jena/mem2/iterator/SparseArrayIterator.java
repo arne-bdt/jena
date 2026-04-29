@@ -29,7 +29,11 @@ import java.util.NoSuchElementException;
 import java.util.function.Consumer;
 
 /**
- * An iterator over a sparse array, that skips null entries.
+ * Iterator over a sparse array, walking from high index to low and skipping
+ * {@code null} entries. Detects concurrent modifications by snapshotting
+ * {@code set.size()} at construction time and rechecking it on each call to
+ * {@link #next()} / {@link #forEachRemaining(Consumer)}; throws
+ * {@link ConcurrentModificationException} if the size has changed.
  *
  * @param <E> the type of the array elements
  */
@@ -41,6 +45,12 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
     private int pos;
     private boolean hasNext = false;
 
+    /**
+     * Iterate over the whole array.
+     *
+     * @param entries the backing array (not copied)
+     * @param set     the owning collection used to detect concurrent modifications
+     */
     public SparseArrayIterator(final E[] entries, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.pos = entries.length - 1;
@@ -48,6 +58,13 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
         this.sizeOfSetAtStart = set.size();
     }
 
+    /**
+     * Iterate over {@code entries[0 .. toIndexExclusive)} (in reverse order).
+     *
+     * @param entries          the backing array (not copied)
+     * @param toIndexExclusive exclusive upper bound on the iterated slice
+     * @param set              the owning collection used to detect concurrent modifications
+     */
     public SparseArrayIterator(final E[] entries, int toIndexExclusive, final JenaMapSetCommon<?> set) {
         this.entries = entries;
         this.pos = toIndexExclusive - 1;

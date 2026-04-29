@@ -32,23 +32,55 @@ import org.apache.jena.util.iterator.SingletonIterator;
 
 import java.util.stream.Stream;
 
+/**
+ * {@link TripleStore} that stores all triples in a single
+ * {@link TripleSet} and delegates pattern-matching to a configurable
+ * {@link StoreStrategy}. The strategy is selected via an
+ * {@link IndexingStrategy} and may swap itself out at runtime (e.g. a
+ * {@link LazyStoreStrategy} replaces itself with an
+ * {@link EagerStoreStrategy} as soon as the first pattern lookup is
+ * performed).
+ * <p>
+ * The triples themselves are kept in {@code triples}; each triple has a
+ * stable index in that set, which the strategy uses to maintain
+ * subject/predicate/object indices of integer indices rather than triple
+ * references.
+ */
 public class IndexedSetTripleStore implements TripleStore {
 
     private static final String UNKNOWN_PATTERN_CLASSIFIER = "Unknown pattern classifier: %s";
+    /** The flat set of stored triples. Each element has a stable integer index. */
     final TripleSet triples; // In this special set, each element has an index
     private StoreStrategy currentStrategy;
     private final IndexingStrategy indexingStrategy;
 
+    /**
+     * Creates an indexed store with the {@link IndexingStrategy#EAGER}
+     * default indexing strategy.
+     */
     public IndexedSetTripleStore() {
         this(IndexingStrategy.EAGER);
     }
 
+    /**
+     * Creates an indexed store using the given indexing strategy.
+     *
+     * @param indexingStrategy the indexing strategy to use
+     */
     public IndexedSetTripleStore(final IndexingStrategy indexingStrategy) {
         this.triples = new TripleSet();
         this.indexingStrategy = indexingStrategy;
         this.currentStrategy = createStoreStrategy(indexingStrategy);
     }
 
+    /**
+     * Copy constructor used by {@link #copy()}. If the source store has its
+     * eager index built, the copy reuses the index data structures (without
+     * rebuilding them); otherwise the copy starts from the configured
+     * indexing strategy.
+     *
+     * @param storeToCopy the source store
+     */
     private IndexedSetTripleStore(final IndexedSetTripleStore storeToCopy) {
         this.triples = storeToCopy.triples.copy();
         this.indexingStrategy = storeToCopy.indexingStrategy;

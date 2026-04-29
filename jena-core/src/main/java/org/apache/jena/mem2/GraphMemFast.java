@@ -26,33 +26,46 @@ import org.apache.jena.mem2.store.TripleStore;
 import org.apache.jena.mem2.store.fast.FastTripleStore;
 
 /**
- * A graph that stores triples in memory. This class is not thread-safe.
+ * In-memory {@link GraphMem} implementation that uses a {@link FastTripleStore}
+ * built on top of {@link FastHashBase}-based maps and sets.
+ * This class is not thread-safe.
  * <p>
- * Purpose: GraphMem2Fast is a strong candidate for becoming the new default in-memory graph in the upcoming Jena 5,
- * thanks to its improved performance and relatively minor increase in memory usage.
- * <p>
- * Faster than {@link GraphMemLegacy} (specially Graph#add, Graph#find and Graph#stream)
- * Removing triples is a bit slower than {@link GraphMemLegacy}.
- * Memory consumption is about 6-35% higher than {@link GraphMemLegacy}
- * Maps and sets are based on {@link FastHashBase}
- * Benefits from multiple small optimizations. (see: {@link FastTripleStore})
- * <p>
- * The heritage of GraphMem:
- * <ul>
- * <li>Also uses 3 hash-maps indexed by subjects, predicates, and objects
- * <li>Values of the maps also switch from arrays to hash sets for the triples
- * </ul>
+ * Compared to the legacy {@code GraphMem} implementation, this graph is
+ * significantly faster for {@code add}, {@code find} and {@code stream}
+ * operations. {@code delete} can be slightly slower, and memory consumption
+ * is moderately higher (typically 6-35%) because of the more elaborate
+ * data structures. See {@link FastTripleStore} for details on the
+ * optimizations and on the index layout (three node-keyed maps for subjects,
+ * predicates and objects, with array bunches that promote to hashed bunches
+ * once they exceed a threshold).
  */
 public class GraphMemFast extends GraphMem {
 
+    /**
+     * Creates a new, empty graph backed by a fresh {@link FastTripleStore}.
+     */
     public GraphMemFast() {
         super(new FastTripleStore());
     }
 
+    /**
+     * Internal constructor used by {@link #copy()} to wrap an already
+     * populated triple store.
+     *
+     * @param tripleStore the (already populated) triple store to wrap
+     */
     private GraphMemFast(final TripleStore tripleStore) {
         super(tripleStore);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Returns an independent {@link GraphMemFast} instance whose store is a
+     * deep-enough copy of this graph's store. Since {@link org.apache.jena.graph.Triple}
+     * and {@link org.apache.jena.graph.Node} are immutable, the copy and the
+     * original may share the same triple and node instances.
+     */
     @Override
     public GraphMemFast copy() {
         return new GraphMemFast(this.tripleStore.copy());
