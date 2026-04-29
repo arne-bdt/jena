@@ -29,15 +29,6 @@ import org.apache.jena.mem2.store.fast.FastTripleStore;
  * In-memory {@link GraphMem} implementation that uses a {@link FastTripleStore}
  * built on top of {@link FastHashBase}-based maps and sets.
  * This class is not thread-safe.
- * <p>
- * Compared to the legacy {@code GraphMem} implementation, this graph is
- * significantly faster for {@code add}, {@code find} and {@code stream}
- * operations. {@code delete} can be slightly slower, and memory consumption
- * is moderately higher (typically 6-35%) because of the more elaborate
- * data structures. See {@link FastTripleStore} for details on the
- * optimizations and on the index layout (three node-keyed maps for subjects,
- * predicates and objects, with array bunches that promote to hashed bunches
- * once they exceed a threshold).
  */
 public class GraphMemFast extends GraphMem {
 
