@@ -124,7 +124,8 @@ public abstract class FastArrayBunch implements FastTripleBunch {
 
     @Override
     public boolean tryRemove(final Triple t) {
-        for (int i = 0; i < size; i++) {
+        int i = size;
+        while (-1 < --i) {
             if (areEqual(t, elements[i])) {
                 elements[i] = elements[--size];
                 elements[size] = null;
@@ -136,7 +137,8 @@ public abstract class FastArrayBunch implements FastTripleBunch {
 
     @Override
     public void removeUnchecked(final Triple t) {
-        for (int i = 0; i < size; i++) {
+        int i = size;
+        while (-1 < --i) {
             if (areEqual(t, elements[i])) {
                 elements[i] = elements[--size];
                 elements[size] = null;
