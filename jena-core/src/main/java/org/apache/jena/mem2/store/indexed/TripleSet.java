@@ -25,6 +25,8 @@ import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.FastHashSet;
 
+import java.util.function.IntConsumer;
+
 /**
  * Set of triples that is backed by a {@link TripleSet}.
  */
@@ -32,12 +34,26 @@ public class TripleSet
         extends FastHashSet<Triple>
         implements Copyable<TripleSet> {
 
+    private IntConsumer onKeysGrowHook = null;
+
+    public void setOnKeysGrowHook(IntConsumer onKeysGrowHook) {
+        this.onKeysGrowHook = onKeysGrowHook;
+    }
+
     public TripleSet() {
         super();
     }
 
     private TripleSet(final TripleSet setToCopy) {
         super(setToCopy);
+    }
+
+    @Override
+    protected void growKeysAndHashCodeArrays() {
+        super.growKeysAndHashCodeArrays();
+        if(onKeysGrowHook != null) {
+            onKeysGrowHook.accept(getInternalKeysLength());
+        }
     }
 
     /**
