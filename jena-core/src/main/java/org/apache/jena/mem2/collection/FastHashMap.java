@@ -119,7 +119,7 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             if (tryGrowPositionsArrayIfNeeded()) {
-                pIndex = findPosition(key, hashCode);
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
             }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
@@ -139,7 +139,7 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             if (tryGrowPositionsArrayIfNeeded()) {
-                pIndex = findPosition(key, hashCode);
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
             }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
@@ -181,7 +181,7 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             if (tryGrowPositionsArrayIfNeeded()) {
-                pIndex = findPosition(key, hashCode);
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
             }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
@@ -243,7 +243,7 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
         var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             if (tryGrowPositionsArrayIfNeeded()) {
-                pIndex = findPosition(key, hashCode);
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
             }
             final var value = absentValueSupplier.get();
             final var eIndex = getFreeKeyIndex();
@@ -269,12 +269,14 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
             final var value = valueProcessor.apply(null);
             if (value == null)
                 return;
+            if(tryGrowPositionsArrayIfNeeded()) {
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
+            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
             values[eIndex] = value;
             positions[~pIndex] = ~eIndex;
-            tryGrowPositionsArrayIfNeeded();
         } else {
             var eIndex = ~positions[pIndex];
             final var value = valueProcessor.apply(values[eIndex]);

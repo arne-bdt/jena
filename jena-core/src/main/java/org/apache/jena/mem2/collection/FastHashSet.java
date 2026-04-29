@@ -66,9 +66,11 @@ public class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimi
 
     @Override
     public boolean tryAdd(K value, int hashCode) {
-        growPositionsArrayIfNeeded();
         var pIndex = findPosition(value, hashCode);
         if (pIndex < 0) {
+            if(tryGrowPositionsArrayIfNeeded()) {
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
+            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = value;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
@@ -96,9 +98,11 @@ public class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimi
      * @return the index of the added element or the inverse (~) index of the existing element
      */
     public int addAndGetIndex(final K value, final int hashCode) {
-        growPositionsArrayIfNeeded();
-        final var pIndex = findPosition(value, hashCode);
+        var pIndex = findPosition(value, hashCode);
         if (pIndex < 0) {
+            if (tryGrowPositionsArrayIfNeeded()) {
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
+            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = value;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
