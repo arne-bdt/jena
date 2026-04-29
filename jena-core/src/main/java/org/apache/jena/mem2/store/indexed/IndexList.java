@@ -197,16 +197,4 @@ public class IndexList {
         }
         return false;
     }
-
-    /**
-     * Functional interface for "given a triple index, return some derived index".
-     */
-    @FunctionalInterface
-    public interface IndexLookup {
-        /**
-         * @param index a triple index
-         * @return the looked-up value
-         */
-        int get(int index);
-    }
 }
