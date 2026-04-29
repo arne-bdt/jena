@@ -21,8 +21,14 @@
 package org.apache.jena.mem2.store.indexed;
 
 /**
- * An ArrayBunch implements TripleBunch with a linear search of a short-ish
- * array of Triples. The array grows by factor 2.
+ * Append-only list of {@code int} triple indices, used by the eager indexing
+ * strategy as the value type of the per-node index lists ("for the subject
+ * node N, here are the indices of all triples whose subject is N").
+ * <p>
+ * Backed by an int array that grows by factor 2 up to size 32 and by factor
+ * 1.5 thereafter. Removal is constant-time swap-with-last so callers must
+ * keep an external reverse-index array in sync (see
+ * {@link org.apache.jena.mem2.store.indexed.strategies.EagerStoreStrategy}).
  */
 public class IndexList {
 
@@ -31,16 +37,19 @@ public class IndexList {
     private int pos = -1;
     private int[] elements;
 
+    /**
+     * Creates an empty list with the default initial capacity.
+     */
     public IndexList() {
         elements = new int[INITIAL_SIZE];
     }
 
     /**
-     * Copy constructor.
-     * The new bunch will contain all the same triples of the bunch to copy.
-     * But it will reserve only the space needed to contain them. Growing is still possible.
+     * Copy constructor. The new list contains the same indices as
+     * {@code bunchToCopy}; its backing array is sized to fit exactly,
+     * but can grow further if needed.
      *
-     * @param bunchToCopy
+     * @param bunchToCopy the source list
      */
     public IndexList(final IndexList bunchToCopy) {
         this.elements = new int[bunchToCopy.size()];
@@ -48,34 +57,62 @@ public class IndexList {
         this.pos = bunchToCopy.pos;
     }
 
+    /**
+     * @return the number of indices currently stored
+     */
     public int size() {
         return pos + 1;
     }
 
+    /**
+     * @return the index of the last stored element, or {@code -1} if empty
+     */
     public int lastPos() {
         return pos;
     }
 
+    /**
+     * @return {@code true} if the list contains no indices
+     */
     public boolean isEmpty() {
         return this.pos == -1;
     }
 
+    /**
+     * Returns the underlying int array. Only the first {@link #size()}
+     * entries are valid. Exposed as a raw array to allow callers (e.g.
+     * iterators and intersection routines) to avoid bounds-checked accessors
+     * in tight loops.
+     *
+     * @return the backing array
+     */
     public int[] getIndices() {
         return elements;
     }
 
+    /**
+     * @return the position of the most recently inserted element (same as
+     *         {@link #lastPos()})
+     */
     public int getCurrentPosition() {
         return pos;
     }
 
+    /**
+     * @param pos a position {@code 0 &le; pos &le; lastPos()}
+     * @return the index stored at the given position
+     */
     public int getIndexAt(final int pos) {
         return this.elements[pos];
     }
 
     /**
-     * Adds the given index to the end of the list, and returns the position of the inserted element.
-     * @param element The element to add to the list
-     * @return The position at which the element was added.
+     * Append the given index to the list.
+     *
+     * @param element the triple index to append
+     * @return the position at which {@code element} was stored (i.e. its
+     *         "reverse index"); callers track this so they can remove it
+     *         later in O(1)
      */
     public int add(final int element) {
         if (++pos == elements.length) grow();
@@ -84,7 +121,7 @@ public class IndexList {
     }
 
     /**
-     * Grows by approx. factor 1.5
+     * Grows the backing array. Doubles up to size 32, then grows by factor 1.5.
      */
     private void grow() {
         final var oldElements = elements;
@@ -96,10 +133,15 @@ public class IndexList {
     }
 
     /**
-     * Removes the element at the given position, and returns an array of two ints:
-     * The element that was moved to fill the gap, and the new position of that element.
-     * @param position The position at which an element should be removed.
-     * @return The element that was moved to fill the gap.
+     * Remove the index at the given position by swapping the last element
+     * into its place ("swap-with-last"). The caller is responsible for
+     * updating any external reverse-index that points at the moved element.
+     *
+     * @param position the position of the index to remove
+     * @return the triple index of the element that was moved into
+     *         {@code position} (so the caller can update its reverse index),
+     *         or {@code -1} if the removed element was the last one and
+     *         nothing was moved
      */
     public int removeAt(final int position) {
         if(pos == position) {
@@ -111,10 +153,28 @@ public class IndexList {
         }
     }
 
+    /**
+     * Returns an independent copy of this list.
+     *
+     * @return a deep copy
+     */
     public IndexList clone() {
         return new IndexList(this);
     }
 
+    /**
+     * Test whether two index lists share at least one common triple index.
+     * The lists are not assumed to be sorted; this implementation iterates
+     * the shorter list and checks each entry against the larger list using
+     * the larger list's reverse-index array, giving {@code O(min(|a|,|b|))}.
+     *
+     * @param a               first list
+     * @param reverseIndicesA reverse index for {@code a}: maps a triple index
+     *                        to its position in {@code a.getIndices()}
+     * @param b               second list
+     * @param reverseIndicesB reverse index for {@code b}
+     * @return {@code true} if {@code a} and {@code b} share any element
+     */
     public static boolean intersects(final IndexList a, final int[] reverseIndicesA, final IndexList b, final int[] reverseIndicesB) {
         if (a.size() < b.size()) {
             return intersectsSmallerWithLarger(a, b, reverseIndicesB);
@@ -138,8 +198,15 @@ public class IndexList {
         return false;
     }
 
+    /**
+     * Functional interface for "given a triple index, return some derived index".
+     */
     @FunctionalInterface
     public interface IndexLookup {
+        /**
+         * @param index a triple index
+         * @return the looked-up value
+         */
         int get(int index);
     }
 }

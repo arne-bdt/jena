@@ -28,15 +28,17 @@ import java.util.Spliterator;
 import java.util.function.Consumer;
 
 /**
- * A spliterator for sparse arrays. This spliterator will iterate over the array
- * skipping null entries.
+ * Sub-range spliterator over a sparse array slice {@code [fromIndex, toIndex)},
+ * iterating from high index to low and skipping {@code null} entries.
+ * Produced by splitting a {@link SparseArraySpliterator} (or another
+ * {@link SparseArraySubSpliterator}); supports further recursive splits for
+ * parallel traversal.
  * <p>
- * This spliterator supports splitting into sub-spliterators.
- * <p>
- * The spliterator will check for concurrent modifications by invoking a {@link Runnable}
- * before each action.
+ * Detects concurrent modifications by snapshotting {@code set.size()} at
+ * construction time and rechecking it at each advance/forEach boundary;
+ * throws {@link ConcurrentModificationException} if the size has changed.
  *
- * @param <E>
+ * @param <E> the type of the array elements
  */
 public class SparseArraySubSpliterator<E> implements Spliterator<E> {
 
@@ -47,12 +49,12 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
     private int pos;
 
     /**
-     * Create a spliterator for the given array, with the given size.
+     * Create a spliterator over {@code entries[fromIndex .. toIndex)}, skipping nulls.
      *
-     * @param entries                        the array
-     * @param fromIndex                      the index of the first element, inclusive
-     * @param toIndex                        the index of the last element, exclusive
-     * @param set                            the set to check for concurrent modifications
+     * @param entries   the backing array (not copied)
+     * @param fromIndex inclusive lower bound on the iterated slice
+     * @param toIndex   exclusive upper bound on the iterated slice
+     * @param set       the owning collection used to detect concurrent modifications
      */
     public SparseArraySubSpliterator(final E[] entries, final int fromIndex, final int toIndex, final JenaMapSetCommon<?> set) {
         this.entries = entries;
@@ -63,10 +65,10 @@ public class SparseArraySubSpliterator<E> implements Spliterator<E> {
     }
 
     /**
-     * Create a spliterator for the given array, with the given size.
+     * Create a spliterator over the entire array, skipping nulls.
      *
-     * @param entries                        the array
-     * @param set                            the set to check for concurrent modifications
+     * @param entries the backing array (not copied)
+     * @param set     the owning collection used to detect concurrent modifications
      */
     public SparseArraySubSpliterator(final E[] entries, final JenaMapSetCommon<?> set) {
         this(entries, 0, entries.length, set);

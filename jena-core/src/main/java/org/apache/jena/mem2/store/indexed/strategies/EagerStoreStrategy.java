@@ -34,9 +34,20 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * Eager store strategy that indexes all triples immediately.
- * This strategy is used when the indexing strategy is set to EAGER.
- * It builds the index by adding all triples to the index at once.
+ * {@link StoreStrategy} that maintains a complete subject/predicate/object
+ * index over the triple set at all times.
+ * <p>
+ * Three node-keyed index maps ({@link NodesToIndices}) hold, for every
+ * subject/predicate/object node, an {@link IndexList} of the triple indices
+ * that mention it. Three parallel reverse-index arrays
+ * ({@code sReverseIndices}, {@code pReverseIndices}, {@code oReverseIndices})
+ * store, for every triple slot, its position inside the corresponding
+ * {@code IndexList}; this is what makes {@code O(1)} removal possible.
+ * <p>
+ * The reverse-index arrays are kept the same length as the underlying
+ * {@code keys} array of the {@link TripleSet}; whenever the triple set grows
+ * its keys array, the {@code growReverseIndices} hook is invoked to grow the
+ * reverse arrays too.
  */
 public class EagerStoreStrategy implements StoreStrategy {
     private static final String UNSUPPORTED_PATTERN_CLASSIFIER = "Unsupported pattern classifier: %s";
@@ -50,7 +61,12 @@ public class EagerStoreStrategy implements StoreStrategy {
     private int[] oReverseIndices;
 
     /**
-     * Create a new EagerStoreStrategy and initialize the index.
+     * Build a new eager strategy over the given triple set, indexing every
+     * triple already present.
+     *
+     * @param triples  the canonical triple set
+     * @param parallel if {@code true}, build the three indices concurrently;
+     *                 otherwise build them sequentially
      */
     public EagerStoreStrategy(final TripleSet triples, boolean parallel) {
         this.triples = triples;
@@ -70,21 +86,28 @@ public class EagerStoreStrategy implements StoreStrategy {
     }
 
     /**
-     * Default constructor for EagerStoreStrategy.
-     * Initializes the bitmaps for subjects, predicates, and objects.
-     * Note: This constructor does not index any triples.
+     * Build a new eager strategy and index the triple set sequentially.
+     * Equivalent to {@code EagerStoreStrategy(triples, false)}.
+     *
+     * @param triples the canonical triple set
      */
     public EagerStoreStrategy(final TripleSet triples) {
         this(triples, false);
     }
 
     /**
-     * Copy constructor for EagerStoreStrategy.
-     * Creates a new EagerStoreStrategy that is a copy of the given strategy but with a new reference
-     * to a set of triples. This set should be a copy of the original set to ensure independence of the new store.
+     * Copy constructor that reuses an already-built index. Used when copying
+     * an {@link IndexedSetTripleStore} whose source already has its eager
+     * index built, so that the copy can avoid the cost of rebuilding it.
+     * <p>
+     * The {@code triples} parameter must be a copy of the original triple
+     * set (the indices reference triple slots by index, so the two sets
+     * must have identical layouts).
      *
-     * @param triples                   the set of triples of the new store
-     * @param strategyToCopyIndicesFrom the strategy to copy indices from
+     * @param triples                   the (already-copied) triple set the
+     *                                  new strategy will operate on
+     * @param strategyToCopyIndicesFrom the strategy whose indices should
+     *                                  be cloned
      */
     public EagerStoreStrategy(final TripleSet triples, EagerStoreStrategy strategyToCopyIndicesFrom) {
         this.triples = triples;
@@ -98,8 +121,8 @@ public class EagerStoreStrategy implements StoreStrategy {
     }
 
     /**
-     * Index all triples in the store.
-     * This method will add all triples to the index, creating bitmaps for subjects, predicates, and objects.
+     * Sequentially populate the three subject/predicate/object indices with
+     * every triple currently in {@code triples}.
      */
     private void indexAll() {
         // Initialize the index by adding all triples to the index
@@ -107,9 +130,10 @@ public class EagerStoreStrategy implements StoreStrategy {
     }
 
     /**
-     * Index all triples in the store in parallel.
-     * This method will add all triples to the index in parallel,
-     * creating bitmaps for subjects, predicates, and objects.
+     * Populate the three subject/predicate/object indices in parallel.
+     * Each of the three indices is touched by exactly one thread, so the
+     * indices themselves don't need to be thread-safe; only the read-only
+     * iteration over the triple set runs concurrently.
      */
     private void indexAllParallel() {
         final var indexSize = triples.getInternalKeysLength();

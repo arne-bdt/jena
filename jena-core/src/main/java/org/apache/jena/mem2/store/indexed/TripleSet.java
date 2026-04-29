@@ -28,7 +28,12 @@ import org.apache.jena.mem2.collection.FastHashSet;
 import java.util.function.IntConsumer;
 
 /**
- * Set of triples that is backed by a {@link TripleSet}.
+ * {@link FastHashSet} of {@link Triple}s used as the canonical triple
+ * collection inside {@link IndexedSetTripleStore}. Adds a hook that fires
+ * whenever the underlying keys array grows, so that indexes built on top of
+ * this set (such as the reverse-index arrays in
+ * {@link org.apache.jena.mem2.store.indexed.strategies.EagerStoreStrategy})
+ * can resize their parallel data structures in lock-step.
  */
 public class TripleSet
         extends FastHashSet<Triple>
@@ -36,14 +41,29 @@ public class TripleSet
 
     private IntConsumer onKeysGrowHook = null;
 
+    /**
+     * Register a callback that is invoked after the keys array grows; the
+     * callback receives the new array length. Setting this to {@code null}
+     * disables notifications.
+     *
+     * @param onKeysGrowHook callback receiving the new {@code keys.length}
+     */
     public void setOnKeysGrowHook(IntConsumer onKeysGrowHook) {
         this.onKeysGrowHook = onKeysGrowHook;
     }
 
+    /**
+     * Creates an empty triple set.
+     */
     public TripleSet() {
         super();
     }
 
+    /**
+     * Copy constructor.
+     *
+     * @param setToCopy the source set
+     */
     private TripleSet(final TripleSet setToCopy) {
         super(setToCopy);
     }
@@ -57,9 +77,10 @@ public class TripleSet
     }
 
     /**
-     * Create a copy of this set.
+     * Returns an independent copy of this set. The grow-hook from the source
+     * is <em>not</em> propagated to the copy.
      *
-     * @return TripleSet
+     * @return a new {@link TripleSet} with the same triples
      */
     @Override
     public TripleSet copy() {

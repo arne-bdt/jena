@@ -30,17 +30,15 @@ import java.util.Spliterator;
 import java.util.function.Consumer;
 
 /**
- * A spliterator for sparse arrays. This spliterator will iterate over the array
- * skipping null entries.
- * This spliterator returns elements as {@link FastHashBase.IndexedKey} objects,
- * which contain both the index and the value of the element.
+ * Spliterator over a sparse array, iterating in ascending index order and
+ * skipping {@code null} entries. Each element is reported as a
+ * {@link FastHashBase.IndexedKey} pair so callers see both the value and the
+ * stable index it occupies.
  * <p>
- * This spliterator works in ascending order, starting from the given start up to the specified exclusive index.
- * <p>
- * This spliterator supports splitting into sub-spliterators.
- * <p>
- * The spliterator will check for concurrent modifications by invoking a {@link Runnable}
- * before each action.
+ * Supports recursive splitting for parallel traversal. Detects concurrent
+ * modifications by snapshotting {@code set.size()} at construction time and
+ * rechecking it at each advance/forEach boundary; throws
+ * {@link ConcurrentModificationException} if the size has changed.
  *
  * @param <E> the type of the array elements
  */
@@ -54,12 +52,13 @@ public class SparseArrayIndexedSpliterator<E> implements Spliterator<FastHashBas
     private final int sizeOfSetAtStart;
 
     /**
-     * Create a spliterator for the given array, with the given size.
+     * Create a spliterator over {@code entries[fromIndexInclusive .. toIndexExclusive)},
+     * skipping nulls.
      *
-     * @param entries                        the array
-     * @param fromIndexInclusive             the index of the first element, inclusive
-     * @param toIndexExclusive               the index of the last element, exclusive
-     * @param set                            the set to check for concurrent modifications
+     * @param entries            the backing array (not copied)
+     * @param fromIndexInclusive inclusive lower bound on the iterated slice
+     * @param toIndexExclusive   exclusive upper bound on the iterated slice
+     * @param set                the owning collection used to detect concurrent modifications
      */
     public SparseArrayIndexedSpliterator(final E[] entries, final int fromIndexInclusive, final int toIndexExclusive, final JenaMapSetCommon<?> set) {
         this.entries = entries;
@@ -70,21 +69,21 @@ public class SparseArrayIndexedSpliterator<E> implements Spliterator<FastHashBas
     }
 
     /**
-     * Create a spliterator for the given array, with the given size.
+     * Create a spliterator over {@code entries[0 .. toIndexExclusive)}, skipping nulls.
      *
-     * @param entries                        the array
-     * @param toIndexExclusive               the index of the last element, exclusive
-     * @param set                            the set to check for concurrent modifications
+     * @param entries          the backing array (not copied)
+     * @param toIndexExclusive exclusive upper bound on the iterated slice
+     * @param set              the owning collection used to detect concurrent modifications
      */
     public SparseArrayIndexedSpliterator(final E[] entries, final int toIndexExclusive, final JenaMapSetCommon<?> set) {
         this(entries, 0, toIndexExclusive, set);
     }
 
     /**
-     * Create a spliterator for the given array, with the given size.
+     * Create a spliterator over the entire array, skipping nulls.
      *
-     * @param entries                        the array
-     * @param checkForConcurrentModification runnable to check for concurrent modifications
+     * @param entries the backing array (not copied)
+     * @param set     the owning collection used to detect concurrent modifications
      */
     public SparseArrayIndexedSpliterator(final E[] entries, final JenaMapSetCommon<?> set) {
         this(entries, entries.length, set);

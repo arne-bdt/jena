@@ -33,15 +33,28 @@ import java.util.stream.Stream;
 
 /**
  * A graph that stores triples in memory. This class is not thread-safe.
- * All triples are stored in a {@link TripleStore}.
+ * All triples are stored in a {@link TripleStore}, which is provided by subclasses
+ * to select the desired storage strategy (e.g. {@link GraphMemFast},
+ * {@link GraphMemIndexedSet}).
  * <p>
- * Implementation must always comply to term-equality semantics. The characteristics of the
- * implementations always have handlesLiteralTyping() == false.
+ * Implementations always comply to term-equality semantics. {@code handlesLiteralTyping()}
+ * returns {@code false} for every {@link GraphMem} subclass.
  */
 public class GraphMem extends GraphBase implements GraphWithPerform, Copyable<GraphMem> {
 
+    /**
+     * The backing triple store. The concrete implementation is selected by
+     * subclasses and determines the performance/memory characteristics of the graph.
+     */
     final TripleStore tripleStore;
 
+    /**
+     * Constructs a graph backed by the given triple store.
+     * Subclasses are expected to instantiate the appropriate {@link TripleStore}
+     * implementation and pass it to this constructor.
+     *
+     * @param tripleStore the triple store that will hold the graph's triples
+     */
     protected GraphMem(TripleStore tripleStore) {
         super();
         this.tripleStore = tripleStore;
@@ -57,9 +70,9 @@ public class GraphMem extends GraphBase implements GraphWithPerform, Copyable<Gr
     }
 
     /**
-     * Add a triple to the graph without notifying. The default implementation throws an
-     * AddDeniedException; subclasses must override if they want to be able to
-     * add triples.
+     * Add a triple to the graph without firing change notifications.
+     * The triple is delegated to the underlying {@link TripleStore}.
+     * If the triple is already present, the store is left unchanged.
      *
      * @param t triple to add
      */
@@ -69,9 +82,9 @@ public class GraphMem extends GraphBase implements GraphWithPerform, Copyable<Gr
     }
 
     /**
-     * Remove a triple from the triple store. The default implementation throws
-     * a DeleteDeniedException; subclasses must override if they want to be able
-     * to remove triples.
+     * Remove a triple from the graph without firing change notifications.
+     * The triple is delegated to the underlying {@link TripleStore}.
+     * If the triple is not present, the store is left unchanged.
      *
      * @param t triple to delete
      */
@@ -106,7 +119,12 @@ public class GraphMem extends GraphBase implements GraphWithPerform, Copyable<Gr
     }
 
     /**
-     * Returns an {@link ExtendedIterator} of all triples in the graph matching the given triple match.
+     * Returns an {@link ExtendedIterator} over all triples in this graph matching the
+     * given triple pattern. The pattern may be either concrete or contain wildcards
+     * (e.g. {@link org.apache.jena.graph.Node#ANY}).
+     *
+     * @param tripleMatch the triple pattern to match
+     * @return an iterator over the matching triples
      */
     @Override
     public ExtendedIterator<Triple> graphBaseFind(Triple tripleMatch) {
@@ -114,11 +132,12 @@ public class GraphMem extends GraphBase implements GraphWithPerform, Copyable<Gr
     }
 
     /**
-     * Answer true if the graph contains any triple matching <code>t</code>.
-     * The default implementation uses <code>find</code> and checks to see
-     * if the iterator is non-empty.
+     * Answer {@code true} if this graph contains any triple matching {@code tripleMatch}.
+     * The match is delegated to the underlying {@link TripleStore} which uses
+     * the most efficient lookup available for the kind of pattern.
      *
-     * @param tripleMatch triple match pattern, which may be contained
+     * @param tripleMatch triple match pattern (may contain wildcards)
+     * @return {@code true} if at least one matching triple exists
      */
     @Override
     public boolean graphBaseContains(final Triple tripleMatch) {
@@ -126,9 +145,11 @@ public class GraphMem extends GraphBase implements GraphWithPerform, Copyable<Gr
     }
 
     /**
-     * Answer the number of triples in this graph. Default implementation counts its
-     * way through the results of a findAll. Subclasses must override if they want
-     * size() to be efficient.
+     * Returns the number of triples currently stored in this graph.
+     * The size is maintained by the underlying {@link TripleStore} and is therefore
+     * an O(1) operation.
+     *
+     * @return the number of triples in the graph
      */
     @Override
     public int graphBaseSize() {

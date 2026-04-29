@@ -28,9 +28,15 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import java.util.stream.Stream;
 
 /**
- * A manual store strategy that does not maintain an index.
- * This strategy is used when no indexing is required, and all operations are no-ops.
- * It throws an exception if any match operation is attempted before the index is initialized.
+ * {@link StoreStrategy} that never builds an index automatically.
+ * Add/remove/clear are no-ops on the index side; pattern-match operations
+ * throw {@link UnsupportedOperationException} until the user explicitly
+ * initializes the index (typically via
+ * {@link org.apache.jena.mem2.GraphMemIndexedSet#initializeIndex()} or
+ * {@link org.apache.jena.mem2.GraphMemIndexedSet#initializeIndexParallel()}),
+ * which swaps this strategy out for an {@link EagerStoreStrategy}.
+ * <p>
+ * Used to back {@link org.apache.jena.mem2.IndexingStrategy#MANUAL}.
  */
 public class ManualStoreStrategy implements StoreStrategy {
     @Override

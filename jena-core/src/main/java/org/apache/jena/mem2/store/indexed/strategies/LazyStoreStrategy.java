@@ -29,14 +29,29 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
- * A lazy store strategy that defers the initialization of the index until it is needed.
- * This strategy is useful when the index is not always required, allowing for more efficient memory usage.
- * It uses a supplier to create a new instance of {@link EagerStoreStrategy} when needed.
+ * {@link StoreStrategy} that defers index construction until the first
+ * pattern lookup. Add/remove are no-ops while the index is absent (the
+ * triples are still maintained in the enclosing
+ * {@link org.apache.jena.mem2.store.indexed.IndexedSetTripleStore} but no
+ * subject/predicate/object index is updated). On the first
+ * {@code containsMatch}/{@code streamMatch}/{@code findMatch} call, the
+ * supplied callback is invoked to build (and install) an
+ * {@link EagerStoreStrategy}; the lookup is then forwarded to it.
+ * <p>
+ * Used to back both {@link org.apache.jena.mem2.IndexingStrategy#LAZY} and
+ * {@link org.apache.jena.mem2.IndexingStrategy#LAZY_PARALLEL}; the
+ * sequential / parallel choice is encoded in the supplied callback.
  */
 public class LazyStoreStrategy implements StoreStrategy {
 
     private final Supplier<EagerStoreStrategy> setCurrentStrategyToNewEagerStoreStrategy;
 
+    /**
+     * @param setCurrentStrategyToNewEagerStoreStrategy callback that builds
+     *        an {@link EagerStoreStrategy}, installs it as the enclosing
+     *        store's current strategy, and returns it so this strategy can
+     *        delegate the triggering lookup to it
+     */
     public LazyStoreStrategy(final Supplier<EagerStoreStrategy> setCurrentStrategyToNewEagerStoreStrategy) {
         this.setCurrentStrategyToNewEagerStoreStrategy = setCurrentStrategyToNewEagerStoreStrategy;
     }

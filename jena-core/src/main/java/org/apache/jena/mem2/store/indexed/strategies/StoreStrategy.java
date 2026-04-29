@@ -28,28 +28,50 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import java.util.stream.Stream;
 
 /**
- * The store strategy defines how triples are indexed and how matches are found.
- * It is used to implement different indexing strategies like Eager, Lazy, Manual, and Minimal.
- * For the matching operations, only matches for the patterns SUB_ANY_ANY, ANY_PRE_ANY, ANY_ANY_OBJ,
- * SUB_PRE_ANY, ANY_PRE_OBJ, and SUB_ANY_OBJ are supported.
- * The patterns SUB_PRE_OBJ and ANY_ANY_ANY are not supported by the store strategies.
+ * Plug-in interface that controls how the auxiliary subject/predicate/object
+ * index of an
+ * {@link org.apache.jena.mem2.store.indexed.IndexedSetTripleStore} is
+ * maintained and how partial-pattern matches are evaluated.
+ * <p>
+ * Concrete strategies are
+ * {@link EagerStoreStrategy} (always indexed),
+ * {@link LazyStoreStrategy} (indexed on first lookup),
+ * {@link ManualStoreStrategy} (user-controlled) and
+ * {@link MinimalStoreStrategy} (no index, filter every time).
+ * <p>
+ * The match methods only need to handle the partial-pattern cases:
+ * {@link MatchPattern#SUB_ANY_ANY}, {@link MatchPattern#ANY_PRE_ANY},
+ * {@link MatchPattern#ANY_ANY_OBJ}, {@link MatchPattern#SUB_PRE_ANY},
+ * {@link MatchPattern#ANY_PRE_OBJ} and {@link MatchPattern#SUB_ANY_OBJ}.
+ * The fully concrete pattern {@link MatchPattern#SUB_PRE_OBJ} and the
+ * fully open pattern {@link MatchPattern#ANY_ANY_ANY} are answered directly
+ * from the triple set by the enclosing store and never reach the strategy.
  */
 public interface StoreStrategy {
     /**
-     * Add a triple to the index if the current strategy supports indexing.
+     * Notify the strategy that a triple was added to the underlying triple
+     * set at the given index. Implementations that maintain an index must
+     * update it; implementations without an index are free to no-op.
      *
+     * @param triple the newly added triple
+     * @param index  the stable index it now occupies in the triple set
      */
     void addToIndex(final Triple triple, final int index);
 
     /**
-     * Remove a triple from the index if the current strategy supports indexing.
+     * Notify the strategy that the triple at the given index has been
+     * removed from the underlying triple set. Implementations that maintain
+     * an index must remove the triple from it; implementations without an
+     * index are free to no-op.
      *
+     * @param triple the removed triple
+     * @param index  the index it occupied immediately before removal
      */
     void removeFromIndex(final Triple triple, final int index);
 
     /**
-     * Clear the index of this store if the current strategy supports indexing.
-     * This will remove all triples from the index.
+     * Discard any auxiliary index data held by the strategy. Implementations
+     * without an index may no-op.
      */
     void clearIndex();
 

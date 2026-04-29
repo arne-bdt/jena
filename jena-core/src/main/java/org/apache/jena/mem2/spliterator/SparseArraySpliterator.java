@@ -28,13 +28,17 @@ import java.util.Spliterator;
 import java.util.function.Consumer;
 
 /**
- * A spliterator for sparse arrays. This spliterator will iterate over the array
- * skipping null entries.
+ * Top-level spliterator over a sparse array slice {@code [0, toIndex)},
+ * iterating from high index to low and skipping {@code null} entries.
+ * Produced for backing arrays such as those of
+ * {@link org.apache.jena.mem2.collection.FastHashBase}, where removed slots
+ * are represented by {@code null}.
  * <p>
- * This spliterator supports splitting into sub-spliterators.
- * <p>
- * The spliterator will check for concurrent modifications by invoking a {@link Runnable}
- * before each action.
+ * Supports splitting into {@link SparseArraySubSpliterator} children for
+ * parallel traversal. Detects concurrent modifications by snapshotting
+ * {@code set.size()} at construction time and rechecking it at each
+ * advance/forEach boundary; throws {@link ConcurrentModificationException}
+ * if the size has changed.
  *
  * @param <E> the type of the array elements
  */
@@ -46,11 +50,11 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
     private final int sizeOfSetAtStart;
 
     /**
-     * Create a spliterator for the given array, with the given size.
+     * Create a spliterator over {@code entries[0 .. toIndex)}, skipping nulls.
      *
-     * @param entries                        the array
-     * @param toIndex                        the index of the last element, exclusive
-     * @param set                            the set to check for concurrent modifications
+     * @param entries the backing array (not copied)
+     * @param toIndex exclusive upper bound on the iterated slice
+     * @param set     the owning collection used to detect concurrent modifications
      */
     public SparseArraySpliterator(final E[] entries, final int toIndex, final JenaMapSetCommon<?> set) {
         this.entries = entries;
@@ -60,10 +64,10 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
     }
 
     /**
-     * Create a spliterator for the given array, with the given size.
+     * Create a spliterator over the entire array, skipping nulls.
      *
-     * @param entries                        the array
-     * @param set                            the set to check for concurrent modifications
+     * @param entries the backing array (not copied)
+     * @param set     the owning collection used to detect concurrent modifications
      */
     public SparseArraySpliterator(final E[] entries, final JenaMapSetCommon<?> set) {
         this(entries, entries.length, set);
