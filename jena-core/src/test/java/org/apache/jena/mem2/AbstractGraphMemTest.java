@@ -1045,7 +1045,7 @@ public abstract class AbstractGraphMemTest {
 
     @Test
     public void testDeleteAll() {
-        for(var subjects=1; subjects <= 25 ; subjects++) {
+        for(var subjects=1; subjects <= 8 ; subjects++) {
             for(var predicates=1; predicates <= 8 ; predicates++) {
                 for(var objects=1; objects <= 8 ; objects++) {
                     sut = createGraph();

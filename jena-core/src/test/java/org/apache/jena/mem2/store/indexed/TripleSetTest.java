@@ -53,6 +53,10 @@ public class TripleSetTest {
         assertEquals(t1, set.getKeyAt(i1));
         assertEquals(t2, set.getKeyAt(i2));
 
+        assertEquals(i1, set.indexOf(t1));
+        assertEquals(i2, set.indexOf(t2));
+        assertEquals(-1, set.indexOf(triple("NOT_A NOT_B NOT_C")));
+
         // Re-adding the same triple returns the bitwise-complement of the
         // existing index.
         final int reAdd = set.addAndGetIndex(t1);
