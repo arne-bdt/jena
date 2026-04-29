@@ -54,6 +54,7 @@ public class EagerStoreStrategy implements StoreStrategy {
      */
     public EagerStoreStrategy(final TripleSet triples, boolean parallel) {
         this.triples = triples;
+        this.triples.setOnKeysGrowHook(this::growReverseIndices);
         this.sNodeToIndices = new NodesToIndices();
         this.pNodeToIndices = new NodesToIndices();
         this.oNodeToIndices = new NodesToIndices();
@@ -87,6 +88,7 @@ public class EagerStoreStrategy implements StoreStrategy {
      */
     public EagerStoreStrategy(final TripleSet triples, EagerStoreStrategy strategyToCopyIndicesFrom) {
         this.triples = triples;
+        this.triples.setOnKeysGrowHook(this::growReverseIndices);
         this.sNodeToIndices = strategyToCopyIndicesFrom.sNodeToIndices.copy();
         this.pNodeToIndices = strategyToCopyIndicesFrom.pNodeToIndices.copy();
         this.oNodeToIndices = strategyToCopyIndicesFrom.oNodeToIndices.copy();
@@ -175,14 +177,15 @@ public class EagerStoreStrategy implements StoreStrategy {
         }
     }
 
+    private void growReverseIndices(int keysLength) {
+        sReverseIndices = Arrays.copyOf(sReverseIndices, keysLength);
+        pReverseIndices = Arrays.copyOf(pReverseIndices, keysLength);
+        oReverseIndices = Arrays.copyOf(oReverseIndices, keysLength);
+    }
+
     @Override
     public void addToIndex(final Triple triple, final int index) {
         final var indexSize = triples.getInternalKeysLength();
-        if(indexSize != sReverseIndices.length) {
-            sReverseIndices = Arrays.copyOf(sReverseIndices, indexSize);
-            pReverseIndices = Arrays.copyOf(pReverseIndices, indexSize);
-            oReverseIndices = Arrays.copyOf(oReverseIndices, indexSize);
-        }
         addSIndex(triple, index);
         addPIndex(triple, index);
         addOIndex(triple, index);
