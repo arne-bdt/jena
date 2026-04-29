@@ -79,9 +79,17 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
         }
     }
 
+    /**
+     * Builds a {@link GraphMemIndexedSet} with the {@link IndexingStrategy#MANUAL}
+     * strategy, wrapped in a Mockito spy that exercises the documented
+     * "fail-then-initialize-then-clear" cycle on every pattern lookup. Without
+     * the wrapper the inherited tests in {@link AbstractGraphMemTest} would
+     * fail outright, because a freshly-created MANUAL graph throws
+     * {@link UnsupportedOperationException} on any pattern operation until
+     * {@link GraphMemIndexedSet#initializeIndex()} has been called.
+     */
     private GraphMemIndexedSet setupGraphWithSpyForSpecialManualStrategy() {
         final var realGraph = new GraphMemIndexedSet(IndexingStrategy.MANUAL);
-        // Spy setup for the minimal strategy
         final var spyGraph = Mockito.spy(realGraph);
 
         // Mock {@link Graph#contains(Triple)}
@@ -173,14 +181,14 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
         }
     }
 
-    private GraphMemIndexedSet getSutAsGraphMem2Roaring() {
+    private GraphMemIndexedSet getSutAsGraphMemIndexedSet() {
         return (GraphMemIndexedSet) super.sut;
     }
 
     @Test
     public void testGetIndexingStrategy() {
         // Given
-        final var sut = getSutAsGraphMem2Roaring();
+        final var sut = getSutAsGraphMemIndexedSet();
 
         // Then
         assertEquals(indexingStrategy, sut.getIndexingStrategy());
@@ -189,7 +197,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
     @Test
     public void testIsIndexInitialized() {
         // Given
-        final var sut = getSutAsGraphMem2Roaring();
+        final var sut = getSutAsGraphMemIndexedSet();
 
         // Then
         switch (sut.getIndexingStrategy()) {
@@ -222,7 +230,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
     @Test
     public void testLazyInitiallization() {
         // Given
-        final var sut = getSutAsGraphMem2Roaring();
+        final var sut = getSutAsGraphMemIndexedSet();
         sut.add(triple("s p o"));
 
         // When
@@ -244,7 +252,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
     @Test
     public void testManualInitialization() {
         // Given
-        final var sut = getSutAsGraphMem2Roaring();
+        final var sut = getSutAsGraphMemIndexedSet();
 
         // When
         sut.initializeIndex();
@@ -262,7 +270,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
     @Test
     public void testManualInitializationParallel() {
         // Given
-        final var sut = getSutAsGraphMem2Roaring();
+        final var sut = getSutAsGraphMemIndexedSet();
 
         // When
         sut.initializeIndexParallel();
@@ -280,7 +288,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
     @Test
     public void testClearIndex() {
         // Given
-        final var sut = getSutAsGraphMem2Roaring();
+        final var sut = getSutAsGraphMemIndexedSet();
         sut.initializeIndex();
 
         // When
@@ -297,5 +305,28 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
             default:
                 throw new IllegalArgumentException("Unsupported indexing strategy: " + sut.getIndexingStrategy());
         }
+    }
+
+    @Test
+    public void testCopyPreservesStrategyAndType() {
+        // The MANUAL case here is the spy-wrapped graph, not a plain
+        // GraphMemIndexedSet; copy() doesn't go through the spy so we limit
+        // this test to the strategies that build their graph directly.
+        if (indexingStrategy == IndexingStrategy.MANUAL) return;
+
+        final var sut = getSutAsGraphMemIndexedSet();
+        sut.add(triple("s p o"));
+
+        final var copy = sut.copy();
+        assertNotNull(copy);
+        // The override on GraphMemIndexedSet must preserve the runtime type
+        // and the indexing strategy.
+        assertEquals(indexingStrategy, copy.getIndexingStrategy());
+        assertTrue(copy.contains(triple("s p o")));
+
+        // Mutations in the copy must not affect the source
+        copy.add(triple("s2 p2 o2"));
+        assertFalse(sut.contains(triple("s2 p2 o2")));
+        assertTrue(copy.contains(triple("s2 p2 o2")));
     }
 }
