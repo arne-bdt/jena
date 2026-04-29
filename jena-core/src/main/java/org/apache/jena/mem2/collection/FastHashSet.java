@@ -21,15 +21,6 @@
 
 package org.apache.jena.mem2.collection;
 
-import org.apache.jena.mem2.iterator.SparseArrayIndexedIterator;
-import org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator;
-import org.apache.jena.util.iterator.ExtendedIterator;
-
-import java.util.ConcurrentModificationException;
-import java.util.Spliterator;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-
 /**
  * Set which grows, if needed but never shrinks.
  * This set does not guarantee any order. Although due to the way it is implemented the elements have a certain order.

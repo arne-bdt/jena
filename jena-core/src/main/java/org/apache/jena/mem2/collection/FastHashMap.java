@@ -25,7 +25,6 @@ import org.apache.jena.mem2.iterator.SparseArrayIterator;
 import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
@@ -159,22 +158,6 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
         put(key, key.hashCode(), value);
     }
 
-//    @Override
-//    public void putAt(int index, K key, V value) {
-//        if (index < 0) {
-//            final var hashCode = key.hashCode();
-//            if (tryGrowPositionsArrayIfNeeded()) {
-//                index = findPosition(key, hashCode);
-//            }
-//            final var eIndex = getFreeKeyIndex();
-//            keys[eIndex] = key;
-//            values[eIndex] = value;
-//            hashCodesOrDeletedIndices[eIndex] = hashCode;
-//            positions[~index] = ~eIndex;
-//        } else {
-//            values[~positions[index]] = value;
-//        }
-//    }
 
     @Override
     public void put(K key, int hashCode, V value) {

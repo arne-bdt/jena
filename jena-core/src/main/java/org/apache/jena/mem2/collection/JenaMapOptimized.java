@@ -20,13 +20,8 @@
  */
 package org.apache.jena.mem2.collection;
 
-import org.apache.jena.util.iterator.ExtendedIterator;
-
-import java.util.Spliterator;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * A map from keys of type {@code K} to values of type {@code V}.
