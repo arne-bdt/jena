@@ -311,6 +311,68 @@ public class FastHashSetTest2 {
         assertThrows(ConcurrentModificationException.class, spliterator::next);
     }
 
+    @Test
+    public void testForEachKeyVisitsEveryKeyWithItsIndex() {
+        var items = List.of("a", "b", "c", "d", "e");
+        sut = new FastStringHashSet(3);
+        for (String item : items) {
+            sut.addAndGetIndex(item);
+        }
+
+        final java.util.Map<String, Integer> seen = new java.util.HashMap<>();
+        sut.forEachKey(seen::put);
+
+        assertEquals(items.size(), seen.size());
+        for (var i = 0; i < items.size(); i++) {
+            // forEachKey reports the stable insertion index per key.
+            assertEquals(Integer.valueOf(i), seen.get(items.get(i)));
+        }
+    }
+
+    @Test
+    public void testForEachKeyOnEmptySetIsNoOp() {
+        sut = new FastStringHashSet(3);
+        sut.forEachKey((k, i) -> fail("consumer must not be called on empty set"));
+    }
+
+    @Test
+    public void testForEachKeySkipsRemovedSlots() {
+        sut = new FastStringHashSet(3);
+        sut.addAndGetIndex("a");
+        sut.addAndGetIndex("b");
+        sut.addAndGetIndex("c");
+        // Remove the middle entry; forEachKey must not visit the freed slot.
+        sut.tryRemove("b");
+
+        final var keys = new java.util.ArrayList<String>();
+        sut.forEachKey((k, i) -> keys.add(k));
+        assertEquals(2, keys.size());
+        assertTrue(keys.contains("a"));
+        assertTrue(keys.contains("c"));
+        assertFalse(keys.contains("b"));
+    }
+
+    @Test
+    public void testForEachKeyParallelVisitsEveryKey() {
+        final var checkSum = new java.util.concurrent.atomic.AtomicInteger();
+        final var visitedCount = new java.util.concurrent.atomic.AtomicInteger();
+        final int n = 1000;
+        int expectedSum = 0;
+        sut = new FastStringHashSet();
+        for (int i = 0; i < n; i++) {
+            sut.addAndGetIndex(Integer.toString(i));
+            expectedSum += i;
+        }
+
+        sut.forEachKeyParallel((k, idx) -> {
+            checkSum.addAndGet(Integer.parseInt(k));
+            visitedCount.incrementAndGet();
+        });
+
+        assertEquals(n, visitedCount.get());
+        assertEquals(expectedSum, checkSum.get());
+    }
+
     private static class FastObjectHashSet extends org.apache.jena.mem2.collection.FastHashSet<Object> {
 
         public FastObjectHashSet() {
