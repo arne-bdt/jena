@@ -209,7 +209,6 @@ public class EagerStoreStrategy implements StoreStrategy {
 
     @Override
     public void addToIndex(final Triple triple, final int index) {
-        final var indexSize = triples.getInternalKeysLength();
         addSIndex(triple, index);
         addPIndex(triple, index);
         addOIndex(triple, index);

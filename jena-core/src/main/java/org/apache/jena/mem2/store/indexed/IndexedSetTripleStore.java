@@ -104,8 +104,6 @@ public class IndexedSetTripleStore implements TripleStore {
                     -> new ManualStoreStrategy();
             case MINIMAL
                     -> new MinimalStoreStrategy(triples);
-            default
-                    -> throw new IllegalArgumentException("Unknown indexing strategy: " + indexingStrategy);
         };
     }
 
@@ -201,25 +199,12 @@ public class IndexedSetTripleStore implements TripleStore {
     @Override
     public boolean contains(Triple tripleMatch) {
         final var matchPattern = PatternClassifier.classify(tripleMatch);
-        switch (matchPattern) {
-
-            case SUB_ANY_ANY,
-                 ANY_PRE_ANY,
-                 ANY_ANY_OBJ,
-                 SUB_PRE_ANY,
-                 ANY_PRE_OBJ,
-                 SUB_ANY_OBJ:
-                return currentStrategy.containsMatch(tripleMatch, matchPattern);
-
-            case SUB_PRE_OBJ:
-                return this.triples.containsKey(tripleMatch);
-
-            case ANY_ANY_ANY:
-                return !this.isEmpty();
-
-            default:
-                throw new IllegalStateException(String.format(UNKNOWN_PATTERN_CLASSIFIER, matchPattern));
-        }
+        return switch (matchPattern) {
+            case SUB_ANY_ANY, ANY_PRE_ANY, ANY_ANY_OBJ, SUB_PRE_ANY, ANY_PRE_OBJ, SUB_ANY_OBJ ->
+                    currentStrategy.containsMatch(tripleMatch, matchPattern);
+            case SUB_PRE_OBJ -> this.triples.containsKey(tripleMatch);
+            case ANY_ANY_ANY -> !this.isEmpty();
+        };
     }
 
     @Override
@@ -230,49 +215,24 @@ public class IndexedSetTripleStore implements TripleStore {
     @Override
     public Stream<Triple> stream(Triple tripleMatch) {
         var pattern = PatternClassifier.classify(tripleMatch);
-        switch (pattern) {
-
-            case SUB_PRE_OBJ:
-                return this.triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
-
-            case SUB_PRE_ANY,
-                 SUB_ANY_OBJ,
-                 SUB_ANY_ANY,
-                 ANY_PRE_OBJ,
-                 ANY_PRE_ANY,
-                 ANY_ANY_OBJ:
-                return this.currentStrategy.streamMatch(tripleMatch, pattern);
-
-            case ANY_ANY_ANY:
-                return this.stream();
-
-            default:
-                throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
-        }
+        return switch (pattern) {
+            case SUB_PRE_OBJ -> this.triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
+            case SUB_PRE_ANY, SUB_ANY_OBJ, SUB_ANY_ANY, ANY_PRE_OBJ, ANY_PRE_ANY, ANY_ANY_OBJ ->
+                    this.currentStrategy.streamMatch(tripleMatch, pattern);
+            case ANY_ANY_ANY -> this.stream();
+        };
     }
 
     @Override
     public ExtendedIterator<Triple> find(Triple tripleMatch) {
         var pattern = PatternClassifier.classify(tripleMatch);
-        switch (pattern) {
-
-            case SUB_PRE_OBJ:
-                return this.triples.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NiceIterator.emptyIterator();
-
-            case SUB_PRE_ANY,
-                 SUB_ANY_OBJ,
-                 SUB_ANY_ANY,
-                 ANY_PRE_OBJ,
-                 ANY_PRE_ANY,
-                 ANY_ANY_OBJ:
-                return currentStrategy.findMatch(tripleMatch, pattern);
-
-            case ANY_ANY_ANY:
-                return this.triples.keyIterator();
-
-            default:
-                throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
-        }
+        return switch (pattern) {
+            case SUB_PRE_OBJ ->
+                    this.triples.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NiceIterator.emptyIterator();
+            case SUB_PRE_ANY, SUB_ANY_OBJ, SUB_ANY_ANY, ANY_PRE_OBJ, ANY_PRE_ANY, ANY_ANY_OBJ ->
+                    currentStrategy.findMatch(tripleMatch, pattern);
+            case ANY_ANY_ANY -> this.triples.keyIterator();
+        };
     }
 
     @Override
