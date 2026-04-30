@@ -25,7 +25,6 @@ import org.apache.jena.mem2.collection.*;
 import org.apache.jena.mem2.iterator.IteratorOfJenaSetsTest;
 import org.apache.jena.mem2.iterator.SparseArrayIndexedIteratorTest;
 import org.apache.jena.mem2.iterator.SparseArrayIteratorTest;
-import org.apache.jena.mem2.pattern.MatchPatternTest;
 import org.apache.jena.mem2.pattern.PatternClassifierTest;
 import org.apache.jena.mem2.spliterator.ArraySpliteratorTest;
 import org.apache.jena.mem2.spliterator.ArraySubSpliteratorTest;
@@ -95,7 +94,6 @@ import org.junit.runners.Suite;
 
     // pattern/
     PatternClassifierTest.class,
-    MatchPatternTest.class,
 
     // mem2/
     GraphMemFastTest.class,

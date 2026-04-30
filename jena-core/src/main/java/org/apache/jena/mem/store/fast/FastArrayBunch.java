@@ -127,7 +127,6 @@ public abstract class FastArrayBunch implements FastTripleBunch {
         for (int i = 0; i < size; i++) {
             if (areEqual(t, elements[i])) {
                 elements[i] = elements[--size];
-                elements[size] = null;
                 return true;
             }
         }
@@ -139,7 +138,6 @@ public abstract class FastArrayBunch implements FastTripleBunch {
         for (int i = 0; i < size; i++) {
             if (areEqual(t, elements[i])) {
                 elements[i] = elements[--size];
-                elements[size] = null;
                 return;
             }
         }
