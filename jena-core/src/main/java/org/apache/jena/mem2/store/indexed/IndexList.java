@@ -121,13 +121,14 @@ public class IndexList {
     }
 
     /**
-     * Grows the backing array. Doubles up to size 32, then grows by factor 1.5.
+     * Grows the backing array. Grows by factor 1.5.
      */
     private void grow() {
         final var oldElements = elements;
-        final var newSize = elements.length < 32
-                ? elements.length << 1
-                : (elements.length >> 1) + elements.length;
+        var newSize = (elements.length >> 1) + elements.length;
+        if (newSize < 0) {
+            newSize = Integer.MAX_VALUE;
+        }
         elements = new int[newSize];
         System.arraycopy(oldElements, 0, elements, 0, pos);
     }
