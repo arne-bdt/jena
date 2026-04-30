@@ -85,12 +85,9 @@ public class FastTripleStore implements TripleStore {
      * promoted to a hashed bunch.
      */
     protected static final int MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT = 32;
-    /** Index of triples by subject node. */
-    final FastHashedBunchMap subjects;
-    /** Index of triples by predicate node. */
-    final FastHashedBunchMap predicates;
-    /** Index of triples by object node. */
-    final FastHashedBunchMap objects;
+    private final FastHashedBunchMap subjects;
+    private final FastHashedBunchMap predicates;
+    private final FastHashedBunchMap objects;
     private int size = 0;
 
     /**

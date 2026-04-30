@@ -48,9 +48,8 @@ import java.util.stream.Stream;
  */
 public class IndexedSetTripleStore implements TripleStore {
 
-    private static final String UNKNOWN_PATTERN_CLASSIFIER = "Unknown pattern classifier: %s";
     /** The flat set of stored triples. Each element has a stable integer index. */
-    final TripleSet triples; // In this special set, each element has an index
+    private final TripleSet triples;
     private StoreStrategy currentStrategy;
     private final IndexingStrategy indexingStrategy;
 
