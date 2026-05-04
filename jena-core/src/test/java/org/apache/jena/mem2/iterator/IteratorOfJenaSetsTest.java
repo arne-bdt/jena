@@ -96,7 +96,7 @@ public class IteratorOfJenaSetsTest {
     private static class StringSet extends FastHashSet<String> {
 
         public StringSet(String... strings) {
-            super(strings.length);
+            super(strings.length, String[]::new);
             for (String s : strings) {
                 tryAdd(s);
             }

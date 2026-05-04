@@ -37,7 +37,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testConstructWithInitialSizeAndAdd() {
-        var sut = new FastHashMap<Node, Object>(3);
+        var sut = new FastHashMap<Node, Object>(3, Node[]::new, Object[]::new);
         sut.put(node("s"), null);
         sut.put(node("s1"), null);
         sut.put(node("s2"), null);
@@ -48,7 +48,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testGetValueAt() {
-        var sut = new FastHashMap<Node, Object>();
+        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
         sut.put(node("s"), 0);
         sut.put(node("s1"), 1);
         sut.put(node("s2"), 2);
@@ -60,7 +60,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testCopyConstructor() {
-        var original = new FastHashMap<Node, Object>();
+        var original = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
         original.put(node("s"), 0);
         original.put(node("s1"), 1);
         original.put(node("s2"), 2);
@@ -75,7 +75,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testCopyConstructorWithValueMapping() {
-        var original = new FastHashMap<Node, Object>();
+        var original = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
         original.put(node("s"), 0);
         original.put(node("s1"), 1);
         original.put(node("s2"), 2);
@@ -94,7 +94,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testCopyConstructorAddAndDeleteHasNoSideEffects() {
-        var original = new FastHashMap<Node, Object>();
+        var original = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
         original.put(node("s"), 0);
         original.put(node("s1"), 1);
         original.put(node("s2"), 2);
@@ -120,7 +120,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testPutAndGetIndexAssignsSequentialIndicesAndReturnsExistingForRepeats() {
-        var sut = new FastHashMap<Node, Object>();
+        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
         // First-time puts assign new indices.
         final int i0 = sut.putAndGetIndex(node("s"), 100);
         final int i1 = sut.putAndGetIndex(node("s1"), 200);
@@ -135,7 +135,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testPutAndGetIndexOverwritesValueForExistingKey() {
-        var sut = new FastHashMap<Node, Object>();
+        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
         final int i0 = sut.putAndGetIndex(node("s"), 100);
         // Re-putting the same key returns the SAME index but with the new value.
         final int i0Again = sut.putAndGetIndex(node("s"), 999);
@@ -146,7 +146,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testForEachKeyVisitsEveryEntryWithItsIndex() {
-        var sut = new FastHashMap<Node, Object>();
+        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
         sut.putAndGetIndex(node("a"), 0);
         sut.putAndGetIndex(node("b"), 1);
         sut.putAndGetIndex(node("c"), 2);
@@ -162,7 +162,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testForEachKeySkipsRemovedSlots() {
-        var sut = new FastHashMap<Node, Object>();
+        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
         sut.putAndGetIndex(node("a"), 0);
         sut.putAndGetIndex(node("b"), 1);
         sut.putAndGetIndex(node("c"), 2);
@@ -177,13 +177,13 @@ public class FastHashMapTest2 {
 
     @Test
     public void testForEachKeyOnEmptyMapIsNoOp() {
-        var sut = new FastHashMap<Node, Object>();
+        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
         sut.forEachKey((k, i) -> fail("consumer must not be called on an empty map"));
     }
 
     @Test
     public void testForEachKeyParallelVisitsEveryEntry() {
-        var sut = new FastHashMap<Node, Object>();
+        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
         final int n = 1000;
         for (int i = 0; i < n; i++) {
             sut.putAndGetIndex(node("k" + i), i);

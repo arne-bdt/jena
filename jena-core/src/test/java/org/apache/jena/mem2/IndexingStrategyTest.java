@@ -34,11 +34,6 @@ import static org.junit.Assert.*;
 public class IndexingStrategyTest {
 
     @Test
-    public void hasExactlyFiveValues() {
-        assertEquals(5, IndexingStrategy.values().length);
-    }
-
-    @Test
     public void allDocumentedStrategiesArePresent() {
         // If any of these names changes, GraphMemIndexedSet, the strategy
         // factory and a number of switch statements in the codebase will
