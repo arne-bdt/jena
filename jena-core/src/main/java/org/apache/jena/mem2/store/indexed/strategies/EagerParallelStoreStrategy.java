@@ -50,7 +50,7 @@ import java.util.stream.StreamSupport;
  * its keys array, the {@code growReverseIndices} hook is invoked to grow the
  * reverse arrays too.
  */
-public class EagerStoreStrategy implements StoreStrategy {
+public class EagerParallelStoreStrategy implements StoreStrategy {
     private static final String UNSUPPORTED_PATTERN_CLASSIFIER = "Unsupported pattern classifier: %s";
 
     final TripleSet triples;
@@ -66,10 +66,8 @@ public class EagerStoreStrategy implements StoreStrategy {
      * triple already present.
      *
      * @param triples  the canonical triple set
-     * @param parallel if {@code true}, build the three indices concurrently;
-     *                 otherwise build them sequentially
      */
-    public EagerStoreStrategy(final TripleSet triples, boolean parallel) {
+    public EagerParallelStoreStrategy(final TripleSet triples) {
         this.triples = triples;
         this.triples.setOnKeysGrowHook(this::growReverseIndices);
         this.sNodeToIndices = new NodesToIndices();
@@ -79,21 +77,7 @@ public class EagerStoreStrategy implements StoreStrategy {
         this.sReverseIndices = new int[indexSize];
         this.pReverseIndices = new int[indexSize];
         this.oReverseIndices = new int[indexSize];
-        if (parallel) {
-            indexAllParallel();
-        } else {
-            indexAll();
-        }
-    }
-
-    /**
-     * Build a new eager strategy and index the triple set sequentially.
-     * Equivalent to {@code EagerStoreStrategy(triples, false)}.
-     *
-     * @param triples the canonical triple set
-     */
-    public EagerStoreStrategy(final TripleSet triples) {
-        this(triples, false);
+        indexAllParallel();
     }
 
     /**
@@ -110,7 +94,7 @@ public class EagerStoreStrategy implements StoreStrategy {
      * @param strategyToCopyIndicesFrom the strategy whose indices should
      *                                  be cloned
      */
-    public EagerStoreStrategy(final TripleSet triples, EagerStoreStrategy strategyToCopyIndicesFrom) {
+    public EagerParallelStoreStrategy(final TripleSet triples, EagerParallelStoreStrategy strategyToCopyIndicesFrom) {
         this.triples = triples;
         this.triples.setOnKeysGrowHook(this::growReverseIndices);
         this.sNodeToIndices = strategyToCopyIndicesFrom.sNodeToIndices.copy();
@@ -124,15 +108,6 @@ public class EagerStoreStrategy implements StoreStrategy {
     @Override
     public boolean isIndexInitialized() {
         return true;
-    }
-
-    /**
-     * Sequentially populate the three subject/predicate/object indices with
-     * every triple currently in {@code triples}.
-     */
-    private void indexAll() {
-        // Initialize the index by adding all triples to the index
-        triples.forEachKey(this::addToIndex);
     }
 
     /**

@@ -104,4 +104,13 @@ public interface StoreStrategy {
      * @return an iterator over the triples that match the given pattern
      */
     ExtendedIterator<Triple> findMatch(final Triple tripleMatch, final MatchPattern pattern);
+
+    /**
+     * Check if the index has been initialized and all triples are indexed.
+     *
+     * @return true if the index is initialized, false otherwise
+     */
+    default boolean isIndexInitialized() {
+        return false;
+    }
 }

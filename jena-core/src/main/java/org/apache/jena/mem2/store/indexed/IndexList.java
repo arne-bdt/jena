@@ -188,10 +188,10 @@ public class IndexList {
         final var largerSize = larger.size();
         var pos = smaller.lastPos();
         while (-1 < pos) {
-            final var tripleIndex = smaller.getIndexAt(pos--);
+            final var tripleIndex = smaller.elements[pos--];
             final var potentialIndexInLarger = reverseIndicesLarger[tripleIndex];
             if(potentialIndexInLarger < largerSize) {
-                if(tripleIndex == larger.getIndexAt(potentialIndexInLarger)) {
+                if(tripleIndex == larger.elements[potentialIndexInLarger]) {
                     return true;
                 }
             }

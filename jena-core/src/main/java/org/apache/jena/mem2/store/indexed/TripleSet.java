@@ -56,7 +56,7 @@ public class TripleSet
      * Creates an empty triple set.
      */
     public TripleSet() {
-        super();
+        super(Triple[]::new);
     }
 
     /**
@@ -72,7 +72,7 @@ public class TripleSet
     protected void growKeysAndHashCodeArrays() {
         super.growKeysAndHashCodeArrays();
         if(onKeysGrowHook != null) {
-            onKeysGrowHook.accept(getInternalKeysLength());
+            onKeysGrowHook.accept(keys.length);
         }
     }
 
@@ -85,5 +85,16 @@ public class TripleSet
     @Override
     public TripleSet copy() {
         return new TripleSet(this);
+    }
+
+    /**
+     * Returns the current length of the underlying {@code keys} array.
+     * This is the upper bound on the indices that may currently be valid;
+     * useful for callers that maintain parallel arrays keyed by entry index.
+     *
+     * @return the current capacity of the {@code keys} array
+     */
+    public int getInternalKeysLength() {
+        return keys.length;
     }
 }

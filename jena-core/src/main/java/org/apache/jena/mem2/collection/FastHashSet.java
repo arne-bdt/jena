@@ -21,6 +21,8 @@
 
 package org.apache.jena.mem2.collection;
 
+import java.util.function.IntFunction;
+
 /**
  * Hash set specialization built on top of {@link FastHashBase}.
  * Grows on demand but never shrinks, does not guarantee iteration order,
@@ -41,15 +43,15 @@ public class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimi
      *
      * @param initialSize the initial capacity of the keys array
      */
-    public FastHashSet(int initialSize) {
-        super(initialSize);
+    public FastHashSet(final int initialSize, final IntFunction<K[]> keysFactory) {
+        super(initialSize, keysFactory);
     }
 
     /**
      * Creates a set with the default initial capacity.
      */
-    public FastHashSet() {
-        super();
+    public FastHashSet(final IntFunction<K[]> keysFactory) {
+        super(keysFactory);
     }
 
     /**

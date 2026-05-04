@@ -85,6 +85,8 @@ public class IndexedSetTripleStore implements TripleStore {
         this.indexingStrategy = storeToCopy.indexingStrategy;
         if(storeToCopy.currentStrategy instanceof EagerStoreStrategy eagerStoreStrategy) {
             currentStrategy = new EagerStoreStrategy(triples, eagerStoreStrategy); // Copy the bitmaps from the original strategy
+        } else if (storeToCopy.currentStrategy instanceof EagerParallelStoreStrategy eagerParallelStoreStrategy) {
+            currentStrategy = new EagerParallelStoreStrategy(triples, eagerParallelStoreStrategy); // Copy the bitmaps from the original strategy) {
         } else {
             currentStrategy = createStoreStrategy(indexingStrategy);
         }
@@ -95,6 +97,8 @@ public class IndexedSetTripleStore implements TripleStore {
         return switch (indexingStrategy) {
             case EAGER
                     -> new EagerStoreStrategy(triples);
+            case EAGER_PARALLEL
+                    -> new EagerParallelStoreStrategy(triples);
             case LAZY
                     -> new LazyStoreStrategy(this::setCurrentStrategyToNewEagerStoreStrategy);
             case LAZY_PARALLEL
@@ -119,14 +123,12 @@ public class IndexedSetTripleStore implements TripleStore {
     }
 
     /**
-     * Check if the index of this store is initialized.
-     * This will return true if the current strategy is EagerStoreStrategy,
-     * which means that the index has been initialized and all triples are indexed.
+     * Check if the index has been initialized and all triples are indexed.
      *
      * @return true if the index is initialized, false otherwise
      */
     public boolean isIndexInitialized() {
-        return currentStrategy instanceof EagerStoreStrategy;
+        return currentStrategy.isIndexInitialized();
     }
 
     /**

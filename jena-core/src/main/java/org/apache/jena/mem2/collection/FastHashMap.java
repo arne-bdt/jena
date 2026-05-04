@@ -26,6 +26,7 @@ import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Spliterator;
+import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -52,24 +53,26 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
      */
     protected V[] values;
 
+    protected final IntFunction<V[]> valuesFactory;
+
     /**
      * Creates a map with the given initial key-array capacity.
      *
      * @param initialSize the initial capacity of the keys/values arrays
      */
-    public FastHashMap(int initialSize) {
-        super(initialSize);
-        //noinspection unchecked
-        this.values = (V[])new Object[keys.length];
+    public FastHashMap(final int initialSize, final IntFunction<K[]> keysFactory, final IntFunction<V[]> valuesFactory) {
+        super(initialSize,  keysFactory);
+        this.valuesFactory = valuesFactory;
+        this.values = valuesFactory.apply(keys.length);
     }
 
     /**
      * Creates a map with the default initial capacity.
      */
-    public FastHashMap() {
-        super();
-        //noinspection unchecked
-        this.values = (V[])new Object[keys.length];
+    public FastHashMap(final IntFunction<K[]> keysFactory, final IntFunction<V[]> valuesFactory) {
+        super(keysFactory);
+        this.valuesFactory = valuesFactory;
+        this.values = valuesFactory.apply(keys.length);
     }
 
     /**
@@ -80,8 +83,8 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
      */
     public FastHashMap(final FastHashMap<K, V> mapToCopy) {
         super(mapToCopy);
-        //noinspection unchecked
-        this.values = (V[])new Object[keys.length];
+        this.valuesFactory = mapToCopy.valuesFactory;
+        this.values = this.valuesFactory.apply(mapToCopy.values.length);
         System.arraycopy(mapToCopy.values, 0, this.values, 0, mapToCopy.values.length);
     }
 
@@ -96,8 +99,8 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
      */
     public FastHashMap(final FastHashMap<K, V> mapToCopy, final UnaryOperator<V> valueProcessor) {
         super(mapToCopy);
-        //noinspection unchecked
-        this.values = (V[])new Object[keys.length];
+        this.valuesFactory = mapToCopy.valuesFactory;
+        this.values = this.valuesFactory.apply(mapToCopy.values.length);
         for (int i = 0; i < mapToCopy.values.length; i++) {
             final var value = mapToCopy.values[i];
             if (value != null) {
@@ -111,8 +114,7 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
     protected void growKeysAndHashCodeArrays() {
         super.growKeysAndHashCodeArrays();
         final var oldValues = values;
-        //noinspection unchecked
-        values = (V[])new Object[keys.length];
+        values = valuesFactory.apply(keys.length);
         System.arraycopy(oldValues, 0, values, 0, oldValues.length);
     }
 
@@ -125,8 +127,7 @@ public class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimiz
     @Override
     public void clear() {
         super.clear();
-        //noinspection unchecked
-        this.values = (V[])new Object[keys.length];
+        this.values = valuesFactory.apply(keys.length);
     }
 
     @Override

@@ -24,6 +24,8 @@ import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Node;
 import org.apache.jena.mem2.collection.FastHashMap;
 
+import java.util.function.Supplier;
+
 /**
  * {@link FastHashMap} specialized to map a {@link Node} to its associated
  * {@link FastTripleBunch}. Used by {@link FastTripleStore} to maintain the
@@ -33,11 +35,14 @@ public class FastHashedBunchMap
         extends FastHashMap<Node, FastTripleBunch>
         implements Copyable<FastHashedBunchMap> {
 
+    private final Supplier<FastTripleBunch> newValueSupplier;
+
     /**
      * Creates an empty bunch map with the default initial capacity.
      */
-    public FastHashedBunchMap() {
-        super();
+    public FastHashedBunchMap(Supplier<FastTripleBunch> newValueSupplier) {
+        super(Node[]::new, FastTripleBunch[]::new);
+        this.newValueSupplier = newValueSupplier;
     }
 
     /**
@@ -50,10 +55,30 @@ public class FastHashedBunchMap
      */
     private FastHashedBunchMap(final FastHashedBunchMap mapToCopy) {
         super(mapToCopy, FastTripleBunch::copy);
+        this.newValueSupplier = mapToCopy.newValueSupplier;
     }
 
     @Override
     public FastHashedBunchMap copy() {
         return new FastHashedBunchMap(this);
+    }
+
+    public FastTripleBunch getOrNew(Node key) {
+        final var hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            if (tryGrowPositionsArrayIfNeeded()) {
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
+            }
+            final var value = newValueSupplier.get();
+            final var eIndex = getFreeKeyIndex();
+            keys[eIndex] = key;
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
+            values[eIndex] = value;
+            positions[~pIndex] = ~eIndex;
+            return value;
+        } else {
+            return values[~positions[pIndex]];
+        }
     }
 }

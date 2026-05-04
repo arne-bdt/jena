@@ -41,7 +41,7 @@ public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTr
      *            promoted)
      */
     public FastHashedTripleBunch(final JenaSet<Triple> set) {
-        super((set.size() >> 1) + set.size()); //it should not only fit but also have some space for growth
+        super((set.size() >> 1) + set.size(), Triple[]::new); //it should not only fit but also have some space for growth
         set.keyIterator().forEachRemaining(this::addUnchecked);
     }
 
@@ -59,7 +59,7 @@ public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTr
      * Creates an empty hashed bunch with the default initial capacity.
      */
     public FastHashedTripleBunch() {
-        super();
+        super(Triple[]::new);
     }
 
     @Override

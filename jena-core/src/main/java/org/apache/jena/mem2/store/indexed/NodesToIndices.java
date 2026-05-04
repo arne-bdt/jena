@@ -25,6 +25,8 @@ import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Node;
 import org.apache.jena.mem2.collection.FastHashMap;
 
+import java.util.function.Supplier;
+
 /**
  * {@link FastHashMap} from {@link Node} to {@link IndexList}, used by the
  * eager indexing strategy as one of the three subject/predicate/object
@@ -39,7 +41,7 @@ public class NodesToIndices
      * Creates an empty map with the default initial capacity.
      */
     public NodesToIndices() {
-        super();
+        super(Node[]::new, IndexList[]::new);
     }
 
     /**
@@ -61,5 +63,24 @@ public class NodesToIndices
     @Override
     public NodesToIndices copy() {
         return new NodesToIndices(this);
+    }
+
+    public IndexList getOrNew(Node key) {
+        final var hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            if (tryGrowPositionsArrayIfNeeded()) {
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
+            }
+            final var value = new IndexList();
+            final var eIndex = getFreeKeyIndex();
+            keys[eIndex] = key;
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
+            values[eIndex] = value;
+            positions[~pIndex] = ~eIndex;
+            return value;
+        } else {
+            return values[~positions[pIndex]];
+        }
     }
 }

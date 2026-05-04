@@ -27,6 +27,7 @@ import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Spliterator;
+import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -94,6 +95,8 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
      */
     protected int[] positions;
 
+    protected final IntFunction<K[]> keysFactory;
+
     /**
      * Creates a base collection sized to hold at least {@code initialSize}
      * entries before growing.
@@ -102,14 +105,14 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
      *                    table is sized to the next power of two at least
      *                    twice as large
      */
-    protected FastHashBase(int initialSize) {
+    protected FastHashBase(final int initialSize, final IntFunction<K[]> keysFactory) {
         var positionsSize = Integer.highestOneBit(initialSize << 1);
         if (positionsSize < initialSize << 1) {
             positionsSize <<= 1;
         }
         this.positions = new int[positionsSize];
-        //noinspection unchecked
-        this.keys = (K[])new Object[initialSize];
+        this.keysFactory = keysFactory;
+        this.keys = keysFactory.apply(initialSize);
         this.hashCodesOrDeletedIndices = new int[initialSize];
     }
 
@@ -118,10 +121,10 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
      * ({@link #MINIMUM_HASHES_SIZE} for the probe table and
      * {@link #MINIMUM_ELEMENTS_SIZE} for the keys array).
      */
-    protected FastHashBase() {
+    protected FastHashBase(final IntFunction<K[]> keysFactory) {
         this.positions = new int[MINIMUM_HASHES_SIZE];
-        //noinspection unchecked
-        this.keys = (K[])new Object[MINIMUM_ELEMENTS_SIZE];
+        this.keysFactory = keysFactory;
+        this.keys = keysFactory.apply(MINIMUM_ELEMENTS_SIZE);
         this.hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
     }
 
@@ -138,8 +141,8 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         this.hashCodesOrDeletedIndices = new int[baseToCopy.hashCodesOrDeletedIndices.length];
         System.arraycopy(baseToCopy.hashCodesOrDeletedIndices, 0, this.hashCodesOrDeletedIndices, 0, baseToCopy.keysPos);
 
-        //noinspection unchecked
-        this.keys = (K[])new Object[baseToCopy.keys.length];
+        this.keysFactory = baseToCopy.keysFactory;
+        this.keys = this.keysFactory.apply(baseToCopy.keys.length);
         System.arraycopy(baseToCopy.keys, 0, this.keys, 0, baseToCopy.keysPos);
 
         this.keysPos = baseToCopy.keysPos;
@@ -249,8 +252,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
             newSize = Integer.MAX_VALUE;
         }
         final var oldKeys = this.keys;
-        //noinspection unchecked
-        this.keys = (K[])new Object[newSize];
+        this.keys = keysFactory.apply(newSize);
         System.arraycopy(oldKeys, 0, keys, 0, oldKeys.length);
         final var oldHashCodes = this.hashCodesOrDeletedIndices;
         this.hashCodesOrDeletedIndices = new int[newSize];
@@ -487,8 +489,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     @Override
     public void clear() {
         positions = new int[MINIMUM_HASHES_SIZE];
-        //noinspection unchecked
-        keys = (K[])new Object[MINIMUM_ELEMENTS_SIZE];
+        keys = this.keysFactory.apply(MINIMUM_ELEMENTS_SIZE);
         hashCodesOrDeletedIndices = new int[MINIMUM_ELEMENTS_SIZE];
         keysPos = 0;
         lastDeletedIndex = -1;
@@ -523,17 +524,6 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         } else {
             return ~positions[pIndex];
         }
-    }
-
-    /**
-     * Returns the current length of the underlying {@code keys} array.
-     * This is the upper bound on the indices that may currently be valid;
-     * useful for callers that maintain parallel arrays keyed by entry index.
-     *
-     * @return the current capacity of the {@code keys} array
-     */
-    public int getInternalKeysLength() {
-        return keys.length;
     }
 
     /**
