@@ -52,7 +52,7 @@ public class IndexedSetTripleStoreTest extends AbstractTripleStoreTest {
     @Override
     protected TripleStore createTripleStore() {
         switch (indexingStrategy) {
-            case EAGER, EAGER_PARALLEL, LAZY, LAZY_PARALLEL, MINIMAL:
+            case EAGER, LAZY, LAZY_PARALLEL, MINIMAL:
                 return new IndexedSetTripleStore(indexingStrategy);
             case MANUAL:
                 return setupStoreWithSpyForSpecialManualStrategy();
@@ -148,7 +148,7 @@ public class IndexedSetTripleStoreTest extends AbstractTripleStoreTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL:
+            case EAGER:
                 assertTrue(sut.isIndexInitialized());
                 break;
             case LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
@@ -163,7 +163,7 @@ public class IndexedSetTripleStoreTest extends AbstractTripleStoreTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL:
+            case EAGER:
                 assertTrue(sut.isIndexInitialized());
                 break;
             case LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
@@ -185,7 +185,7 @@ public class IndexedSetTripleStoreTest extends AbstractTripleStoreTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL, LAZY, LAZY_PARALLEL:
+            case EAGER, LAZY, LAZY_PARALLEL:
                 assertTrue(sut.isIndexInitialized());
                 break;
             case MANUAL, MINIMAL:
@@ -206,7 +206,7 @@ public class IndexedSetTripleStoreTest extends AbstractTripleStoreTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL, LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
+            case EAGER, LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
                 assertTrue(sut.isIndexInitialized());
                 break;
             default:
@@ -224,7 +224,7 @@ public class IndexedSetTripleStoreTest extends AbstractTripleStoreTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL, LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
+            case EAGER, LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
                 assertTrue(sut.isIndexInitialized());
                 break;
             default:
@@ -243,7 +243,7 @@ public class IndexedSetTripleStoreTest extends AbstractTripleStoreTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL:
+            case EAGER:
                 assertTrue(sut.isIndexInitialized());
                 break;
             case LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:

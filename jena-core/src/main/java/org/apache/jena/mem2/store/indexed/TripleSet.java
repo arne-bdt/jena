@@ -56,7 +56,7 @@ public class TripleSet
      * Creates an empty triple set.
      */
     public TripleSet() {
-        super(Triple[]::new);
+        super();
     }
 
     /**
@@ -66,6 +66,11 @@ public class TripleSet
      */
     private TripleSet(final TripleSet setToCopy) {
         super(setToCopy);
+    }
+
+    @Override
+    protected Triple[] newKeysArray(int size) {
+        return new Triple[size];
     }
 
     @Override

@@ -30,7 +30,13 @@ import static org.junit.Assert.*;
 
 public class SparseArrayIteratorTest {
 
-    private static final JenaSet<Object> dummySetForConcurrencyCheck = new FastHashSet<Object>(Object[]::new);
+    private static final JenaSet<Object> dummySetForConcurrencyCheck = new FastHashSet<>() {
+        @Override
+        protected Object[] newKeysArray(int size) {
+            return new Object[size];
+        }
+    };
+
     private org.apache.jena.mem2.iterator.SparseArrayIterator<String> iterator;
 
     @Test

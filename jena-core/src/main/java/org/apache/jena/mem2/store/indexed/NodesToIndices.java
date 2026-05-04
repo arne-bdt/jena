@@ -41,7 +41,7 @@ public class NodesToIndices
      * Creates an empty map with the default initial capacity.
      */
     public NodesToIndices() {
-        super(Node[]::new, IndexList[]::new);
+        super();
     }
 
     /**
@@ -52,6 +52,16 @@ public class NodesToIndices
      */
     public NodesToIndices(final NodesToIndices mapToCopy) {
         super(mapToCopy, IndexList::clone);
+    }
+
+    @Override
+    protected Node[] newKeysArray(int size) {
+        return new Node[size];
+    }
+
+    @Override
+    protected IndexList[] newValuesArray(int size) {
+        return new IndexList[size];
     }
 
     /**

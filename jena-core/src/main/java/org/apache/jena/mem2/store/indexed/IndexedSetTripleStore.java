@@ -85,8 +85,6 @@ public class IndexedSetTripleStore implements TripleStore {
         this.indexingStrategy = storeToCopy.indexingStrategy;
         if(storeToCopy.currentStrategy instanceof EagerStoreStrategy eagerStoreStrategy) {
             currentStrategy = new EagerStoreStrategy(triples, eagerStoreStrategy); // Copy the bitmaps from the original strategy
-        } else if (storeToCopy.currentStrategy instanceof EagerParallelStoreStrategy eagerParallelStoreStrategy) {
-            currentStrategy = new EagerParallelStoreStrategy(triples, eagerParallelStoreStrategy); // Copy the bitmaps from the original strategy) {
         } else {
             currentStrategy = createStoreStrategy(indexingStrategy);
         }
@@ -97,8 +95,6 @@ public class IndexedSetTripleStore implements TripleStore {
         return switch (indexingStrategy) {
             case EAGER
                     -> new EagerStoreStrategy(triples);
-            case EAGER_PARALLEL
-                    -> new EagerParallelStoreStrategy(triples);
             case LAZY
                     -> new LazyStoreStrategy(this::setCurrentStrategyToNewEagerStoreStrategy);
             case LAZY_PARALLEL

@@ -32,7 +32,12 @@ import static org.junit.Assert.*;
 
 public class ArraySpliteratorTest {
 
-    private static final JenaSet<Object> dummySetForConcurrencyCheck = new FastHashSet<Object>(Object[]::new);
+    private static final JenaSet<Object> dummySetForConcurrencyCheck = new FastHashSet<>() {
+        @Override
+        protected Object[] newKeysArray(int size) {
+            return new Object[size];
+        }
+    };
 
     @Test
     public void tryAdvanceEmpty() {

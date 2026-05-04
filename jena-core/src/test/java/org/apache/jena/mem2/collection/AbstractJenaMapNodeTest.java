@@ -613,4 +613,16 @@ public abstract class AbstractJenaMapNodeTest {
         }
         assertTrue(sut.isEmpty());
     }
+
+    protected static class FastNodeHashMap extends FastHashMap<Node, Object> {
+        @Override
+        protected Node[] newKeysArray(int size) {
+            return new Node[size];
+        }
+
+        @Override
+        protected Object[] newValuesArray(int size) {
+            return new Object[size];
+        }
+    }
 }

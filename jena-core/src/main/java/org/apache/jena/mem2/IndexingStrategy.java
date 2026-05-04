@@ -50,8 +50,6 @@ public enum IndexingStrategy {
      */
     EAGER,
 
-    EAGER_PARALLEL,
-
     /**
      * The index is built on demand the first time a pattern match is requested.
      * Once built, behaves like {@link #EAGER}. Calling {@code clearIndex}

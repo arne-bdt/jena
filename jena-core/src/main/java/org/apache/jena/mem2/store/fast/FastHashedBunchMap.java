@@ -41,7 +41,7 @@ public class FastHashedBunchMap
      * Creates an empty bunch map with the default initial capacity.
      */
     public FastHashedBunchMap(Supplier<FastTripleBunch> newValueSupplier) {
-        super(Node[]::new, FastTripleBunch[]::new);
+        super();
         this.newValueSupplier = newValueSupplier;
     }
 
@@ -56,6 +56,16 @@ public class FastHashedBunchMap
     private FastHashedBunchMap(final FastHashedBunchMap mapToCopy) {
         super(mapToCopy, FastTripleBunch::copy);
         this.newValueSupplier = mapToCopy.newValueSupplier;
+    }
+
+    @Override
+    protected Node[] newKeysArray(int size) {
+        return new Node[size];
+    }
+
+    @Override
+    protected FastTripleBunch[] newValuesArray(int size) {
+        return new FastTripleBunch[size];
     }
 
     @Override

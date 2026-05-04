@@ -26,6 +26,16 @@ public class FastHashMapTest extends AbstractJenaMapNodeTest {
 
     @Override
     protected JenaMap<Node, Object> createNodeMap() {
-        return new FastHashMap<>(Node[]::new, Object[]::new);
+        return new FastHashMap<Node, Object>() {
+            @Override
+            protected Object[] newValuesArray(int size) {
+                return new Object[size];
+            }
+
+            @Override
+            protected Node[] newKeysArray(int size) {
+                return new Node[size];
+            }
+        };
     }
 }

@@ -37,7 +37,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testConstructWithInitialSizeAndAdd() {
-        var sut = new FastHashMap<Node, Object>(3, Node[]::new, Object[]::new);
+        var sut = new FastNodeHashMap(3);
         sut.put(node("s"), null);
         sut.put(node("s1"), null);
         sut.put(node("s2"), null);
@@ -48,7 +48,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testGetValueAt() {
-        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
+        var sut = new FastNodeHashMap();
         sut.put(node("s"), 0);
         sut.put(node("s1"), 1);
         sut.put(node("s2"), 2);
@@ -60,13 +60,13 @@ public class FastHashMapTest2 {
 
     @Test
     public void testCopyConstructor() {
-        var original = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
+        var original = new FastNodeHashMap();
         original.put(node("s"), 0);
         original.put(node("s1"), 1);
         original.put(node("s2"), 2);
         assertEquals(3, original.size());
 
-        var copy = new FastHashMap<Node, Object>(original);
+        var copy = new FastNodeHashMap(original);
         assertEquals(3, copy.size());
         assertEquals(0, (int) copy.get(node("s")));
         assertEquals(1, (int) copy.get(node("s1")));
@@ -75,13 +75,13 @@ public class FastHashMapTest2 {
 
     @Test
     public void testCopyConstructorWithValueMapping() {
-        var original = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
+        var original = new FastNodeHashMap();
         original.put(node("s"), 0);
         original.put(node("s1"), 1);
         original.put(node("s2"), 2);
         assertEquals(3, original.size());
 
-        var copy = new FastHashMap<Node, Object>(original, i -> (int) i + 1);
+        var copy = new FastNodeHashMap(original, i -> (int) i + 1);
         assertEquals(3, copy.size());
         assertEquals(1, (int) copy.get(node("s")));
         assertEquals(2, (int) copy.get(node("s1")));
@@ -94,13 +94,13 @@ public class FastHashMapTest2 {
 
     @Test
     public void testCopyConstructorAddAndDeleteHasNoSideEffects() {
-        var original = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
+        var original = new FastNodeHashMap();
         original.put(node("s"), 0);
         original.put(node("s1"), 1);
         original.put(node("s2"), 2);
         assertEquals(3, original.size());
 
-        var copy = new FastHashMap<Node, Object>(original);
+        var copy = new FastNodeHashMap(original);
         copy.removeAndGetIndex(node("s1"));
         copy.put(node("s3"), 3);
         copy.put(node("s4"), 4);
@@ -120,7 +120,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testPutAndGetIndexAssignsSequentialIndicesAndReturnsExistingForRepeats() {
-        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
+        var sut = new FastNodeHashMap();
         // First-time puts assign new indices.
         final int i0 = sut.putAndGetIndex(node("s"), 100);
         final int i1 = sut.putAndGetIndex(node("s1"), 200);
@@ -135,7 +135,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testPutAndGetIndexOverwritesValueForExistingKey() {
-        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
+        var sut = new FastNodeHashMap();
         final int i0 = sut.putAndGetIndex(node("s"), 100);
         // Re-putting the same key returns the SAME index but with the new value.
         final int i0Again = sut.putAndGetIndex(node("s"), 999);
@@ -146,7 +146,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testForEachKeyVisitsEveryEntryWithItsIndex() {
-        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
+        var sut = new FastNodeHashMap();
         sut.putAndGetIndex(node("a"), 0);
         sut.putAndGetIndex(node("b"), 1);
         sut.putAndGetIndex(node("c"), 2);
@@ -162,7 +162,7 @@ public class FastHashMapTest2 {
 
     @Test
     public void testForEachKeySkipsRemovedSlots() {
-        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
+        var sut = new FastNodeHashMap();
         sut.putAndGetIndex(node("a"), 0);
         sut.putAndGetIndex(node("b"), 1);
         sut.putAndGetIndex(node("c"), 2);
@@ -177,13 +177,13 @@ public class FastHashMapTest2 {
 
     @Test
     public void testForEachKeyOnEmptyMapIsNoOp() {
-        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
+        var sut = new FastNodeHashMap();
         sut.forEachKey((k, i) -> fail("consumer must not be called on an empty map"));
     }
 
     @Test
     public void testForEachKeyParallelVisitsEveryEntry() {
-        var sut = new FastHashMap<Node, Object>(Node[]::new, Object[]::new);
+        var sut = new FastNodeHashMap();
         final int n = 1000;
         for (int i = 0; i < n; i++) {
             sut.putAndGetIndex(node("k" + i), i);
@@ -192,5 +192,34 @@ public class FastHashMapTest2 {
         final AtomicInteger visitedCount = new AtomicInteger();
         sut.forEachKeyParallel((k, idx) -> visitedCount.incrementAndGet());
         assertEquals(n, visitedCount.get());
+    }
+
+    private static class FastNodeHashMap extends org.apache.jena.mem2.collection.FastHashMap<Node, Object> {
+
+        public FastNodeHashMap() {
+            super();
+        }
+
+        public FastNodeHashMap(int initialSize) {
+            super(initialSize);
+        }
+
+        public FastNodeHashMap(org.apache.jena.mem2.collection.FastHashMap<Node, Object> mapToCopy) {
+            super(mapToCopy);
+        }
+
+        public FastNodeHashMap(FastHashMap<Node, Object> mapToCopy, UnaryOperator<Object> valueProcessor) {
+            super(mapToCopy, valueProcessor);
+        }
+
+        @Override
+        protected Object[] newValuesArray(int size) {
+            return new Object[size];
+        }
+
+        @Override
+        protected Node[] newKeysArray(int size) {
+            return new Node[size];
+        }
     }
 }

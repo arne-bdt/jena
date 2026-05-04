@@ -59,7 +59,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
     @Override
     protected GraphMem createGraph() {
         switch (indexingStrategy) {
-            case EAGER, EAGER_PARALLEL, LAZY, LAZY_PARALLEL, MINIMAL:
+            case EAGER, LAZY, LAZY_PARALLEL, MINIMAL:
                 return new GraphMemIndexedSet(indexingStrategy);
             case MANUAL:
                 return setupGraphWithSpyForSpecialManualStrategy();
@@ -201,7 +201,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL:
+            case EAGER:
                 assertTrue(sut.isIndexInitialized());
                 break;
             case LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
@@ -216,7 +216,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL:
+            case EAGER:
                 assertTrue(sut.isIndexInitialized());
                 break;
             case LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
@@ -238,7 +238,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL, LAZY, LAZY_PARALLEL:
+            case EAGER, LAZY, LAZY_PARALLEL:
                 assertTrue(sut.isIndexInitialized());
                 break;
             case MANUAL, MINIMAL:
@@ -259,7 +259,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL, LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
+            case EAGER, LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
                 assertTrue(sut.isIndexInitialized());
                 break;
             default:
@@ -277,7 +277,7 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
 
         // Then
         switch (sut.getIndexingStrategy()) {
-            case EAGER, EAGER_PARALLEL, LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
+            case EAGER, LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:
                 assertTrue(sut.isIndexInitialized());
                 break;
             default:
@@ -297,7 +297,6 @@ public class GraphMemIndexedSetTest extends AbstractGraphMemTest {
         // Then
         switch (sut.getIndexingStrategy()) {
             case EAGER:
-            case EAGER_PARALLEL:
                 assertTrue(sut.isIndexInitialized());
                 break;
             case LAZY, LAZY_PARALLEL, MANUAL, MINIMAL:

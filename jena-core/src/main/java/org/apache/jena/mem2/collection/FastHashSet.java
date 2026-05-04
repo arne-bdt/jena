@@ -36,22 +36,22 @@ import java.util.function.IntFunction;
  *
  * @param <K> the element type
  */
-public class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimized<K> {
+public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimized<K> {
 
     /**
      * Creates a set with the given initial key-array capacity.
      *
      * @param initialSize the initial capacity of the keys array
      */
-    public FastHashSet(final int initialSize, final IntFunction<K[]> keysFactory) {
-        super(initialSize, keysFactory);
+    public FastHashSet(final int initialSize) {
+        super(initialSize);
     }
 
     /**
      * Creates a set with the default initial capacity.
      */
-    public FastHashSet(final IntFunction<K[]> keysFactory) {
-        super(keysFactory);
+    public FastHashSet() {
+        super();
     }
 
     /**

@@ -148,7 +148,7 @@ public class EagerStoreStrategy implements StoreStrategy {
 
         final var futureIndexSubjects = CompletableFuture.runAsync(
                 () -> triples.forEachKey((t, i)
-                        -> addOIndex(t.getSubject(), i)));
+                        -> addSIndex(t.getSubject(), i)));
 
         triples.forEachKey((t, i)
                 -> addPIndex(t.getPredicate(), i));
