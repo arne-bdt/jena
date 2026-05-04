@@ -21,7 +21,6 @@
 package org.apache.jena.mem2.store.fast;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.Triple;
 import org.junit.Test;
 
 import static org.apache.jena.testing_framework.GraphHelper.node;

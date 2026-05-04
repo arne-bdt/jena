@@ -21,8 +21,6 @@
 
 package org.apache.jena.mem2.collection;
 
-import java.util.function.IntFunction;
-
 /**
  * Hash set specialization built on top of {@link FastHashBase}.
  * Grows on demand but never shrinks, does not guarantee iteration order,

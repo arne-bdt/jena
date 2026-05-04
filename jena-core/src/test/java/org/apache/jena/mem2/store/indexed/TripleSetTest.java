@@ -20,7 +20,6 @@
  */
 package org.apache.jena.mem2.store.indexed;
 
-import org.apache.jena.graph.Triple;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;

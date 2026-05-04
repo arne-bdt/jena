@@ -25,8 +25,6 @@ import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Node;
 import org.apache.jena.mem2.collection.FastHashMap;
 
-import java.util.function.Supplier;
-
 /**
  * {@link FastHashMap} from {@link Node} to {@link IndexList}, used by the
  * eager indexing strategy as one of the three subject/predicate/object

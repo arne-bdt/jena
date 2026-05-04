@@ -27,7 +27,6 @@ import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Spliterator;
-import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;

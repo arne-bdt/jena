@@ -20,7 +20,6 @@
  */
 package org.apache.jena.mem2.collection;
 
-import org.apache.jena.graph.Node;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -231,9 +230,8 @@ public class FastHashSetTest2 {
                 assertEquals(index, indexedKey.index());
             }));
         }
-        assertFalse(iterator.tryAdvance(indexedKey -> {
-            fail("There should be no more elements in the iterator");
-        }));
+        assertFalse(iterator.tryAdvance(indexedKey
+                -> fail("There should be no more elements in the iterator")));
     }
 
     @Test

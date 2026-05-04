@@ -21,28 +21,20 @@
 
 package org.apache.jena.mem2;
 
-import org.apache.jena.mem2.collection.*;
+import org.apache.jena.mem2.collection.FastHashMapTest;
+import org.apache.jena.mem2.collection.FastHashMapTest2;
+import org.apache.jena.mem2.collection.FastHashSetTest;
+import org.apache.jena.mem2.collection.FastHashSetTest2;
 import org.apache.jena.mem2.iterator.IteratorOfJenaSetsTest;
 import org.apache.jena.mem2.iterator.SparseArrayIndexedIteratorTest;
 import org.apache.jena.mem2.iterator.SparseArrayIteratorTest;
 import org.apache.jena.mem2.pattern.PatternClassifierTest;
-import org.apache.jena.mem2.spliterator.ArraySpliteratorTest;
-import org.apache.jena.mem2.spliterator.ArraySubSpliteratorTest;
-import org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliteratorTest;
-import org.apache.jena.mem2.spliterator.SparseArraySpliteratorTest;
-import org.apache.jena.mem2.spliterator.SparseArraySubSpliteratorTest;
+import org.apache.jena.mem2.spliterator.*;
 import org.apache.jena.mem2.store.fast.FastArrayBunchTest;
 import org.apache.jena.mem2.store.fast.FastHashedBunchMapTest;
 import org.apache.jena.mem2.store.fast.FastHashedTripleBunchTest;
 import org.apache.jena.mem2.store.fast.FastTripleStoreTest;
-import org.apache.jena.mem2.store.indexed.IndexListIteratorTest;
-import org.apache.jena.mem2.store.indexed.IndexListSpliteratorTest;
-import org.apache.jena.mem2.store.indexed.IndexListTest;
-import org.apache.jena.mem2.store.indexed.IndexListsIteratorTest;
-import org.apache.jena.mem2.store.indexed.IndexListsSpliteratorTest;
-import org.apache.jena.mem2.store.indexed.IndexedSetTripleStoreTest;
-import org.apache.jena.mem2.store.indexed.NodesToIndicesTest;
-import org.apache.jena.mem2.store.indexed.TripleSetTest;
+import org.apache.jena.mem2.store.indexed.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 

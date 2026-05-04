@@ -26,7 +26,6 @@ import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Spliterator;
-import java.util.function.IntFunction;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
@@ -104,10 +103,10 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
     }
 
     /**
-     * Factory for the {@code values} array. The array is created with the same size as the {@code keys} array,
-     * and is resized together with it when the map grows.
-     * @param size
-     * @return
+     * Gets a new array of values with the given size.
+     *
+     * @param size the size of the array
+     * @return the new array
      */
     protected abstract V[] newValuesArray(int size);
 

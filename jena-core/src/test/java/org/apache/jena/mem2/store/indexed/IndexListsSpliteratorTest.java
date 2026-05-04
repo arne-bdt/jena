@@ -24,12 +24,7 @@ import org.apache.jena.graph.Triple;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.ConcurrentModificationException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Spliterator;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -103,7 +98,7 @@ public class IndexListsSpliteratorTest {
     @Test
     public void streamYieldsIntersection() {
         final var sp = new IndexListsSpliterator(triples, listA, reverseA, listB, reverseB);
-        final var collected = StreamSupport.stream(sp, false).collect(Collectors.toList());
+        final var collected = StreamSupport.stream(sp, false).toList();
         assertEquals(new HashSet<>(commonTriples), new HashSet<>(collected));
         assertEquals(commonTriples.size(), collected.size());
     }
@@ -111,7 +106,7 @@ public class IndexListsSpliteratorTest {
     @Test
     public void parallelStreamYieldsIntersection() {
         final var sp = new IndexListsSpliterator(triples, listA, reverseA, listB, reverseB);
-        final var collected = StreamSupport.stream(sp, true).collect(Collectors.toList());
+        final var collected = StreamSupport.stream(sp, true).toList();
         assertEquals(new HashSet<>(commonTriples), new HashSet<>(collected));
     }
 

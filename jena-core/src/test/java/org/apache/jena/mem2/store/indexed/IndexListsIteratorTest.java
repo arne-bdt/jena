@@ -24,11 +24,7 @@ import org.apache.jena.graph.Triple;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.ConcurrentModificationException;
-import java.util.HashSet;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
