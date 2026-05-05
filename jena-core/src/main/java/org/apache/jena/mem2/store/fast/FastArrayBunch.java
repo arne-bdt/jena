@@ -237,13 +237,8 @@ public abstract class FastArrayBunch implements FastTripleBunch {
     }
 
     @Override
-    public int addAndGetIndex(Triple key, int hashCode) {
+    public int addAndGetIndex(Triple key) {
         throw new UnsupportedOperationException("addAndGetIndex is not supported by FastArrayBunch");
-    }
-
-    @Override
-    public void removeAt(int index) {
-        throw new UnsupportedOperationException("removeAt is not supported by FastArrayBunch");
     }
 
     @Override

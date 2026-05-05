@@ -24,7 +24,7 @@ package org.apache.jena.mem2.collection;
 /**
  * Extension of {@link JenaSet} that lets callers supply a precomputed hash
  * code and exposes index-based access to elements. Indices are stable handles
- * to entries (returned by {@link #addAndGetIndex(Object, int)}) and remain
+ * to entries (returned by {@link #addAndGetIndex(Object)}) and remain
  * valid until the corresponding entry is removed.
  * <p>
  * Attention: any caller-supplied hash code MUST equal {@code E.hashCode()};
@@ -40,11 +40,10 @@ public interface JenaSetHashOptimized<E> extends JenaSet<E> {
      * complement of the existing index).
      *
      * @param key      the element to add
-     * @param hashCode {@code key.hashCode()} - must be consistent with {@link Object#hashCode()}
      * @return the index of the inserted element, or a negative value if the
      *         element was already present
      */
-    int addAndGetIndex(final E key, final int hashCode);
+    int addAndGetIndex(final E key);
 
     /**
      * Add an element with the given precomputed hash code if it is not
@@ -73,13 +72,6 @@ public interface JenaSetHashOptimized<E> extends JenaSet<E> {
      * @return {@code true} if removed, {@code false} if it was not present
      */
     boolean tryRemove(E key, int hashCode);
-
-    /**
-     * Remove the element stored at the given index.
-     *
-     * @param index a valid element index
-     */
-    void removeAt(int index);
 
     /**
      * Remove an element assumed to be present, with the given precomputed

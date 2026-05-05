@@ -40,15 +40,6 @@ import java.util.function.UnaryOperator;
 public interface JenaMapOptimized<K, V> extends JenaMap<K, V> {
 
     /**
-     * Removes the entry stored at the given index.
-     * The caller is responsible for using a valid index obtained from
-     * {@link #indexOf(Object)} or {@link #putAndGetIndex(Object, Object)}.
-     *
-     * @param index the index of the entry to remove
-     */
-    void removeAt(int index);
-
-    /**
      * Returns the index of the entry with the given key, or a negative value
      * if no such entry exists.
      *
@@ -74,18 +65,6 @@ public interface JenaMapOptimized<K, V> extends JenaMap<K, V> {
     V getValueAt(int index);
 
     /**
-     * Try to put a key-value pair into the map, supplying the precomputed
-     * hash code of the key. If the key is already present, the value is updated.
-     *
-     * @param key      the key to put
-     * @param hashCode {@code key.hashCode()} - must be consistent with {@link Object#hashCode()}
-     * @param value    the value to put
-     * @return {@code true} if the key was newly inserted; {@code false} if the
-     *         key was already present and only the value was updated
-     */
-    boolean tryPut(K key, int hashCode, V value);
-
-    /**
      * Put a key-value pair and return the index of the affected entry.
      * If the key is already present, its value is updated and the existing
      * index is returned.
@@ -95,58 +74,4 @@ public interface JenaMapOptimized<K, V> extends JenaMap<K, V> {
      * @return the index of the entry holding {@code key}
      */
     int putAndGetIndex(K key, V value);
-
-    /**
-     * Put a key-value pair into the map, supplying the precomputed hash code
-     * of the key. If the key is already present, the value is updated.
-     *
-     * @param key      the key to put
-     * @param hashCode {@code key.hashCode()} - must be consistent with {@link Object#hashCode()}
-     * @param value    the value to put
-     */
-    void put(K key, int hashCode, V value);
-
-    /**
-     * Get the value associated with the provided key, supplying the
-     * precomputed hash code of the key.
-     *
-     * @param key      the key to look up
-     * @param hashCode {@code key.hashCode()} - must be consistent with {@link Object#hashCode()}
-     * @return the value associated with the key, or {@code null} if not present
-     */
-    V get(K key, int hashCode);
-
-    /**
-     * Get the value associated with the provided key, or {@code defaultValue}
-     * if the key is not present, supplying the precomputed hash code of the key.
-     *
-     * @param key          the key to look up
-     * @param hashCode     {@code key.hashCode()} - must be consistent with {@link Object#hashCode()}
-     * @param defaultValue the default value to return if the key is not present
-     * @return the value associated with the key, or {@code defaultValue} if absent
-     */
-    V getOrDefault(K key, int hashCode, V defaultValue);
-
-    /**
-     * Compute a value for a key if the key is not present, supplying the
-     * precomputed hash code of the key. The value is automatically put into
-     * the map.
-     *
-     * @param key                 the key whose value is to retrieved or computed
-     * @param hashCode            {@code key.hashCode()} - must be consistent with {@link Object#hashCode()}
-     * @param absentValueSupplier supplies a value for the key when it is missing
-     * @return the existing value, or the newly computed value if the key was absent
-     */
-    V computeIfAbsent(K key, int hashCode, Supplier<V> absentValueSupplier);
-
-    /**
-     * Compute a (possibly new) value for a key, supplying the precomputed
-     * hash code of the key.
-     *
-     * @param key            the key to compute a value for
-     * @param hashCode       {@code key.hashCode()} - must be consistent with {@link Object#hashCode()}
-     * @param valueProcessor receives the current value (or {@code null} if absent) and
-     *                       returns the new value, or {@code null} to remove the entry
-     */
-    void compute(K key, int hashCode, UnaryOperator<V> valueProcessor);
 }

@@ -68,14 +68,14 @@ public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetH
     }
 
     @Override
-    public boolean tryAdd(K value, int hashCode) {
-        var pIndex = findPosition(value, hashCode);
+    public boolean tryAdd(K key, int hashCode) {
+        var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             if(tryGrowPositionsArrayIfNeeded()) {
                 pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
             }
             final var eIndex = getFreeKeyIndex();
-            keys[eIndex] = value;
+            keys[eIndex] = key;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
             positions[~pIndex] = ~eIndex;
             return true;
@@ -90,30 +90,19 @@ public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetH
      * distinguish "newly inserted" from "already present" while still
      * recovering the index in both cases.
      *
-     * @param value the element to add
+     * @param key the element to add
      * @return the new index, or {@code ~existingIndex} if already present
      */
-    public int addAndGetIndex(K value) {
-        return addAndGetIndex(value, value.hashCode());
-    }
-
-    /**
-     * Add an element with the given precomputed hash code and return the
-     * index it was stored at. If the element is already present, returns
-     * the bitwise complement ({@code ~existingIndex}) of the existing index.
-     *
-     * @param value    the element to add
-     * @param hashCode {@code value.hashCode()} - must equal {@link Object#hashCode()}
-     * @return the new index, or {@code ~existingIndex} if already present
-     */
-    public int addAndGetIndex(final K value, final int hashCode) {
-        var pIndex = findPosition(value, hashCode);
+    @Override
+    public int addAndGetIndex(K key) {
+        final var hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
             if (tryGrowPositionsArrayIfNeeded()) {
                 pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
             }
             final var eIndex = getFreeKeyIndex();
-            keys[eIndex] = value;
+            keys[eIndex] = key;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
             positions[~pIndex] = ~eIndex;
             return eIndex;

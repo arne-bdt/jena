@@ -20,17 +20,13 @@
  */
 package org.apache.jena.mem2.collection;
 
-import org.apache.jena.mem2.iterator.SparseArrayIndexedIterator;
 import org.apache.jena.mem2.iterator.SparseArrayIterator;
-import org.apache.jena.mem2.spliterator.SparseArrayIndexedSpliterator;
 import org.apache.jena.mem2.spliterator.SparseArraySpliterator;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Spliterator;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * Base class for {@link FastHashSet} and {@link FastHashMap}.
@@ -313,10 +309,6 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         removeFrom(findPosition(e, hashCode));
     }
 
-    public void removeAt(int index) {
-        removeFrom(findPosition(keys[index], hashCodesOrDeletedIndices[index]));
-    }
-
     /**
      * Removes the entry referenced by the {@code positions} slot at index
      * {@code here} and rehashes the affected probe chain.
@@ -505,6 +497,7 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
 
     /**
      * Gets the key at the given index.
+     * Array bounds are not checked. The caller must ensure the index is valid and corresponds to a non-null key.
      *
      * @param i the index
      * @return the key at the given index
@@ -526,54 +519,6 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
         } else {
             return ~positions[pIndex];
         }
-    }
-
-    /**
-     * Entry pairing a key with its index in the set.
-     * @param index index of the key in the set
-     * @param key the key
-     * @param <K> the type of the key
-     */
-    public record IndexedKey<K>(int index, K key) {}
-
-    /**
-     * Get an iterator over pairs of keys and their indices in the set.
-     * The iterator is not thread safe.
-     *
-     * @return an iterator over pairs of keys and their indices in the set
-     */
-    public final ExtendedIterator<IndexedKey<K>> indexedKeyIterator() {
-        return new SparseArrayIndexedIterator<>(keys, keysPos, this);
-    }
-
-    /**
-     * Get a spliterator over pairs of keys and their indices in the set.
-     * The spliterator is not thread safe.
-     *
-     * @return a spliterator over pairs of keys and their indices in the set
-     */
-    public final Spliterator<IndexedKey<K>> indexedKeySpliterator() {
-        return new SparseArrayIndexedSpliterator<>(keys, keysPos, this);
-    }
-
-    /**
-     * Get a stream over pairs of keys and their indices in the set.
-     * The stream is not thread safe.
-     *
-     * @return a stream over pairs of keys and their indices in the set
-     */
-    public final Stream<IndexedKey<K>> indexedKeyStream() {
-        return StreamSupport.stream(indexedKeySpliterator(), false);
-    }
-
-    /**
-     * Get a parallel stream over pairs of keys and their indices in the set.
-     * The stream is not thread safe.
-     *
-     * @return a parallel stream over pairs of keys and their indices in the set
-     */
-    public final Stream<IndexedKey<K>> indexedKeyStreamParallel() {
-        return StreamSupport.stream(indexedKeySpliterator(), true);
     }
 
     /**

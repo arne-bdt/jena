@@ -64,15 +64,6 @@ public interface JenaMap<K, V> extends JenaMapSetCommon<K> {
     V get(K key);
 
     /**
-     * Get the value associated with the provided key, or a default value if the key is not present.
-     *
-     * @param key          the key to look up
-     * @param defaultValue the default value to return if the key is not present
-     * @return the value associated with the key, or the default value if the key is not present
-     */
-    V getOrDefault(K key, V defaultValue);
-
-    /**
      * Compute a value for a key if the key is not present.
      * The value is automatically put into the map.
      *

@@ -118,13 +118,6 @@ public abstract class AbstractJenaMapNodeTest {
     }
 
     @Test
-    public void testGetOrDefault() {
-        sut.put(node("s"), 1);
-        assertEquals(1, sut.getOrDefault(node("s"), 2));
-        assertEquals(2, sut.getOrDefault(node("s2"), 2));
-    }
-
-    @Test
     public void testComputeIfAbsent() {
         sut.computeIfAbsent(node("s"), () -> 1);
         assertEquals(1, sut.get(node("s")));

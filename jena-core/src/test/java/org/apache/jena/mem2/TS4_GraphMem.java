@@ -26,7 +26,6 @@ import org.apache.jena.mem2.collection.FastHashMapTest2;
 import org.apache.jena.mem2.collection.FastHashSetTest;
 import org.apache.jena.mem2.collection.FastHashSetTest2;
 import org.apache.jena.mem2.iterator.IteratorOfJenaSetsTest;
-import org.apache.jena.mem2.iterator.SparseArrayIndexedIteratorTest;
 import org.apache.jena.mem2.iterator.SparseArrayIteratorTest;
 import org.apache.jena.mem2.pattern.PatternClassifierTest;
 import org.apache.jena.mem2.spliterator.*;
@@ -55,12 +54,10 @@ import org.junit.runners.Suite;
     ArraySubSpliteratorTest.class,
     ArraySpliteratorTest.class,
     SparseArraySpliteratorTest.class,
-    SparseArrayIndexedSpliteratorTest.class,
 
     // iterator/
     IteratorOfJenaSetsTest.class,
     SparseArrayIteratorTest.class,
-    SparseArrayIndexedIteratorTest.class,
 
     // collection/
     FastHashMapTest.class,
