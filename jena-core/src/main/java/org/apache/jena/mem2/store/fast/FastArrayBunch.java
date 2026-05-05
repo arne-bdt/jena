@@ -230,19 +230,4 @@ public abstract class FastArrayBunch implements FastTripleBunch {
     public void removeUnchecked(Triple key, int hashCode) {
         removeUnchecked(key);
     }
-
-    @Override
-    public int indexOf(Triple key) {
-        throw new UnsupportedOperationException("indexOf is not supported by FastArrayBunch");
-    }
-
-    @Override
-    public int addAndGetIndex(Triple key) {
-        throw new UnsupportedOperationException("addAndGetIndex is not supported by FastArrayBunch");
-    }
-
-    @Override
-    public Triple getKeyAt(int index) {
-        throw new UnsupportedOperationException("getKeyAt is not supported by FastArrayBunch");
-    }
 }

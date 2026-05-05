@@ -24,6 +24,7 @@ package org.apache.jena.mem2.store.fast;
 import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.JenaMapSetCommon;
+import org.apache.jena.mem2.collection.JenaSetHashOptimized;
 import org.apache.jena.mem2.collection.JenaSetIndexed;
 
 import java.util.function.Predicate;
@@ -40,7 +41,7 @@ import java.util.function.Predicate;
  * {@link FastHashedTripleBunch} (hashed, used once the bunch grows past a
  * threshold).
  */
-public interface FastTripleBunch extends JenaSetIndexed<Triple>, Copyable<FastTripleBunch> {
+public interface FastTripleBunch extends JenaSetHashOptimized<Triple>, Copyable<FastTripleBunch> {
     /**
      * Answer {@code true} iff this bunch is backed by a flat array (i.e. is
      * a {@link FastArrayBunch}). Exposed as an explicit method so callers can
