@@ -43,7 +43,7 @@ import java.util.function.UnaryOperator;
  * @param <K> the key type
  * @param <V> the value type
  */
-public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapOptimized<K, V> {
+public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaMapIndexed<K, V> {
 
     /**
      * Parallel array to {@code keys} holding the value associated with each

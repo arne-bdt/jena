@@ -34,7 +34,7 @@ package org.apache.jena.mem2.collection;
  *
  * @param <K> the element type
  */
-public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetHashOptimized<K> {
+public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetIndexed<K> {
 
     /**
      * Creates a set with the given initial key-array capacity.

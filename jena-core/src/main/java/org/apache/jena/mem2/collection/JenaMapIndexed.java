@@ -20,9 +20,6 @@
  */
 package org.apache.jena.mem2.collection;
 
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
-
 /**
  * Extension of {@link JenaMap} that exposes index-based access and lets callers
  * supply a precomputed hash code for the key. Indices are stable handles to
@@ -37,7 +34,7 @@ import java.util.function.UnaryOperator;
  * @param <K> the type of the keys in the map
  * @param <V> the type of the values in the map
  */
-public interface JenaMapOptimized<K, V> extends JenaMap<K, V> {
+public interface JenaMapIndexed<K, V> extends JenaMap<K, V> {
 
     /**
      * Returns the index of the entry with the given key, or a negative value

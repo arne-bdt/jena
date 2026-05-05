@@ -32,7 +32,7 @@ package org.apache.jena.mem2.collection;
  *
  * @param <E> the element type of the set
  */
-public interface JenaSetHashOptimized<E> extends JenaSet<E> {
+public interface JenaSetIndexed<E> extends JenaSet<E> {
 
     /**
      * Add an element and return the index it was stored at. If the element
