@@ -94,9 +94,9 @@ public class FastTripleStore implements TripleStore {
      * Creates a new, empty fast triple store.
      */
     public FastTripleStore() {
-        subjects = new FastHashedBunchMap(ArrayBunchWithSameSubject::new);
-        predicates = new FastHashedBunchMap(ArrayBunchWithSamePredicate::new);
-        objects = new FastHashedBunchMap(ArrayBunchWithSameObject::new);
+        subjects = new FastHashedBunchMap();
+        predicates = new FastHashedBunchMap();
+        objects = new FastHashedBunchMap();
     }
 
     /**
@@ -132,13 +132,13 @@ public class FastTripleStore implements TripleStore {
         }
         if (added) {
             size++;
-            var pBunch = predicates.getOrNew(triple.getPredicate());
+            var pBunch = predicates.computeIfAbsent(triple.getPredicate(), ArrayBunchWithSamePredicate::new);
             if (pBunch.isArray() && pBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
                 pBunch = new FastHashedTripleBunch(pBunch);
                 predicates.put(triple.getPredicate(), pBunch);
             }
             pBunch.addUnchecked(triple, hashCodeOfTriple);
-            var oBunch = objects.getOrNew(triple.getObject());
+            var oBunch = objects.computeIfAbsent(triple.getObject(), ArrayBunchWithSameObject::new);
             if (oBunch.isArray() && oBunch.size() == MAX_ARRAY_BUNCH_SIZE_PREDICATE_OBJECT) {
                 oBunch = new FastHashedTripleBunch(oBunch);
                 objects.put(triple.getObject(), oBunch);

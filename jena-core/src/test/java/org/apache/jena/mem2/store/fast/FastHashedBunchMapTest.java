@@ -35,14 +35,14 @@ public class FastHashedBunchMapTest {
 
     @Test
     public void newMapIsEmpty() {
-        final var map = new FastHashedBunchMap(FastHashedTripleBunch::new);
+        final var map = new FastHashedBunchMap();
         assertEquals(0, map.size());
         assertTrue(map.isEmpty());
     }
 
     @Test
     public void putAndGetReturnSameBunch() {
-        final var map = new FastHashedBunchMap(FastHashedTripleBunch::new);
+        final var map = new FastHashedBunchMap();
         final Node key = node("s");
         final FastTripleBunch bunch = new FastHashedTripleBunch();
         bunch.tryAdd(triple("s p o"));
@@ -55,13 +55,13 @@ public class FastHashedBunchMapTest {
 
     @Test
     public void getReturnsNullForMissingKey() {
-        final var map = new FastHashedBunchMap(FastHashedTripleBunch::new);
+        final var map = new FastHashedBunchMap();
         assertNull(map.get(node("missing")));
     }
 
     @Test
     public void copyClonesEveryBunch() {
-        final var src = new FastHashedBunchMap(FastHashedTripleBunch::new);
+        final var src = new FastHashedBunchMap();
         final var bunchA = new FastHashedTripleBunch();
         bunchA.tryAdd(triple("a p1 o1"));
         bunchA.tryAdd(triple("a p2 o2"));
@@ -90,7 +90,7 @@ public class FastHashedBunchMapTest {
 
     @Test
     public void copyIsIndependentOfSource() {
-        final var src = new FastHashedBunchMap(FastHashedTripleBunch::new);
+        final var src = new FastHashedBunchMap();
         final var bunch = new FastHashedTripleBunch();
         bunch.tryAdd(triple("s p o"));
         src.put(node("s"), bunch);
@@ -105,7 +105,7 @@ public class FastHashedBunchMapTest {
 
     @Test
     public void computeIfAbsentInsertsAndReusesValues() {
-        final var map = new FastHashedBunchMap(FastHashedTripleBunch::new);
+        final var map = new FastHashedBunchMap();
         final var produced = new FastHashedTripleBunch();
         final FastTripleBunch first = map.computeIfAbsent(node("k"), () -> produced);
         assertSame(produced, first);
@@ -118,7 +118,7 @@ public class FastHashedBunchMapTest {
 
     @Test
     public void putReplacesExistingBunch() {
-        final var map = new FastHashedBunchMap(FastHashedTripleBunch::new);
+        final var map = new FastHashedBunchMap();
         final var b1 = new FastHashedTripleBunch();
         b1.tryAdd(triple("s p o"));
         final var b2 = new FastHashedTripleBunch();
@@ -132,7 +132,7 @@ public class FastHashedBunchMapTest {
 
     @Test
     public void removeRemovesEntry() {
-        final var map = new FastHashedBunchMap(FastHashedTripleBunch::new);
+        final var map = new FastHashedBunchMap();
         map.put(node("k"), new FastHashedTripleBunch());
         assertTrue(map.tryRemove(node("k")));
         assertEquals(0, map.size());
