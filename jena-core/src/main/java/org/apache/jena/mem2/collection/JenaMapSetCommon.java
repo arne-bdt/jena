@@ -38,17 +38,12 @@ import java.util.stream.StreamSupport;
  *
  * @param <E> the type of the keys (or elements, for sets) in the collection
  */
-public interface JenaMapSetCommon<E> {
+public interface JenaMapSetCommon<E> extends Sized  {
 
     /**
      * Clear the collection.
      */
     void clear();
-
-    /**
-     * @return the number of elements in the collection
-     */
-    int size();
 
     /**
      * @return true if the collection is empty

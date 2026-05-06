@@ -22,6 +22,7 @@
 package org.apache.jena.mem2.iterator;
 
 import org.apache.jena.mem2.collection.JenaMapSetCommon;
+import org.apache.jena.mem2.collection.Sized;
 import org.apache.jena.util.iterator.NiceIterator;
 
 import java.util.ConcurrentModificationException;
@@ -40,7 +41,7 @@ import java.util.function.Consumer;
 public class SparseArrayIterator<E> extends NiceIterator<E> {
 
     private final E[] entries;
-    private final JenaMapSetCommon<?> set;
+    private final Sized set;
     private final int sizeOfSetAtStart;
     private int pos;
     private boolean hasNext = false;
@@ -51,7 +52,7 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
      * @param entries the backing array (not copied)
      * @param set     the owning collection used to detect concurrent modifications
      */
-    public SparseArrayIterator(final E[] entries, final JenaMapSetCommon<?> set) {
+    public SparseArrayIterator(final E[] entries, final Sized set) {
         this.entries = entries;
         this.pos = entries.length - 1;
         this.set = set;
@@ -65,7 +66,7 @@ public class SparseArrayIterator<E> extends NiceIterator<E> {
      * @param toIndexExclusive exclusive upper bound on the iterated slice
      * @param set              the owning collection used to detect concurrent modifications
      */
-    public SparseArrayIterator(final E[] entries, int toIndexExclusive, final JenaMapSetCommon<?> set) {
+    public SparseArrayIterator(final E[] entries, int toIndexExclusive, final Sized set) {
         this.entries = entries;
         this.pos = toIndexExclusive - 1;
         this.set = set;

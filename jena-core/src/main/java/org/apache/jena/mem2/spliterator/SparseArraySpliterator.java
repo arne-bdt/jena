@@ -22,6 +22,7 @@
 package org.apache.jena.mem2.spliterator;
 
 import org.apache.jena.mem2.collection.JenaMapSetCommon;
+import org.apache.jena.mem2.collection.Sized;
 
 import java.util.ConcurrentModificationException;
 import java.util.Spliterator;
@@ -46,7 +47,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
 
     private final E[] entries;
     private int pos;
-    private final JenaMapSetCommon<?> set;
+    private final Sized set;
     private final int sizeOfSetAtStart;
 
     /**
@@ -56,7 +57,7 @@ public class SparseArraySpliterator<E> implements Spliterator<E> {
      * @param toIndex exclusive upper bound on the iterated slice
      * @param set     the owning collection used to detect concurrent modifications
      */
-    public SparseArraySpliterator(final E[] entries, final int toIndex, final JenaMapSetCommon<?> set) {
+    public SparseArraySpliterator(final E[] entries, final int toIndex, final Sized set) {
         this.entries = entries;
         this.pos = toIndex;
         this.set = set;
