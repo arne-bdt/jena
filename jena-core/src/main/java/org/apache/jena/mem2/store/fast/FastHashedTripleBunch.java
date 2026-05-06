@@ -31,6 +31,7 @@ import org.apache.jena.mem2.collection.JenaSet;
  * stops being faster.
  */
 public class FastHashedTripleBunch extends FastHashSet<Triple> implements FastTripleBunch {
+
     /**
      * Create a new hashed bunch pre-populated from the given set of triples.
      * The initial capacity is chosen at 1.5x the source size, so the new bunch

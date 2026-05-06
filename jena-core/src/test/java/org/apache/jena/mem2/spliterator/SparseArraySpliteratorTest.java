@@ -33,11 +33,11 @@ import static org.junit.Assert.*;
 public class SparseArraySpliteratorTest {
 
     private static final JenaSet<Object> dummySetForConcurrencyCheck = new FastHashSet<>() {
-            @Override
-            protected Object[] newKeysArray(int size) {
-                return new Object[size];
-            }
-        };
+        @Override
+        protected Object[] newKeysArray(int size) {
+            return new Object[size];
+        }
+    };
 
     @Test
     public void tryAdvanceEmpty() {

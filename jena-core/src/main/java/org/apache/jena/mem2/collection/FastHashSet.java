@@ -69,11 +69,9 @@ public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetI
 
     @Override
     public boolean tryAdd(K key, int hashCode) {
-        var pIndex = findPosition(key, hashCode);
+        growPositionsArrayIfNeeded();
+        final var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
-            if(tryGrowPositionsArrayIfNeeded()) {
-                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
-            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
@@ -95,12 +93,10 @@ public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetI
      */
     @Override
     public int addAndGetIndex(K key) {
+        growPositionsArrayIfNeeded();
         final var hashCode = key.hashCode();
-        var pIndex = findPosition(key, hashCode);
+        final var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
-            if (tryGrowPositionsArrayIfNeeded()) {
-                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
-            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             hashCodesOrDeletedIndices[eIndex] = hashCode;
@@ -123,5 +119,15 @@ public abstract class FastHashSet<K> extends FastHashBase<K> implements JenaSetI
         keys[eIndex] = value;
         hashCodesOrDeletedIndices[eIndex] = hashCode;
         positions[findEmptySlotWithoutEqualityCheck(hashCode)] = ~eIndex;
+    }
+
+    /**
+     * Gets the key at the given index.
+     *
+     * @param i the index
+     * @return the key at the given index
+     */
+    public K getKeyAt(int i) {
+        return keys[i];
     }
 }

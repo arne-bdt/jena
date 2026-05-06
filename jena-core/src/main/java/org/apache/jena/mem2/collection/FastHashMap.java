@@ -57,7 +57,7 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
      *
      * @param initialSize the initial capacity of the keys/values arrays
      */
-    public FastHashMap(final int initialSize) {
+    protected FastHashMap(int initialSize) {
         super(initialSize);
         this.values = newValuesArray(keys.length);
     }
@@ -65,7 +65,7 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
     /**
      * Creates a map with the default initial capacity.
      */
-    public FastHashMap() {
+    protected FastHashMap() {
         super();
         this.values = newValuesArray(keys.length);
     }
@@ -76,9 +76,9 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
      *
      * @param mapToCopy the source map
      */
-    public FastHashMap(final FastHashMap<K, V> mapToCopy) {
+    protected FastHashMap(final FastHashMap<K, V> mapToCopy) {
         super(mapToCopy);
-        this.values = newValuesArray(mapToCopy.values.length);
+        this.values = newValuesArray(keys.length);
         System.arraycopy(mapToCopy.values, 0, this.values, 0, mapToCopy.values.length);
     }
 
@@ -91,9 +91,9 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
      * @param valueProcessor function applied to every non-null value to obtain
      *                       the value to put in the new map
      */
-    public FastHashMap(final FastHashMap<K, V> mapToCopy, final UnaryOperator<V> valueProcessor) {
+    protected FastHashMap(final FastHashMap<K, V> mapToCopy, final UnaryOperator<V> valueProcessor) {
         super(mapToCopy);
-        this.values = newValuesArray(mapToCopy.values.length);
+        this.values = newValuesArray(keys.length);
         for (int i = 0; i < mapToCopy.values.length; i++) {
             final var value = mapToCopy.values[i];
             if (value != null) {
@@ -127,17 +127,15 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
     @Override
     public void clear() {
         super.clear();
-        this.values = newValuesArray(keys.length);
+        values = newValuesArray(keys.length);
     }
 
     @Override
     public boolean tryPut(K key, V value) {
+        growPositionsArrayIfNeeded();
         final var hashCode = key.hashCode();
-        var pIndex = findPosition(key, hashCode);
+        final var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
-            if (tryGrowPositionsArrayIfNeeded()) {
-                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
-            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             values[eIndex] = value;
@@ -151,34 +149,11 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
     }
 
     @Override
-    public int putAndGetIndex(K key, V value) {
-        final int hashCode = key.hashCode();
-        var pIndex = findPosition(key, hashCode);
-        if (pIndex < 0) {
-            if (tryGrowPositionsArrayIfNeeded()) {
-                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
-            }
-            final var eIndex = getFreeKeyIndex();
-            keys[eIndex] = key;
-            values[eIndex] = value;
-            hashCodesOrDeletedIndices[eIndex] = hashCode;
-            positions[~pIndex] = ~eIndex;
-            return eIndex;
-        } else {
-            final var eIndex = ~positions[pIndex];
-            values[eIndex] = value;
-            return eIndex;
-        }
-    }
-
-    @Override
     public void put(K key, V value) {
+        growPositionsArrayIfNeeded();
         final var hashCode = key.hashCode();
-        var pIndex = findPosition(key, hashCode);
+        final var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
-            if (tryGrowPositionsArrayIfNeeded()) {
-                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
-            }
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             values[eIndex] = value;
@@ -187,6 +162,24 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
         } else {
             values[~positions[pIndex]] = value;
         }
+    }
+
+    @Override
+    public int putAndGetIndex(K key, V value) {
+        growPositionsArrayIfNeeded();
+        final int hashCode = key.hashCode();
+        final var pIndex = findPosition(key, hashCode);
+        final int eIndex;
+        if (pIndex < 0) {
+            eIndex = getFreeKeyIndex();
+            keys[eIndex] = key;
+            hashCodesOrDeletedIndices[eIndex] = hashCode;
+            positions[~pIndex] = ~eIndex;
+        } else {
+            eIndex = ~positions[pIndex];
+        }
+        values[eIndex] = value;
+        return eIndex;
     }
 
     /**
@@ -202,10 +195,19 @@ public abstract class FastHashMap<K, V> extends FastHashBase<K> implements JenaM
 
     @Override
     public V get(K key) {
-        final var hashCode = key.hashCode();
-        final var pIndex = findPosition(key, hashCode);
+        var pIndex = findPosition(key, key.hashCode());
         if (pIndex < 0) {
             return null;
+        } else {
+            return values[~positions[pIndex]];
+        }
+    }
+
+    @Override
+    public V getOrDefault(K key, V defaultValue) {
+        var pIndex = findPosition(key, key.hashCode());
+        if (pIndex < 0) {
+            return defaultValue;
         } else {
             return values[~positions[pIndex]];
         }

@@ -23,19 +23,17 @@ package org.apache.jena.mem2.collection;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.ConcurrentModificationException;
 import java.util.List;
 
 import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.junit.Assert.*;
 
 /**
- * This test shall test only the parts of the {@link org.apache.jena.mem2.collection.FastHashSet} which are not tested by the {@link AbstractJenaSetTripleTest}.
+ * This test shall test only the parts of the {@link FastHashSet} which are not tested by the {@link AbstractJenaSetTripleTest}.
  */
 public class FastHashSetTest2 {
 
-    private org.apache.jena.mem2.collection.FastHashSet<String> sut;
+    private FastHashSet<String> sut;
 
     @Before
     public void setUp() {
@@ -248,34 +246,13 @@ public class FastHashSetTest2 {
         assertFalse(keys.contains("b"));
     }
 
-    @Test
-    public void testForEachKeyParallelVisitsEveryKey() {
-        final var checkSum = new java.util.concurrent.atomic.AtomicInteger();
-        final var visitedCount = new java.util.concurrent.atomic.AtomicInteger();
-        final int n = 1000;
-        int expectedSum = 0;
-        sut = new FastStringHashSet();
-        for (int i = 0; i < n; i++) {
-            sut.addAndGetIndex(Integer.toString(i));
-            expectedSum += i;
-        }
-
-        sut.forEachKeyParallel((k, idx) -> {
-            checkSum.addAndGet(Integer.parseInt(k));
-            visitedCount.incrementAndGet();
-        });
-
-        assertEquals(n, visitedCount.get());
-        assertEquals(expectedSum, checkSum.get());
-    }
-
-    private static class FastObjectHashSet extends org.apache.jena.mem2.collection.FastHashSet<Object> {
+    private static class FastObjectHashSet extends FastHashSet<Object> {
 
         public FastObjectHashSet() {
             super();
         }
 
-        public FastObjectHashSet(org.apache.jena.mem2.collection.FastHashSet<Object> setToCopy) {
+        public FastObjectHashSet(FastHashSet<Object> setToCopy) {
             super(setToCopy);
         }
 

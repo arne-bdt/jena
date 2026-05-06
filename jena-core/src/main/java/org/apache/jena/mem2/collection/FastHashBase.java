@@ -26,7 +26,6 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.Spliterator;
 import java.util.function.Predicate;
-import java.util.stream.IntStream;
 
 /**
  * Base class for {@link FastHashSet} and {@link FastHashMap}.
@@ -522,9 +521,8 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
     }
 
     /**
-     * Functional interface used by {@link #forEachKey} and
-     * {@link #forEachKeyParallel} to receive each live key along with the
-     * stable index it occupies.
+     * Functional interface used by {@link #forEachKey} to receive each live
+     * key along with the stable index it occupies.
      *
      * @param <K> the key type
      */
@@ -551,21 +549,5 @@ public abstract class FastHashBase<K> implements JenaMapSetCommon<K> {
                 consumer.accept(keys[i], i);
             }
         }
-    }
-
-    /**
-     * Parallel variant of {@link #forEachKey}. The consumer must be
-     * thread-safe; iteration order is unspecified.
-     *
-     * @param consumer receives each key/index pair
-     */
-    public void forEachKeyParallel(KeyAndIndexConsumer<K> consumer) {
-        IntStream.range(0, keysPos)
-                .parallel()
-                .forEach(i -> {
-            if(keys[i] != null) {
-                consumer.accept(keys[i], i);
-            }
-        });
     }
 }

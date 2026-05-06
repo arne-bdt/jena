@@ -39,7 +39,7 @@ import static org.junit.Assert.*;
 
 public abstract class AbstractJenaMapNodeTest {
 
-    protected org.apache.jena.mem2.collection.JenaMap<Node, Object> sut;
+    protected JenaMap<Node, Object> sut;
 
     protected abstract JenaMap<Node, Object> createNodeMap();
 
@@ -118,6 +118,13 @@ public abstract class AbstractJenaMapNodeTest {
     }
 
     @Test
+    public void testGetOrDefault() {
+        sut.put(node("s"), 1);
+        assertEquals(1, sut.getOrDefault(node("s"), 2));
+        assertEquals(2, sut.getOrDefault(node("s2"), 2));
+    }
+
+    @Test
     public void testComputeIfAbsent() {
         sut.computeIfAbsent(node("s"), () -> 1);
         assertEquals(1, sut.get(node("s")));
@@ -164,14 +171,14 @@ public abstract class AbstractJenaMapNodeTest {
     public void testKeyIteratorEmpty() {
         var iter = sut.keyIterator();
         assertFalse(iter.hasNext());
-        assertThrows(NoSuchElementException.class, () -> iter.next());
+        assertThrows(NoSuchElementException.class, iter::next);
     }
 
     @Test
     public void testValueIteratorEmpty2() {
         var iter = sut.valueIterator();
         assertFalse(iter.hasNext());
-        assertThrows(NoSuchElementException.class, () -> iter.next());
+        assertThrows(NoSuchElementException.class, iter::next);
     }
 
     @Test
@@ -570,7 +577,7 @@ public abstract class AbstractJenaMapNodeTest {
     @Test
     public void computeIfAbsend1000Nodes() {
         for (int i = 0; i < 1000; i++) {
-            sut.computeIfAbsent(node("s" + i), () -> new Object());
+            sut.computeIfAbsent(node("s" + i), Object::new);
         }
         assertEquals(1000, sut.size());
     }
@@ -605,17 +612,5 @@ public abstract class AbstractJenaMapNodeTest {
             assertTrue(sut.tryRemove(t));
         }
         assertTrue(sut.isEmpty());
-    }
-
-    protected static class FastNodeHashMap extends FastHashMap<Node, Object> {
-        @Override
-        protected Node[] newKeysArray(int size) {
-            return new Node[size];
-        }
-
-        @Override
-        protected Object[] newValuesArray(int size) {
-            return new Object[size];
-        }
     }
 }

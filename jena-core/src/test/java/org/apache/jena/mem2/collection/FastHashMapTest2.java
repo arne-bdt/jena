@@ -23,10 +23,9 @@ package org.apache.jena.mem2.collection;
 import org.apache.jena.graph.Node;
 import org.junit.Test;
 
+import java.util.function.UnaryOperator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.UnaryOperator;
 
 import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.junit.Assert.*;
@@ -179,20 +178,7 @@ public class FastHashMapTest2 {
         sut.forEachKey((k, i) -> fail("consumer must not be called on an empty map"));
     }
 
-    @Test
-    public void testForEachKeyParallelVisitsEveryEntry() {
-        var sut = new FastNodeHashMap();
-        final int n = 1000;
-        for (int i = 0; i < n; i++) {
-            sut.putAndGetIndex(node("k" + i), i);
-        }
-
-        final AtomicInteger visitedCount = new AtomicInteger();
-        sut.forEachKeyParallel((k, idx) -> visitedCount.incrementAndGet());
-        assertEquals(n, visitedCount.get());
-    }
-
-    private static class FastNodeHashMap extends org.apache.jena.mem2.collection.FastHashMap<Node, Object> {
+    private static class FastNodeHashMap extends FastHashMap<Node, Object> {
 
         public FastNodeHashMap() {
             super();
@@ -202,7 +188,7 @@ public class FastHashMapTest2 {
             super(initialSize);
         }
 
-        public FastNodeHashMap(org.apache.jena.mem2.collection.FastHashMap<Node, Object> mapToCopy) {
+        public FastNodeHashMap(FastHashMap<Node, Object> mapToCopy) {
             super(mapToCopy);
         }
 

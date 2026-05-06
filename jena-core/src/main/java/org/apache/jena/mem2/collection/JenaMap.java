@@ -29,9 +29,8 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * Map from keys of type {@code K} to values of type {@code V}, with the
- * stripped-down operation set used by the {@code mem2} triple store
- * implementations. Not thread-safe and does not allow {@code null} keys.
+ * A map from keys of type {@code K} to values of type {@code V}.
+ * Not thread-safe and does not allow {@code null} keys.
  *
  * @param <K> the type of the keys in the map
  * @param <V> the type of the values in the map
@@ -62,6 +61,15 @@ public interface JenaMap<K, V> extends JenaMapSetCommon<K> {
      * @return the value associated with the key, or null if the key is not present
      */
     V get(K key);
+
+    /**
+     * Get the value associated with the provided key, or a default value if the key is not present.
+     *
+     * @param key          the key to look up
+     * @param defaultValue the default value to return if the key is not present
+     * @return the value associated with the key, or the default value if the key is not present
+     */
+    V getOrDefault(K key, V defaultValue);
 
     /**
      * Compute a value for a key if the key is not present.

@@ -21,24 +21,27 @@
 
 package org.apache.jena.mem2;
 
+import static org.apache.jena.testing_framework.GraphHelper.node;
+import static org.apache.jena.testing_framework.GraphHelper.triple;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.Before;
+import org.junit.Test;
+
 import org.apache.jena.datatypes.xsd.impl.XSDDouble;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.hamcrest.collection.IsEmptyCollection;
 import org.hamcrest.collection.IsIterableContainingInAnyOrder;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.util.ArrayList;
 
-import static org.apache.jena.testing_framework.GraphHelper.node;
-import static org.apache.jena.testing_framework.GraphHelper.triple;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.*;
-
 public abstract class AbstractGraphMemTest {
 
-    protected org.apache.jena.mem2.GraphMem sut;
+    protected GraphMem sut;
 
     protected abstract GraphMem createGraph();
 
@@ -1073,6 +1076,4 @@ public abstract class AbstractGraphMemTest {
             }
         }
     }
-
-
 }

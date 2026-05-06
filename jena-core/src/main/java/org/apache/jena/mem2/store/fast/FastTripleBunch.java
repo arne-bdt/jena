@@ -25,7 +25,6 @@ import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.JenaMapSetCommon;
 import org.apache.jena.mem2.collection.JenaSetHashOptimized;
-import org.apache.jena.mem2.collection.JenaSetIndexed;
 
 import java.util.function.Predicate;
 
@@ -47,7 +46,7 @@ public interface FastTripleBunch extends JenaSetHashOptimized<Triple>, Copyable<
      * a {@link FastArrayBunch}). Exposed as an explicit method so callers can
      * avoid {@code instanceof} checks on this hot path.
      *
-     * @return {@code true} iff this bunch is array-backed
+     * @return {@code true} if this bunch is array-backed
      */
     boolean isArray();
 

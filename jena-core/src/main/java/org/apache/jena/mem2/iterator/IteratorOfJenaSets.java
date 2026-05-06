@@ -40,10 +40,10 @@ import java.util.function.Consumer;
 public class IteratorOfJenaSets<E> extends NiceIterator<E> {
 
     /** Source iterator producing the sets to flatten. */
-    final Iterator<? extends JenaSet<E>> parentIterator;
+    private final Iterator<? extends JenaSet<E>> parentIterator;
 
     /** Iterator over the keys of the set currently being consumed. */
-    ExtendedIterator<E> currentIterator;
+    private ExtendedIterator<E> currentIterator;
 
     /**
      * Create a flat iterator over the elements of every set produced by

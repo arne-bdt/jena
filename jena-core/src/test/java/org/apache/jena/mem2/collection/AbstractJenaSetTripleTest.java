@@ -39,7 +39,7 @@ import static org.junit.Assert.*;
 
 public abstract class AbstractJenaSetTripleTest {
 
-    protected org.apache.jena.mem2.collection.JenaSet<Triple> sut;
+    protected JenaSet<Triple> sut;
 
     protected abstract JenaSet<Triple> createTripleSet();
 
@@ -106,7 +106,7 @@ public abstract class AbstractJenaSetTripleTest {
     public void testKeyIteratorEmpty() {
         var iter = sut.keyIterator();
         assertFalse(iter.hasNext());
-        assertThrows(NoSuchElementException.class, () -> iter.next());
+        assertThrows(NoSuchElementException.class, iter::next);
     }
 
     @Test
@@ -114,7 +114,7 @@ public abstract class AbstractJenaSetTripleTest {
         sut.tryAdd(triple("s o p"));
         var iter = sut.keyIterator();
         sut.tryAdd(triple("s o p2"));
-        assertThrows(ConcurrentModificationException.class, () -> iter.next());
+        assertThrows(ConcurrentModificationException.class, iter::next);
     }
 
     @Test
@@ -361,12 +361,5 @@ public abstract class AbstractJenaSetTripleTest {
             assertTrue(sut.tryRemove(t));
         }
         assertTrue(sut.isEmpty());
-    }
-
-    private static class FastTripleHashSet extends FastHashSet<Triple> {
-        @Override
-        protected Triple[] newKeysArray(int size) {
-            return new Triple[size];
-        }
     }
 }

@@ -22,7 +22,6 @@ package org.apache.jena.mem2.store.fast;
 
 import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.Triple;
 import org.apache.jena.mem2.collection.FastHashMap;
 
 /**
