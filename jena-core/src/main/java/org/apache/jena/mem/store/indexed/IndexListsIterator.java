@@ -45,7 +45,7 @@ import java.util.function.Consumer;
  */
 public class IndexListsIterator extends NiceIterator<Triple> {
 
-    private final TripleSet triples;
+    private final IndexedTripleSource triples;
     private final int sizeOfSetAtStart;
     private final int[] indicesSmaller;
     private final int[] indicesLarger;
@@ -65,7 +65,7 @@ public class IndexListsIterator extends NiceIterator<Triple> {
      * @param indexListB      the other index list to intersect
      * @param reverseIndicesB reverse-index array for {@code indexListB}
      */
-    public IndexListsIterator(final TripleSet triples,
+    public IndexListsIterator(final IndexedTripleSource triples,
                               final IndexList indexListA, final int[] reverseIndicesA,
                               final IndexList indexListB, final int[] reverseIndicesB) {
         this.triples = triples;

@@ -41,7 +41,7 @@ import java.util.function.Consumer;
  */
 public class IndexListsSpliterator implements Spliterator<Triple> {
 
-    private final TripleSet triples;
+    private final IndexedTripleSource triples;
     private final int sizeOfSetAtStart;
     private final int[] indicesSmaller;
     private final int[] indicesLarger;
@@ -60,7 +60,7 @@ public class IndexListsSpliterator implements Spliterator<Triple> {
      * @param indexListB      the other index list to intersect
      * @param reverseIndicesB reverse-index array for {@code indexListB}
      */
-    public IndexListsSpliterator(final TripleSet triples,
+    public IndexListsSpliterator(final IndexedTripleSource triples,
                                  final IndexList indexListA, final int[] reverseIndicesA,
                                  final IndexList indexListB, final int[] reverseIndicesB) {
         this.triples = triples;
@@ -82,7 +82,7 @@ public class IndexListsSpliterator implements Spliterator<Triple> {
         }
     }
 
-    private IndexListsSpliterator(final TripleSet triples,
+    private IndexListsSpliterator(final IndexedTripleSource triples,
                                   final int sizeOfSetAtStart,
                                   final int[] indicesSmaller,
                                   final int[] indicesLarger, final int indicesLargerSize,
