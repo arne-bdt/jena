@@ -37,7 +37,7 @@ import java.util.function.IntConsumer;
  */
 public class TripleSet
         extends FastHashSet<Triple>
-        implements Copyable<TripleSet> {
+        implements Copyable<TripleSet>, IndexedTripleSource {
 
     private IntConsumer onKeysGrowHook = null;
 

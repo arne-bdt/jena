@@ -221,6 +221,31 @@ public class IndexListTest {
         assertFalse(IndexList.intersects(b, reverseB, a, reverseA));
     }
 
+    // ----- New-feature coverage (added by review pass) ---------------
+
+    /**
+     * The copy constructor sizes the backing array exactly to the
+     * source's size. Adding past that capacity must trigger {@code grow()},
+     * even when the source had a single element (where the naive
+     * {@code (1>>1)+1 == 1} formula would otherwise stall capacity).
+     */
+    @Test
+    public void growFromLengthOneAtLeastDoubles() {
+        final var src = new IndexList();
+        src.add(42);                              // src now has elements.length == 8 (initial)
+        // Force a tightly-sized clone (length == 1) via the copy constructor.
+        final var tight = new IndexList(src);
+        assertEquals(1, tight.getIndices().length);
+
+        // Adding one more element must grow past length 1.
+        tight.add(99);
+        assertTrue("grow() must escape the (1>>1)+1 stall",
+                tight.getIndices().length >= 2);
+        assertEquals(2, tight.size());
+        assertEquals(42, tight.getIndexAt(0));
+        assertEquals(99, tight.getIndexAt(1));
+    }
+
     /** Helper that mirrors how EagerStoreStrategy keeps its reverse-index in sync. */
     private static void addToList(final IndexList list, final int[] reverseIndices, final int tripleIndex) {
         final int pos = list.add(tripleIndex);

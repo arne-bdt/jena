@@ -38,6 +38,7 @@ import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFLanguages;
 import org.apache.jena.riot.RiotException;
 import org.apache.jena.sparql.core.DatasetGraphFactory;
+import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn;
 import org.apache.jena.system.Txn;
 import org.apache.jena.tdb1.TDB1Factory;
 import org.apache.jena.tdb2.DatabaseMgr;
@@ -112,6 +113,20 @@ import org.slf4j.Logger;
     /*package*/ static void setupMem(Logger log, ServerArgs serverArgs) {
         serverArgs.datasetDescription = "in-memory";
         serverArgs.dataset = DatasetGraphFactory.createTxnMem();
+        serverArgs.allowUpdate = true;
+    }
+
+    /*package*/ static void setupMemCow(Logger log, ServerArgs serverArgs) {
+        setupMemCow(log, serverArgs, GraphMemIndexedSetCowTxn.ForkMode.SEQUENTIAL);
+    }
+
+    /*package*/ static void setupMemCow(Logger log, ServerArgs serverArgs,
+                                        GraphMemIndexedSetCowTxn.ForkMode forkMode) {
+        String suffix = (forkMode == GraphMemIndexedSetCowTxn.ForkMode.PARALLEL)
+                ? " (copy-on-write, parallel fork)"
+                : " (copy-on-write)";
+        serverArgs.datasetDescription = "in-memory" + suffix;
+        serverArgs.dataset = DatasetGraphFactory.createTxnMemCow(forkMode);
         serverArgs.allowUpdate = true;
     }
 

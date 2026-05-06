@@ -39,6 +39,21 @@ public class DatasetAssemblerVocab
     // In-memory dataset
     public static final Resource tDatasetTxnMem      = ResourceFactory.createResource(NS+"DatasetTxnMem") ;
 
+    /**
+     * In-memory dataset backed by per-graph copy-on-write snapshots.
+     * Maps to {@link org.apache.jena.sparql.core.mem.DatasetGraphInMemoryCowTxn}.
+     */
+    public static final Resource tMemoryDatasetCow   = ResourceFactory.createResource(NS+"MemoryDatasetCow") ;
+
+    /**
+     * Optional property on {@link #tMemoryDatasetCow}: literal "SEQUENTIAL"
+     * (default) or "PARALLEL", case-insensitive. Selects the per-graph
+     * fork strategy used when a write transaction begins. PARALLEL is only
+     * worth its dispatch overhead on very large graphs; benchmark before
+     * choosing.
+     */
+    public static final Property pForkMode           = ResourceFactory.createProperty(NS, "forkMode") ;
+
     // Specialised datasets
     public static final Resource tMemoryDataset      = ResourceFactory.createResource(NS+"MemoryDataset") ;
     public static final Resource tDatasetZero        = ResourceFactory.createResource(NS+"RDFDatasetZero") ;
