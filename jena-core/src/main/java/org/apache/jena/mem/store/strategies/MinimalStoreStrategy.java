@@ -19,26 +19,33 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.mem.store.roaring.strategies;
+package org.apache.jena.mem.store.strategies;
 
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.collection.FastHashSet;
 import org.apache.jena.mem.pattern.MatchPattern;
-import org.apache.jena.mem.store.roaring.TripleSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.stream.Stream;
 
 /**
- * A minimal store strategy that does not maintain any bitmaps or indexes.
- * This strategy is used when no indexing is required.
- * The matching operations are performed directly on the set of triples.
- * This strategy is useful for scenarios where the overhead of maintaining an index is not justified,
- * such as when the dataset is small or when the performance of match operations is not critical.
+ * {@link StoreStrategy} that never builds an index but still answers
+ * pattern-match operations - by linearly filtering the triple set. Useful
+ * when the dataset is small or when memory is more precious than match-time
+ * performance.
+ * <p>
+ * Used to back {@link org.apache.jena.mem.IndexingStrategy#MINIMAL}. The
+ * user can switch to eager indexing at any time by calling
+ * {@link org.apache.jena.mem.GraphMemIndexedSet#initializeIndex()}; calling
+ * {@code clearIndex} reverts to filtering again.
  */
 public class MinimalStoreStrategy implements StoreStrategy {
-    private final TripleSet triples;
+    private final FastHashSet<Triple> triples;
 
-    public MinimalStoreStrategy(final TripleSet triples) {
+    /**
+     * @param triples the canonical triple set to filter against
+     */
+    public MinimalStoreStrategy(final FastHashSet<Triple> triples) {
         this.triples = triples;
     }
 

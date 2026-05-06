@@ -19,28 +19,26 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.mem.store.roaring.strategies;
+package org.apache.jena.mem.store.strategies;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 /**
- * A lazy store strategy that defers the initialization of the index until it is needed.
- * This strategy is useful when the index is not always required, allowing for more efficient memory usage.
- * It uses a supplier to create a new instance of {@link EagerStoreStrategy} when needed.
+ * {@link StoreStrategy} that never builds an index automatically.
+ * Add/remove/clear are no-ops on the index side; pattern-match operations
+ * throw {@link UnsupportedOperationException} until the user explicitly
+ * initializes the index (typically via
+ * {@link org.apache.jena.mem.GraphMemIndexedSet#initializeIndex()} or
+ * {@link org.apache.jena.mem.GraphMemIndexedSet#initializeIndexParallel()}),
+ * which swaps this strategy out for an {@link org.apache.jena.mem.IndexingStrategy#EAGER} strategy.
+ * <p>
+ * Used to back {@link org.apache.jena.mem.IndexingStrategy#MANUAL}.
  */
-public class LazyStoreStrategy implements StoreStrategy {
-
-    private final Supplier<EagerStoreStrategy> setCurrentStrategyToNewEagerStoreStrategy;
-
-    public LazyStoreStrategy(final Supplier<EagerStoreStrategy> setCurrentStrategyToNewEagerStoreStrategy) {
-        this.setCurrentStrategyToNewEagerStoreStrategy = setCurrentStrategyToNewEagerStoreStrategy;
-    }
-
+public class ManualStoreStrategy implements StoreStrategy {
     @Override
     public void addToIndex(final Triple triple, final int index) {
         // No-op, as there is no index to add to.
@@ -58,19 +56,16 @@ public class LazyStoreStrategy implements StoreStrategy {
 
     @Override
     public boolean containsMatch(final Triple tripleMatch, final MatchPattern pattern) {
-        return setCurrentStrategyToNewEagerStoreStrategy.get()
-                .containsMatch(tripleMatch, pattern);
+        throw new UnsupportedOperationException("Index has not been initialized yet. Please initialize the index before using it.");
     }
 
     @Override
     public Stream<Triple> streamMatch(final Triple tripleMatch, final MatchPattern pattern) {
-        return setCurrentStrategyToNewEagerStoreStrategy.get()
-                .streamMatch(tripleMatch, pattern);
+        throw new UnsupportedOperationException("Index has not been initialized yet. Please initialize the index before using it.");
     }
 
     @Override
     public ExtendedIterator<Triple> findMatch(final Triple tripleMatch, final MatchPattern pattern) {
-        return setCurrentStrategyToNewEagerStoreStrategy.get()
-                .findMatch(tripleMatch, pattern);
+        throw new UnsupportedOperationException("Index has not been initialized yet. Please initialize the index before using it.");
     }
 }

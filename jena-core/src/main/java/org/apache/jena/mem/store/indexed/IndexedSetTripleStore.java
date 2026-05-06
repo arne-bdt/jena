@@ -19,7 +19,7 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.mem.store.roaring;
+package org.apache.jena.mem.store.indexed;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
@@ -29,64 +29,58 @@ import org.apache.jena.mem.store.strategies.*;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.SingletonIterator;
-import org.roaringbitmap.FastAggregation;
-import org.roaringbitmap.RoaringBitmap;
 
 import java.util.stream.Stream;
 
 /**
- * A triple store that is ideal for handling extremely large graphs.
- * With the new indexing strategies, it also works well for very small graphs,
- * where pattern matching is not needed.
+ * {@link TripleStore} that stores all triples in a single
+ * {@link TripleSet} and delegates pattern-matching to a configurable
+ * {@link StoreStrategy}. The strategy is selected via an
+ * {@link IndexingStrategy} and may swap itself out at runtime (e.g. a
+ * {@link LazyStoreStrategy} replaces itself with an
+ * {@link EagerStoreStrategy} as soon as the first pattern lookup is
+ * performed).
  * <p>
- * This store supports different indexing strategies to balance RAM usage and performance for various operations.
- * See {@link IndexingStrategy} for details on the available strategies.
- * <p>
- * Internal structure:
- * <ul>
- *     <li> One indexed hash set (same as GraphMem2Fast uses) that holds all triples
- *     <li> The index consists of three hash maps indexed by subjects, predicates, and objects
- *          with RoaringBitmaps as values
- *     <li> The bitmaps contain the indices of the triples in the central hash set
- * </ul>
- * <p>
- * The bitmaps are used to quickly find triples that match a given pattern.
- * The bitmap operations like {@link FastAggregation#naive_and(RoaringBitmap...)} and
- * {@link RoaringBitmap#intersects(RoaringBitmap, RoaringBitmap)} are used to find matches for the pattern
- * S_O, SP_, and _PO pretty fast, even in large graphs.
+ * The triples themselves are kept in {@code triples}; each triple has a
+ * stable index in that set, which the strategy uses to maintain
+ * subject/predicate/object indices of integer indices rather than triple
+ * references.
  */
-public class RoaringTripleStore implements TripleStore {
+public class IndexedSetTripleStore implements TripleStore {
 
-    private static final String UNKNOWN_PATTERN_CLASSIFIER = "Unknown pattern classifier: %s";
-    final TripleSet triples; // In this special set, each element has an index
+    /** The flat set of stored triples. Each element has a stable integer index. */
+    private final TripleSet triples;
     private StoreStrategy currentStrategy;
     private final IndexingStrategy indexingStrategy;
 
     /**
-     * Create a new RoaringTripleStore with the default indexing strategy (EAGER).
-     * <p>
-     * The default strategy is EAGER, because of backwards compatibility.
-     * This is not necessarily the best strategy for all use cases,
-     * but it reflects the behavior before introducing the indexing strategies.
+     * Creates an indexed store with the {@link IndexingStrategy#EAGER}
+     * default indexing strategy.
      */
-    public RoaringTripleStore() {
+    public IndexedSetTripleStore() {
         this(IndexingStrategy.EAGER);
     }
 
     /**
-     * Create a new RoaringTripleStore with the given indexing strategy.
+     * Creates an indexed store using the given indexing strategy.
      *
      * @param indexingStrategy the indexing strategy to use
      */
-    public RoaringTripleStore(final IndexingStrategy indexingStrategy) {
+    public IndexedSetTripleStore(final IndexingStrategy indexingStrategy) {
         this.triples = new TripleSet();
         this.indexingStrategy = indexingStrategy;
         this.currentStrategy = createStoreStrategy(indexingStrategy);
     }
+
     /**
-     * Copy constructor to create a new RoaringTripleStore instance
+     * Copy constructor used by {@link #copy()}. If the source store has its
+     * eager index built, the copy reuses the index data structures (without
+     * rebuilding them); otherwise the copy starts from the configured
+     * indexing strategy.
+     *
+     * @param storeToCopy the source store
      */
-    private RoaringTripleStore(final RoaringTripleStore storeToCopy) {
+    private IndexedSetTripleStore(final IndexedSetTripleStore storeToCopy) {
         this.triples = storeToCopy.triples.copy();
         this.indexingStrategy = storeToCopy.indexingStrategy;
         if(storeToCopy.currentStrategy instanceof EagerStoreStrategy eagerStoreStrategy) {
@@ -97,12 +91,6 @@ public class RoaringTripleStore implements TripleStore {
     }
 
 
-    /**
-     * Create a new RoaringTripleStore with the given indexing strategy and an initial capacity.
-     *
-     * @param indexingStrategy the indexing strategy to use
-     * @return a new RoaringTripleStore instance
-     */
     private StoreStrategy createStoreStrategy(final IndexingStrategy indexingStrategy) {
         return switch (indexingStrategy) {
             case EAGER
@@ -115,8 +103,6 @@ public class RoaringTripleStore implements TripleStore {
                     -> new ManualStoreStrategy();
             case MINIMAL
                     -> new MinimalStoreStrategy(triples);
-            default
-                    -> throw new IllegalArgumentException("Unknown indexing strategy: " + indexingStrategy);
         };
     }
 
@@ -133,14 +119,12 @@ public class RoaringTripleStore implements TripleStore {
     }
 
     /**
-     * Check if the index of this store is initialized.
-     * This will return true if the current strategy is EagerStoreStrategy,
-     * which means that the index has been initialized and all triples are indexed.
+     * Check if the index has been initialized and all triples are indexed.
      *
      * @return true if the index is initialized, false otherwise
      */
     public boolean isIndexInitialized() {
-        return currentStrategy instanceof EagerStoreStrategy;
+        return currentStrategy.isIndexInitialized();
     }
 
     /**
@@ -174,7 +158,6 @@ public class RoaringTripleStore implements TripleStore {
     public void initializeIndexParallel() {
         currentStrategy = new EagerStoreStrategy(this.triples, true);
     }
-
 
     @Override
     public void add(final Triple triple) {
@@ -213,25 +196,12 @@ public class RoaringTripleStore implements TripleStore {
     @Override
     public boolean contains(Triple tripleMatch) {
         final var matchPattern = PatternClassifier.classify(tripleMatch);
-        switch (matchPattern) {
-
-            case SUB_ANY_ANY,
-                 ANY_PRE_ANY,
-                 ANY_ANY_OBJ,
-                 SUB_PRE_ANY,
-                 ANY_PRE_OBJ,
-                 SUB_ANY_OBJ:
-                return currentStrategy.containsMatch(tripleMatch, matchPattern);
-
-            case SUB_PRE_OBJ:
-                return this.triples.containsKey(tripleMatch);
-
-            case ANY_ANY_ANY:
-                return !this.isEmpty();
-
-            default:
-                throw new IllegalStateException(String.format(UNKNOWN_PATTERN_CLASSIFIER, PatternClassifier.classify(tripleMatch)));
-        }
+        return switch (matchPattern) {
+            case SUB_ANY_ANY, ANY_PRE_ANY, ANY_ANY_OBJ, SUB_PRE_ANY, ANY_PRE_OBJ, SUB_ANY_OBJ ->
+                    currentStrategy.containsMatch(tripleMatch, matchPattern);
+            case SUB_PRE_OBJ -> this.triples.containsKey(tripleMatch);
+            case ANY_ANY_ANY -> !this.isEmpty();
+        };
     }
 
     @Override
@@ -242,53 +212,28 @@ public class RoaringTripleStore implements TripleStore {
     @Override
     public Stream<Triple> stream(Triple tripleMatch) {
         var pattern = PatternClassifier.classify(tripleMatch);
-        switch (pattern) {
-
-            case SUB_PRE_OBJ:
-                return this.triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
-
-            case SUB_PRE_ANY,
-                 SUB_ANY_OBJ,
-                 SUB_ANY_ANY,
-                 ANY_PRE_OBJ,
-                 ANY_PRE_ANY,
-                 ANY_ANY_OBJ:
-                return this.currentStrategy.streamMatch(tripleMatch, pattern);
-
-            case ANY_ANY_ANY:
-                return this.stream();
-
-            default:
-                throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
-        }
+        return switch (pattern) {
+            case SUB_PRE_OBJ -> this.triples.containsKey(tripleMatch) ? Stream.of(tripleMatch) : Stream.empty();
+            case SUB_PRE_ANY, SUB_ANY_OBJ, SUB_ANY_ANY, ANY_PRE_OBJ, ANY_PRE_ANY, ANY_ANY_OBJ ->
+                    this.currentStrategy.streamMatch(tripleMatch, pattern);
+            case ANY_ANY_ANY -> this.stream();
+        };
     }
 
     @Override
     public ExtendedIterator<Triple> find(Triple tripleMatch) {
         var pattern = PatternClassifier.classify(tripleMatch);
-        switch (pattern) {
-
-            case SUB_PRE_OBJ:
-                return this.triples.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NiceIterator.emptyIterator();
-
-            case SUB_PRE_ANY,
-                 SUB_ANY_OBJ,
-                 SUB_ANY_ANY,
-                 ANY_PRE_OBJ,
-                 ANY_PRE_ANY,
-                 ANY_ANY_OBJ:
-                return currentStrategy.findMatch(tripleMatch, pattern);
-
-            case ANY_ANY_ANY:
-                return this.triples.keyIterator();
-
-            default:
-                throw new IllegalStateException("Unknown pattern classifier: " + PatternClassifier.classify(tripleMatch));
-        }
+        return switch (pattern) {
+            case SUB_PRE_OBJ ->
+                    this.triples.containsKey(tripleMatch) ? new SingletonIterator<>(tripleMatch) : NiceIterator.emptyIterator();
+            case SUB_PRE_ANY, SUB_ANY_OBJ, SUB_ANY_ANY, ANY_PRE_OBJ, ANY_PRE_ANY, ANY_ANY_OBJ ->
+                    currentStrategy.findMatch(tripleMatch, pattern);
+            case ANY_ANY_ANY -> this.triples.keyIterator();
+        };
     }
 
     @Override
-    public RoaringTripleStore copy() {
-        return new RoaringTripleStore(this);
+    public IndexedSetTripleStore copy() {
+        return new IndexedSetTripleStore(this);
     }
 }

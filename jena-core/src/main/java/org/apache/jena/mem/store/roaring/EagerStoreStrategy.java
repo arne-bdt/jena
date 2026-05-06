@@ -19,15 +19,13 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.mem.store.roaring.strategies;
+package org.apache.jena.mem.store.roaring;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.pattern.PatternClassifier;
-import org.apache.jena.mem.store.roaring.NodesToBitmapsMap;
-import org.apache.jena.mem.store.roaring.RoaringBitmapTripleIterator;
-import org.apache.jena.mem.store.roaring.TripleSet;
+import org.apache.jena.mem.store.strategies.StoreStrategy;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.roaringbitmap.FastAggregation;
 import org.roaringbitmap.ImmutableBitmapDataProvider;
