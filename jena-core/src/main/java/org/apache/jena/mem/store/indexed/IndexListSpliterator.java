@@ -39,7 +39,7 @@ import java.util.function.Consumer;
  */
 public class IndexListSpliterator implements Spliterator<Triple> {
 
-    private final TripleSet triples;
+    private final IndexedTripleSource triples;
     private final int sizeOfSetAtStart;
     private final int[] indices;
     private final int toPositionExclusive;
@@ -52,7 +52,7 @@ public class IndexListSpliterator implements Spliterator<Triple> {
      * @param triples   the canonical triple set
      * @param indexList the list of triple indices to walk
      */
-    public IndexListSpliterator(final TripleSet triples, final IndexList indexList) {
+    public IndexListSpliterator(final IndexedTripleSource triples, final IndexList indexList) {
         this(triples,
                 indexList.getIndices(),
                 0, indexList.size());
@@ -67,7 +67,7 @@ public class IndexListSpliterator implements Spliterator<Triple> {
      * @param from       inclusive lower bound on the slice to walk
      * @param toExclusive exclusive upper bound on the slice to walk
      */
-    public IndexListSpliterator(final TripleSet triples, final int[] indices, final int from, final int toExclusive) {
+    public IndexListSpliterator(final IndexedTripleSource triples, final int[] indices, final int from, final int toExclusive) {
         this.triples = triples;
         this.sizeOfSetAtStart = triples.size();
         this.indices = indices;

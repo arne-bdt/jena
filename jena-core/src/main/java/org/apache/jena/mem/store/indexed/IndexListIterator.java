@@ -40,7 +40,7 @@ import java.util.function.Consumer;
  */
 public class IndexListIterator extends NiceIterator<Triple> {
 
-    private final TripleSet triples;
+    private final IndexedTripleSource triples;
     private final int sizeOfSetAtStart;
     private final int[] indices;
     private int pos;
@@ -52,7 +52,7 @@ public class IndexListIterator extends NiceIterator<Triple> {
      * @param triples   the canonical set of triples to dereference indices against
      * @param indexList the list of triple indices to walk
      */
-    public IndexListIterator(final TripleSet triples, final IndexList indexList) {
+    public IndexListIterator(final IndexedTripleSource triples, final IndexList indexList) {
         this.triples = triples;
         indices = indexList.getIndices();
         pos = indexList.getCurrentPosition();

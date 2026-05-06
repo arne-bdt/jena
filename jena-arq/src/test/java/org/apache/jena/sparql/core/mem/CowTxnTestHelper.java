@@ -21,32 +21,24 @@
 
 package org.apache.jena.sparql.core.mem;
 
-import org.junit.platform.suite.api.SelectClasses;
-import org.junit.platform.suite.api.Suite;
+import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.graph.Triple;
 
 /**
- * Tests for in-memory Dataset and its default implementation.
+ * Shared {@code Triple} factory for the cow/txn graph tests in this
+ * package. {@code jena-core}'s {@code GraphHelper.triple(String)} would
+ * be the natural choice but is not on jena-arq's test classpath, so the
+ * helper is centralised here instead of being copy-pasted into every
+ * test.
  */
-@Suite
-@SelectClasses({
-    TestQuadTableForms.class,
-    TestTripleTableForms.class,
-    TestHexTable.class,
-    TestTriTable.class,
-    TestDatasetGraphInMemoryBasic.class,
-    TestDatasetGraphInMemoryViews.class,
-    TestDatasetGraphInMemoryLock.class,
-    TestDatasetGraphInMemoryThreading.class,
-    TestDatasetGraphInMemoryTransactions.class,
+final class CowTxnTestHelper {
 
-    TestDatasetGraphInMemoryFind.class,
-    TestDatasetGraphInMemoryFindPattern.class,
-    TestDatasetGraphInMemoryIsolation.class,
-    TestDatasetGraphInMemoryPromote.class,
-    TestDatasetGraphInMemoryMisc.class,
+    private CowTxnTestHelper() {}
 
-    // copy-on-write transactional graph integration.
-    TestGraphMemIndexedSetCowTxnContract.class,
-    TestDatasetGraphCowTxnTransactions.class
- })
-public class TS_DatasetTxnMem {}
+    /** {@code <http://ex/s> <http://ex/p> <http://ex/o>}. */
+    static Triple t(String s, String p, String o) {
+        return Triple.create(NodeFactory.createURI("http://ex/" + s),
+                             NodeFactory.createURI("http://ex/" + p),
+                             NodeFactory.createURI("http://ex/" + o));
+    }
+}

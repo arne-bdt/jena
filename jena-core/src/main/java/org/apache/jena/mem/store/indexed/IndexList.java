@@ -126,6 +126,11 @@ public class IndexList {
     private void grow() {
         final var oldElements = elements;
         var newSize = (elements.length >> 1) + elements.length;
+        if (newSize <= elements.length) {
+            // Ensures growth for very small arrays (e.g. length 1, where
+            // (1 >> 1) + 1 == 1) and saturates safely on overflow.
+            newSize = elements.length + 1;
+        }
         if (newSize < 0) {
             newSize = Integer.MAX_VALUE;
         }
