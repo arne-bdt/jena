@@ -43,6 +43,37 @@ import org.junit.platform.suite.api.Suite;
     TestDatasetGraphInMemoryFindPattern.class,
     TestDatasetGraphInMemoryIsolation.class,
     TestDatasetGraphInMemoryPromote.class,
-    TestDatasetGraphInMemoryMisc.class
+    TestDatasetGraphInMemoryMisc.class,
+
+    // copy-on-write transactional graph integration.
+    TestGraphMemIndexedSetCowTxnContract.class,
+    TestDatasetGraphCowTxnTransactions.class,
+
+    // Per-graph transactional triple stores.
+    GraphMemIndexedSetTxnTest.class,
+    GraphMemIndexedSetCowTxnTest.class,
+    GraphMemIndexedSetCowTxnStrategyTest.class,
+    TestGraphMemIndexedSetTxnPromote.class,
+    TestGraphMemIndexedSetTxnLockLeak.class,
+
+    // CowTxn dataset — same Abstract* contracts as the InMemory variants.
+    TestDatasetGraphInMemoryCowTxnBasic.class,
+    TestDatasetGraphInMemoryCowTxnViews.class,
+    TestDatasetGraphInMemoryCowTxnLock.class,
+    TestDatasetGraphInMemoryCowTxnThreading.class,
+    TestDatasetGraphInMemoryCowTxnTransactions.class,
+    TestDatasetGraphInMemoryCowTxnFind.class,
+    TestDatasetGraphInMemoryCowTxnFindPattern.class,
+    TestDatasetGraphInMemoryCowTxnIsolation.class,
+    TestDatasetGraphInMemoryCowTxnPromote.class,
+    TestDatasetGraphInMemoryCowTxnMisc.class,
+
+    // CowTxn-specific behaviour with no InMemory counterpart.
+    TestDatasetGraphInMemoryCowTxnContains.class,
+    TestDatasetGraphInMemoryCowTxnSmoke.class,
+    TestDatasetGraphInMemoryCowTxnParallelFind.class,
+    TestDatasetGraphInMemoryCowTxnRemoveGraph.class,
+    TestDatasetGraphInMemoryCowTxnReuseThread.class,
+    TestDatasetGraphInMemoryCowTxnPartialBeginUnwind.class
  })
 public class TS_DatasetTxnMem {}

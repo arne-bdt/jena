@@ -29,6 +29,8 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemory;
+import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryCowTxn;
+import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn;
 import org.apache.jena.sparql.graph.GraphFactory;
 import org.apache.jena.sys.JenaSystem;
 
@@ -61,8 +63,60 @@ public class DatasetGraphFactory
      * so overheads can accumulate).
      *
      * @return a transactional, in-memory, modifiable DatasetGraph
+     * @see #createTxnMemCow()
      */
     public static DatasetGraph createTxnMem() { return new DatasetGraphInMemory(); }
+
+    /**
+     * Create an in-memory, transactional {@link DatasetGraph} backed by per-graph
+     * copy-on-write snapshots — see {@link DatasetGraphInMemoryCowTxn} for the
+     * design. Functionally equivalent to {@link #createTxnMem()}: same
+     * {@link Transactional} contract, same isolation guarantees, same auto-wrap
+     * behaviour for reads and writes outside a transaction.
+     * <p>
+     * Differs in implementation strategy: readers are lock-free and snapshot-
+     * isolated via a single volatile reference, while writers fork a private
+     * working copy at first-write and atomically republish on commit. The
+     * practical effect compared with {@link #createTxnMem()} is:
+     * <ul>
+     *   <li>Bulk loads (one large write transaction) are several times faster.</li>
+     *   <li>Multi-graph workloads are dramatically faster: each named graph has
+     *       its own store, instead of contending on one indexed quad table.</li>
+     *   <li>Concurrent reader throughput under a writer is orders of magnitude
+     *       higher (readers do not serialize on writers).</li>
+     *   <li>A workload of many tiny write transactions is comparable, sometimes
+     *       slightly slower, because each write transaction allocates a fork.</li>
+     * </ul>
+     * Uses the default {@link GraphMemIndexedSetCowTxn.ForkMode#SEQUENTIAL} fork
+     * strategy, which is the right choice for typical workloads. See
+     * {@link #createTxnMemCow(GraphMemIndexedSetCowTxn.ForkMode)} if you have
+     * very large graphs and want to evaluate the parallel fork.
+     *
+     * @return a transactional, in-memory, copy-on-write DatasetGraph
+     */
+    public static DatasetGraph createTxnMemCow() {
+        return new DatasetGraphInMemoryCowTxn();
+    }
+
+    /**
+     * Variant of {@link #createTxnMemCow()} that lets the caller pick the per-
+     * graph {@link GraphMemIndexedSetCowTxn.ForkMode}.
+     * <p>
+     * {@link GraphMemIndexedSetCowTxn.ForkMode#SEQUENTIAL} is the recommended
+     * default and is what {@link #createTxnMemCow()} uses.
+     * {@link GraphMemIndexedSetCowTxn.ForkMode#PARALLEL} dispatches the
+     * copy-on-write fork to the common ForkJoinPool; the dispatch overhead is
+     * only worth paying on very large graphs being bulk-modified, and is
+     * slower than SEQUENTIAL for the small-graph / many-small-writes patterns
+     * typical of Fuseki workloads. Benchmark your own workload before choosing
+     * PARALLEL.
+     *
+     * @param forkMode propagated to every per-graph instance created by this dataset
+     * @return a transactional, in-memory, copy-on-write DatasetGraph using {@code forkMode}
+     */
+    public static DatasetGraph createTxnMemCow(GraphMemIndexedSetCowTxn.ForkMode forkMode) {
+        return new DatasetGraphInMemoryCowTxn(Objects.requireNonNull(forkMode, "forkMode"));
+    }
 
     /**
      * Create a general-purpose  {@link DatasetGraph}.<br/>

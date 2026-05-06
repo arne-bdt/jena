@@ -42,9 +42,16 @@ public class Template
 
     public static final String templateTIM_MemFN      = templateDir+"/config-mem";
 
+    // In-memory copy-on-write (DatasetGraphInMemoryCowTxn).
+    public static final String templateTIM_MemCowFN         = templateDir+"/config-mem-cow";
+    // In-memory copy-on-write with PARALLEL per-graph fork strategy.
+    public static final String templateTIM_MemCowParallelFN = templateDir+"/config-mem-cow-parallel";
+
     // Template may be in a resources area of a jar file so you can't do a directory listing.
     public static final String[] templateNames = {
         templateTIM_MemFN,
+        templateTIM_MemCowFN,
+        templateTIM_MemCowParallelFN,
 
         templateTDB1_FN ,
         templateTDB1_MemFN ,

@@ -127,6 +127,14 @@ export default {
           item: 'mem',
           name: 'In-memory – dataset will be recreated when Fuseki restarts, but contents will be lost'
         },
+        {
+          item: 'mem-cow',
+          name: 'In-memory copy-on-write (experimental) – alternative in-memory implementation; benchmark for your workload'
+        },
+        {
+          item: 'mem-cow-parallel',
+          name: 'In-memory copy-on-write, parallel fork (experimental) – as above, parallel per-graph fork (large graphs only)'
+        },
         // {
         //   item: 'tdb',
         //   name: 'Persistent – dataset will persist across Fuseki restart'
