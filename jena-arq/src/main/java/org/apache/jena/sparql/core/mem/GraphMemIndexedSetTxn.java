@@ -41,13 +41,13 @@ import java.util.stream.Stream;
  * Transactional variant of {@link org.apache.jena.mem.GraphMemIndexedSet}.
  * <p>
  * Phase A implementation: snapshot isolation is achieved by switching
- * {@link TripleStore} instances at transaction boundaries. A {@code begin(WRITE)}
+ * {@link TripleStore} instances at transaction boundaries. {@code begin(WRITE)}
  * deep-copies the currently published {@link IndexedSetTripleStore} via
  * {@link IndexedSetTripleStore#copy()}; mutations happen on the working copy;
- * {@code commit()} publishes the working copy as the new visible store. Readers
- * capture the published reference at {@code begin(READ)} and hold it for the
- * whole transaction, so they always see a stable snapshot regardless of
- * concurrent writers.
+ * {@code commit()} publishes the working copy as the new visible store.
+ * Readers capture the published reference at {@code begin(READ)} and hold it
+ * for the whole transaction, so they always see a stable snapshot regardless
+ * of concurrent writers.
  * <p>
  * Concurrency: one writer at a time (serialised by a {@link ReentrantLock});
  * any number of concurrent readers, lock-free.
@@ -55,8 +55,18 @@ import java.util.stream.Stream;
 public class GraphMemIndexedSetTxn extends GraphBase
         implements Transactional, GraphWithPerform {
 
+    /** Serialises writers; readers never take this lock. */
     private final ReentrantLock writeLock = new ReentrantLock();
+
+    /**
+     * The currently visible {@link TripleStore}. Read by {@code begin(READ)}
+     * (captured as the reader's snapshot) and replaced by {@code commit()} of
+     * a dirty write transaction. {@code volatile} establishes happens-before
+     * between the commit and any later reader's {@code begin}.
+     */
     private volatile TripleStore published;
+
+    /** Per-thread transaction state; {@code null} when no transaction is active. */
     private final ThreadLocal<TxnState> activeTxn = new ThreadLocal<>();
 
     public GraphMemIndexedSetTxn() {
@@ -67,14 +77,29 @@ public class GraphMemIndexedSetTxn extends GraphBase
         this.published = new IndexedSetTripleStore(indexingStrategy);
     }
 
+    /**
+     * Per-transaction record. The lock-held invariant is
+     * {@code mode == WRITE  <==>  this transaction holds writeLock}, so no
+     * separate "lock-held" or "finalised" flags are needed.
+     */
     private static final class TxnState {
+        /** The exact type passed to {@link #begin(TxnType)}; never changes. */
         TxnType type;
+        /**
+         * READ initially for {@code READ} / {@code READ_PROMOTE} /
+         * {@code READ_COMMITTED_PROMOTE}; flips to WRITE on a successful
+         * {@link #promote(Promote)} or directly via {@code begin(WRITE)}.
+         */
         ReadWrite mode;
+        /**
+         * The store reads and writes go through. While in READ mode this is
+         * the {@code published} reference at the point of {@code begin}
+         * (i.e. the snapshot). After promote/begin(WRITE), it is the
+         * private working copy.
+         */
         TripleStore active;
-        TripleStore beginSnapshot;
+        /** True once any add/delete has run since begin or successful promote. */
         boolean dirty;
-        boolean writeLocked;
-        boolean finalised;
     }
 
     private TxnState require() {
@@ -85,9 +110,9 @@ public class GraphMemIndexedSetTxn extends GraphBase
     }
 
     /**
-     * Resolve the {@link TripleStore} to read from. Inside a transaction,
-     * returns the snapshot or the working copy depending on the mode. Outside
-     * any transaction, returns the latest published store.
+     * Resolve the store to read from. Outside any transaction this returns
+     * the latest published store, so reads are always possible without first
+     * starting a transaction (writes still require one).
      */
     private TripleStore readStore() {
         TxnState t = activeTxn.get();
@@ -95,23 +120,17 @@ public class GraphMemIndexedSetTxn extends GraphBase
     }
 
     /**
-     * Resolve the {@link TripleStore} to write to. Throws if not inside a
-     * write transaction (after possibly performing an implicit promote for a
-     * promote-typed read transaction).
+     * Resolve the store to write to. Implicitly promotes a
+     * {@code READ_PROMOTE}/{@code READ_COMMITTED_PROMOTE} transaction by
+     * delegating to the no-arg {@link Transactional#promote()} default,
+     * which dispatches to the right {@link Promote} variant for the type.
      */
     private TripleStore writeStore() {
         TxnState t = require();
-        if (t.mode == ReadWrite.WRITE)
-            return t.active;
-        if (t.type == TxnType.READ_PROMOTE || t.type == TxnType.READ_COMMITTED_PROMOTE) {
-            boolean ok = promote(t.type == TxnType.READ_COMMITTED_PROMOTE
-                    ? Promote.READ_COMMITTED : Promote.ISOLATED);
-            if (!ok)
-                throw new JenaTransactionException(
-                        "Cannot promote: another writer committed since begin()");
-            return require().active;
-        }
-        throw new JenaTransactionException("Read-only transaction; writes are not allowed");
+        if (t.mode != ReadWrite.WRITE && !promote())
+            throw new JenaTransactionException(
+                    "Cannot write: read-only transaction or promote failed");
+        return t.active;
     }
 
     // --- Transactional ----------------------------------------------------
@@ -122,24 +141,19 @@ public class GraphMemIndexedSetTxn extends GraphBase
             throw new JenaTransactionException("Nested transactions are not supported");
         TxnState s = new TxnState();
         s.type = type;
-        switch (type) {
-            case READ -> {
-                s.mode = ReadWrite.READ;
-                s.beginSnapshot = published;
-                s.active = s.beginSnapshot;
-            }
-            case WRITE -> {
-                writeLock.lock();
-                s.writeLocked = true;
-                s.mode = ReadWrite.WRITE;
-                s.beginSnapshot = published;
-                s.active = s.beginSnapshot.copy();
-            }
-            case READ_PROMOTE, READ_COMMITTED_PROMOTE -> {
-                s.mode = ReadWrite.READ;
-                s.beginSnapshot = published;
-                s.active = s.beginSnapshot;
-            }
+        if (type == TxnType.WRITE) {
+            // Acquire the writer slot first, then deep-copy the published
+            // store as the private working copy. Readers continue to see
+            // `published` and are unaffected by mutations on s.active.
+            writeLock.lock();
+            s.mode = ReadWrite.WRITE;
+            s.active = published.copy();
+        } else {
+            // READ, READ_PROMOTE, READ_COMMITTED_PROMOTE all start as readers
+            // sharing the same published snapshot. promote() (if called) will
+            // upgrade to a working copy.
+            s.mode = ReadWrite.READ;
+            s.active = published;
         }
         activeTxn.set(s);
     }
@@ -148,27 +162,32 @@ public class GraphMemIndexedSetTxn extends GraphBase
     public boolean promote(Promote mode) {
         TxnState t = require();
         if (t.mode == ReadWrite.WRITE)
-            return true;
+            return true;                        // already a writer
         if (t.type == TxnType.READ)
             throw new JenaTransactionException("Cannot promote a READ transaction");
-        if (t.type != TxnType.READ_PROMOTE && t.type != TxnType.READ_COMMITTED_PROMOTE)
-            throw new JenaTransactionException("Cannot promote transaction of type " + t.type);
+        // Remaining types: READ_PROMOTE, READ_COMMITTED_PROMOTE.
 
-        boolean readCommitted = (mode == Promote.READ_COMMITTED);
-        if (readCommitted) {
+        if (mode == Promote.READ_COMMITTED) {
+            // READ_COMMITTED: always succeeds, but may need to wait for the
+            // current writer. After acquiring, our working copy is taken
+            // from the *latest* published — anything previously read in
+            // this transaction may be stale, by definition.
             writeLock.lock();
         } else {
+            // ISOLATED: snapshot must not have moved since begin(). We try
+            // the lock without blocking; even if we acquire it, we still
+            // abort if a commit happened between begin and now.
+            // t.active is the snapshot reference captured at begin (we are
+            // still in READ mode, so it has not been replaced).
             if (!writeLock.tryLock())
                 return false;
-            if (t.beginSnapshot != published) {
+            if (t.active != published) {
                 writeLock.unlock();
                 return false;
             }
         }
-        t.writeLocked = true;
         t.mode = ReadWrite.WRITE;
-        t.beginSnapshot = published;
-        t.active = t.beginSnapshot.copy();
+        t.active = published.copy();
         return true;
     }
 
@@ -176,14 +195,14 @@ public class GraphMemIndexedSetTxn extends GraphBase
     public void commit() {
         TxnState t = require();
         try {
+            // Only republish if the writer actually changed something. The
+            // single volatile write below is the publication point; all
+            // structural changes to t.active happen-before it.
             if (t.mode == ReadWrite.WRITE && t.dirty)
                 published = t.active;
-            t.finalised = true;
         } finally {
-            if (t.writeLocked) {
-                t.writeLocked = false;
+            if (t.mode == ReadWrite.WRITE)
                 writeLock.unlock();
-            }
             activeTxn.remove();
         }
     }
@@ -192,13 +211,10 @@ public class GraphMemIndexedSetTxn extends GraphBase
     public void abort() {
         TxnState t = require();
         try {
-            t.finalised = true;
-            // working copy simply dropped
+            // Working copy is simply discarded; published is unchanged.
         } finally {
-            if (t.writeLocked) {
-                t.writeLocked = false;
+            if (t.mode == ReadWrite.WRITE)
                 writeLock.unlock();
-            }
             activeTxn.remove();
         }
     }
@@ -207,17 +223,17 @@ public class GraphMemIndexedSetTxn extends GraphBase
     public void end() {
         TxnState t = activeTxn.get();
         if (t == null)
-            return;
+            return;                             // already finalised by commit/abort
         try {
-            if (t.mode == ReadWrite.WRITE && !t.finalised && t.dirty) {
+            // Reaching end() with uncommitted dirty writes is a programming
+            // error: callers must explicitly commit or abort. We still
+            // unlock in the finally below so we never leak the writer slot.
+            if (t.mode == ReadWrite.WRITE && t.dirty)
                 throw new JenaTransactionException(
                         "Write transaction was not committed or aborted before end()");
-            }
         } finally {
-            if (t.writeLocked) {
-                t.writeLocked = false;
+            if (t.mode == ReadWrite.WRITE)
                 writeLock.unlock();
-            }
             activeTxn.remove();
         }
     }
@@ -243,32 +259,23 @@ public class GraphMemIndexedSetTxn extends GraphBase
 
     @Override
     public void performAdd(Triple t) {
-        TripleStore s = writeStore();
-        s.add(t);
-        TxnState st = activeTxn.get();
-        if (st != null)
-            st.dirty = true;
+        writeStore().add(t);
+        activeTxn.get().dirty = true;
     }
 
     @Override
     public void performDelete(Triple t) {
-        TripleStore s = writeStore();
-        s.remove(t);
-        TxnState st = activeTxn.get();
-        if (st != null)
-            st.dirty = true;
+        writeStore().remove(t);
+        activeTxn.get().dirty = true;
     }
 
     @Override
     public void clear() {
-        // GraphBase.clear() iterates and calls performDelete (firing events).
+        // GraphBase.clear() iterates the graph and removes every triple via
+        // performDelete — which routes through writeStore() (implicit
+        // promote on the way), marks the transaction dirty, and fires the
+        // per-triple Graph events. No further work is required here.
         super.clear();
-        // Then explicitly clear the working copy in case any state remains.
-        TripleStore s = writeStore();
-        s.clear();
-        TxnState st = activeTxn.get();
-        if (st != null)
-            st.dirty = true;
     }
 
     // --- Graph reads ------------------------------------------------------
