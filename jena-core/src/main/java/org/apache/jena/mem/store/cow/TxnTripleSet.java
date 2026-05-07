@@ -24,6 +24,7 @@ package org.apache.jena.mem.store.cow;
 import org.apache.jena.atlas.lib.Copyable;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.store.cow.collection.TxnFastHashSet;
+import org.apache.jena.mem.store.indexed.IndexedTripleSource;
 
 import java.util.function.IntConsumer;
 
@@ -49,7 +50,7 @@ import java.util.function.IntConsumer;
  */
 public class TxnTripleSet
         extends TxnFastHashSet<Triple>
-        implements Copyable<TxnTripleSet> {
+        implements Copyable<TxnTripleSet>, IndexedTripleSource {
 
     private IntConsumer onKeysGrowHook = null;
 
