@@ -84,12 +84,43 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
     /** Per-thread transaction state; {@code null} when no transaction is active. */
     private final ThreadLocal<TxnState> activeTxn = new ThreadLocal<>();
 
+    /**
+     * Selects between sequential and parallel implementations of
+     * {@link CowIndexedSetTripleStore#forkForWrite()} when starting a write
+     * transaction. Exposed primarily so benchmarks can compare the two
+     * fork strategies on the same workload.
+     */
+    public enum ForkMode {
+        /** Sequential: {@link CowIndexedSetTripleStore#forkForWrite()}. */
+        SEQUENTIAL,
+        /** Parallel: {@link CowIndexedSetTripleStore#forkForWriteParallel()}. */
+        PARALLEL
+    }
+
+    private final ForkMode forkMode;
+
     public GraphMemIndexedSetCowTxn() {
-        this(IndexingStrategy.EAGER);
+        this(IndexingStrategy.EAGER, ForkMode.SEQUENTIAL);
     }
 
     public GraphMemIndexedSetCowTxn(IndexingStrategy indexingStrategy) {
+        this(indexingStrategy, ForkMode.SEQUENTIAL);
+    }
+
+    public GraphMemIndexedSetCowTxn(ForkMode forkMode) {
+        this(IndexingStrategy.EAGER, forkMode);
+    }
+
+    public GraphMemIndexedSetCowTxn(IndexingStrategy indexingStrategy, ForkMode forkMode) {
         this.published = new CowIndexedSetTripleStore(indexingStrategy);
+        this.forkMode = forkMode;
+    }
+
+    private CowIndexedSetTripleStore fork() {
+        return switch (forkMode) {
+            case SEQUENTIAL -> published.forkForWrite();
+            case PARALLEL   -> published.forkForWriteParallel();
+        };
     }
 
     /**
@@ -163,7 +194,7 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
             // `published` earlier see no effect from mutations on s.active.
             writeLock.lock();
             s.mode = ReadWrite.WRITE;
-            s.active = published.forkForWrite();
+            s.active = fork();
         } else {
             // READ, READ_PROMOTE, READ_COMMITTED_PROMOTE all start as readers
             // sharing the same published snapshot. promote() (if called) will
@@ -203,7 +234,7 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
             }
         }
         t.mode = ReadWrite.WRITE;
-        t.active = published.forkForWrite();
+        t.active = fork();             // honours the configured ForkMode
         return true;
     }
 

@@ -414,4 +414,36 @@ public class GraphMemIndexedSetCowTxnTest {
         g.commit();
         g.end();
     }
+
+    /**
+     * Smoke test for {@link GraphMemIndexedSetCowTxn.ForkMode#PARALLEL}:
+     * the parallel fork mode must exhibit identical visible behaviour to
+     * the sequential default. This is the entry point benchmarks use to
+     * compare the two paths.
+     */
+    @Test
+    public void parallelForkModeBehavesLikeSequential() {
+        GraphMemIndexedSetCowTxn g = new GraphMemIndexedSetCowTxn(
+                GraphMemIndexedSetCowTxn.ForkMode.PARALLEL);
+
+        g.begin(TxnType.WRITE);
+        for (int i = 0; i < 200; i++) g.add(t("s" + i, "p", "o"));
+        g.commit();
+        g.end();
+
+        g.begin(TxnType.READ);
+        assertEquals(200, g.size());
+        for (int i = 0; i < 200; i++) assertTrue(g.contains(t("s" + i, "p", "o")));
+        g.end();
+
+        // A subsequent write transaction also goes through forkForWriteParallel.
+        g.begin(TxnType.WRITE);
+        for (int i = 0; i < 200; i += 2) g.delete(t("s" + i, "p", "o"));
+        g.commit();
+        g.end();
+
+        g.begin(TxnType.READ);
+        assertEquals(100, g.size());
+        g.end();
+    }
 }

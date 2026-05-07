@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -164,28 +165,58 @@ public class CowIndexedSetTripleStore implements TripleStore {
     }
 
     /**
-     * Fork constructor — the cheap COW path. Shares spine arrays via
-     * {@link TxnTripleSet#fork()} and {@link TxnNodesToIndices#fork()};
-     * full-clones the three reverse-index arrays; starts {@link #myForks}
-     * empty.
+     * Bag of pre-allocated state used to assemble a forked instance. Lets
+     * the sequential and parallel fork paths share a single, narrow
+     * constructor and lets the parallel path produce its parts on the
+     * common fork-join pool before assembly.
      */
-    private CowIndexedSetTripleStore(CowIndexedSetTripleStore source) {
-        this.triples = source.triples.fork();
-        this.subjectIndex = source.subjectIndex.fork();
-        this.predicateIndex = source.predicateIndex.fork();
-        this.objectIndex = source.objectIndex.fork();
-        this.sReverseIndices = source.sReverseIndices.clone();
-        this.pReverseIndices = source.pReverseIndices.clone();
-        this.oReverseIndices = source.oReverseIndices.clone();
+    private record Parts(TxnTripleSet triples,
+                         TxnNodesToIndices subjectIndex,
+                         TxnNodesToIndices predicateIndex,
+                         TxnNodesToIndices objectIndex,
+                         int[] sReverseIndices,
+                         int[] pReverseIndices,
+                         int[] oReverseIndices) {}
+
+    /** Assemble a fork from pre-allocated parts. */
+    private CowIndexedSetTripleStore(Parts parts) {
+        this.triples = parts.triples;
+        this.subjectIndex = parts.subjectIndex;
+        this.predicateIndex = parts.predicateIndex;
+        this.objectIndex = parts.objectIndex;
+        this.sReverseIndices = parts.sReverseIndices;
+        this.pReverseIndices = parts.pReverseIndices;
+        this.oReverseIndices = parts.oReverseIndices;
         // Hook routes grow events to THIS instance's reverse-index arrays.
         this.triples.setOnKeysGrowHook(this::onTriplesKeysGrew);
     }
 
     /**
-     * Fork this store for a write transaction. See class doc.
+     * Fork this store for a write transaction (sequential variant). See
+     * class doc for fork semantics.
      */
     public CowIndexedSetTripleStore forkForWrite() {
-        return new CowIndexedSetTripleStore(this);
+        return new CowIndexedSetTripleStore(forkPartsSerially(this));
+    }
+
+    /**
+     * Parallel variant of {@link #forkForWrite()} for benchmarking against
+     * the sequential version.
+     * <p>
+     * Submits the seven independent allocations (one per spine fork plus
+     * three reverse-index clones) to the common fork-join pool and joins
+     * them. For large stores the wall-clock time of the fork is dominated
+     * by the three {@code int[]} clones plus the four spine forks (each
+     * doing two array clones internally), which adds up to roughly seven
+     * O(N) operations; parallelism can hide the latency of all but the
+     * longest one.
+     * <p>
+     * For small stores the dispatch and join overhead can outweigh the
+     * savings, so callers should benchmark against {@link #forkForWrite()}
+     * before adopting this on a hot path.
+     */
+    public CowIndexedSetTripleStore forkForWriteParallel() {
+        return new CowIndexedSetTripleStore(forkPartsInParallel(this));
     }
 
     @Override
@@ -194,6 +225,43 @@ public class CowIndexedSetTripleStore implements TripleStore {
         // treated as frozen after the call. Truly independent mutation of
         // both copies is not in the Phase B hot path.
         return forkForWrite();
+    }
+
+    /**
+     * Build a {@link Parts} on the calling thread by performing each
+     * fork/clone in sequence. This is the canonical (and cheapest, in
+     * terms of dispatch overhead) path for small stores.
+     */
+    private static Parts forkPartsSerially(CowIndexedSetTripleStore src) {
+        return new Parts(
+                src.triples.fork(),
+                src.subjectIndex.fork(),
+                src.predicateIndex.fork(),
+                src.objectIndex.fork(),
+                src.sReverseIndices.clone(),
+                src.pReverseIndices.clone(),
+                src.oReverseIndices.clone());
+    }
+
+    /**
+     * Build a {@link Parts} by submitting the seven independent
+     * allocations to the common fork-join pool and joining the results.
+     * Joins on the calling thread, so this method blocks until all parts
+     * are ready.
+     */
+    private static Parts forkPartsInParallel(CowIndexedSetTripleStore src) {
+        // Each lambda only reads from the source; no shared writable state,
+        // no inter-task ordering required.
+        CompletableFuture<TxnTripleSet>      fTriples = CompletableFuture.supplyAsync(src.triples::fork);
+        CompletableFuture<TxnNodesToIndices> fSubj    = CompletableFuture.supplyAsync(src.subjectIndex::fork);
+        CompletableFuture<TxnNodesToIndices> fPred    = CompletableFuture.supplyAsync(src.predicateIndex::fork);
+        CompletableFuture<TxnNodesToIndices> fObj     = CompletableFuture.supplyAsync(src.objectIndex::fork);
+        CompletableFuture<int[]>             fSRev    = CompletableFuture.supplyAsync(src.sReverseIndices::clone);
+        CompletableFuture<int[]>             fPRev    = CompletableFuture.supplyAsync(src.pReverseIndices::clone);
+        CompletableFuture<int[]>             fORev    = CompletableFuture.supplyAsync(src.oReverseIndices::clone);
+        return new Parts(
+                fTriples.join(), fSubj.join(), fPred.join(), fObj.join(),
+                fSRev.join(),    fPRev.join(), fORev.join());
     }
 
     // ----- Mutation ---------------------------------------------------
