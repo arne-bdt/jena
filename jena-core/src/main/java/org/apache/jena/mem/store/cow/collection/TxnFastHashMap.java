@@ -1,0 +1,279 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ *
+ *   SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.apache.jena.mem.store.cow.collection;
+
+import org.apache.jena.mem.collection.JenaMapIndexed;
+import org.apache.jena.util.iterator.ExtendedIterator;
+
+import java.util.Spliterator;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
+
+/**
+ * Copy-on-write twin of {@link org.apache.jena.mem.collection.FastHashMap}.
+ * See {@link TxnFastHashBase} for the sharing and tombstone discipline.
+ *
+ * <h2>The update path: tombstone-and-append</h2>
+ * The most subtle divergence from {@code FastHashMap} is how a put on an
+ * <i>already-present</i> key is handled. The baseline simply overwrites
+ * {@code values[entryIndex]}. The COW twin <b>cannot</b>: {@code values}
+ * is shared with any open snapshot, and overwriting would change the
+ * snapshot's view of the key's value.
+ * <p>
+ * Instead, an update <b>tombstones</b> the old slot via {@link #removeFrom}
+ * (writer-private {@code deleted[oldEIndex] = true}, plus Algorithm-R on
+ * the writer-private probe table) and then <b>appends</b> a new entry at
+ * {@code keysPos++}. The snapshot's probe table still resolves the key to
+ * the old slot, where it sees the old value through {@code values[]}; the
+ * writer's probe table resolves to the new slot with the new value. Both
+ * views remain self-consistent without any shared-array writes that could
+ * cross the snapshot boundary.
+ * <p>
+ * Cost per update: one extra slot consumed (cleaned up at the next
+ * {@code grow}); one extra Algorithm-R pass; same big-O as a remove + add.
+ *
+ * @param <K> the key type
+ * @param <V> the value type
+ */
+public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements JenaMapIndexed<K, V> {
+
+    /**
+     * Parallel array to {@link #keys} holding the value for each entry.
+     * Shared with any forked snapshot/working-copy, exactly like
+     * {@code keys} and {@code hashCodes}. Tombstoned slots may still hold
+     * the old value reference; liveness is checked via {@link #deleted}.
+     */
+    protected V[] values;
+
+    protected TxnFastHashMap(int initialSize) {
+        super(initialSize);
+        this.values = newValuesArray(keys.length);
+    }
+
+    protected TxnFastHashMap() {
+        super();
+        this.values = newValuesArray(keys.length);
+    }
+
+    /**
+     * Fork constructor — see {@link TxnFastHashBase#TxnFastHashBase(TxnFastHashBase)}.
+     * Shares {@code values} (in addition to {@code keys}/{@code hashCodes})
+     * with the source.
+     */
+    protected TxnFastHashMap(final TxnFastHashMap<K, V> source) {
+        super(source);
+        this.values = source.values;
+    }
+
+    /** Subclasses allocate their typed value array here. */
+    protected abstract V[] newValuesArray(int size);
+
+    @Override
+    protected void onKeysAndHashCodesGrown(K[] oldKeys, K[] newKeys,
+                                            int[] oldHashCodes, int[] newHashCodes,
+                                            int oldLength) {
+        // Grow values[] in lock-step with keys[]/hashCodes[]. Reap
+        // tombstoned slots in the new array so dead V references can be
+        // GC'd, mirroring TxnFastHashBase#growKeysAndHashCodeArrays.
+        final V[] newValues = newValuesArray(newKeys.length);
+        System.arraycopy(values, 0, newValues, 0, oldLength);
+        for (int i = 0; i < keysPos; i++) {
+            if (deleted[i]) {
+                newValues[i] = null;
+            }
+        }
+        this.values = newValues;
+    }
+
+    // Note: removeFrom is inherited unchanged from TxnFastHashBase. Unlike
+    // FastHashMap, we deliberately do NOT null values[~positions[here]] —
+    // values[] is shared with snapshots. Reaping happens later in
+    // onKeysAndHashCodesGrown when the writer allocates fresh arrays.
+
+    @Override
+    public void clear() {
+        super.clear();
+        values = newValuesArray(keys.length);
+    }
+
+    // ----- Insert / update --------------------------------------------
+
+    @Override
+    public boolean tryPut(K key, V value) {
+        growPositionsArrayIfNeeded();
+        final int hashCode = key.hashCode();
+        final var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            insertAt(~pIndex, key, hashCode, value);
+            return true;
+        } else {
+            updateExisting(pIndex, key, hashCode, value);
+            return false;
+        }
+    }
+
+    @Override
+    public void put(K key, V value) {
+        growPositionsArrayIfNeeded();
+        final int hashCode = key.hashCode();
+        final var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            insertAt(~pIndex, key, hashCode, value);
+        } else {
+            updateExisting(pIndex, key, hashCode, value);
+        }
+    }
+
+    @Override
+    public int putAndGetIndex(K key, V value) {
+        growPositionsArrayIfNeeded();
+        final int hashCode = key.hashCode();
+        final var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            return insertAt(~pIndex, key, hashCode, value);
+        } else {
+            return updateExisting(pIndex, key, hashCode, value);
+        }
+    }
+
+    /**
+     * Insert a brand-new entry. {@code emptyPIndex} is a probe-table slot
+     * known to be empty (i.e. {@code positions[emptyPIndex] == 0}).
+     */
+    private int insertAt(int emptyPIndex, K key, int hashCode, V value) {
+        final var eIndex = getFreeKeyIndex();
+        keys[eIndex] = key;
+        hashCodes[eIndex] = hashCode;
+        values[eIndex] = value;
+        deleted[eIndex] = false;
+        positions[emptyPIndex] = ~eIndex;
+        return eIndex;
+    }
+
+    /**
+     * Update an entry whose key is already present. Implements the COW
+     * tombstone-and-append: tombstone the old slot (so any snapshot still
+     * resolves to the old value via its own {@code positions}), then append
+     * a fresh entry at {@code keysPos++} with the new value.
+     * <p>
+     * Returns the new entry index.
+     */
+    private int updateExisting(int pIndex, K key, int hashCode, V value) {
+        // Tombstone the old slot. Note: removeFrom mutates only writer-
+        // private state (deleted[oldEIndex]=true; Algorithm-R on positions).
+        removeFrom(pIndex);
+
+        // The probe table is now "key absent". Re-find the empty insertion
+        // point along the (possibly shifted) probe chain.
+        final var newPIndex = findPosition(key, hashCode);
+        // findPosition must report absent here; if it ever didn't, we'd be
+        // about to corrupt the table. The assert is silenced by the Java
+        // compiler in release builds.
+        assert newPIndex < 0 : "key unexpectedly present after removeFrom";
+        return insertAt(~newPIndex, key, hashCode, value);
+    }
+
+    /**
+     * @return the value at index {@code i}; bounds-and-liveness are not
+     * checked. Caller must ensure {@code i} corresponds to a live slot.
+     */
+    public V getValueAt(int i) {
+        return values[i];
+    }
+
+    @Override
+    public V get(K key) {
+        var pIndex = findPosition(key, key.hashCode());
+        if (pIndex < 0) {
+            return null;
+        } else {
+            return values[~positions[pIndex]];
+        }
+    }
+
+    @Override
+    public V getOrDefault(K key, V defaultValue) {
+        var pIndex = findPosition(key, key.hashCode());
+        if (pIndex < 0) {
+            return defaultValue;
+        } else {
+            return values[~positions[pIndex]];
+        }
+    }
+
+    @Override
+    public V computeIfAbsent(K key, Supplier<V> absentValueSupplier) {
+        final int hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            // tryGrowPositionsArrayIfNeeded may resize positions[] and
+            // therefore invalidate pIndex. If so, recompute the empty slot
+            // along the new probe chain.
+            if (tryGrowPositionsArrayIfNeeded()) {
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
+            }
+            final var value = absentValueSupplier.get();
+            insertAt(~pIndex, key, hashCode, value);
+            return value;
+        } else {
+            return values[~positions[pIndex]];
+        }
+    }
+
+    @Override
+    public void compute(K key, UnaryOperator<V> valueProcessor) {
+        final int hashCode = key.hashCode();
+        var pIndex = findPosition(key, hashCode);
+        if (pIndex < 0) {
+            // No prior value.
+            final var value = valueProcessor.apply(null);
+            if (value == null)
+                return;
+            if (tryGrowPositionsArrayIfNeeded()) {
+                pIndex = ~findEmptySlotWithoutEqualityCheck(hashCode);
+            }
+            insertAt(~pIndex, key, hashCode, value);
+        } else {
+            // Existing value. Tombstone-and-append on update;
+            // tombstone-only on null result (i.e. remove).
+            final var oldEIndex = ~positions[pIndex];
+            final var newValue = valueProcessor.apply(values[oldEIndex]);
+            if (newValue == null) {
+                removeFrom(pIndex);
+            } else {
+                updateExisting(pIndex, key, hashCode, newValue);
+            }
+        }
+    }
+
+    // ----- Iteration over values --------------------------------------
+
+    @Override
+    public ExtendedIterator<V> valueIterator() {
+        return new SparseTombstoneIterator<>(values, deleted, keysPos, this);
+    }
+
+    @Override
+    public Spliterator<V> valueSpliterator() {
+        return new SparseTombstoneSpliterator<>(values, deleted, keysPos, this);
+    }
+}
