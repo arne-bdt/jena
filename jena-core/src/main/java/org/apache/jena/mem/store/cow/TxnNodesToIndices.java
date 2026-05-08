@@ -79,6 +79,13 @@ public class TxnNodesToIndices
         return new TxnNodesToIndices(this);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>This is a fork, not a deep copy.</b> The source must not be
+     * mutated after this call — only the returned instance is safe to
+     * mutate. See {@link #fork()} and the class Javadoc.
+     */
     @Override
     public TxnNodesToIndices copy() {
         return fork();

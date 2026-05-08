@@ -38,6 +38,14 @@ import java.util.function.Consumer;
  * {@link org.apache.jena.mem.spliterator.SparseArraySpliterator}: the size
  * of the owning collection is snapshotted at construction and rechecked at
  * each advance/forEach boundary.
+ * <p>
+ * <b>{@link Spliterator#IMMUTABLE} is intentionally NOT declared.</b>
+ * The owning collection may be a writer's working copy that is structurally
+ * mutable for the duration of a write transaction, which violates the
+ * {@code IMMUTABLE} contract ("source guarantees no structural source
+ * modification can occur"). The CME path is a best-effort tripwire for
+ * accidental cross-thread use of the (non-thread-safe) collection — not a
+ * declaration that the source is immutable.
  *
  * @param <E> the type of the array elements
  */
@@ -124,6 +132,7 @@ public class SparseTombstoneSpliterator<E> implements Spliterator<E> {
 
     @Override
     public int characteristics() {
-        return DISTINCT | NONNULL | IMMUTABLE;
+        // Deliberately NOT IMMUTABLE — see class Javadoc.
+        return DISTINCT | NONNULL;
     }
 }

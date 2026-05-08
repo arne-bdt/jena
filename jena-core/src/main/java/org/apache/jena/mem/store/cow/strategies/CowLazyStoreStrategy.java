@@ -102,10 +102,19 @@ public final class CowLazyStoreStrategy implements CowStoreStrategy {
      * eager) — but the answer returned to <i>this</i> caller is still
      * computed against the eager strategy this thread just built, which
      * is consistent.
+     * <p>
+     * The eager is built with {@code installGrowHook = false} because
+     * this code path can run on a published snapshot held by multiple
+     * concurrent readers; race-installing the keys-grow hook would
+     * write to a field that should be considered frozen on a published
+     * {@link org.apache.jena.mem.store.cow.TxnTripleSet}. A snapshot's
+     * keys array never grows, so the hook would be a no-op anyway. On a
+     * working-copy upgrade, {@code CowEagerStoreStrategy#addToIndex}
+     * resizes its reverse-index arrays on demand.
      */
     private CowEagerStoreStrategy upgradeAndAnswer() {
         final CowEagerStoreStrategy mine =
-                new CowEagerStoreStrategy(store.getTriples(), parallel);
+                new CowEagerStoreStrategy(store.getTriples(), parallel, false);
         store.tryInstallEagerStrategy(this, mine);
         return mine;
     }

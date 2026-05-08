@@ -165,6 +165,10 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
         keys[eIndex] = key;
         hashCodes[eIndex] = hashCode;
         values[eIndex] = value;
+        // Required: getFreeKeyIndex() may return a slot from the post-grow
+        // freelist where deleted[i] is still true (carried over from the
+        // old tombstone — growKeysAndHashCodeArrays arraycopies the old
+        // deleted[] without clearing compacted bits).
         deleted[eIndex] = false;
         positions[emptyPIndex] = ~eIndex;
         return eIndex;

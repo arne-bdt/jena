@@ -98,12 +98,18 @@ public class TxnTripleSet
         return new TxnTripleSet(this);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>This is a fork, not a deep copy.</b> The source must not be
+     * mutated after this call — only the returned instance is safe to
+     * mutate. See {@link #fork()} and the class Javadoc.
+     * <p>
+     * If a future caller needs a truly independent deep copy, this is
+     * the place to add it.
+     */
     @Override
     public TxnTripleSet copy() {
-        // Phase B's Copyable contract is satisfied via fork: from the
-        // perspective of the *fork*, mutations on the source would
-        // violate the discipline anyway. If a future caller needs a
-        // truly independent deep copy, this is the place to add it.
         return fork();
     }
 

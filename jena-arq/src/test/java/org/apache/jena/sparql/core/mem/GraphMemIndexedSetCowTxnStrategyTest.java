@@ -158,7 +158,7 @@ public class GraphMemIndexedSetCowTxnStrategyTest {
         GraphMemIndexedSetCowTxn g = populated(IndexingStrategy.MANUAL);
         assertThrows(JenaTransactionException.class, g::initializeIndex);
         assertThrows(JenaTransactionException.class, g::initializeIndexParallel);
-        assertThrows(JenaTransactionException.class, g::clearIndex);
+        assertThrows(JenaTransactionException.class, g::resetIndexStrategy);
     }
 
     @Test
@@ -201,10 +201,10 @@ public class GraphMemIndexedSetCowTxnStrategyTest {
         g.end();
     }
 
-    // ----- clearIndex semantics ------------------------------------
+    // ----- resetIndexStrategy semantics ----------------------------
 
     @Test
-    public void clearIndexRevertsLazyToPending() {
+    public void resetIndexStrategyRevertsLazyToPending() {
         GraphMemIndexedSetCowTxn g = populated(IndexingStrategy.LAZY);
 
         g.begin(TxnType.READ);
@@ -215,9 +215,9 @@ public class GraphMemIndexedSetCowTxnStrategyTest {
         assertTrue(g.isIndexInitialized());
 
         g.begin(TxnType.WRITE);
-        g.clearIndex();
+        g.resetIndexStrategy();
         assertFalse(g.isIndexInitialized(),
-                "clearIndex must revert lazy to pending in the working copy");
+                "resetIndexStrategy must revert lazy to pending in the working copy");
         g.commit();
         g.end();
 

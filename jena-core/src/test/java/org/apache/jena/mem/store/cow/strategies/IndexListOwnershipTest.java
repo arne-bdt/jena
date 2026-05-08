@@ -195,15 +195,16 @@ public class IndexListOwnershipTest {
     }
 
     @Test
-    public void clearIndexThenRebuildKeepsOwnership() throws Exception {
-        // After clearIndex on EAGER, a fresh empty eager strategy is
-        // installed (same kind, but empty). Adding a triple must stamp
-        // the new list with the NEW strategy's ownerId.
+    public void resetIndexStrategyAssignsFreshOwnerId() throws Exception {
+        // After resetIndexStrategy on EAGER, a fresh empty eager strategy
+        // is installed (same kind, but empty). The new strategy must have
+        // a fresh ownerId, and any list added after the reset is stamped
+        // with that new id.
         CowIndexedSetTripleStore store = new CowIndexedSetTripleStore(IndexingStrategy.EAGER);
         store.add(t("s1", "p", "o1"));
         long oldId = ownerIdOf(eagerStrategyOf(store));
 
-        store.clearIndex();                          // installs a fresh eager
+        store.resetIndexStrategy();                  // installs a fresh eager
         long newId = ownerIdOf(eagerStrategyOf(store));
         assertNotEquals("a fresh strategy must have a fresh ownerId", oldId, newId);
 

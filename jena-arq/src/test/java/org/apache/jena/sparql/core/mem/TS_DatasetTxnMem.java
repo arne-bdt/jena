@@ -43,6 +43,10 @@ import org.junit.platform.suite.api.Suite;
     TestDatasetGraphInMemoryFindPattern.class,
     TestDatasetGraphInMemoryIsolation.class,
     TestDatasetGraphInMemoryPromote.class,
-    TestDatasetGraphInMemoryMisc.class
+    TestDatasetGraphInMemoryMisc.class,
+
+    // Phase B copy-on-write transactional graph integration.
+    TestGraphMemIndexedSetCowTxnContract.class,
+    TestDatasetGraphCowTxnTransactions.class
  })
 public class TS_DatasetTxnMem {}

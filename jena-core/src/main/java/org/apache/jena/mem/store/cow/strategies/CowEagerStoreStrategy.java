@@ -111,19 +111,18 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
 
     /**
      * Build an empty eager index over the given triple set, then index
-     * any triples already present (sequentially).
+     * any triples already present (sequentially). Installs a grow hook so
+     * the reverse-index arrays grow in lock-step with {@code triples.keys[]}.
      *
-     * @param triples the canonical triple set; the strategy installs a
-     *                grow hook so the reverse-index arrays grow in
-     *                lock-step with {@code triples.keys[]}
+     * @param triples the canonical triple set
      */
     public CowEagerStoreStrategy(TxnTripleSet triples) {
-        this(triples, false);
+        this(triples, false, true);
     }
 
     /**
      * Build an empty eager index over the given triple set, then index
-     * any triples already present.
+     * any triples already present. Installs the grow hook.
      *
      * @param triples  the canonical triple set
      * @param parallel if {@code true}, populate the three indices
@@ -131,6 +130,30 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
      *                 and by {@link CowIndexedSetTripleStore#initializeIndexParallel})
      */
     public CowEagerStoreStrategy(TxnTripleSet triples, boolean parallel) {
+        this(triples, parallel, true);
+    }
+
+    /**
+     * Full constructor.
+     *
+     * @param triples         the canonical triple set
+     * @param parallel        if {@code true}, populate the three indices
+     *                        concurrently
+     * @param installGrowHook whether to register the keys-grow callback on
+     *                        {@code triples}. Pass {@code false} when the
+     *                        strategy is being built against a published
+     *                        snapshot (e.g. a LAZY → EAGER race-build on a
+     *                        snapshot held by multiple readers): the
+     *                        snapshot's keys never grow, so the hook would
+     *                        never fire, and concurrent installations
+     *                        would otherwise race on the shared
+     *                        {@code TxnTripleSet}'s hook field.
+     *                        {@link #addToIndex} resizes the reverse-index
+     *                        arrays on-demand if the keys array grows
+     *                        without the hook (only relevant on a writer's
+     *                        working copy that took this code path).
+     */
+    public CowEagerStoreStrategy(TxnTripleSet triples, boolean parallel, boolean installGrowHook) {
         this.triples = triples;
         this.subjectIndex = new TxnNodesToIndices();
         this.predicateIndex = new TxnNodesToIndices();
@@ -139,7 +162,9 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
         this.sReverseIndices = new int[len];
         this.pReverseIndices = new int[len];
         this.oReverseIndices = new int[len];
-        triples.setOnKeysGrowHook(this::onTriplesKeysGrew);
+        if (installGrowHook) {
+            triples.setOnKeysGrowHook(this::onTriplesKeysGrew);
+        }
         if (triples.size() > 0) {
             if (parallel) {
                 indexAllParallel();
@@ -151,8 +176,11 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
 
     /**
      * Fork constructor — used by {@link #fork(CowIndexedSetTripleStore)}.
-     * Forks each spine and clones each reverse-index array; starts with
-     * an empty {@link #myForks}.
+     * Forks each spine and clones each reverse-index array. The new
+     * strategy is stamped with a fresh {@link #ownerId}, so every
+     * {@link IndexList} inherited from the source is treated as
+     * "not writer-owned" until {@link #ensureWritableList} clones it on
+     * first mutation.
      */
     private CowEagerStoreStrategy(TxnTripleSet newTriples, CowEagerStoreStrategy source) {
         this.triples = newTriples;
@@ -180,9 +208,25 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
 
     @Override
     public void addToIndex(Triple t, int index) {
+        ensureReverseIndicesCapacity(index);
         sReverseIndices[index] = ensureWritableList(subjectIndex, t.getSubject()).add(index);
         pReverseIndices[index] = ensureWritableList(predicateIndex, t.getPredicate()).add(index);
         oReverseIndices[index] = ensureWritableList(objectIndex, t.getObject()).add(index);
+    }
+
+    /**
+     * Defensively resize the three reverse-index arrays so they cover
+     * {@code index}. Normally the keys-grow hook (if installed) does this
+     * eagerly when {@code triples.keys[]} grows; this fallback covers the
+     * case where the strategy was constructed without the hook (see the
+     * {@code installGrowHook} parameter on the constructor).
+     */
+    private void ensureReverseIndicesCapacity(int index) {
+        if (index < sReverseIndices.length) return;
+        final int newLength = Math.max(triples.getInternalKeysLength(), index + 1);
+        sReverseIndices = Arrays.copyOf(sReverseIndices, newLength);
+        pReverseIndices = Arrays.copyOf(pReverseIndices, newLength);
+        oReverseIndices = Arrays.copyOf(oReverseIndices, newLength);
     }
 
     @Override

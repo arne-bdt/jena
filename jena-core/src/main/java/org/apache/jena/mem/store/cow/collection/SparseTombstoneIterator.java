@@ -98,6 +98,9 @@ public class SparseTombstoneIterator<E> extends NiceIterator<E> {
             }
             pos--;
         }
+        // After exhaustion, drop any cached hasNext result so a stale
+        // `true` (from an earlier hasNext()) cannot be re-used.
+        hasNext = false;
         if (sizeOfOwnerAtStart != owner.size()) throw new ConcurrentModificationException();
     }
 }

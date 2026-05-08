@@ -226,18 +226,18 @@ public class CowStoreStrategiesTest {
         assertTrue(store.isIndexInitialized());
     }
 
-    // ----- clearIndex semantics --------------------------------------
+    // ----- resetIndexStrategy semantics ------------------------------
 
     @Test
-    public void clearIndexRevertsLazyToPending() {
+    public void resetIndexStrategyRevertsLazyToPending() {
         CowIndexedSetTripleStore store = seeded(IndexingStrategy.LAZY);
         Triple partial = Triple.createMatch(
                 NodeFactory.createURI("http://ex/s3"), null, null);
         store.stream(partial).count();              // triggers auto-build
         assertTrue(store.isIndexInitialized());
 
-        store.clearIndex();
-        assertFalse("clearIndex must revert lazy to pending",
+        store.resetIndexStrategy();
+        assertFalse("resetIndexStrategy must revert lazy to pending",
                 store.isIndexInitialized());
 
         // Next lookup re-builds.
@@ -246,25 +246,25 @@ public class CowStoreStrategiesTest {
     }
 
     @Test
-    public void clearIndexRevertsManualToThrowing() {
+    public void resetIndexStrategyRevertsManualToThrowing() {
         CowIndexedSetTripleStore store = seeded(IndexingStrategy.MANUAL);
         store.initializeIndex();
         assertTrue(store.isIndexInitialized());
 
-        store.clearIndex();
+        store.resetIndexStrategy();
         Triple partial = Triple.createMatch(
                 NodeFactory.createURI("http://ex/s3"), null, null);
         assertThrows(UnsupportedOperationException.class, () -> store.contains(partial));
     }
 
     @Test
-    public void clearIndexOnMinimalIsNoOpVisibly() {
+    public void resetIndexStrategyOnMinimalIsNoOpVisibly() {
         CowIndexedSetTripleStore store = seeded(IndexingStrategy.MINIMAL);
         Triple partial = Triple.createMatch(
                 NodeFactory.createURI("http://ex/s3"), null, null);
         assertEquals(2, drain(store.stream(partial)).size());
 
-        store.clearIndex();
+        store.resetIndexStrategy();
         // Still works the same way.
         assertEquals(2, drain(store.stream(partial)).size());
     }

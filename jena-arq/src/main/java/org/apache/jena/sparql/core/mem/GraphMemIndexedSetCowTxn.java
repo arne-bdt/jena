@@ -146,17 +146,18 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
     }
 
     /**
-     * Drop the working copy's index and revert to the configured
-     * {@link IndexingStrategy}. For {@code LAZY}/{@code LAZY_PARALLEL}
-     * this means the next pattern lookup will trigger a fresh auto-build;
-     * for {@code MANUAL} it means future pattern lookups will again throw
-     * until {@link #initializeIndex()} is called; for {@code EAGER} it
+     * Drop the working copy's current strategy and re-install a fresh
+     * one of the configured {@link IndexingStrategy} kind. For
+     * {@code LAZY}/{@code LAZY_PARALLEL} this means the next pattern
+     * lookup will trigger a fresh auto-build; for {@code MANUAL} it
+     * means future pattern lookups will again throw until
+     * {@link #initializeIndex()} is called; for {@code EAGER} it
      * rebuilds an empty eager index that re-fills as triples flow in.
      * <p>
      * Must be called from inside a write transaction.
      */
-    public void clearIndex() {
-        writeStore().clearIndex();
+    public void resetIndexStrategy() {
+        writeStore().resetIndexStrategy();
         activeTxn.get().dirty = true;
     }
 

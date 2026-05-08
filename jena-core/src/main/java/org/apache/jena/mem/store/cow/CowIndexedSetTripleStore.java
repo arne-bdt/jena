@@ -58,8 +58,8 @@ import java.util.stream.Stream;
  *             (CAS, so concurrent readers race-build harmlessly);
  *         <li>{@link #initializeIndex} / {@link #initializeIndexParallel}
  *             can install an eager strategy from outside;
- *         <li>{@link #clearIndex} can revert to the original configured
- *             strategy.
+ *         <li>{@link #resetIndexStrategy} can revert to the original
+ *             configured strategy.
  *       </ul>
  * </ul>
  *
@@ -68,9 +68,13 @@ import java.util.stream.Stream;
  * current strategy to {@linkplain CowStoreStrategy#fork(CowIndexedSetTripleStore)
  * fork itself} into the new store. For non-eager strategies this is
  * essentially free; for eager it forks the spines and clones the three
- * reverse-index arrays. The new fork starts with a fresh empty
- * {@code myForks} set inside its eager strategy (clone-on-first-touch
- * for any shared {@link org.apache.jena.mem.store.indexed.IndexList}).
+ * reverse-index arrays. The new fork's eager strategy is stamped with a
+ * fresh per-instance {@code ownerId}; any
+ * {@link org.apache.jena.mem.store.indexed.IndexList} shared with the
+ * source is cloned on first mutation by
+ * {@link org.apache.jena.mem.store.cow.strategies.CowEagerStoreStrategy
+ * #ensureWritableList} (which compares the list's stamped id against the
+ * fork's id).
  *
  * <h2>Indexing strategies</h2>
  * All five baseline strategies are supported:
@@ -91,7 +95,7 @@ public class CowIndexedSetTripleStore implements TripleStore {
     /** The canonical set of triples; each entry has a stable integer index. */
     private final TxnTripleSet triples;
 
-    /** The configured initial strategy; {@link #clearIndex} reverts to this. */
+    /** The configured initial strategy; {@link #resetIndexStrategy} reverts to this. */
     private final IndexingStrategy initialStrategy;
 
     /**
@@ -111,7 +115,7 @@ public class CowIndexedSetTripleStore implements TripleStore {
      * Set under the same path that mutates {@link #strategy}: a
      * successful {@link #tryInstallEagerStrategy} CAS,
      * {@link #initializeIndex}, {@link #initializeIndexParallel}, or
-     * {@link #clearIndex}.
+     * {@link #resetIndexStrategy}.
      */
     private volatile boolean strategyChanged = false;
 
@@ -187,10 +191,15 @@ public class CowIndexedSetTripleStore implements TripleStore {
         return new CowIndexedSetTripleStore(this, new Parts(fTriples.join()));
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>This is a fork, not a deep copy.</b> The source must not be
+     * mutated after this call — only the returned instance is safe to
+     * mutate. See the class Javadoc's "Fork semantics" section.
+     */
     @Override
     public CowIndexedSetTripleStore copy() {
-        // Phase B's Copyable contract: the source is treated as frozen
-        // after the call; cheap fork covers it.
         return forkForWrite();
     }
 
@@ -208,15 +217,19 @@ public class CowIndexedSetTripleStore implements TripleStore {
     }
 
     /**
-     * Drop the current strategy and revert to the configured
-     * {@link #getIndexingStrategy()}. Subsequent lookups will follow the
-     * initial strategy's rules (e.g. lazy will re-trigger an auto-build
-     * on the next lookup).
+     * Drop the current strategy and re-install a fresh one of the
+     * configured {@link #getIndexingStrategy()} kind. Subsequent lookups
+     * will follow the initial strategy's rules (e.g. lazy will
+     * re-trigger an auto-build on the next lookup).
      * <p>
      * Intended to be called from a write transaction; mutates the
      * writer-private strategy slot.
+     * <p>
+     * Distinct from {@link CowStoreStrategy#clearIndex()}, which clears
+     * a single strategy's internal state in place. This method
+     * <i>replaces</i> the strategy reference instead.
      */
-    public void clearIndex() {
+    public void resetIndexStrategy() {
         strategy.set(buildInitialStrategy(initialStrategy));
         strategyChanged = true;
     }

@@ -58,6 +58,11 @@ public final class CowMinimalStoreStrategy implements CowStoreStrategy {
     @Override public void removeFromIndex(Triple t, int i) { /* no bitmaps */ }
     @Override public void clearIndex()                   { /* no bitmaps */ }
 
+    // The {@code pattern} parameter on the three match methods below is
+    // part of the {@link CowStoreStrategy} contract but unused here: a
+    // linear scan against {@code Triple#matches} is uniform across all
+    // partial patterns, so no per-pattern dispatch is needed.
+
     @Override
     public boolean containsMatch(Triple tripleMatch, MatchPattern pattern) {
         return triples.anyMatch(tripleMatch::matches);

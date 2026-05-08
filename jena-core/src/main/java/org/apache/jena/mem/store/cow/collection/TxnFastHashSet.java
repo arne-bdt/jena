@@ -58,16 +58,14 @@ public abstract class TxnFastHashSet<K> extends TxnFastHashBase<K> implements Je
         growPositionsArrayIfNeeded();
         final var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
-            // Append at keysPos++ (see TxnFastHashBase#getFreeKeyIndex for why).
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             hashCodes[eIndex] = hashCode;
-            // Liveness bit must be cleared in case the slot was tombstoned in
-            // the snapshot we forked from (snapshot keeps deleted[i]=true for
-            // slots beyond keysPos? — actually not relevant here since
-            // getFreeKeyIndex always returns a fresh keysPos++ that is past
-            // any inherited tombstone, but writing false defensively keeps
-            // the invariant explicit).
+            // Required: getFreeKeyIndex() may return a slot from the
+            // post-grow freelist, where deleted[i] is still true (carried
+            // over from the old tombstone — growKeysAndHashCodeArrays
+            // arraycopies the old deleted[] without clearing compacted
+            // bits). Clear it before the slot becomes live.
             deleted[eIndex] = false;
             positions[~pIndex] = ~eIndex;
             return true;
@@ -84,6 +82,8 @@ public abstract class TxnFastHashSet<K> extends TxnFastHashBase<K> implements Je
             final var eIndex = getFreeKeyIndex();
             keys[eIndex] = key;
             hashCodes[eIndex] = hashCode;
+            // See tryAdd for why this clear is required (post-grow
+            // freelist slots carry deleted[i]=true from the old tombstone).
             deleted[eIndex] = false;
             positions[~pIndex] = ~eIndex;
             return eIndex;
@@ -106,6 +106,7 @@ public abstract class TxnFastHashSet<K> extends TxnFastHashBase<K> implements Je
         final var eIndex = getFreeKeyIndex();
         keys[eIndex] = key;
         hashCodes[eIndex] = hashCode;
+        // See tryAdd for why this clear is required.
         deleted[eIndex] = false;
         positions[findEmptySlotWithoutEqualityCheck(hashCode)] = ~eIndex;
     }
