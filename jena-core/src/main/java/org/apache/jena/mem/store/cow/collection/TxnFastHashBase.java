@@ -33,6 +33,50 @@ import java.util.function.Predicate;
  * the two can be read side by side; only the removal discipline and the
  * fork semantics differ.
  *
+ * <h2>Tombstone discipline</h2>
+ * Liveness is encoded by an explicit {@link #deleted} bitmap, not by
+ * {@code keys[i] == null}. The four invariants the writer must preserve:
+ * <ol>
+ *   <li><b>Append-only on shared spine arrays.</b> The writer never writes
+ *       to {@code keys[i]} or {@code hashCodes[i]} for any {@code i < } the
+ *       source snapshot's {@code keysPos}. New entries always go at
+ *       {@code keysPos++} (a slot beyond every open snapshot's view), or
+ *       at a freelist slot inside the writer's <i>own</i> freshly grown
+ *       arrays (post-grow, where nothing is shared with a snapshot).
+ *   <li><b>No swap-with-last on shared arrays.</b> Removal does not permute
+ *       elements in the dense array. Deletion only sets writer-private
+ *       {@code deleted[i] = true} and runs Algorithm-R on the writer-private
+ *       {@code positions} table.
+ *   <li><b>Iteration skips by {@link #deleted}, never by null.</b> Because
+ *       the writer never overwrites alive snapshot slots, a snapshot's
+ *       {@code keys[i]} for a tombstoned slot still holds the (now-dead)
+ *       reference; only {@code deleted[i]} marks it dead.
+ *   <li><b>Freelist is built only at grow time, never on remove.</b>
+ *       Linking a freed slot at remove time would require writing into
+ *       shared {@code hashCodes[i]} (overwriting the cached hash a
+ *       snapshot still relies on), so removes are pure tombstones. At
+ *       {@code grow} the writer allocates fresh arrays and walks
+ *       {@code deleted[]} to (a) null {@code keys[i]} so dead references
+ *       can be GC'd, and (b) link tombstoned slots into a freelist
+ *       headed at {@link #lastDeletedIndex}, encoded via the new
+ *       {@code hashCodes[]}. Subsequent inserts in the same (or any
+ *       later) write transaction consume the freelist first via
+ *       {@link #getFreeKeyIndex()} before bumping {@code keysPos}.
+ * </ol>
+ *
+ * <h2>Adaptive growth</h2>
+ * The trigger for {@link #growKeysAndHashCodeArrays} is
+ * {@code keysPos == keys.length}, but that does not always mean the
+ * collection actually needs more capacity — under steady-state churn
+ * (equal numbers of removes and adds) it just means the array filled up
+ * with tombstones. The size decision is therefore:
+ * <ul>
+ *   <li>If {@code liveCount + 1 ≤ oldLength}, allocate a <b>same-size</b>
+ *       new array. Compaction recovers enough slots; no real growth is
+ *       needed. Steady-state churn workloads stay at constant capacity.
+ *   <li>Otherwise allocate at the standard 1.5× factor.
+ * </ul>
+ *
  * <h2>Sharing model</h2>
  * Each instance is either a <i>published snapshot</i> (treated as immutable
  * by the caller) or a <i>working copy</i> forked from a snapshot. Both kinds
@@ -47,35 +91,9 @@ import java.util.function.Predicate;
  *   <li><b>Writer-private</b>: {@code positions} (probe table) and
  *       {@code deleted} (tombstone bitmap). The fork constructor copies
  *       these so the source's view stays stable even as the fork mutates.
+ *       {@link #lastDeletedIndex} (head of the post-grow freelist) is also
+ *       writer-private.
  * </ul>
- *
- * <h2>Tombstone discipline</h2>
- * Liveness is encoded by an explicit {@link #deleted} bitmap, not by
- * {@code keys[i] == null}. The four invariants the writer must preserve:
- * <ol>
- *   <li><b>Append-only on shared spine arrays.</b> The writer never writes
- *       to {@code keys[i]} or {@code hashCodes[i]} for any {@code i < } the
- *       source snapshot's {@code keysPos}. New entries always go at
- *       {@code keysPos++} (a slot beyond every open snapshot's view).
- *   <li><b>No swap-with-last on shared arrays.</b> Removal does not permute
- *       elements in the dense array. Deletion only sets writer-private
- *       {@code deleted[i] = true} and runs Algorithm-R on the writer-private
- *       {@code positions} table.
- *   <li><b>Iteration skips by {@link #deleted}, never by null.</b> Because
- *       the writer never overwrites alive snapshot slots, a snapshot's
- *       {@code keys[i]} for a tombstoned slot still holds the (now-dead)
- *       reference; only {@code deleted[i]} marks it dead.
- *   <li><b>Freelist is reaped only at grow time.</b> Tombstoned slots are
- *       not reused mid-transaction (every insert appends at
- *       {@code keysPos++}). At a {@code grow} the writer allocates fresh
- *       arrays, copies the live slots, and (in the new arrays) nulls the
- *       tombstoned slots so their references can be GC'd. Old snapshots
- *       still point at the old arrays and are unaffected.
- * </ol>
- *
- * <p>This wastes one slot per remove until the next {@code grow}. The
- * trade-off is intentional: it eliminates an entire family of correctness
- * bugs that would otherwise require generation tagging or pin counting.
  *
  * @param <K> the type of the keys
  */
@@ -99,10 +117,19 @@ public abstract class TxnFastHashBase<K> implements JenaMapSetCommon<K> {
     protected K[] keys;
 
     /**
-     * Cached {@link Object#hashCode()} of the corresponding key, parallel
-     * to {@link #keys}. Stale hashes for tombstoned slots are harmless:
-     * the probe table {@link #positions} no longer points at those slots
-     * after Algorithm-R, and iteration skips them via {@link #deleted}.
+     * For live slots: cached {@link Object#hashCode()} of the corresponding
+     * key, parallel to {@link #keys}.
+     * <p>
+     * For dead slots in the writer's <i>freshly grown</i> arrays: the index
+     * of the previously freed slot, forming a singly-linked freelist whose
+     * head is {@link #lastDeletedIndex}. The freelist is built by
+     * {@link #growKeysAndHashCodeArrays} and consumed by
+     * {@link #getFreeKeyIndex}.
+     * <p>
+     * For dead slots in arrays still shared with a snapshot (i.e. between
+     * the most recent grow and any subsequent removes): the original
+     * cached hash is preserved unchanged, because overwriting it would
+     * corrupt the snapshot's view of that slot's hash.
      */
     protected int[] hashCodes;
 
@@ -134,6 +161,19 @@ public abstract class TxnFastHashBase<K> implements JenaMapSetCommon<K> {
 
     /** Number of dead slots in {@code [0, keysPos)}. Live size = {@code keysPos - removedKeysCount}. */
     protected int removedKeysCount = 0;
+
+    /**
+     * Head of the singly-linked freelist of physically reaped slots
+     * (built at the most recent grow), or {@code -1} when the freelist
+     * is empty. The next link of a freelist node {@code i} is stored in
+     * {@code hashCodes[i]}.
+     * <p>
+     * Only slots in the writer's <i>freshly grown</i> arrays appear on
+     * this list — slots tombstoned by removes after the most recent grow
+     * are tracked by {@link #deleted} only, not by this list. They join
+     * the freelist at the next grow.
+     */
+    protected int lastDeletedIndex = -1;
 
     // -------------------------------------------------------------------
 
@@ -183,6 +223,7 @@ public abstract class TxnFastHashBase<K> implements JenaMapSetCommon<K> {
         // Scalars.
         this.keysPos = source.keysPos;
         this.removedKeysCount = source.removedKeysCount;
+        this.lastDeletedIndex = source.lastDeletedIndex;
     }
 
     /**
@@ -257,85 +298,136 @@ public abstract class TxnFastHashBase<K> implements JenaMapSetCommon<K> {
     /**
      * Return the next slot index for a new entry.
      * <p>
-     * Always {@code keysPos++}, never the freelist: reusing a tombstoned
-     * slot mid-transaction would write into shared {@code keys}/
-     * {@code hashCodes} at an index where some open snapshot still has
-     * {@code deleted[i] == false}, which would expose the new value to
-     * that snapshot. Tombstoned slots are physically reaped only at
-     * {@code grow} time, inside the writer's freshly allocated (and
-     * therefore unshared) arrays.
+     * Prefers the freelist (built at the most recent grow) over bumping
+     * {@code keysPos}. A freelist slot lives entirely inside the writer's
+     * own freshly grown arrays — none of those arrays are shared with a
+     * snapshot, so writing a new entry there is safe (the snapshot's view
+     * was constructed against the <i>old</i> arrays).
+     * <p>
+     * If the freelist is empty and {@code keysPos == keys.length}, this
+     * triggers {@link #growKeysAndHashCodeArrays}. The grow may either
+     * (a) keep the same array length and recover slots via compaction,
+     * in which case the freelist is now non-empty, or (b) actually
+     * allocate at 1.5×, in which case there is room past {@code keysPos}.
+     * The recursive call resolves either case.
      */
     protected final int getFreeKeyIndex() {
-        final int index = keysPos++;
-        if (index == keys.length) {
-            growKeysAndHashCodeArrays();
+        if (lastDeletedIndex >= 0) {
+            final int index = lastDeletedIndex;
+            // The next link is stored in hashCodes[index] (see
+            // growKeysAndHashCodeArrays for how the chain is built).
+            lastDeletedIndex = hashCodes[index];
+            removedKeysCount--;
+            return index;
         }
-        return index;
+        if (keysPos == keys.length) {
+            growKeysAndHashCodeArrays();
+            // After grow either the freelist is populated (compaction)
+            // or keys.length increased; recurse to take the right path.
+            return getFreeKeyIndex();
+        }
+        return keysPos++;
     }
 
     /**
      * Allocate fresh {@link #keys}, {@link #hashCodes}, and {@link #deleted}
-     * arrays at 1.5× capacity, copy from the old arrays, then reap
-     * tombstoned slots in the new arrays.
-     * <p>
-     * Reaping ({@code keys[i] = null}) happens in the new arrays, so the
-     * old arrays — still referenced by any open snapshot — are untouched.
-     * The writer-private {@code deleted} bit on a reaped slot stays
-     * {@code true} (matching its logical state), and {@code positions} is
-     * unchanged (entries for tombstoned slots were already cleared by
-     * Algorithm-R at remove time).
-     * <p>
-     * Subclasses that hold an additional shared values array override
-     * {@link #onKeysAndHashCodesGrown(K[], K[], int[], int[], int)} to
-     * grow and reap their values array in lock-step.
+     * arrays, copy live state across, and compact the dead slots into a
+     * reusable freelist.
+     *
+     * <h3>Sizing</h3>
+     * Keeps the same array length when compaction alone would yield enough
+     * room ({@code liveCount + 1 ≤ oldLength}); grows to 1.5× otherwise.
+     * Steady-state churn workloads (equal removes/adds) therefore stay at
+     * constant capacity.
+     *
+     * <h3>Compaction</h3>
+     * For each slot {@code i} in {@code [0, keysPos)} with
+     * {@code deleted[i] == true}:
+     * <ul>
+     *   <li>Null {@code keys[i]} (and, via the subclass hook,
+     *       {@code values[i]}) so the dead reference can be GC'd.
+     *   <li>Encode the slot into a singly-linked freelist by writing the
+     *       previous head into {@code hashCodes[i]} and updating
+     *       {@link #lastDeletedIndex} to {@code i}.
+     * </ul>
+     * The chain head is the highest index walked (we walk {@code 0 ..
+     * keysPos-1}), giving LIFO consumption order in
+     * {@link #getFreeKeyIndex}.
+     *
+     * <h3>Snapshot safety</h3>
+     * All writes go into the writer's <i>new</i> arrays. Snapshots forked
+     * earlier still reference the old arrays (which are untouched), so
+     * compaction is invisible to them. The probe table {@link #positions}
+     * doesn't need rebuilding either: it was already correct against the
+     * stable indices in {@code [0, keysPos)} (Algorithm-R cleared probe
+     * entries for dead slots at remove time).
      */
     protected void growKeysAndHashCodeArrays() {
-        var newSize = (keys.length >> 1) + keys.length;
-        if (newSize <= keys.length) {
-            // Defensive: ensures growth on tiny capacities and saturates safely.
-            newSize = keys.length + 1;
-        }
-        if (newSize < 0) {
-            newSize = Integer.MAX_VALUE;
-        }
-        final K[] oldKeys = this.keys;
-        final int[] oldHashCodes = this.hashCodes;
-        final boolean[] oldDeleted = this.deleted;
-        final int oldLength = oldKeys.length;
+        final int oldLength = keys.length;
+        final int liveCount = keysPos - removedKeysCount;
+        final int newSize = decideNewSize(oldLength, liveCount);
 
         final K[] newKeys = newKeysArray(newSize);
-        System.arraycopy(oldKeys, 0, newKeys, 0, oldLength);
+        System.arraycopy(keys, 0, newKeys, 0, oldLength);
         final int[] newHashCodes = new int[newSize];
-        System.arraycopy(oldHashCodes, 0, newHashCodes, 0, oldLength);
+        System.arraycopy(hashCodes, 0, newHashCodes, 0, oldLength);
         final boolean[] newDeleted = new boolean[newSize];
-        System.arraycopy(oldDeleted, 0, newDeleted, 0, oldLength);
+        System.arraycopy(deleted, 0, newDeleted, 0, oldLength);
 
-        // Reap tombstoned slots in the *new* keys array so dead K objects
-        // can be GC'd. Only iterate the slice that was actually populated
-        // (entries beyond keysPos are uninitialised in either array).
+        // Build the freelist inside the new arrays. Walking from low to
+        // high index puts the highest tombstoned slot at the head — a
+        // LIFO discipline like FastHashBase's remove-time freelist, just
+        // built lazily here instead of on every remove.
+        int newLast = -1;
         for (int i = 0; i < keysPos; i++) {
             if (newDeleted[i]) {
-                newKeys[i] = null;
+                newKeys[i] = null;          // free the K reference
+                newHashCodes[i] = newLast;  // freelist link (overwrites stale hash)
+                newLast = i;
             }
         }
 
         this.keys = newKeys;
         this.hashCodes = newHashCodes;
         this.deleted = newDeleted;
+        this.lastDeletedIndex = newLast;
 
-        onKeysAndHashCodesGrown(oldKeys, newKeys, oldHashCodes, newHashCodes, oldLength);
+        onKeysAndHashCodesGrown(oldLength);
+    }
+
+    /**
+     * Choose the size of the next keys/hashCodes/deleted arrays.
+     * <p>
+     * If the live count plus one (the impending insert) fits in the
+     * current length, we keep the same length: compaction will recover
+     * enough slots. Otherwise we grow at the standard 1.5× factor with
+     * a saturating overflow guard.
+     */
+    private static int decideNewSize(int oldLength, int liveCount) {
+        if (liveCount + 1 <= oldLength) {
+            // Compaction alone recovers enough room.
+            return oldLength;
+        }
+        int grown = (oldLength >> 1) + oldLength;     // 1.5×
+        if (grown <= oldLength) grown = oldLength + 1; // tiny-capacity safety
+        if (grown < 0) grown = Integer.MAX_VALUE;      // overflow saturate
+        return grown;
     }
 
     /**
      * Hook called after {@link #growKeysAndHashCodeArrays} has installed
-     * the new arrays. Subclasses (e.g. maps holding a parallel values
-     * array) override this to grow their own shared arrays in lock-step.
+     * the new {@link #keys}, {@link #hashCodes}, and {@link #deleted}
+     * arrays. Subclasses (e.g. maps holding a parallel values array)
+     * override this to grow and reap their own shared arrays in lock-step.
+     * <p>
+     * On entry the new arrays are already in place on the instance; the
+     * hook can read {@code this.keys.length} for the new size and
+     * {@code this.deleted} for the tombstone bitmap. {@code oldLength} is
+     * the length of the previous arrays (for {@code arraycopy} bounds).
      * <p>
      * The default does nothing.
      */
-    protected void onKeysAndHashCodesGrown(K[] oldKeys, K[] newKeys,
-                                           int[] oldHashCodes, int[] newHashCodes,
-                                           int oldLength) {
+    protected void onKeysAndHashCodesGrown(int oldLength) {
         // no-op for set-shaped collections
     }
 
@@ -527,6 +619,7 @@ public abstract class TxnFastHashBase<K> implements JenaMapSetCommon<K> {
         deleted = new boolean[MINIMUM_ELEMENTS_SIZE];
         keysPos = 0;
         removedKeysCount = 0;
+        lastDeletedIndex = -1;
     }
 
     /**
@@ -568,5 +661,22 @@ public abstract class TxnFastHashBase<K> implements JenaMapSetCommon<K> {
                 consumer.accept(keys[i], i);
             }
         }
+    }
+
+    // ----- Package-private inspection (for tests) ----------------------
+
+    /** @return the current capacity of {@link #keys} (after any grows). */
+    int internalKeysLength() {
+        return keys.length;
+    }
+
+    /** @return the current head of the post-grow freelist (or {@code -1}). */
+    int internalLastDeletedIndex() {
+        return lastDeletedIndex;
+    }
+
+    /** @return the current high-water mark, {@link #keysPos}. */
+    int internalKeysPos() {
+        return keysPos;
     }
 }

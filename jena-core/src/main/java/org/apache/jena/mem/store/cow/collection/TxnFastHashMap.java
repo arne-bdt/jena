@@ -88,16 +88,17 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
     protected abstract V[] newValuesArray(int size);
 
     @Override
-    protected void onKeysAndHashCodesGrown(K[] oldKeys, K[] newKeys,
-                                            int[] oldHashCodes, int[] newHashCodes,
-                                            int oldLength) {
+    protected void onKeysAndHashCodesGrown(int oldLength) {
         // Grow values[] in lock-step with keys[]/hashCodes[]. Reap
         // tombstoned slots in the new array so dead V references can be
-        // GC'd, mirroring TxnFastHashBase#growKeysAndHashCodeArrays.
-        final V[] newValues = newValuesArray(newKeys.length);
+        // GC'd, mirroring the keys[] reap in
+        // TxnFastHashBase#growKeysAndHashCodeArrays. The base class has
+        // already installed the new keys/hashCodes/deleted arrays on the
+        // instance, so we read this.keys.length / this.deleted directly.
+        final V[] newValues = newValuesArray(this.keys.length);
         System.arraycopy(values, 0, newValues, 0, oldLength);
         for (int i = 0; i < keysPos; i++) {
-            if (deleted[i]) {
+            if (this.deleted[i]) {
                 newValues[i] = null;
             }
         }
