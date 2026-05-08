@@ -38,6 +38,29 @@ public class IndexList {
     private int[] elements;
 
     /**
+     * Optional ownership identifier used by the copy-on-write
+     * transactional store
+     * ({@link org.apache.jena.mem.store.cow.CowIndexedSetTripleStore})
+     * to perform clone-on-first-touch on the {@link IndexList}s held in
+     * its node-keyed index spines.
+     * <p>
+     * Each writer's eager strategy stamps the lists it owns with its own
+     * unique id; on first mutation of a list, the strategy compares this
+     * field against its own id — a mismatch means the list is still
+     * shared with a snapshot and must be cloned before mutation. The
+     * default value of {@code 0} indicates "no ownership tracking",
+     * which is the case for non-transactional callers (the baseline
+     * indexed-set store does not use this field).
+     * <p>
+     * Plain {@code long} (not {@code volatile}): the field is written
+     * only by the strategy that owns the list, and other threads only
+     * observe it through the transactional graph's volatile
+     * {@code published} reference, which establishes the necessary
+     * happens-before ordering.
+     */
+    private long ownerId;
+
+    /**
      * Creates an empty list with the default initial capacity.
      */
     public IndexList() {
@@ -47,7 +70,10 @@ public class IndexList {
     /**
      * Copy constructor. The new list contains the same indices as
      * {@code bunchToCopy}; its backing array is sized to fit exactly,
-     * but can grow further if needed.
+     * but can grow further if needed. The {@link #getOwnerId() owner id}
+     * is inherited from the source — callers that want to claim
+     * ownership of the clone (the COW write path) overwrite it via
+     * {@link #setOwnerId(long)} immediately afterwards.
      *
      * @param bunchToCopy the source list
      */
@@ -55,6 +81,22 @@ public class IndexList {
         this.elements = new int[bunchToCopy.size()];
         System.arraycopy(bunchToCopy.elements, 0, this.elements, 0, bunchToCopy.size());
         this.pos = bunchToCopy.pos;
+        this.ownerId = bunchToCopy.ownerId;
+    }
+
+    /**
+     * @return the ownership id stamped on this list, or {@code 0} if
+     * none. See the field doc for usage.
+     */
+    public long getOwnerId() {
+        return ownerId;
+    }
+
+    /**
+     * Stamp this list with the given ownership id. See the field doc.
+     */
+    public void setOwnerId(long ownerId) {
+        this.ownerId = ownerId;
     }
 
     /**

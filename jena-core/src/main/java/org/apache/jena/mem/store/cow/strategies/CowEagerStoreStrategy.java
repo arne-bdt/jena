@@ -37,10 +37,8 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NullIterator;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -63,13 +61,32 @@ import java.util.stream.StreamSupport;
  * <p>
  * {@link IndexList}s held in the spines' {@code values[]} arrays are
  * shared until first mutation; {@link #ensureWritableList} performs the
- * clone-on-first-touch via the writer-owned {@link #myForks} identity set,
- * and replaces the spine slot via {@link TxnNodesToIndices#put} (which is
+ * clone-on-first-touch by comparing each list's {@link IndexList#getOwnerId()
+ * ownership id} against this strategy's own {@link #ownerId}, then
+ * replacing the spine slot via {@link TxnNodesToIndices#put} (which is
  * the COW tombstone-and-append).
+ *
+ * <h2>Why the per-list owner id</h2>
+ * The earlier design used an {@code IdentityHashMap}-backed
+ * {@code Set<IndexList>} per strategy to track writer-owned lists. The
+ * per-list {@code long ownerId} replaces it: a single field load + int
+ * compare in the hot path replaces a hash-table lookup, and there's no
+ * per-fork allocation at all (ownership is intrinsic to the list). For
+ * graphs with many distinct nodes this is the difference between O(N)
+ * map entries per fork and a single long field per list, paid once.
  */
 public final class CowEagerStoreStrategy implements CowStoreStrategy {
 
     private static final String UNSUPPORTED_PATTERN = "Unsupported pattern classifier: %s";
+
+    /**
+     * Counter used to stamp each strategy with a globally unique
+     * {@link #ownerId}. {@code AtomicLong} so concurrent strategy
+     * construction (e.g. multiple readers race-building eager strategies
+     * for a LAZY published view) gets distinct ids. The 64-bit space is
+     * effectively inexhaustible for any realistic process lifetime.
+     */
+    private static final AtomicLong NEXT_OWNER_ID = new AtomicLong();
 
     /** Canonical triples. Borrowed reference to the enclosing store's triples. */
     private final TxnTripleSet triples;
@@ -83,14 +100,12 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
     private int[] oReverseIndices;
 
     /**
-     * Identity-tracked set of {@link IndexList}s this strategy owns
-     * exclusively (i.e. has cloned during the current write transaction).
-     * Used by {@link #ensureWritableList} to perform clone-on-first-touch.
-     * After commit, the next writer's fork starts with a fresh empty set
-     * and re-clones on first touch.
+     * Unique ownership id stamped onto every {@link IndexList} this
+     * strategy creates or clones. {@link #ensureWritableList} uses
+     * {@code list.getOwnerId() == this.ownerId} as the writer-owned
+     * predicate.
      */
-    private final Set<IndexList> myForks =
-            Collections.newSetFromMap(new IdentityHashMap<>());
+    private final long ownerId = NEXT_OWNER_ID.incrementAndGet();
 
     // -------------------------------------------------------------------
 
@@ -186,7 +201,8 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
         sReverseIndices = new int[len];
         pReverseIndices = new int[len];
         oReverseIndices = new int[len];
-        myForks.clear();
+        // Ownership stamp on this strategy is unchanged — any list
+        // created from here on still belongs to this strategy.
     }
 
     private void removeFromComponent(TxnNodesToIndices spine, Node node, int idx, int[] reverse) {
@@ -203,23 +219,29 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
     /**
      * Return the {@link IndexList} stored at {@code spine.get(node)},
      * cloned and re-installed if it's still shared with the snapshot.
-     * The returned list is in {@link #myForks} and may be freely mutated.
+     * Ownership is determined by {@link IndexList#getOwnerId()}: if the
+     * list's stamped id matches this strategy's {@link #ownerId} the
+     * list is already writer-owned and can be mutated in place;
+     * otherwise it is cloned, the clone is stamped, and the spine slot
+     * is updated via {@link TxnNodesToIndices#put} (the COW
+     * tombstone-and-append, so any open snapshot still resolves the key
+     * to the original list through its own probe table).
      */
     private IndexList ensureWritableList(TxnNodesToIndices spine, Node node) {
         IndexList list = spine.get(node);
         if (list == null) {
             list = new IndexList();
+            list.setOwnerId(ownerId);
             spine.put(node, list);
-            myForks.add(list);
             return list;
         }
-        if (myForks.contains(list)) {
-            return list;
+        if (list.getOwnerId() == ownerId) {
+            return list;                        // already writer-owned
         }
         // Shared with snapshot — clone before mutation.
         final IndexList forked = list.clone();
+        forked.setOwnerId(ownerId);
         spine.put(node, forked);                // tombstone-and-append on the spine
-        myForks.add(forked);
         return forked;
     }
 
