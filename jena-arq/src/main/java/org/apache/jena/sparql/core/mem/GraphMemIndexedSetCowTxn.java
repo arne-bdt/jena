@@ -123,6 +123,62 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
         };
     }
 
+    // ----- Indexing-strategy controls -----------------------------------
+
+    /**
+     * @return the {@link IndexingStrategy} this graph was constructed with.
+     * Note: the actual strategy in use at any given moment may have been
+     * upgraded (e.g. LAZY → EAGER on first lookup, or MANUAL after a
+     * call to {@link #initializeIndex()}); see {@link #isIndexInitialized()}.
+     */
+    public IndexingStrategy getIndexingStrategy() {
+        return readStore().getIndexingStrategy();
+    }
+
+    /**
+     * @return whether the index is currently built and ready to serve
+     * pattern lookups directly from the active store (the writer's
+     * working copy if inside a write transaction; otherwise the published
+     * snapshot).
+     */
+    public boolean isIndexInitialized() {
+        return readStore().isIndexInitialized();
+    }
+
+    /**
+     * Drop the working copy's index and revert to the configured
+     * {@link IndexingStrategy}. For {@code LAZY}/{@code LAZY_PARALLEL}
+     * this means the next pattern lookup will trigger a fresh auto-build;
+     * for {@code MANUAL} it means future pattern lookups will again throw
+     * until {@link #initializeIndex()} is called; for {@code EAGER} it
+     * rebuilds an empty eager index that re-fills as triples flow in.
+     * <p>
+     * Must be called from inside a write transaction.
+     */
+    public void clearIndex() {
+        writeStore().clearIndex();
+        activeTxn.get().dirty = true;
+    }
+
+    /**
+     * Build the eager index sequentially in the working copy and install
+     * it as the current strategy. After this call,
+     * {@link #isIndexInitialized()} is {@code true}. Must be called from
+     * inside a write transaction.
+     */
+    public void initializeIndex() {
+        writeStore().initializeIndex();
+        activeTxn.get().dirty = true;
+    }
+
+    /**
+     * Like {@link #initializeIndex()} but builds in parallel.
+     */
+    public void initializeIndexParallel() {
+        writeStore().initializeIndexParallel();
+        activeTxn.get().dirty = true;
+    }
+
     /**
      * Per-transaction record. The lock-held invariant is
      * {@code mode == WRITE  <==>  this transaction holds writeLock}, so no
@@ -242,10 +298,15 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
     public void commit() {
         TxnState t = require();
         try {
-            // Only republish if the writer actually changed something. The
-            // single volatile write below is the publication point; all
-            // structural changes to t.active happen-before it.
-            if (t.mode == ReadWrite.WRITE && t.dirty)
+            // Republish if the writer changed something visible. "Visible"
+            // covers data mutations (t.dirty) AND strategy mutations like
+            // a LAZY auto-build triggered by a partial-pattern lookup
+            // inside this write transaction — without that second clause,
+            // the writer's auto-build work would be silently discarded at
+            // commit, forcing every future writer to re-build the index.
+            // The single volatile write below is the publication point;
+            // all structural changes to t.active happen-before it.
+            if (t.mode == ReadWrite.WRITE && (t.dirty || t.active.wasStrategyChanged()))
                 published = t.active;
         } finally {
             if (t.mode == ReadWrite.WRITE)
