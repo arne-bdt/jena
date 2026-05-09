@@ -22,6 +22,8 @@
 package org.apache.jena.mem.store.cow;
 
 import org.apache.jena.mem.IndexingStrategy;
+import org.apache.jena.mem.store.cow.strategies.CowEagerStoreStrategy;
+import org.apache.jena.mem.store.cow.strategies.CowLazyStoreStrategy;
 import org.apache.jena.mem.store.cow.strategies.CowStoreStrategy;
 
 import java.util.concurrent.CompletableFuture;
@@ -51,6 +53,21 @@ import java.util.function.Function;
  */
 public final class CowSnapshot extends CowStore {
 
+    /**
+     * The current pluggable strategy. {@code volatile} so that:
+     * <ul>
+     *   <li>The writer's freeze-time install of (e.g.) a rebound LAZY
+     *       strategy is published to every reader along with the
+     *       snapshot itself.
+     *   <li>Reader-driven LAZY → EAGER auto-upgrades are visible to
+     *       all subsequent readers.
+     * </ul>
+     * No CAS is needed: any two eager strategies racing to install
+     * are equivalent (both are pure functions of the same frozen
+     * triple set), so last-writer-wins is fine.
+     */
+    private volatile CowStoreStrategy strategy;
+
     /** Empty snapshot using {@link IndexingStrategy#EAGER}. */
     public CowSnapshot() {
         this(IndexingStrategy.EAGER);
@@ -58,16 +75,32 @@ public final class CowSnapshot extends CowStore {
 
     /** Empty snapshot using the given indexing strategy. */
     public CowSnapshot(IndexingStrategy indexingStrategy) {
+        super(indexingStrategy);
         // Snapshot's triples never grow (snapshots are read-only), so
         // we do not install the writer-side keys-grow hook here.
-        super(indexingStrategy, /*installGrowHook*/ false);
+        this.strategy = buildInitialStrategy(indexingStrategy, /*installGrowHook*/ false);
     }
 
     /** Internal constructor used by {@link CowWriteTxn#freeze()}. */
     CowSnapshot(IndexingStrategy initialStrategy,
                 TxnTripleSet triples,
                 CowStoreStrategy strategy) {
-        super(initialStrategy, triples, strategy);
+        super(initialStrategy, triples);
+        this.strategy = strategy;
+    }
+
+    @Override
+    protected CowStoreStrategy currentStrategy() {
+        return strategy;        // volatile read
+    }
+
+    @Override
+    public void installEagerStrategy(CowEagerStoreStrategy built) {
+        // Volatile write: any two equivalent eagers racing to install
+        // here are interchangeable (same frozen triple set, same
+        // answers), so a plain last-writer-wins write suffices and the
+        // volatile field publishes it to all subsequent readers.
+        this.strategy = built;
     }
 
     /**
@@ -77,7 +110,7 @@ public final class CowSnapshot extends CowStore {
      * fresh snapshot.
      */
     void installStrategy(CowStoreStrategy s) {
-        this.strategy.set(s);
+        this.strategy = s;      // volatile write
     }
 
     // -------------------------------------------------------------------
@@ -91,7 +124,7 @@ public final class CowSnapshot extends CowStore {
      */
     public CowWriteTxn forkForWrite() {
         final TxnTripleSet newTriples = this.triples.fork();
-        final CowStoreStrategy srcStrategy = this.strategy.get();
+        final CowStoreStrategy srcStrategy = this.strategy;
         // The fork is constructed in two steps so the strategy can bind
         // to the new write txn at construction time.
         final CowWriteTxn fork = new CowWriteTxn(initialStrategy, newTriples, null);
@@ -134,7 +167,7 @@ public final class CowSnapshot extends CowStore {
         // strategy-side allocations are now overlapped with the
         // triples allocation above.
         final Function<CowWriteTxn, CowStoreStrategy> assembler =
-                this.strategy.get().prepareParallelFork();
+                this.strategy.prepareParallelFork();
         // Join the triples future and build the write transaction.
         final CowWriteTxn fork = new CowWriteTxn(initialStrategy, fTriples.join(), null);
         // Apply the assembler — this joins the strategy's futures

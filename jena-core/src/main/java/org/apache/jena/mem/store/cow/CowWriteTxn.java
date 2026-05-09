@@ -43,6 +43,15 @@ import org.apache.jena.mem.store.cow.strategies.CowStoreStrategy;
  * directly when the keys array grows; no callback or growth hook is
  * needed because only this writer ever grows the keys array.
  *
+ * <h2>Concurrency model</h2>
+ * Single-threaded: only one writer thread mutates this instance at a
+ * time (the graph's {@code writeLock} serialises writers). The
+ * {@link #strategy} slot is therefore a plain field, not an
+ * {@link java.util.concurrent.atomic.AtomicReference} — the hot path
+ * ({@link #add}, {@link #remove}) reads it once per call without the
+ * volatile load semantics that {@link CowSnapshot} requires for its
+ * multi-reader LAZY-upgrade race.
+ *
  * <h2>Freezing</h2>
  * {@link #freeze()} produces a new {@link CowSnapshot} that aliases the
  * same underlying {@link TxnTripleSet} and strategy. After freezing,
@@ -53,11 +62,25 @@ import org.apache.jena.mem.store.cow.strategies.CowStoreStrategy;
 public final class CowWriteTxn extends CowStore {
 
     /**
+     * The current pluggable strategy. Plain field — only the single
+     * writer thread mutates this instance, so no atomic semantics are
+     * needed. The hot path ({@link #add}, {@link #remove},
+     * {@link #clear}) reads this field directly.
+     */
+    private CowStoreStrategy strategy;
+
+    /**
      * True if any of {@link #resetIndexStrategy()},
-     * {@link #initializeIndex()}, or
-     * {@link #initializeIndexParallel()} mutated the strategy slot. The
-     * graph reads this at commit to decide whether a strategy upgrade
-     * is worth publishing even when no triples were added or removed.
+     * {@link #initializeIndex()}, {@link #initializeIndexParallel()},
+     * or a writer-side LAZY → EAGER auto-upgrade via
+     * {@link #tryInstallEagerStrategy(CowLazyStoreStrategy, CowEagerStoreStrategy)}
+     * mutated the strategy slot. The graph reads this at commit to
+     * decide whether a strategy upgrade is worth publishing even when
+     * no triples were added or removed.
+     * <p>
+     * {@code volatile} so the graph's commit thread sees the latest
+     * value (in practice the same writer thread sets and reads it, but
+     * declaring volatile keeps the publication contract explicit).
      */
     private volatile boolean strategyChanged = false;
 
@@ -73,22 +96,29 @@ public final class CowWriteTxn extends CowStore {
 
     /** Empty mutable store using the given indexing strategy. */
     public CowWriteTxn(IndexingStrategy indexingStrategy) {
+        super(indexingStrategy);
         // Writer's triples may grow on add; install the keys-grow hook
-        // so the eager strategy's reverse-index arrays grow in
-        // lock-step and addToIndex can skip a length check on the hot
-        // path.
-        super(indexingStrategy, /*installGrowHook*/ true);
+        // (via the eager strategy's writer-side construction) so
+        // addToIndex can skip a length check on the hot path.
+        this.strategy = buildInitialStrategy(indexingStrategy, /*installGrowHook*/ true);
     }
 
+    /** Internal constructor used by {@link CowSnapshot#forkForWrite()}. */
     CowWriteTxn(IndexingStrategy initialStrategy,
                 TxnTripleSet triples,
                 CowStoreStrategy strategy) {
-        super(initialStrategy, triples, strategy);
+        super(initialStrategy, triples);
+        this.strategy = strategy;
+    }
+
+    @Override
+    protected CowStoreStrategy currentStrategy() {
+        return strategy;
     }
 
     /** Set the initial strategy from outside the constructor (used by the fork path). */
     void installStrategy(CowStoreStrategy s) {
-        this.strategy.set(s);
+        this.strategy = s;
     }
 
     // -------------------------------------------------------------------
@@ -101,7 +131,7 @@ public final class CowWriteTxn extends CowStore {
      * eager strategy (if applicable) installs the keys-grow hook.
      */
     public void resetIndexStrategy() {
-        strategy.set(buildInitialStrategy(initialStrategy, /*installGrowHook*/ true));
+        strategy = buildInitialStrategy(initialStrategy, /*installGrowHook*/ true);
         strategyChanged = true;
     }
 
@@ -110,13 +140,13 @@ public final class CowWriteTxn extends CowStore {
      * strategy. Writer-side path: installs the keys-grow hook.
      */
     public void initializeIndex() {
-        strategy.set(new CowEagerStoreStrategy(triples, false, /*installGrowHook*/ true));
+        strategy = new CowEagerStoreStrategy(triples, false, /*installGrowHook*/ true);
         strategyChanged = true;
     }
 
     /** Like {@link #initializeIndex()} but builds in parallel. */
     public void initializeIndexParallel() {
-        strategy.set(new CowEagerStoreStrategy(triples, true, /*installGrowHook*/ true));
+        strategy = new CowEagerStoreStrategy(triples, true, /*installGrowHook*/ true);
         strategyChanged = true;
     }
 
@@ -131,22 +161,18 @@ public final class CowWriteTxn extends CowStore {
     }
 
     /**
-     * Same CAS as the inherited
-     * {@link CowStore#tryInstallEagerStrategy(CowLazyStoreStrategy, CowEagerStoreStrategy)},
-     * but additionally flips {@link #strategyChanged} on success so the
-     * graph treats a writer-side LAZY → EAGER auto-upgrade as
-     * publish-worthy at commit even with no data mutations. The snapshot
-     * variant doesn't need this flag (snapshots are never published
-     * again — they ARE the published view).
+     * Writer-side LAZY → EAGER install. Single-threaded (only the
+     * writer thread reaches this method, via
+     * {@code CowLazyStoreStrategy.upgradeAndAnswer}), so a plain
+     * field assignment is sufficient — no atomic primitive, no
+     * volatile semantics needed. Flips {@link #strategyChanged} so the
+     * graph treats the upgrade as publish-worthy at commit even with
+     * no data mutations.
      */
     @Override
-    public boolean tryInstallEagerStrategy(CowLazyStoreStrategy expected,
-                                           CowEagerStoreStrategy built) {
-        if (super.tryInstallEagerStrategy(expected, built)) {
-            strategyChanged = true;
-            return true;
-        }
-        return false;
+    public void installEagerStrategy(CowEagerStoreStrategy built) {
+        strategy = built;
+        strategyChanged = true;
     }
 
     // -------------------------------------------------------------------
@@ -156,20 +182,20 @@ public final class CowWriteTxn extends CowStore {
     public void add(Triple t) {
         final int idx = triples.addAndGetIndex(t);
         if (idx < 0) return;                 // already present
-        strategy.get().addToIndex(t, idx);
+        strategy.addToIndex(t, idx);
     }
 
     /** Remove a triple. Does nothing if not present. */
     public void remove(Triple t) {
         final int idx = triples.removeAndGetIndex(t);
         if (idx < 0) return;                 // not present
-        strategy.get().removeFromIndex(t, idx);
+        strategy.removeFromIndex(t, idx);
     }
 
     /** Remove every triple. */
     public void clear() {
         triples.clear();
-        strategy.get().clearIndex();
+        strategy.clearIndex();
     }
 
     // -------------------------------------------------------------------
@@ -199,7 +225,7 @@ public final class CowWriteTxn extends CowStore {
      * and are aliased as-is.
      */
     public CowSnapshot freeze() {
-        final CowStoreStrategy s = strategy.get();
+        final CowStoreStrategy s = strategy;
         if (s instanceof CowEagerStoreStrategy eager) {
             eager.freeWriterOwnedBitmaps();
         }

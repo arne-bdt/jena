@@ -34,7 +34,6 @@ import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.SingletonIterator;
 
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 /**
@@ -50,13 +49,22 @@ import java.util.stream.Stream;
  * <ul>
  *   <li>{@link #triples} — the canonical {@link TxnTripleSet} (each
  *       triple has a stable {@code int} index).
- *   <li>{@link #strategy} — the current pluggable
- *       {@link CowStoreStrategy} that maintains the auxiliary index and
- *       answers partial-pattern lookups. The slot is atomic so the LAZY
- *       → EAGER first-lookup auto-upgrade can race-install a freshly
- *       built eager strategy without locking; this is safe even on a
- *       published snapshot because the build is a pure function of the
- *       (frozen) triple set.
+ *   <li>The current pluggable {@link CowStoreStrategy}. The slot
+ *       lives in each subclass (not on this base) so the
+ *       concurrency model can differ:
+ *       <ul>
+ *         <li>{@link CowSnapshot} stores it in an
+ *             {@link java.util.concurrent.atomic.AtomicReference} so
+ *             that the LAZY → EAGER first-lookup auto-upgrade can
+ *             race-install a freshly built eager strategy without
+ *             locking. Snapshots are read by any number of concurrent
+ *             reader threads.
+ *         <li>{@link CowWriteTxn} stores it in a plain field — the
+ *             slot is mutated only by the single writer thread (the
+ *             graph's {@code writeLock} serialises writers), so no
+ *             {@code volatile} read overhead is paid on the
+ *             {@code add} / {@code remove} hot path.
+ *       </ul>
  *   <li>{@link #initialStrategy} — the strategy enum value passed at
  *       construction; preserved across forks so a write-txn that
  *       {@code resetIndexStrategy()} reverts to the same kind, and so
@@ -80,43 +88,34 @@ public abstract class CowStore {
     /** The configured initial strategy; used to revert and to report. */
     protected final IndexingStrategy initialStrategy;
 
-    /**
-     * The current pluggable strategy. Atomic to support the lock-free
-     * LAZY → EAGER first-lookup auto-upgrade on a published snapshot
-     * held by multiple concurrent readers.
-     */
-    protected final AtomicReference<CowStoreStrategy> strategy;
-
     // -------------------------------------------------------------------
 
     /**
      * Empty-store constructor.
      *
      * @param indexingStrategy the configured strategy enum
-     * @param installGrowHook  whether the writer-side keys-grow hook
-     *                         should be installed if the strategy is
-     *                         eager. Subclasses pass their kind:
-     *                         {@code true} for {@link CowWriteTxn},
-     *                         {@code false} for {@link CowSnapshot}.
      */
-    protected CowStore(IndexingStrategy indexingStrategy, boolean installGrowHook) {
+    protected CowStore(IndexingStrategy indexingStrategy) {
         this.triples = new TxnTripleSet();
         this.initialStrategy = indexingStrategy;
-        this.strategy = new AtomicReference<>(buildInitialStrategy(indexingStrategy, installGrowHook));
     }
 
     /**
-     * Internal constructor used by fork — installs the given triples and
-     * a fresh strategy slot whose initial value is supplied by the
-     * caller (typically the source's strategy.fork(...) result).
+     * Internal constructor used by fork.
      */
-    protected CowStore(IndexingStrategy initialStrategy,
-                       TxnTripleSet triples,
-                       CowStoreStrategy strategy) {
+    protected CowStore(IndexingStrategy initialStrategy, TxnTripleSet triples) {
         this.initialStrategy = initialStrategy;
         this.triples = triples;
-        this.strategy = new AtomicReference<>(strategy);
     }
+
+    /**
+     * @return the current pluggable strategy. Subclasses provide the
+     * concurrency model: {@link CowSnapshot} reads through an
+     * {@link java.util.concurrent.atomic.AtomicReference} (volatile
+     * semantics, supports the LAZY-upgrade race); {@link CowWriteTxn}
+     * reads from a plain field (single-thread access).
+     */
+    protected abstract CowStoreStrategy currentStrategy();
 
     /**
      * Build the strategy implementation for the given enum value.
@@ -159,27 +158,33 @@ public abstract class CowStore {
 
     /** @return whether the index is built and ready to serve lookups. */
     public final boolean isIndexInitialized() {
-        return strategy.get().isIndexInitialized();
+        return currentStrategy().isIndexInitialized();
     }
 
     /**
-     * Atomic compare-and-set for the lazy → eager auto-upgrade.
+     * Install an eager strategy as the current strategy. Called from
+     * the LAZY auto-upgrade path
+     * ({@code CowLazyStoreStrategy.upgradeAndAnswer}).
      * <p>
-     * Called from {@link CowLazyStoreStrategy} after it has built a
-     * fresh eager strategy. If a concurrent caller has already won the
-     * race (the strategy slot now holds a different value) this CAS
-     * fails and the caller's eager build is GC'd.
-     *
-     * @param expected the lazy strategy that was current when the build
-     *                 started; CAS only succeeds if the slot still holds
-     *                 this exact reference
-     * @param built    the freshly built eager strategy to install
-     * @return true if the CAS succeeded
+     * No compare-and-set semantics: any two eager strategies racing to
+     * install on a snapshot are <i>equivalent</i> (both are pure
+     * functions of the same frozen triple set), so picking a "winner"
+     * doesn't matter. The slot just gets the last writer's value and
+     * subsequent reads return it; concurrent racers each return their
+     * own freshly built eager to <i>their</i> caller, which is
+     * consistent. A plain volatile write therefore suffices.
+     * <p>
+     * Subclass overrides:
+     * <ul>
+     *   <li>{@link CowSnapshot} writes its volatile field — published
+     *       to every reader.
+     *   <li>{@link CowWriteTxn} writes its plain field (single writer
+     *       thread, no need for volatile) and flips
+     *       {@code strategyChanged} so the graph's commit treats the
+     *       upgrade as publish-worthy.
+     * </ul>
      */
-    public boolean tryInstallEagerStrategy(CowLazyStoreStrategy expected,
-                                           CowEagerStoreStrategy built) {
-        return strategy.compareAndSet(expected, built);
-    }
+    public abstract void installEagerStrategy(CowEagerStoreStrategy built);
 
     // -------------------------------------------------------------------
     // Read API (shared by snapshot and write txn)
@@ -200,7 +205,7 @@ public abstract class CowStore {
         return switch (pattern) {
             case SUB_PRE_OBJ -> triples.containsKey(match);
             case ANY_ANY_ANY -> !isEmpty();
-            default -> strategy.get().containsMatch(match, pattern);
+            default -> currentStrategy().containsMatch(match, pattern);
         };
     }
 
@@ -215,7 +220,7 @@ public abstract class CowStore {
         return switch (pattern) {
             case ANY_ANY_ANY -> stream();
             case SUB_PRE_OBJ -> triples.containsKey(match) ? Stream.of(match) : Stream.empty();
-            default -> strategy.get().streamMatch(match, pattern);
+            default -> currentStrategy().streamMatch(match, pattern);
         };
     }
 
@@ -226,7 +231,7 @@ public abstract class CowStore {
             case ANY_ANY_ANY -> triples.keyIterator();
             case SUB_PRE_OBJ -> triples.containsKey(match)
                     ? new SingletonIterator<>(match) : NiceIterator.emptyIterator();
-            default -> strategy.get().findMatch(match, pattern);
+            default -> currentStrategy().findMatch(match, pattern);
         };
     }
 }

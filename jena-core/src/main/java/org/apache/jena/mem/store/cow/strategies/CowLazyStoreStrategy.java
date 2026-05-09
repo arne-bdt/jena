@@ -99,31 +99,29 @@ public final class CowLazyStoreStrategy implements CowStoreStrategy {
 
     /**
      * Build an eager strategy from the store's current triples and
-     * attempt to install it via
-     * {@link CowStore#tryInstallEagerStrategy(CowLazyStoreStrategy, CowEagerStoreStrategy)}.
-     * If a concurrent caller wins the CAS, this thread's build is
-     * discarded (the strategy slot already points at someone else's
-     * eager) — but the answer returned to <i>this</i> caller is still
-     * computed against the eager strategy this thread just built, which
-     * is consistent.
+     * install it via {@link CowStore#installEagerStrategy(CowEagerStoreStrategy)}.
+     * The build is a pure function of the (frozen) triple set, so
+     * any two threads racing here produce equivalent eager strategies;
+     * the install is just a publish — last writer wins, no CAS needed.
+     * Each caller returns its own freshly built eager from this method,
+     * which is the strategy used to answer the triggering lookup.
      * <p>
      * On a published {@link CowSnapshot} the underlying triples cannot
-     * grow (only the writer ever appends), so the eager build is a
-     * pure function of the frozen triple set; the keys-grow hook is
-     * <i>not</i> installed here because (a) it would never fire and
-     * (b) multiple concurrent readers would race-write the (plain)
-     * hook field on the shared triple set. On a {@link CowWriteTxn}'s
-     * working copy this method may also be invoked (the writer hits a
-     * partial-pattern lookup mid-transaction); subsequent writer-side
-     * appends need the eager strategy's reverse-index arrays to grow
-     * with {@code triples.keys[]}, so the hook IS installed — and
-     * safely, because there is at most one writer at a time.
+     * grow (only the writer ever appends), so the keys-grow hook is
+     * <i>not</i> installed here because it would never fire and
+     * concurrent readers would race-write the (plain) hook field on
+     * the shared triple set. On a {@link CowWriteTxn}'s working copy
+     * this method may also be invoked (the writer hits a partial-
+     * pattern lookup mid-transaction); subsequent writer-side appends
+     * need the eager strategy's reverse-index arrays to grow with
+     * {@code triples.keys[]}, so the hook IS installed — safely,
+     * because there is at most one writer at a time.
      */
     private CowEagerStoreStrategy upgradeAndAnswer() {
         final boolean installGrowHook = (store instanceof CowWriteTxn);
         final CowEagerStoreStrategy mine = new CowEagerStoreStrategy(
                 store.getTriples(), parallel, installGrowHook);
-        store.tryInstallEagerStrategy(this, mine);
+        store.installEagerStrategy(mine);
         return mine;
     }
 
