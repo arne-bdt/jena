@@ -58,7 +58,9 @@ public final class CowSnapshot extends CowStore {
 
     /** Empty snapshot using the given indexing strategy. */
     public CowSnapshot(IndexingStrategy indexingStrategy) {
-        super(indexingStrategy);
+        // Snapshot's triples never grow (snapshots are read-only), so
+        // we do not install the writer-side keys-grow hook here.
+        super(indexingStrategy, /*installGrowHook*/ false);
     }
 
     /** Internal constructor used by {@link CowWriteTxn#freeze()}. */

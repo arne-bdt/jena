@@ -23,6 +23,7 @@ package org.apache.jena.mem.store.cow.strategies;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.pattern.MatchPattern;
+import org.apache.jena.mem.store.cow.CowSnapshot;
 import org.apache.jena.mem.store.cow.CowStore;
 import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -106,16 +107,22 @@ public final class CowLazyStoreStrategy implements CowStoreStrategy {
      * computed against the eager strategy this thread just built, which
      * is consistent.
      * <p>
-     * On a published snapshot the underlying triples cannot grow (only
-     * the writer ever appends), so the eager build is a pure function
-     * of the frozen triple set. On a writer's working copy this method
-     * may also be invoked; the eager strategy's
-     * {@code addToIndex} resizes its reverse-index arrays on demand as
-     * the writer continues to append.
+     * On a published {@link CowSnapshot} the underlying triples cannot
+     * grow (only the writer ever appends), so the eager build is a
+     * pure function of the frozen triple set; the keys-grow hook is
+     * <i>not</i> installed here because (a) it would never fire and
+     * (b) multiple concurrent readers would race-write the (plain)
+     * hook field on the shared triple set. On a {@link CowWriteTxn}'s
+     * working copy this method may also be invoked (the writer hits a
+     * partial-pattern lookup mid-transaction); subsequent writer-side
+     * appends need the eager strategy's reverse-index arrays to grow
+     * with {@code triples.keys[]}, so the hook IS installed — and
+     * safely, because there is at most one writer at a time.
      */
     private CowEagerStoreStrategy upgradeAndAnswer() {
-        final CowEagerStoreStrategy mine =
-                new CowEagerStoreStrategy(store.getTriples(), parallel);
+        final boolean installGrowHook = (store instanceof CowWriteTxn);
+        final CowEagerStoreStrategy mine = new CowEagerStoreStrategy(
+                store.getTriples(), parallel, installGrowHook);
         store.tryInstallEagerStrategy(this, mine);
         return mine;
     }

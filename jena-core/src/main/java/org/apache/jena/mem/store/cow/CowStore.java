@@ -89,11 +89,20 @@ public abstract class CowStore {
 
     // -------------------------------------------------------------------
 
-    /** Empty-store constructor with the given indexing strategy. */
-    protected CowStore(IndexingStrategy indexingStrategy) {
+    /**
+     * Empty-store constructor.
+     *
+     * @param indexingStrategy the configured strategy enum
+     * @param installGrowHook  whether the writer-side keys-grow hook
+     *                         should be installed if the strategy is
+     *                         eager. Subclasses pass their kind:
+     *                         {@code true} for {@link CowWriteTxn},
+     *                         {@code false} for {@link CowSnapshot}.
+     */
+    protected CowStore(IndexingStrategy indexingStrategy, boolean installGrowHook) {
         this.triples = new TxnTripleSet();
         this.initialStrategy = indexingStrategy;
-        this.strategy = new AtomicReference<>(buildInitialStrategy(indexingStrategy));
+        this.strategy = new AtomicReference<>(buildInitialStrategy(indexingStrategy, installGrowHook));
     }
 
     /**
@@ -109,10 +118,22 @@ public abstract class CowStore {
         this.strategy = new AtomicReference<>(strategy);
     }
 
-    /** Build the strategy implementation for the given enum value. */
-    protected final CowStoreStrategy buildInitialStrategy(IndexingStrategy s) {
+    /**
+     * Build the strategy implementation for the given enum value.
+     * <p>
+     * The {@code installGrowHook} flag controls whether the eager
+     * strategy installs the writer-side keys-grow callback on the
+     * triple set. Subclasses pass {@code true} from writer-side paths
+     * ({@link CowWriteTxn}) so {@code addToIndex} can skip a length
+     * check on the hot path; {@code false} from snapshot-side paths
+     * ({@link CowSnapshot}'s initial empty construction, where the
+     * triple set will never grow because snapshots are read-only) so
+     * the (plain) hook field on the shared triple set is never
+     * race-written.
+     */
+    protected final CowStoreStrategy buildInitialStrategy(IndexingStrategy s, boolean installGrowHook) {
         return switch (s) {
-            case EAGER         -> new CowEagerStoreStrategy(triples, false);
+            case EAGER         -> new CowEagerStoreStrategy(triples, false, installGrowHook);
             case LAZY          -> new CowLazyStoreStrategy(this, false);
             case LAZY_PARALLEL -> new CowLazyStoreStrategy(this, true);
             case MANUAL        -> CowManualStoreStrategy.INSTANCE;

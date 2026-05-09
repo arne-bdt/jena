@@ -73,7 +73,11 @@ public final class CowWriteTxn extends CowStore {
 
     /** Empty mutable store using the given indexing strategy. */
     public CowWriteTxn(IndexingStrategy indexingStrategy) {
-        super(indexingStrategy);
+        // Writer's triples may grow on add; install the keys-grow hook
+        // so the eager strategy's reverse-index arrays grow in
+        // lock-step and addToIndex can skip a length check on the hot
+        // path.
+        super(indexingStrategy, /*installGrowHook*/ true);
     }
 
     CowWriteTxn(IndexingStrategy initialStrategy,
@@ -93,25 +97,26 @@ public final class CowWriteTxn extends CowStore {
     /**
      * Drop the current strategy and re-install a fresh one of the
      * configured {@link #getIndexingStrategy()} kind. Subsequent lookups
-     * follow the initial strategy's rules.
+     * follow the initial strategy's rules. Writer-side path: the new
+     * eager strategy (if applicable) installs the keys-grow hook.
      */
     public void resetIndexStrategy() {
-        strategy.set(buildInitialStrategy(initialStrategy));
+        strategy.set(buildInitialStrategy(initialStrategy, /*installGrowHook*/ true));
         strategyChanged = true;
     }
 
     /**
      * Build the eager index sequentially and install it as the current
-     * strategy.
+     * strategy. Writer-side path: installs the keys-grow hook.
      */
     public void initializeIndex() {
-        strategy.set(new CowEagerStoreStrategy(triples, false));
+        strategy.set(new CowEagerStoreStrategy(triples, false, /*installGrowHook*/ true));
         strategyChanged = true;
     }
 
     /** Like {@link #initializeIndex()} but builds in parallel. */
     public void initializeIndexParallel() {
-        strategy.set(new CowEagerStoreStrategy(triples, true));
+        strategy.set(new CowEagerStoreStrategy(triples, true, /*installGrowHook*/ true));
         strategyChanged = true;
     }
 
