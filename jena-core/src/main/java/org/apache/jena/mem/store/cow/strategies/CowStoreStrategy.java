@@ -26,6 +26,7 @@ import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
@@ -131,18 +132,35 @@ public interface CowStoreStrategy {
     CowStoreStrategy fork(CowWriteTxn newWriteTxn);
 
     /**
-     * Parallel variant of {@link #fork(CowWriteTxn)} for use from
+     * Two-phase parallel fork driven by
      * {@link org.apache.jena.mem.store.cow.CowSnapshot#forkForWriteParallel()}.
      * <p>
-     * Default delegates to the sequential path. Strategies that hold
-     * multiple writer-private allocations (notably the eager strategy
-     * with its three spine forks and three reverse-index clones)
-     * override this to dispatch the allocations to the common
-     * fork-join pool. For strategies with at most one parallelisable
-     * allocation the dispatch overhead would dominate, so the default
-     * is to skip the fork-join hop.
+     * <b>Phase 1 (this call).</b> Dispatch any parallelisable
+     * preparatory work to the common fork-join pool and return
+     * <i>immediately</i> with an "assembler" function. The returned
+     * function captures the in-flight {@link java.util.concurrent.CompletableFuture}s
+     * but does not join them.
+     * <p>
+     * <b>Phase 2 (calling the returned function).</b> The snapshot
+     * applies the assembler with the freshly forked
+     * {@link CowWriteTxn}; the assembler joins the in-flight work and
+     * returns the strategy bound to that write txn. By this point the
+     * snapshot has joined its own {@link org.apache.jena.mem.store.cow.TxnTripleSet#fork()}
+     * (needed to construct the write txn), so the strategy's
+     * preparatory work has been overlapped with the triples fork.
+     * <p>
+     * Default has no preparatory work — the assembler just delegates
+     * to {@link #fork(CowWriteTxn)} when applied. Strategies with
+     * several parallelisable allocations (currently only eager,
+     * which has three spine forks and three reverse-index clones)
+     * override to dispatch real work in Phase 1.
+     *
+     * @return an assembler function. Must be invoked exactly once
+     * with the freshly forked write transaction; the returned
+     * strategy is the one to install on the new write txn.
      */
-    default CowStoreStrategy parallelFork(CowWriteTxn newWriteTxn) {
-        return fork(newWriteTxn);
+    default Function<CowWriteTxn, CowStoreStrategy> prepareParallelFork() {
+        // No parallelisable preparatory work; assembly is a sequential fork.
+        return this::fork;
     }
 }

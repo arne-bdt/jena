@@ -24,6 +24,9 @@ package org.apache.jena.mem.store.cow;
 import org.apache.jena.mem.IndexingStrategy;
 import org.apache.jena.mem.store.cow.strategies.CowStoreStrategy;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+
 /**
  * Read-only view of a copy-on-write triple store. The graph publishes a
  * {@code CowSnapshot} as the visible state for any number of concurrent
@@ -97,28 +100,45 @@ public final class CowSnapshot extends CowStore {
     /**
      * Parallel variant of {@link #forkForWrite()}.
      * <p>
-     * The strategy's {@link CowStoreStrategy#parallelFork} dispatches
-     * its writer-private allocations to the common fork-join pool. For
-     * the eager strategy that's three spine forks and three
-     * reverse-index clones overlapped on the pool — typically the
-     * dominant cost of forking a populated store. For non-EAGER
-     * strategies the strategy's fork has essentially no parallelisable
-     * work, so this path is effectively sequential and exists mainly so
-     * the graph's {@link org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn.ForkMode}
-     * benchmark switch has a uniform call site.
-     * <p>
-     * {@code triples.fork()} is not overlapped with the strategy work
-     * because the strategy's parallelFork captures the new triples
-     * reference at construction time. Triples is a single allocation
-     * (one {@link TxnTripleSet} fork constructor); putting it on the
-     * critical path costs at most one allocation latency, which is
-     * dominated by the six allocations the eager strategy overlaps.
+     * Drives a two-phase parallelisation:
+     * <ol>
+     *   <li>Dispatch {@code triples.fork()} to the common fork-join
+     *       pool via {@code supplyAsync}.
+     *   <li>In parallel, call
+     *       {@link CowStoreStrategy#prepareParallelFork()} on the source
+     *       strategy. For the eager strategy that returns immediately
+     *       after dispatching its own six allocations (three spine
+     *       forks plus three reverse-index clones) to the pool. So at
+     *       this point seven independent allocations are in flight on
+     *       the FJP.
+     *   <li>Join the triples future, build the write transaction.
+     *   <li>Apply the strategy assembler (which joins its six futures)
+     *       to bind the freshly forked strategy to the write txn.
+     * </ol>
+     * For non-EAGER strategies the assembler has no preparatory work
+     * and falls through to a sequential
+     * {@link CowStoreStrategy#fork(CowWriteTxn)} at apply time; only
+     * the {@code triples.fork()} dispatch hop adds latency, which on
+     * small stores can be slower than the sequential path. Pick
+     * between sequential and parallel based on workload size.
      */
     public CowWriteTxn forkForWriteParallel() {
-        final TxnTripleSet newTriples = this.triples.fork();
-        final CowStoreStrategy srcStrategy = this.strategy.get();
-        final CowWriteTxn fork = new CowWriteTxn(initialStrategy, newTriples, null);
-        fork.installStrategy(srcStrategy.parallelFork(fork));
+        // Dispatch the triples allocation to the fork-join pool.
+        final CompletableFuture<TxnTripleSet> fTriples =
+                CompletableFuture.supplyAsync(this.triples::fork);
+        // In parallel, dispatch the strategy's preparatory work; the
+        // returned assembler captures the in-flight futures without
+        // joining them, so this call returns immediately and the six
+        // strategy-side allocations are now overlapped with the
+        // triples allocation above.
+        final Function<CowWriteTxn, CowStoreStrategy> assembler =
+                this.strategy.get().prepareParallelFork();
+        // Join the triples future and build the write transaction.
+        final CowWriteTxn fork = new CowWriteTxn(initialStrategy, fTriples.join(), null);
+        // Apply the assembler — this joins the strategy's futures
+        // (whatever has not already completed by now) and binds the
+        // resulting strategy to the new write txn.
+        fork.installStrategy(assembler.apply(fork));
         return fork;
     }
 }

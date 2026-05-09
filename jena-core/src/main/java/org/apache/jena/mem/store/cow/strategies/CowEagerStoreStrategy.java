@@ -38,6 +38,7 @@ import org.apache.jena.util.iterator.NullIterator;
 
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -184,20 +185,25 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
     }
 
     /**
-     * Parallel variant of {@link #fork(CowWriteTxn)}: the three spine
-     * forks and the three reverse-index clones are dispatched to the
-     * common fork-join pool and joined before assembly. For large stores
-     * this halves to thirds the wall-clock cost of the fork; for small
-     * stores the dispatch overhead can outweigh the savings, so callers
-     * (typically benchmarks) should pick between sequential and parallel
-     * based on workload size.
+     * Two-phase parallel-fork dispatcher. <b>Phase 1</b>: dispatch the
+     * three spine forks and three reverse-index clones to the common
+     * fork-join pool and capture the futures in the returned
+     * assembler. Returns immediately so the snapshot can launch its
+     * own {@link TxnTripleSet#fork()} concurrently.
      * <p>
-     * Each lambda only reads from the source (whose state is by fork-time
-     * discipline frozen) and writes to a fresh allocation, so no
-     * inter-task synchronisation is required.
+     * <b>Phase 2</b>: when the snapshot invokes the assembler with the
+     * freshly forked write transaction, join the six futures and build
+     * the strategy. By this point the snapshot has already joined its
+     * own triples fork (it had to, to construct the write txn), so the
+     * spine/reverse-array work has been fully overlapped with the
+     * triples allocation — seven independent allocations in total.
+     * <p>
+     * Each {@code supplyAsync} task only reads from {@code this}
+     * (whose state is by fork-time discipline frozen) and writes to a
+     * fresh allocation, so no inter-task synchronisation is required.
      */
     @Override
-    public CowStoreStrategy parallelFork(CowWriteTxn newWriteTxn) {
+    public Function<CowWriteTxn, CowStoreStrategy> prepareParallelFork() {
         final CompletableFuture<TxnNodesToIndices> fSubj =
                 CompletableFuture.supplyAsync(this.subjectIndex::fork);
         final CompletableFuture<TxnNodesToIndices> fPred =
@@ -210,7 +216,8 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
                 CompletableFuture.supplyAsync(this.pReverseIndices::clone);
         final CompletableFuture<int[]> fO =
                 CompletableFuture.supplyAsync(this.oReverseIndices::clone);
-        return new CowEagerStoreStrategy(newWriteTxn.getTriples(),
+        return newWriteTxn -> new CowEagerStoreStrategy(
+                newWriteTxn.getTriples(),
                 fSubj.join(), fPred.join(), fObj.join(),
                 fS.join(),    fP.join(),    fO.join());
     }
