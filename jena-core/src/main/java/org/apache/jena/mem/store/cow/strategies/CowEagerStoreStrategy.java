@@ -135,25 +135,84 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
 
     /**
      * Fork constructor — used by {@link #fork(CowWriteTxn)}. Forks each
-     * spine and clones each reverse-index array. Every {@link IndexList}
-     * inherited from the source is "not writer-owned" until
-     * {@link #ensureWritableList} clones it on first mutation, because
-     * the spines' {@code valueOwnedByThisWriter} bitmaps start fresh
-     * (all-clear) on fork.
+     * spine and clones each reverse-index array sequentially. Every
+     * {@link IndexList} inherited from the source is "not writer-owned"
+     * until {@link #ensureWritableList} clones it on first mutation,
+     * because the spines' {@code valueOwnedByThisWriter} bitmaps start
+     * fresh (all-clear) on fork.
      */
     private CowEagerStoreStrategy(TxnTripleSet newTriples, CowEagerStoreStrategy source) {
+        this(newTriples,
+                source.subjectIndex.fork(),
+                source.predicateIndex.fork(),
+                source.objectIndex.fork(),
+                source.sReverseIndices.clone(),
+                source.pReverseIndices.clone(),
+                source.oReverseIndices.clone());
+    }
+
+    /**
+     * Assemble-from-parts constructor used by {@link #parallelFork}: the
+     * caller has produced the six writer-private allocations on its own
+     * threads (typically the common fork-join pool) and joined the
+     * results before invoking this constructor. The fork-side ownership
+     * invariants are exactly the same as for the sequential
+     * {@linkplain #CowEagerStoreStrategy(TxnTripleSet, CowEagerStoreStrategy)
+     * fork constructor} — every spine's writer-owned bitmap starts
+     * all-clear, so every inherited {@link IndexList} is
+     * clone-on-first-touch.
+     */
+    private CowEagerStoreStrategy(TxnTripleSet newTriples,
+                                  TxnNodesToIndices subjectIndex,
+                                  TxnNodesToIndices predicateIndex,
+                                  TxnNodesToIndices objectIndex,
+                                  int[] sReverseIndices,
+                                  int[] pReverseIndices,
+                                  int[] oReverseIndices) {
         this.triples = newTriples;
-        this.subjectIndex = source.subjectIndex.fork();
-        this.predicateIndex = source.predicateIndex.fork();
-        this.objectIndex = source.objectIndex.fork();
-        this.sReverseIndices = source.sReverseIndices.clone();
-        this.pReverseIndices = source.pReverseIndices.clone();
-        this.oReverseIndices = source.oReverseIndices.clone();
+        this.subjectIndex = subjectIndex;
+        this.predicateIndex = predicateIndex;
+        this.objectIndex = objectIndex;
+        this.sReverseIndices = sReverseIndices;
+        this.pReverseIndices = pReverseIndices;
+        this.oReverseIndices = oReverseIndices;
     }
 
     @Override
     public CowStoreStrategy fork(CowWriteTxn newWriteTxn) {
         return new CowEagerStoreStrategy(newWriteTxn.getTriples(), this);
+    }
+
+    /**
+     * Parallel variant of {@link #fork(CowWriteTxn)}: the three spine
+     * forks and the three reverse-index clones are dispatched to the
+     * common fork-join pool and joined before assembly. For large stores
+     * this halves to thirds the wall-clock cost of the fork; for small
+     * stores the dispatch overhead can outweigh the savings, so callers
+     * (typically benchmarks) should pick between sequential and parallel
+     * based on workload size.
+     * <p>
+     * Each lambda only reads from the source (whose state is by fork-time
+     * discipline frozen) and writes to a fresh allocation, so no
+     * inter-task synchronisation is required.
+     */
+    @Override
+    public CowStoreStrategy parallelFork(CowWriteTxn newWriteTxn) {
+        final CompletableFuture<TxnNodesToIndices> fSubj =
+                CompletableFuture.supplyAsync(this.subjectIndex::fork);
+        final CompletableFuture<TxnNodesToIndices> fPred =
+                CompletableFuture.supplyAsync(this.predicateIndex::fork);
+        final CompletableFuture<TxnNodesToIndices> fObj =
+                CompletableFuture.supplyAsync(this.objectIndex::fork);
+        final CompletableFuture<int[]> fS =
+                CompletableFuture.supplyAsync(this.sReverseIndices::clone);
+        final CompletableFuture<int[]> fP =
+                CompletableFuture.supplyAsync(this.pReverseIndices::clone);
+        final CompletableFuture<int[]> fO =
+                CompletableFuture.supplyAsync(this.oReverseIndices::clone);
+        return new CowEagerStoreStrategy(newWriteTxn.getTriples(),
+                fSubj.join(), fPred.join(), fObj.join(),
+                fS.join(),    fP.join(),    fO.join());
     }
 
     @Override

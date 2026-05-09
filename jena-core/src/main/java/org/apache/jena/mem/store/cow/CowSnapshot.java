@@ -24,8 +24,6 @@ package org.apache.jena.mem.store.cow;
 import org.apache.jena.mem.IndexingStrategy;
 import org.apache.jena.mem.store.cow.strategies.CowStoreStrategy;
 
-import java.util.concurrent.CompletableFuture;
-
 /**
  * Read-only view of a copy-on-write triple store. The graph publishes a
  * {@code CowSnapshot} as the visible state for any number of concurrent
@@ -97,24 +95,30 @@ public final class CowSnapshot extends CowStore {
     }
 
     /**
-     * Parallel variant of {@link #forkForWrite()}. The bulk of the work
-     * (forking the spines and cloning the reverse-index arrays) lives
-     * in the strategy's own fork; only {@code triples.fork()} runs here
-     * and is parallelised against the strategy fork via the common
-     * fork-join pool. For non-EAGER strategies the strategy fork has
-     * essentially no work, so this path is no faster than the
-     * sequential one — it remains as a benchmark hook.
+     * Parallel variant of {@link #forkForWrite()}.
+     * <p>
+     * The strategy's {@link CowStoreStrategy#parallelFork} dispatches
+     * its writer-private allocations to the common fork-join pool. For
+     * the eager strategy that's three spine forks and three
+     * reverse-index clones overlapped on the pool — typically the
+     * dominant cost of forking a populated store. For non-EAGER
+     * strategies the strategy's fork has essentially no parallelisable
+     * work, so this path is effectively sequential and exists mainly so
+     * the graph's {@link org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn.ForkMode}
+     * benchmark switch has a uniform call site.
+     * <p>
+     * {@code triples.fork()} is not overlapped with the strategy work
+     * because the strategy's parallelFork captures the new triples
+     * reference at construction time. Triples is a single allocation
+     * (one {@link TxnTripleSet} fork constructor); putting it on the
+     * critical path costs at most one allocation latency, which is
+     * dominated by the six allocations the eager strategy overlaps.
      */
     public CowWriteTxn forkForWriteParallel() {
-        final CompletableFuture<TxnTripleSet> fTriples =
-                CompletableFuture.supplyAsync(this.triples::fork);
-        return forkWith(fTriples.join());
-    }
-
-    private CowWriteTxn forkWith(TxnTripleSet newTriples) {
+        final TxnTripleSet newTriples = this.triples.fork();
         final CowStoreStrategy srcStrategy = this.strategy.get();
         final CowWriteTxn fork = new CowWriteTxn(initialStrategy, newTriples, null);
-        fork.installStrategy(srcStrategy.fork(fork));
+        fork.installStrategy(srcStrategy.parallelFork(fork));
         return fork;
     }
 }

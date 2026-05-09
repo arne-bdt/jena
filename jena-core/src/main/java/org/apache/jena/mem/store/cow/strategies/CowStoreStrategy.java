@@ -129,4 +129,20 @@ public interface CowStoreStrategy {
      *                    (for lazy) install onto its strategy slot
      */
     CowStoreStrategy fork(CowWriteTxn newWriteTxn);
+
+    /**
+     * Parallel variant of {@link #fork(CowWriteTxn)} for use from
+     * {@link org.apache.jena.mem.store.cow.CowSnapshot#forkForWriteParallel()}.
+     * <p>
+     * Default delegates to the sequential path. Strategies that hold
+     * multiple writer-private allocations (notably the eager strategy
+     * with its three spine forks and three reverse-index clones)
+     * override this to dispatch the allocations to the common
+     * fork-join pool. For strategies with at most one parallelisable
+     * allocation the dispatch overhead would dominate, so the default
+     * is to skip the fork-join hop.
+     */
+    default CowStoreStrategy parallelFork(CowWriteTxn newWriteTxn) {
+        return fork(newWriteTxn);
+    }
 }
