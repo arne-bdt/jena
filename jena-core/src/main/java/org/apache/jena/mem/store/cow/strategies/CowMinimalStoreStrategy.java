@@ -23,7 +23,7 @@ package org.apache.jena.mem.store.cow.strategies;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.pattern.MatchPattern;
-import org.apache.jena.mem.store.cow.CowIndexedSetTripleStore;
+import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.mem.store.cow.TxnTripleSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
@@ -50,8 +50,8 @@ public final class CowMinimalStoreStrategy implements CowStoreStrategy {
     }
 
     @Override
-    public CowStoreStrategy fork(CowIndexedSetTripleStore newStore) {
-        return new CowMinimalStoreStrategy(newStore.getTriples());
+    public CowStoreStrategy fork(CowWriteTxn newWriteTxn) {
+        return new CowMinimalStoreStrategy(newWriteTxn.getTriples());
     }
 
     @Override public void addToIndex(Triple t, int i)    { /* no bitmaps */ }

@@ -25,7 +25,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
-import org.apache.jena.mem.store.cow.CowIndexedSetTripleStore;
+import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -36,6 +36,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.jena.testing_framework.GraphHelper.node;
+import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
 /**
@@ -60,13 +62,7 @@ import static org.junit.Assert.*;
  */
 public class CowEagerWildcardForkTest {
 
-    private static Triple t(String s, String p, String o) {
-        return Triple.create(node(s), node(p), node(o));
-    }
 
-    private static Node node(String s) {
-        return NodeFactory.createURI("http://ex/" + s);
-    }
 
     /** A probe triple combined with a human-readable label for failure messages. */
     private record Probe(String label, Triple match) {}
@@ -124,7 +120,7 @@ public class CowEagerWildcardForkTest {
      * {@code contains}/{@code stream}/{@code find} on {@code store}
      * agrees with {@code truth}.
      */
-    private static void assertAllPatternsAgreeWith(CowIndexedSetTripleStore store,
+    private static void assertAllPatternsAgreeWith(CowWriteTxn store,
                                                    Set<Triple> truth, String tag) {
         for (Probe p : probesForSeed()) {
             Set<Triple> exp = expected(truth, p.match());
@@ -150,17 +146,17 @@ public class CowEagerWildcardForkTest {
      */
     private static Set<Triple> seedTriples() {
         return Set.of(
-                t("s1", "p1", "o1"),
-                t("s1", "p1", "o2"),
-                t("s1", "p2", "o1"),
-                t("s2", "p1", "o1"),
-                t("s2", "p2", "o2"),
-                t("s3", "p2", "o2"));
+                triple("s1 p1 o1"),
+                triple("s1 p1 o2"),
+                triple("s1 p2 o1"),
+                triple("s2 p1 o1"),
+                triple("s2 p2 o2"),
+                triple("s3 p2 o2"));
     }
 
-    private static CowIndexedSetTripleStore seededEager() {
-        CowIndexedSetTripleStore store =
-                new CowIndexedSetTripleStore(IndexingStrategy.EAGER);
+    private static CowWriteTxn seededEager() {
+        CowWriteTxn store =
+                new CowWriteTxn(IndexingStrategy.EAGER);
         for (Triple x : seedTriples()) store.add(x);
         return store;
     }
@@ -169,7 +165,7 @@ public class CowEagerWildcardForkTest {
 
     @Test
     public void seedSatisfiesAllProbes() {
-        CowIndexedSetTripleStore store = seededEager();
+        CowWriteTxn store = seededEager();
         assertAllPatternsAgreeWith(store, seedTriples(), "seed");
     }
 
@@ -177,11 +173,11 @@ public class CowEagerWildcardForkTest {
 
     @Test
     public void forkAddBrandNewTriple_sourceUnchangedAcrossAllPatterns() {
-        CowIndexedSetTripleStore source = seededEager();
+        CowWriteTxn source = seededEager();
         Set<Triple> sourceTruth = seedTriples();
 
-        CowIndexedSetTripleStore fork = source.forkForWrite();
-        Triple fresh = t("s99", "p99", "o99");           // disjoint nodes
+        CowWriteTxn fork = source.forkForWrite();
+        Triple fresh = triple("s99 p99 o99");           // disjoint nodes
         fork.add(fresh);
         Set<Triple> forkTruth = new HashSet<>(sourceTruth);
         forkTruth.add(fresh);
@@ -192,16 +188,16 @@ public class CowEagerWildcardForkTest {
 
     @Test
     public void forkAddTripleSharingSubject_sourceSubjectListUnchanged() {
-        CowIndexedSetTripleStore source = seededEager();
-        CowIndexedSetTripleStore fork = source.forkForWrite();
+        CowWriteTxn source = seededEager();
+        CowWriteTxn fork = source.forkForWrite();
 
         // Adding to s1 must clone s1's IndexList in the fork. The
         // source's view of s1 must still show exactly its 3 seed triples.
-        fork.add(t("s1", "p3", "o3"));
+        fork.add(triple("s1 p3 o3"));
 
         Set<Triple> sourceTruth = seedTriples();
         Set<Triple> forkTruth = new HashSet<>(sourceTruth);
-        forkTruth.add(t("s1", "p3", "o3"));
+        forkTruth.add(triple("s1 p3 o3"));
 
         assertAllPatternsAgreeWith(source, sourceTruth, "source after fork-add(shared subject)");
         assertAllPatternsAgreeWith(fork, forkTruth, "fork after add(shared subject)");
@@ -212,14 +208,14 @@ public class CowEagerWildcardForkTest {
         // The new triple shares its subject with one set of seeds, its
         // predicate with another set, its object with a third — exercises
         // three independent clone-on-touch operations on the fork.
-        CowIndexedSetTripleStore source = seededEager();
-        CowIndexedSetTripleStore fork = source.forkForWrite();
+        CowWriteTxn source = seededEager();
+        CowWriteTxn fork = source.forkForWrite();
 
-        fork.add(t("s1", "p2", "o2"));        // shares s1, p2, o2 with seeds
+        fork.add(triple("s1 p2 o2"));        // shares s1, p2, o2 with seeds
 
         Set<Triple> sourceTruth = seedTriples();
         Set<Triple> forkTruth = new HashSet<>(sourceTruth);
-        forkTruth.add(t("s1", "p2", "o2"));
+        forkTruth.add(triple("s1 p2 o2"));
 
         assertAllPatternsAgreeWith(source, sourceTruth, "source after fork-add(all-shared)");
         assertAllPatternsAgreeWith(fork, forkTruth, "fork after add(all-shared)");
@@ -232,14 +228,14 @@ public class CowEagerWildcardForkTest {
         // Removing (s1,p1,o1) drops one entry from each of: subjectIndex.s1,
         // predicateIndex.p1, objectIndex.o1. The source's three lists for
         // those keys must still report all original triples.
-        CowIndexedSetTripleStore source = seededEager();
-        CowIndexedSetTripleStore fork = source.forkForWrite();
+        CowWriteTxn source = seededEager();
+        CowWriteTxn fork = source.forkForWrite();
 
-        fork.remove(t("s1", "p1", "o1"));
+        fork.remove(triple("s1 p1 o1"));
 
         Set<Triple> sourceTruth = seedTriples();
         Set<Triple> forkTruth = new HashSet<>(sourceTruth);
-        forkTruth.remove(t("s1", "p1", "o1"));
+        forkTruth.remove(triple("s1 p1 o1"));
 
         assertAllPatternsAgreeWith(source, sourceTruth, "source after fork-remove");
         assertAllPatternsAgreeWith(fork, forkTruth, "fork after remove");
@@ -249,18 +245,18 @@ public class CowEagerWildcardForkTest {
     public void forkRemoveAllTriplesForOneSubject_sourceSubjectStillIndexed() {
         // Removing every triple with subject s1 in the fork should empty
         // the fork's subjectIndex.s1 entry but leave the source's untouched.
-        CowIndexedSetTripleStore source = seededEager();
-        CowIndexedSetTripleStore fork = source.forkForWrite();
+        CowWriteTxn source = seededEager();
+        CowWriteTxn fork = source.forkForWrite();
 
-        fork.remove(t("s1", "p1", "o1"));
-        fork.remove(t("s1", "p1", "o2"));
-        fork.remove(t("s1", "p2", "o1"));
+        fork.remove(triple("s1 p1 o1"));
+        fork.remove(triple("s1 p1 o2"));
+        fork.remove(triple("s1 p2 o1"));
 
         Set<Triple> sourceTruth = seedTriples();
         Set<Triple> forkTruth = new HashSet<>(sourceTruth);
-        forkTruth.remove(t("s1", "p1", "o1"));
-        forkTruth.remove(t("s1", "p1", "o2"));
-        forkTruth.remove(t("s1", "p2", "o1"));
+        forkTruth.remove(triple("s1 p1 o1"));
+        forkTruth.remove(triple("s1 p1 o2"));
+        forkTruth.remove(triple("s1 p2 o1"));
 
         assertAllPatternsAgreeWith(source, sourceTruth, "source after fork-removes-all-s1");
         assertAllPatternsAgreeWith(fork, forkTruth, "fork after removes-all-s1");
@@ -270,20 +266,20 @@ public class CowEagerWildcardForkTest {
 
     @Test
     public void forkInterleavedAddAndRemove_sourceAcrossAllPatterns() {
-        CowIndexedSetTripleStore source = seededEager();
-        CowIndexedSetTripleStore fork = source.forkForWrite();
+        CowWriteTxn source = seededEager();
+        CowWriteTxn fork = source.forkForWrite();
 
-        fork.remove(t("s1", "p1", "o2"));
-        fork.add(t("s1", "p1", "o3"));
-        fork.remove(t("s2", "p2", "o2"));
-        fork.add(t("s2", "p2", "o3"));
+        fork.remove(triple("s1 p1 o2"));
+        fork.add(triple("s1 p1 o3"));
+        fork.remove(triple("s2 p2 o2"));
+        fork.add(triple("s2 p2 o3"));
 
         Set<Triple> sourceTruth = seedTriples();
         Set<Triple> forkTruth = new HashSet<>(sourceTruth);
-        forkTruth.remove(t("s1", "p1", "o2"));
-        forkTruth.add(t("s1", "p1", "o3"));
-        forkTruth.remove(t("s2", "p2", "o2"));
-        forkTruth.add(t("s2", "p2", "o3"));
+        forkTruth.remove(triple("s1 p1 o2"));
+        forkTruth.add(triple("s1 p1 o3"));
+        forkTruth.remove(triple("s2 p2 o2"));
+        forkTruth.add(triple("s2 p2 o3"));
 
         assertAllPatternsAgreeWith(source, sourceTruth, "source after fork-mixed");
         assertAllPatternsAgreeWith(fork, forkTruth, "fork after mixed");
@@ -297,16 +293,16 @@ public class CowEagerWildcardForkTest {
         // multiple grows + compactions inside both the spines and the
         // reverse-index arrays. The source's view across every wildcard
         // must remain exactly the original seed.
-        CowIndexedSetTripleStore source = seededEager();
-        CowIndexedSetTripleStore fork = source.forkForWrite();
+        CowWriteTxn source = seededEager();
+        CowWriteTxn fork = source.forkForWrite();
 
         Random rnd = new Random(0xCAFE);
         Set<Triple> forkTruth = new HashSet<>(seedTriples());
         List<Triple> added = new ArrayList<>(Arrays.asList(
-                t("s1", "p1", "o3"), t("s1", "p3", "o1"), t("s4", "p1", "o4"),
-                t("s4", "p2", "o4"), t("s5", "p3", "o5"), t("s2", "p3", "o5"),
-                t("s6", "p1", "o6"), t("s6", "p4", "o6"), t("s7", "p2", "o7"),
-                t("s8", "p4", "o8"), t("s9", "p5", "o9"), t("s3", "p5", "o5")));
+                triple("s1 p1 o3"), triple("s1 p3 o1"), triple("s4 p1 o4"),
+                triple("s4 p2 o4"), triple("s5 p3 o5"), triple("s2 p3 o5"),
+                triple("s6 p1 o6"), triple("s6 p4 o6"), triple("s7 p2 o7"),
+                triple("s8 p4 o8"), triple("s9 p5 o9"), triple("s3 p5 o5")));
         for (Triple x : added) {
             fork.add(x);
             forkTruth.add(x);
@@ -318,8 +314,8 @@ public class CowEagerWildcardForkTest {
         }
         // And add some more, trying to share components with seeds.
         Triple[] more = {
-                t("s1", "p4", "o4"), t("s2", "p4", "o4"),
-                t("s3", "p1", "o1"), t("s4", "p2", "o2")};
+                triple("s1 p4 o4"), triple("s2 p4 o4"),
+                triple("s3 p1 o1"), triple("s4 p2 o2")};
         for (Triple x : more) {
             fork.add(x);
             forkTruth.add(x);
@@ -344,24 +340,24 @@ public class CowEagerWildcardForkTest {
         // logically to become "the new published") -> fork2.
         // Each predecessor must keep its own consistent view across all
         // patterns regardless of what its successors do.
-        CowIndexedSetTripleStore source = seededEager();
-        CowIndexedSetTripleStore fork1 = source.forkForWrite();
-        fork1.add(t("s1", "p3", "o3"));
-        fork1.remove(t("s2", "p1", "o1"));
+        CowWriteTxn source = seededEager();
+        CowWriteTxn fork1 = source.forkForWrite();
+        fork1.add(triple("s1 p3 o3"));
+        fork1.remove(triple("s2 p1 o1"));
 
-        CowIndexedSetTripleStore fork2 = fork1.forkForWrite();
-        fork2.add(t("s4", "p4", "o4"));
-        fork2.remove(t("s1", "p1", "o1"));
+        CowWriteTxn fork2 = fork1.forkForWrite();
+        fork2.add(triple("s4 p4 o4"));
+        fork2.remove(triple("s1 p1 o1"));
 
         Set<Triple> sourceTruth = seedTriples();
 
         Set<Triple> fork1Truth = new HashSet<>(sourceTruth);
-        fork1Truth.add(t("s1", "p3", "o3"));
-        fork1Truth.remove(t("s2", "p1", "o1"));
+        fork1Truth.add(triple("s1 p3 o3"));
+        fork1Truth.remove(triple("s2 p1 o1"));
 
         Set<Triple> fork2Truth = new HashSet<>(fork1Truth);
-        fork2Truth.add(t("s4", "p4", "o4"));
-        fork2Truth.remove(t("s1", "p1", "o1"));
+        fork2Truth.add(triple("s4 p4 o4"));
+        fork2Truth.remove(triple("s1 p1 o1"));
 
         assertAllPatternsAgreeWith(source, sourceTruth, "source after chain");
         assertAllPatternsAgreeWith(fork1, fork1Truth, "fork1 after chain");
@@ -375,9 +371,9 @@ public class CowEagerWildcardForkTest {
         // (s3,p2,o2) is the only seed with subject s3. Removing it in
         // the fork must make SUB_ANY_ANY(s3) return empty in the fork
         // but still 1 in the source.
-        CowIndexedSetTripleStore source = seededEager();
-        CowIndexedSetTripleStore fork = source.forkForWrite();
-        fork.remove(t("s3", "p2", "o2"));
+        CowWriteTxn source = seededEager();
+        CowWriteTxn fork = source.forkForWrite();
+        fork.remove(triple("s3 p2 o2"));
 
         Triple s3probe = Triple.createMatch(node("s3"), null, null);
         assertTrue("source still has s3-rooted triples",

@@ -21,7 +21,6 @@
 
 package org.apache.jena.mem.store.cow.strategies;
 
-import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.store.cow.TxnTripleSet;
@@ -31,6 +30,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.jena.testing_framework.GraphHelper.node;
+import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
 /**
@@ -42,11 +43,6 @@ import static org.junit.Assert.*;
  */
 public class CowMinimalStoreStrategyTest {
 
-    private static Triple t(String s, String p, String o) {
-        return Triple.create(NodeFactory.createURI("http://ex/" + s),
-                             NodeFactory.createURI("http://ex/" + p),
-                             NodeFactory.createURI("http://ex/" + o));
-    }
 
     private static Set<Triple> drain(java.util.stream.Stream<Triple> s) {
         return s.collect(Collectors.toCollection(HashSet::new));
@@ -56,12 +52,12 @@ public class CowMinimalStoreStrategyTest {
     public void streamMatchIgnoresPatternArgument() {
         TxnTripleSet triples = new TxnTripleSet();
         for (int i = 0; i < 10; i++) {
-            triples.tryAdd(t("s" + i, "p", "o" + i));
+            triples.tryAdd(triple("s" + i + " " + "p" + " " + "o" + i));
         }
         CowMinimalStoreStrategy strategy = new CowMinimalStoreStrategy(triples);
 
         Triple probe = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s3"), null, null);
+                node("s3"), null, null);
 
         // Use two different MatchPattern values for the same probe; the
         // strategy must produce the same result either way.
@@ -70,19 +66,19 @@ public class CowMinimalStoreStrategyTest {
 
         assertEquals("MinimalStrategy must ignore the pattern argument", a, b);
         assertEquals(1, a.size());
-        assertTrue(a.contains(t("s3", "p", "o3")));
+        assertTrue(a.contains(triple("s3 p o3")));
     }
 
     @Test
     public void containsMatchIgnoresPatternArgument() {
         TxnTripleSet triples = new TxnTripleSet();
         for (int i = 0; i < 5; i++) {
-            triples.tryAdd(t("s" + i, "p", "o" + i));
+            triples.tryAdd(triple("s" + i + " " + "p" + " " + "o" + i));
         }
         CowMinimalStoreStrategy strategy = new CowMinimalStoreStrategy(triples);
 
         Triple probe = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s2"), null, null);
+                node("s2"), null, null);
         assertTrue(strategy.containsMatch(probe, MatchPattern.SUB_ANY_ANY));
         assertTrue(strategy.containsMatch(probe, MatchPattern.ANY_PRE_OBJ));
     }

@@ -24,7 +24,7 @@ package org.apache.jena.mem.store.cow.strategies;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
-import org.apache.jena.mem.store.cow.CowIndexedSetTripleStore;
+import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.junit.Test;
 
 import java.util.HashSet;
@@ -33,10 +33,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.jena.testing_framework.GraphHelper.node;
+import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
 /**
- * Strategy-level tests for {@link CowIndexedSetTripleStore} that exercise
+ * Strategy-level tests for {@link CowWriteTxn} that exercise
  * each of the five {@link IndexingStrategy} variants end-to-end:
  * <ul>
  *   <li>{@code EAGER}: index always present.
@@ -52,23 +54,18 @@ import static org.junit.Assert.*;
  */
 public class CowStoreStrategiesTest {
 
-    private static Triple t(String s, String p, String o) {
-        return Triple.create(NodeFactory.createURI("http://ex/" + s),
-                             NodeFactory.createURI("http://ex/" + p),
-                             NodeFactory.createURI("http://ex/" + o));
-    }
 
     private static Set<Triple> seedTriples() {
         Set<Triple> seeds = new HashSet<>();
         for (int i = 0; i < 10; i++) {
-            seeds.add(t("s" + i, "p", "o" + i));
-            seeds.add(t("s" + i, "p2", "o"));
+            seeds.add(triple("s" + i + " " + "p" + " " + "o" + i));
+            seeds.add(triple("s" + i + " " + "p2" + " " + "o"));
         }
         return seeds;
     }
 
-    private static CowIndexedSetTripleStore seeded(IndexingStrategy s) {
-        CowIndexedSetTripleStore store = new CowIndexedSetTripleStore(s);
+    private static CowWriteTxn seeded(IndexingStrategy s) {
+        CowWriteTxn store = new CowWriteTxn(s);
         for (Triple x : seedTriples()) store.add(x);
         return store;
     }
@@ -81,11 +78,11 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void eagerReturnsExpectedMatches() {
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.EAGER);
+        CowWriteTxn store = seeded(IndexingStrategy.EAGER);
         assertTrue("eager must report initialized", store.isIndexInitialized());
 
         // SUB_ANY_ANY: all triples with subject "s3" — the seeds give two.
-        Triple match = Triple.createMatch(NodeFactory.createURI("http://ex/s3"), null, null);
+        Triple match = Triple.createMatch(node("s3"), null, null);
         Set<Triple> got = drain(store.stream(match));
         assertEquals(2, got.size());
         assertTrue(store.contains(match));
@@ -95,13 +92,13 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void lazyDelaysIndexBuildUntilFirstLookup() {
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.LAZY);
+        CowWriteTxn store = seeded(IndexingStrategy.LAZY);
         assertEquals(IndexingStrategy.LAZY, store.getIndexingStrategy());
         assertFalse("lazy must report uninitialized before any lookup",
                 store.isIndexInitialized());
 
         // The next lookup triggers the build.
-        Triple match = Triple.createMatch(NodeFactory.createURI("http://ex/s3"), null, null);
+        Triple match = Triple.createMatch(node("s3"), null, null);
         Set<Triple> got = drain(store.stream(match));
         assertEquals(2, got.size());
         assertTrue("lazy must be initialized after first lookup",
@@ -110,12 +107,12 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void lazyParallelBuildsCorrectIndex() {
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.LAZY_PARALLEL);
+        CowWriteTxn store = seeded(IndexingStrategy.LAZY_PARALLEL);
         assertFalse(store.isIndexInitialized());
 
         Triple match = Triple.createMatch(null,
-                NodeFactory.createURI("http://ex/p"),
-                NodeFactory.createURI("http://ex/o3"));
+                node("p"),
+                node("o3"));
         Set<Triple> got = drain(store.stream(match));
         assertEquals(1, got.size());
         assertTrue(store.isIndexInitialized());
@@ -125,13 +122,13 @@ public class CowStoreStrategiesTest {
     public void lazyAddsAfterInitialBuildAreReflected() {
         // After an auto-build, the strategy is EAGER and subsequent adds
         // must update the index (not just the triple set).
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.LAZY);
-        store.contains(Triple.createMatch(NodeFactory.createURI("http://ex/s3"), null, null));
+        CowWriteTxn store = seeded(IndexingStrategy.LAZY);
+        store.contains(Triple.createMatch(node("s3"), null, null));
         assertTrue(store.isIndexInitialized());
 
-        store.add(t("s99", "p", "o99"));
+        store.add(triple("s99 p o99"));
         assertTrue(store.contains(
-                Triple.createMatch(NodeFactory.createURI("http://ex/s99"), null, null)));
+                Triple.createMatch(node("s99"), null, null)));
     }
 
     @Test
@@ -139,7 +136,7 @@ public class CowStoreStrategiesTest {
         // Many threads hitting a still-pending lazy strategy must each
         // get the correct answer; the CAS only decides which built
         // strategy is published, not which answers are returned.
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.LAZY_PARALLEL);
+        CowWriteTxn store = seeded(IndexingStrategy.LAZY_PARALLEL);
         final int numReaders = 8;
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch done = new CountDownLatch(numReaders);
@@ -152,7 +149,7 @@ public class CowStoreStrategiesTest {
                 try {
                     start.await();
                     Triple match = Triple.createMatch(null,
-                            NodeFactory.createURI("http://ex/p"), null);
+                            node("p"), null);
                     Set<Triple> got = drain(store.stream(match));
                     synchronized (answers) { answers.add(got); }
                 } catch (Throwable th) { err.set(th); }
@@ -174,18 +171,18 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void manualThrowsOnPatternLookupUntilInitialized() {
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.MANUAL);
+        CowWriteTxn store = seeded(IndexingStrategy.MANUAL);
         assertFalse(store.isIndexInitialized());
 
         Triple partial = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s3"), null, null);
+                node("s3"), null, null);
         assertThrows(UnsupportedOperationException.class, () -> store.contains(partial));
         assertThrows(UnsupportedOperationException.class, () -> store.stream(partial));
         assertThrows(UnsupportedOperationException.class, () -> store.find(partial));
 
         // Fully-concrete and fully-open patterns bypass the strategy and
         // must still work.
-        Triple concrete = t("s3", "p", "o3");
+        Triple concrete = triple("s3 p o3");
         assertTrue(store.contains(concrete));
         assertEquals(seedTriples().size(), store.countTriples());
 
@@ -197,11 +194,11 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void manualInitializeIndexParallelWorks() {
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.MANUAL);
+        CowWriteTxn store = seeded(IndexingStrategy.MANUAL);
         store.initializeIndexParallel();
         assertTrue(store.isIndexInitialized());
         Triple partial = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s3"), null, null);
+                node("s3"), null, null);
         assertEquals(2, drain(store.stream(partial)).size());
     }
 
@@ -209,11 +206,11 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void minimalAnswersLookupsByLinearScan() {
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.MINIMAL);
+        CowWriteTxn store = seeded(IndexingStrategy.MINIMAL);
         assertFalse("minimal stays uninitialized", store.isIndexInitialized());
 
         Triple partial = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s3"), null, null);
+                node("s3"), null, null);
         assertEquals(2, drain(store.stream(partial)).size());
         // Even after lookups, no auto-upgrade happens.
         assertFalse(store.isIndexInitialized());
@@ -221,7 +218,7 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void minimalCanBeUpgradedExplicitly() {
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.MINIMAL);
+        CowWriteTxn store = seeded(IndexingStrategy.MINIMAL);
         store.initializeIndex();
         assertTrue(store.isIndexInitialized());
     }
@@ -230,9 +227,9 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void resetIndexStrategyRevertsLazyToPending() {
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.LAZY);
+        CowWriteTxn store = seeded(IndexingStrategy.LAZY);
         Triple partial = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s3"), null, null);
+                node("s3"), null, null);
         store.stream(partial).count();              // triggers auto-build
         assertTrue(store.isIndexInitialized());
 
@@ -247,21 +244,21 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void resetIndexStrategyRevertsManualToThrowing() {
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.MANUAL);
+        CowWriteTxn store = seeded(IndexingStrategy.MANUAL);
         store.initializeIndex();
         assertTrue(store.isIndexInitialized());
 
         store.resetIndexStrategy();
         Triple partial = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s3"), null, null);
+                node("s3"), null, null);
         assertThrows(UnsupportedOperationException.class, () -> store.contains(partial));
     }
 
     @Test
     public void resetIndexStrategyOnMinimalIsNoOpVisibly() {
-        CowIndexedSetTripleStore store = seeded(IndexingStrategy.MINIMAL);
+        CowWriteTxn store = seeded(IndexingStrategy.MINIMAL);
         Triple partial = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s3"), null, null);
+                node("s3"), null, null);
         assertEquals(2, drain(store.stream(partial)).size());
 
         store.resetIndexStrategy();
@@ -273,17 +270,17 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void forkOfLazyPendingIsAlsoLazyPending() {
-        CowIndexedSetTripleStore src = seeded(IndexingStrategy.LAZY);
+        CowWriteTxn src = seeded(IndexingStrategy.LAZY);
         assertFalse(src.isIndexInitialized());
 
-        CowIndexedSetTripleStore fork = src.forkForWrite();
+        CowWriteTxn fork = src.forkForWrite();
         assertEquals(IndexingStrategy.LAZY, fork.getIndexingStrategy());
         assertFalse("fork of LAZY-pending must also be pending",
                 fork.isIndexInitialized());
 
         // Fork triggers its own build.
         Triple partial = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s3"), null, null);
+                node("s3"), null, null);
         assertEquals(2, drain(fork.stream(partial)).size());
         assertTrue(fork.isIndexInitialized());
         // Source independent — its strategy slot is still pending.
@@ -292,43 +289,43 @@ public class CowStoreStrategiesTest {
 
     @Test
     public void forkOfLazyAlreadyUpgradedIsEager() {
-        CowIndexedSetTripleStore src = seeded(IndexingStrategy.LAZY);
+        CowWriteTxn src = seeded(IndexingStrategy.LAZY);
         // Trigger the upgrade on the source.
         Triple partial = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s3"), null, null);
+                node("s3"), null, null);
         src.stream(partial).count();
         assertTrue(src.isIndexInitialized());
 
-        CowIndexedSetTripleStore fork = src.forkForWrite();
+        CowWriteTxn fork = src.forkForWrite();
         assertTrue("fork of upgraded LAZY must inherit the eager state",
                 fork.isIndexInitialized());
     }
 
     @Test
     public void forkOfManualStaysManual() {
-        CowIndexedSetTripleStore src = seeded(IndexingStrategy.MANUAL);
-        CowIndexedSetTripleStore fork = src.forkForWrite();
+        CowWriteTxn src = seeded(IndexingStrategy.MANUAL);
+        CowWriteTxn fork = src.forkForWrite();
         assertEquals(IndexingStrategy.MANUAL, fork.getIndexingStrategy());
 
         Triple partial = Triple.createMatch(
-                NodeFactory.createURI("http://ex/s3"), null, null);
+                node("s3"), null, null);
         assertThrows(UnsupportedOperationException.class, () -> fork.contains(partial));
     }
 
     @Test
     public void forkOfMinimalStaysMinimal() {
-        CowIndexedSetTripleStore src = seeded(IndexingStrategy.MINIMAL);
-        CowIndexedSetTripleStore fork = src.forkForWrite();
+        CowWriteTxn src = seeded(IndexingStrategy.MINIMAL);
+        CowWriteTxn fork = src.forkForWrite();
         assertEquals(IndexingStrategy.MINIMAL, fork.getIndexingStrategy());
         assertFalse(fork.isIndexInitialized());
 
         // Mutations on the fork don't leak back to the source.
-        fork.add(t("only-in-fork", "p", "o"));
+        fork.add(triple("only-in-fork p o"));
         assertEquals(seedTriples().size() + 1, fork.countTriples());
         assertEquals(seedTriples().size(), src.countTriples());
 
         Triple partial = Triple.createMatch(
-                NodeFactory.createURI("http://ex/only-in-fork"), null, null);
+                node("only-in-fork"), null, null);
         assertEquals(1, drain(fork.stream(partial)).size());
         assertEquals(0, drain(src.stream(partial)).size());
     }
@@ -337,15 +334,15 @@ public class CowStoreStrategiesTest {
     public void forkOfEagerKeepsSnapshotIsolation() {
         // Sanity that the strategy refactor didn't break the prior COW
         // invariants. Mutations on the fork must not be visible to src.
-        CowIndexedSetTripleStore src = seeded(IndexingStrategy.EAGER);
-        CowIndexedSetTripleStore fork = src.forkForWrite();
-        fork.remove(t("s0", "p", "o0"));
-        fork.add(t("only-in-fork", "p", "o"));
+        CowWriteTxn src = seeded(IndexingStrategy.EAGER);
+        CowWriteTxn fork = src.forkForWrite();
+        fork.remove(triple("s0 p o0"));
+        fork.add(triple("only-in-fork p o"));
 
-        assertTrue("source kept original triple", src.contains(t("s0", "p", "o0")));
+        assertTrue("source kept original triple", src.contains(triple("s0 p o0")));
         assertFalse("source did not gain fork's triple",
-                src.contains(t("only-in-fork", "p", "o")));
-        assertFalse(fork.contains(t("s0", "p", "o0")));
-        assertTrue(fork.contains(t("only-in-fork", "p", "o")));
+                src.contains(triple("only-in-fork p o")));
+        assertFalse(fork.contains(triple("s0 p o0")));
+        assertTrue(fork.contains(triple("only-in-fork p o")));
     }
 }

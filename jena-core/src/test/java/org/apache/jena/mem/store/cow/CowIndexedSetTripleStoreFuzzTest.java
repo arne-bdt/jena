@@ -34,15 +34,16 @@ import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
  * Property-style fuzz test for the COW snapshot guarantee at the
- * {@link CowIndexedSetTripleStore} layer (i.e. <i>below</i> the graph
+ * {@link CowWriteTxn} layer (i.e. <i>below</i> the graph
  * lifecycle). Each "snapshot" we hold here is the result of a
- * {@link CowIndexedSetTripleStore#forkForWrite()} where the original is
+ * {@link CowWriteTxn#forkForWrite()} where the original is
  * <b>retained</b> (representing the published reference) and the writer is
  * mutated freely. The published store must continue to report the exact
  * triple set it held at the moment of the fork, regardless of the writer's
@@ -58,22 +59,16 @@ public class CowIndexedSetTripleStoreFuzzTest {
     private static final int NUM_SNAPSHOTS_TO_HOLD = 10;
     private static final int NODE_VOCABULARY = 80;
 
-    private static Triple t(int s, int p, int o) {
-        return Triple.create(node("s" + s), node("p" + p), node("o" + o));
-    }
 
-    private static Node node(String label) {
-        return NodeFactory.createURI("http://ex/" + label);
-    }
 
     private static Triple randomTriple(Random rnd) {
-        return t(rnd.nextInt(NODE_VOCABULARY),
-                 rnd.nextInt(NODE_VOCABULARY / 4),  // fewer predicates → more clustering
-                 rnd.nextInt(NODE_VOCABULARY));
+        return triple("s" + rnd.nextInt(NODE_VOCABULARY)
+                + " p" + rnd.nextInt(NODE_VOCABULARY / 4)  // fewer predicates → more clustering
+                + " o" + rnd.nextInt(NODE_VOCABULARY));
     }
 
     /** A retained published store paired with the exact triple set it held at fork time. */
-    private record Held(CowIndexedSetTripleStore store, Set<Triple> expected) {}
+    private record Held(CowWriteTxn store, Set<Triple> expected) {}
 
     @Test
     public void heldSnapshotsRemainStableAcrossManyCommits() {
@@ -81,7 +76,7 @@ public class CowIndexedSetTripleStoreFuzzTest {
         Random rnd = new Random(0xC0FFEE);
 
         // Start with a non-empty published store so snapshots have content.
-        CowIndexedSetTripleStore published = new CowIndexedSetTripleStore();
+        CowWriteTxn published = new CowWriteTxn();
         Set<Triple> publishedExpected = new HashSet<>();
         for (int i = 0; i < 100; i++) {
             Triple seed = randomTriple(rnd);
@@ -173,7 +168,7 @@ public class CowIndexedSetTripleStoreFuzzTest {
     @Test
     public void deleteHeavyWorkloadDoesNotCorruptSnapshot() {
         Random rnd = new Random(42L);
-        CowIndexedSetTripleStore source = new CowIndexedSetTripleStore();
+        CowWriteTxn source = new CowWriteTxn();
         Set<Triple> seeded = new HashSet<>();
         for (int i = 0; i < 1500; i++) {
             Triple x = randomTriple(rnd);
@@ -181,11 +176,11 @@ public class CowIndexedSetTripleStoreFuzzTest {
         }
 
         // Capture the snapshot at this point.
-        CowIndexedSetTripleStore snapshot = source;
+        CowWriteTxn snapshot = source;
         Set<Triple> expected = new HashSet<>(seeded);
 
         // Branch a writer and delete most of the seeded triples from it.
-        CowIndexedSetTripleStore writer = source.forkForWrite();
+        CowWriteTxn writer = source.forkForWrite();
         List<Triple> seedList = new ArrayList<>(seeded);
         Collections.shuffle(seedList, rnd);
         for (int i = 0; i < seedList.size() * 9 / 10; i++) {

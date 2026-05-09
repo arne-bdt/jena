@@ -246,29 +246,6 @@ public class IndexListTest {
         assertEquals(99, tight.getIndexAt(1));
     }
 
-    @Test
-    public void defaultOwnerIdIsZero() {
-        final var list = new IndexList();
-        assertEquals("default ownerId is 0 (untracked)", 0L, list.getOwnerId());
-    }
-
-    @Test
-    public void setterUpdatesOwnerId() {
-        final var list = new IndexList();
-        list.setOwnerId(123L);
-        assertEquals(123L, list.getOwnerId());
-        list.setOwnerId(0L);
-        assertEquals(0L, list.getOwnerId());
-    }
-
-    @Test
-    public void copyConstructorInheritsOwnerId() {
-        final var src = new IndexList();
-        src.setOwnerId(42L);
-        final var copy = new IndexList(src);
-        assertEquals("copy must inherit ownerId", 42L, copy.getOwnerId());
-    }
-
     /** Helper that mirrors how EagerStoreStrategy keeps its reverse-index in sync. */
     private static void addToList(final IndexList list, final int[] reverseIndices, final int tripleIndex) {
         final int pos = list.add(tripleIndex);

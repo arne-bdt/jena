@@ -22,10 +22,8 @@
 package org.apache.jena.mem.store.cow.strategies;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
-import org.apache.jena.mem.store.cow.CowIndexedSetTripleStore;
+import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.mem.store.cow.TxnNodesToIndices;
 import org.apache.jena.mem.store.indexed.IndexList;
 import org.junit.Test;
@@ -33,49 +31,47 @@ import org.junit.Test;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
+import static org.apache.jena.testing_framework.GraphHelper.node;
+import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
 /**
- * Targeted tests for the {@link IndexList#getOwnerId() ownership-id}
- * scheme that drives clone-on-first-touch in
- * {@link CowEagerStoreStrategy}. Verifies the predicate that:
- * <ol>
- *   <li>each strategy receives a unique {@code ownerId};
- *   <li>lists created by a strategy are stamped with that strategy's id;
- *   <li>a fork's first mutation of a shared list clones it and stamps
- *       the clone with the fork's id, leaving the source's list untouched;
- *   <li>further mutations of the same list inside the same fork hit the
- *       fast path (no further cloning).
- * </ol>
- * The behavioural correctness end-to-end (snapshot isolation, fuzz
- * stability) is already covered by
- * {@code CowIndexedSetTripleStoreFuzzTest} and the strategy tests; this
- * suite specifically checks the bookkeeping mechanism so the scheme can
- * be benchmarked with confidence.
+ * Targeted tests for the spine-level ownership scheme that drives
+ * clone-on-first-touch in {@link CowEagerStoreStrategy}. The scheme
+ * lives on {@link TxnNodesToIndices} (inherited from
+ * {@code TxnFastHashMap}) as a per-slot, writer-private bitmap
+ * {@code valueOwnedByThisWriter}: a set bit means the value at that
+ * slot was placed by this writer (and is therefore safe to mutate in
+ * place); a clear bit means the value is still shared with a snapshot
+ * and must be cloned before mutation. The bit is set inside
+ * {@code put}'s insertion path (so {@code ensureWritableList}'s
+ * tombstone-and-append automatically marks the new slot writer-owned)
+ * and is allocated <i>fresh</i> on fork (no propagation from source —
+ * a fresh writer has placed nothing yet).
+ *
+ * <p>End-to-end correctness (snapshot isolation, fuzz stability) is
+ * already covered by {@code CowIndexedSetTripleStoreFuzzTest} and the
+ * strategy tests; this suite specifically pins down the bookkeeping.
  */
 public class IndexListOwnershipTest {
 
-    private static Triple t(String s, String p, String o) {
-        return Triple.create(NodeFactory.createURI("http://ex/" + s),
-                             NodeFactory.createURI("http://ex/" + p),
-                             NodeFactory.createURI("http://ex/" + o));
-    }
-
     private static Node n(String s) {
-        return NodeFactory.createURI("http://ex/" + s);
+        return node("" + s);
     }
 
-    /** Reach into a {@link CowIndexedSetTripleStore} for its eager strategy. */
-    private static CowEagerStoreStrategy eagerStrategyOf(CowIndexedSetTripleStore store)
+    /** Reach into a {@link CowWriteTxn} for its eager strategy. */
+    private static CowEagerStoreStrategy eagerStrategyOf(CowWriteTxn store)
             throws Exception {
-        Field f = CowIndexedSetTripleStore.class.getDeclaredField("strategy");
+        // Walk up to the abstract base class for the strategy field.
+        Class<?> base = store.getClass().getSuperclass();
+        Field f = base.getDeclaredField("strategy");
         f.setAccessible(true);
         Object atomicRef = f.get(store);
         Method get = atomicRef.getClass().getMethod("get");
         return (CowEagerStoreStrategy) get.invoke(atomicRef);
     }
 
-    /** Reach into the strategy's subjectIndex to verify list ownership. */
+    /** Reach into the strategy's subjectIndex for direct slot inspection. */
     private static TxnNodesToIndices subjectIndexOf(CowEagerStoreStrategy strategy)
             throws Exception {
         Field f = CowEagerStoreStrategy.class.getDeclaredField("subjectIndex");
@@ -83,136 +79,103 @@ public class IndexListOwnershipTest {
         return (TxnNodesToIndices) f.get(strategy);
     }
 
-    /** Reach into the strategy for its ownerId. */
-    private static long ownerIdOf(CowEagerStoreStrategy strategy) throws Exception {
-        Field f = CowEagerStoreStrategy.class.getDeclaredField("ownerId");
-        f.setAccessible(true);
-        return f.getLong(strategy);
-    }
-
-    // ----- IndexList field plumbing -----------------------------------
+    // -------------------------------------------------------------------
 
     @Test
-    public void newIndexListHasZeroOwnerId() {
-        IndexList list = new IndexList();
-        assertEquals("default ownerId is 0 (untracked)", 0L, list.getOwnerId());
-    }
+    public void freshlyAddedListIsWriterOwned() throws Exception {
+        CowWriteTxn store = new CowWriteTxn(IndexingStrategy.EAGER);
+        store.add(triple("s1 p o1"));
+        store.add(triple("s1 p o2"));
 
-    @Test
-    public void cloneInheritsOwnerId() {
-        IndexList src = new IndexList();
-        src.setOwnerId(42L);
-        IndexList clone = src.clone();
-        assertEquals("clone() inherits ownerId", 42L, clone.getOwnerId());
+        TxnNodesToIndices spine = subjectIndexOf(eagerStrategyOf(store));
+        int eIndex = spine.indexOf(n("s1"));
+        assertTrue("eIndex must be valid for present key", eIndex >= 0);
+        assertTrue("freshly-inserted slot must be marked writer-owned",
+                spine.isValueOwnedByThisWriter(eIndex));
     }
 
     @Test
-    public void setterIsPlainField() {
-        // Trivial sanity that the setter writes the field, the getter reads it.
-        IndexList list = new IndexList();
-        list.setOwnerId(123L);
-        assertEquals(123L, list.getOwnerId());
-        list.setOwnerId(0L);
-        assertEquals(0L, list.getOwnerId());
-    }
+    public void forkSeesParentSlotAsNotOwned() throws Exception {
+        CowWriteTxn src = new CowWriteTxn(IndexingStrategy.EAGER);
+        src.add(triple("s1 p o1"));
 
-    // ----- Strategy-level ownership semantics -------------------------
+        CowWriteTxn fork = src.forkForWrite();
 
-    @Test
-    public void distinctStrategiesHaveDistinctOwnerIds() throws Exception {
-        CowIndexedSetTripleStore a = new CowIndexedSetTripleStore(IndexingStrategy.EAGER);
-        CowIndexedSetTripleStore b = new CowIndexedSetTripleStore(IndexingStrategy.EAGER);
-        assertNotEquals(ownerIdOf(eagerStrategyOf(a)),
-                        ownerIdOf(eagerStrategyOf(b)));
+        TxnNodesToIndices forkSpine = subjectIndexOf(eagerStrategyOf(fork));
+        int eIndex = forkSpine.indexOf(n("s1"));
+        assertTrue("fork must still see the key", eIndex >= 0);
+        // The bitmap is allocated fresh on fork, so the slot inherited
+        // from the source is not writer-owned by the new fork.
+        assertFalse("inherited slot must NOT be writer-owned by the fork",
+                forkSpine.isValueOwnedByThisWriter(eIndex));
     }
 
     @Test
-    public void listsCreatedByStrategyAreStampedWithItsOwnerId() throws Exception {
-        CowIndexedSetTripleStore store = new CowIndexedSetTripleStore(IndexingStrategy.EAGER);
-        store.add(t("s1", "p", "o1"));
-        store.add(t("s1", "p", "o2"));
+    public void firstMutationClonesAndMarksWriterOwned() throws Exception {
+        CowWriteTxn src = new CowWriteTxn(IndexingStrategy.EAGER);
+        src.add(triple("s1 p o1"));
 
-        long id = ownerIdOf(eagerStrategyOf(store));
-        IndexList l = subjectIndexOf(eagerStrategyOf(store)).get(n("s1"));
-        assertNotNull(l);
-        assertEquals(id, l.getOwnerId());
-    }
+        TxnNodesToIndices srcSpine = subjectIndexOf(eagerStrategyOf(src));
+        IndexList srcList = srcSpine.get(n("s1"));
 
-    @Test
-    public void forkClonesOnFirstMutationAndStampsWithForkId() throws Exception {
-        CowIndexedSetTripleStore src = new CowIndexedSetTripleStore(IndexingStrategy.EAGER);
-        src.add(t("s1", "p", "o1"));
-        src.add(t("s1", "p", "o2"));
+        CowWriteTxn fork = src.forkForWrite();
+        // Trigger clone-on-first-touch by adding another triple with
+        // the same subject.
+        fork.add(triple("s1 p o2"));
 
-        long srcId = ownerIdOf(eagerStrategyOf(src));
-        IndexList srcList = subjectIndexOf(eagerStrategyOf(src)).get(n("s1"));
-        assertEquals(srcId, srcList.getOwnerId());
+        TxnNodesToIndices forkSpine = subjectIndexOf(eagerStrategyOf(fork));
+        int eIndex = forkSpine.indexOf(n("s1"));
+        IndexList forkList = forkSpine.getValueAt(eIndex);
 
-        CowIndexedSetTripleStore fork = src.forkForWrite();
-        long forkId = ownerIdOf(eagerStrategyOf(fork));
-        assertNotEquals("fork must have a fresh ownerId", srcId, forkId);
-
-        // Before any mutation, the fork's spine still resolves the key
-        // to the SAME (shared) IndexList — and crucially, that list's
-        // ownerId is still the source's id.
-        IndexList beforeMutation = subjectIndexOf(eagerStrategyOf(fork)).get(n("s1"));
-        assertSame("pre-mutation, fork must see the source's exact list",
-                srcList, beforeMutation);
-        assertEquals(srcId, beforeMutation.getOwnerId());
-
-        // Trigger a mutation — adding a triple with the same subject hits
-        // ensureWritableList which detects the mismatch and clones.
-        fork.add(t("s1", "p", "o3"));
-
-        IndexList afterMutation = subjectIndexOf(eagerStrategyOf(fork)).get(n("s1"));
-        assertNotSame("mutation must replace the spine slot with a clone",
-                srcList, afterMutation);
-        assertEquals("the clone is stamped with the fork's ownerId",
-                forkId, afterMutation.getOwnerId());
-        // Source's list still has the source's id.
-        assertEquals("source's list ownerId is unchanged",
-                srcId, srcList.getOwnerId());
+        assertNotSame("first mutation must clone the shared list",
+                srcList, forkList);
+        assertTrue("the new slot must be marked writer-owned",
+                forkSpine.isValueOwnedByThisWriter(eIndex));
+        // Source's list is untouched.
+        assertEquals("source's list size is unchanged", 1, srcList.size());
     }
 
     @Test
     public void secondMutationOnSameForkHitsFastPath() throws Exception {
-        // Once a list is cloned by a fork, subsequent mutations of the
-        // same key inside the same fork must NOT clone again — that's
-        // the optimisation the ownerId scheme buys us.
-        CowIndexedSetTripleStore src = new CowIndexedSetTripleStore(IndexingStrategy.EAGER);
-        src.add(t("s1", "p", "o1"));
+        // Once a list has been cloned (and marked writer-owned in the
+        // spine bitmap) by a fork, subsequent mutations of the same key
+        // inside the same fork must NOT clone again — that's the
+        // optimisation the spine-bit scheme buys us.
+        CowWriteTxn src = new CowWriteTxn(IndexingStrategy.EAGER);
+        src.add(triple("s1 p o1"));
 
-        CowIndexedSetTripleStore fork = src.forkForWrite();
-        fork.add(t("s1", "p", "o2"));               // first mutation: clone
-        IndexList afterFirst = subjectIndexOf(eagerStrategyOf(fork)).get(n("s1"));
+        CowWriteTxn fork = src.forkForWrite();
+        fork.add(triple("s1 p o2"));               // first mutation: clone
+        TxnNodesToIndices forkSpine = subjectIndexOf(eagerStrategyOf(fork));
+        IndexList afterFirst = forkSpine.get(n("s1"));
 
-        fork.add(t("s1", "p", "o3"));               // second mutation: in-place
-        IndexList afterSecond = subjectIndexOf(eagerStrategyOf(fork)).get(n("s1"));
+        fork.add(triple("s1 p o3"));               // second mutation: in-place
+        IndexList afterSecond = forkSpine.get(n("s1"));
 
-        assertSame("second mutation must reuse the already-cloned list (no further clone)",
+        assertSame("second mutation must reuse the already-cloned list",
                 afterFirst, afterSecond);
         assertEquals(3, afterSecond.size());
     }
 
     @Test
-    public void resetIndexStrategyAssignsFreshOwnerId() throws Exception {
+    public void resetIndexStrategyClearsOwnership() throws Exception {
         // After resetIndexStrategy on EAGER, a fresh empty eager strategy
-        // is installed (same kind, but empty). The new strategy must have
-        // a fresh ownerId, and any list added after the reset is stamped
-        // with that new id.
-        CowIndexedSetTripleStore store = new CowIndexedSetTripleStore(IndexingStrategy.EAGER);
-        store.add(t("s1", "p", "o1"));
-        long oldId = ownerIdOf(eagerStrategyOf(store));
+        // is installed; its fresh empty spines have no slots and so no
+        // writer-owned bits — and the next add lands a fresh
+        // writer-owned slot.
+        CowWriteTxn store = new CowWriteTxn(IndexingStrategy.EAGER);
+        store.add(triple("s1 p o1"));
 
-        store.resetIndexStrategy();                  // installs a fresh eager
-        long newId = ownerIdOf(eagerStrategyOf(store));
-        assertNotEquals("a fresh strategy must have a fresh ownerId", oldId, newId);
+        store.resetIndexStrategy();                 // installs a fresh eager
 
-        // The triples themselves are still in the canonical set; the
-        // index is empty and re-fills as we add.
-        store.add(t("s1", "p", "o1"));
-        IndexList l = subjectIndexOf(eagerStrategyOf(store)).get(n("s1"));
-        assertNotNull(l);
-        assertEquals(newId, l.getOwnerId());
+        TxnNodesToIndices spine = subjectIndexOf(eagerStrategyOf(store));
+        assertEquals("fresh strategy's spine starts empty",
+                -1, spine.indexOf(n("s1")));
+
+        store.add(triple("s1 p o1"));
+        int eIndex = spine.indexOf(n("s1"));
+        assertTrue(eIndex >= 0);
+        assertTrue("re-added slot is writer-owned",
+                spine.isValueOwnedByThisWriter(eIndex));
     }
 }

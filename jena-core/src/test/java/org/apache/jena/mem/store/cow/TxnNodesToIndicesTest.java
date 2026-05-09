@@ -26,6 +26,7 @@ import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.mem.store.indexed.IndexList;
 import org.junit.Test;
 
+import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.junit.Assert.*;
 
 /**
@@ -37,7 +38,7 @@ import static org.junit.Assert.*;
 public class TxnNodesToIndicesTest {
 
     private static Node n(String s) {
-        return NodeFactory.createURI("http://ex/" + s);
+        return node("" + s);
     }
 
     @Test

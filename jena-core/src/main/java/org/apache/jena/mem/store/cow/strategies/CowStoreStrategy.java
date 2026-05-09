@@ -23,15 +23,16 @@ package org.apache.jena.mem.store.cow.strategies;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.pattern.MatchPattern;
-import org.apache.jena.mem.store.cow.CowIndexedSetTripleStore;
+import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.stream.Stream;
 
 /**
  * Plug-in interface that controls how the auxiliary
- * subject/predicate/object index of a {@link CowIndexedSetTripleStore} is
- * maintained and how partial-pattern matches are evaluated.
+ * subject/predicate/object index of a
+ * {@link org.apache.jena.mem.store.cow.CowStore} is maintained and how
+ * partial-pattern matches are evaluated.
  *
  * <h2>Relationship to the baseline {@code StoreStrategy}</h2>
  * The baseline {@link org.apache.jena.mem.store.strategies.StoreStrategy}
@@ -44,10 +45,11 @@ import java.util.stream.Stream;
  * {@link org.apache.jena.mem.store.cow.TxnNodesToIndices}.
  *
  * <h2>Fork semantics</h2>
- * Each strategy must implement {@link #fork(CowIndexedSetTripleStore)} to
- * produce an equivalent strategy bound to a freshly forked store. Forking
- * is invoked from {@link CowIndexedSetTripleStore}'s fork constructor and
- * has two duties:
+ * Each strategy must implement {@link #fork(CowWriteTxn)} to produce
+ * an equivalent strategy bound to a freshly forked write transaction.
+ * Forking is only invoked when transitioning a snapshot to a write
+ * transaction (snapshots are read-only and never fork themselves), so
+ * the receiver is always a {@link CowWriteTxn}. Fork has two duties:
  * <ul>
  *   <li>For strategies that hold writer-private state (currently only
  *       eager): clone that state. The shared spine arrays inside
@@ -57,7 +59,7 @@ import java.util.stream.Stream;
  *   <li>For strategies that need an enclosing-store reference (currently
  *       only lazy, whose auto-build callback installs a freshly-built
  *       eager strategy onto the enclosing store): re-bind that reference
- *       to the new store.
+ *       to the new write transaction.
  * </ul>
  *
  * <h2>Pattern match scope</h2>
@@ -113,19 +115,18 @@ public interface CowStoreStrategy {
 
     /**
      * Build a strategy of the same kind, bound to the given freshly
-     * forked store. Called from
-     * {@link CowIndexedSetTripleStore}'s fork constructor.
+     * forked write transaction. Called from
+     * {@link org.apache.jena.mem.store.cow.CowSnapshot#forkForWrite()}.
      * <p>
-     * The returned strategy must reference the new store's
-     * {@link CowIndexedSetTripleStore#triples} (and any other shared
+     * The returned strategy must reference the new write txn's
+     * {@link CowWriteTxn#getTriples() triples} (and any other shared
      * state) — never the source's. State that is logically writer-private
      * (e.g. eager's spines and reverse-index arrays) must be forked so
-     * mutations on the new store do not corrupt the source's view.
+     * mutations on the new write txn do not corrupt the source's view.
      *
-     * @param newStore the freshly forked store; the returned strategy
-     *                 must use this store's triples for any operations
-     *                 that touch the canonical triple set, and (for
-     *                 lazy) install onto this store's strategy slot
+     * @param newWriteTxn the freshly forked write transaction; the
+     *                    returned strategy must use its triples and
+     *                    (for lazy) install onto its strategy slot
      */
-    CowStoreStrategy fork(CowIndexedSetTripleStore newStore);
+    CowStoreStrategy fork(CowWriteTxn newWriteTxn);
 }

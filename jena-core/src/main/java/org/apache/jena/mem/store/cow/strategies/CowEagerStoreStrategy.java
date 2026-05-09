@@ -25,7 +25,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.pattern.PatternClassifier;
-import org.apache.jena.mem.store.cow.CowIndexedSetTripleStore;
+import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.mem.store.cow.TxnNodesToIndices;
 import org.apache.jena.mem.store.cow.TxnTripleSet;
 import org.apache.jena.mem.store.indexed.IndexList;
@@ -38,7 +38,6 @@ import org.apache.jena.util.iterator.NullIterator;
 
 import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
@@ -54,39 +53,35 @@ import java.util.stream.StreamSupport;
  * The three node-keyed spines ({@link TxnNodesToIndices}) follow the
  * standard COW spine layout: their {@code keys}/{@code hashCodes}/
  * {@code values} are shared with the source, their
- * {@code positions}/{@code deleted} are forked. The three reverse-index
- * arrays are <i>not</i> shared — the writer mutates them at arbitrary alive
- * triple-indices on removal (swap-with-last bookkeeping), so they are
- * cloned per fork.
+ * {@code positions}/{@code deleted}/{@code valueOwnedByThisWriter} are
+ * forked (or, in the case of the writer-owned bitmap, allocated fresh).
+ * The three reverse-index arrays are <i>not</i> shared — the writer
+ * mutates them at arbitrary alive triple-indices on removal
+ * (swap-with-last bookkeeping), so they are cloned per fork.
  * <p>
  * {@link IndexList}s held in the spines' {@code values[]} arrays are
  * shared until first mutation; {@link #ensureWritableList} performs the
- * clone-on-first-touch by comparing each list's {@link IndexList#getOwnerId()
- * ownership id} against this strategy's own {@link #ownerId}, then
- * replacing the spine slot via {@link TxnNodesToIndices#put} (which is
- * the COW tombstone-and-append).
+ * clone-on-first-touch by consulting the spine's
+ * {@link TxnNodesToIndices#isValueOwnedByThisWriter(int) writer-owned}
+ * bitmap (a per-slot, writer-private boolean). On a miss the strategy
+ * clones the list and re-installs it via {@link TxnNodesToIndices#put}
+ * (the COW tombstone-and-append), which automatically marks the new
+ * slot writer-owned.
  *
- * <h2>Why the per-list owner id</h2>
- * The earlier design used an {@code IdentityHashMap}-backed
- * {@code Set<IndexList>} per strategy to track writer-owned lists. The
- * per-list {@code long ownerId} replaces it: a single field load + int
- * compare in the hot path replaces a hash-table lookup, and there's no
- * per-fork allocation at all (ownership is intrinsic to the list). For
- * graphs with many distinct nodes this is the difference between O(N)
- * map entries per fork and a single long field per list, paid once.
+ * <h2>Why spine-level ownership</h2>
+ * Earlier designs tracked ownership either via an {@code IdentityHashMap
+ * <IndexList>} per strategy or via a {@code long ownerId} field on
+ * {@link IndexList} itself. The current scheme moves the bit onto the
+ * spine's per-slot writer-private array, where ownership conceptually
+ * belongs: the spine is the place that knows which slots it has freshly
+ * written this transaction. The bit is set exclusively by the spine's
+ * {@code put} path and never propagated across forks (a fresh fork has
+ * placed nothing yet, so all bits start clear), so no cloning of the
+ * ownership array is needed at fork time.
  */
 public final class CowEagerStoreStrategy implements CowStoreStrategy {
 
     private static final String UNSUPPORTED_PATTERN = "Unsupported pattern classifier: %s";
-
-    /**
-     * Counter used to stamp each strategy with a globally unique
-     * {@link #ownerId}. {@code AtomicLong} so concurrent strategy
-     * construction (e.g. multiple readers race-building eager strategies
-     * for a LAZY published view) gets distinct ids. The 64-bit space is
-     * effectively inexhaustible for any realistic process lifetime.
-     */
-    private static final AtomicLong NEXT_OWNER_ID = new AtomicLong();
 
     /** Canonical triples. Borrowed reference to the enclosing store's triples. */
     private final TxnTripleSet triples;
@@ -99,61 +94,28 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
     private int[] pReverseIndices;
     private int[] oReverseIndices;
 
-    /**
-     * Unique ownership id stamped onto every {@link IndexList} this
-     * strategy creates or clones. {@link #ensureWritableList} uses
-     * {@code list.getOwnerId() == this.ownerId} as the writer-owned
-     * predicate.
-     */
-    private final long ownerId = NEXT_OWNER_ID.incrementAndGet();
-
     // -------------------------------------------------------------------
 
     /**
      * Build an empty eager index over the given triple set, then index
-     * any triples already present (sequentially). Installs a grow hook so
-     * the reverse-index arrays grow in lock-step with {@code triples.keys[]}.
+     * any triples already present (sequentially).
      *
      * @param triples the canonical triple set
      */
     public CowEagerStoreStrategy(TxnTripleSet triples) {
-        this(triples, false, true);
+        this(triples, false);
     }
 
     /**
      * Build an empty eager index over the given triple set, then index
-     * any triples already present. Installs the grow hook.
+     * any triples already present.
      *
      * @param triples  the canonical triple set
      * @param parallel if {@code true}, populate the three indices
      *                 concurrently (used by the LAZY-parallel auto-build
-     *                 and by {@link CowIndexedSetTripleStore#initializeIndexParallel})
+     *                 and by the writer-side initializeIndexParallel hook)
      */
     public CowEagerStoreStrategy(TxnTripleSet triples, boolean parallel) {
-        this(triples, parallel, true);
-    }
-
-    /**
-     * Full constructor.
-     *
-     * @param triples         the canonical triple set
-     * @param parallel        if {@code true}, populate the three indices
-     *                        concurrently
-     * @param installGrowHook whether to register the keys-grow callback on
-     *                        {@code triples}. Pass {@code false} when the
-     *                        strategy is being built against a published
-     *                        snapshot (e.g. a LAZY → EAGER race-build on a
-     *                        snapshot held by multiple readers): the
-     *                        snapshot's keys never grow, so the hook would
-     *                        never fire, and concurrent installations
-     *                        would otherwise race on the shared
-     *                        {@code TxnTripleSet}'s hook field.
-     *                        {@link #addToIndex} resizes the reverse-index
-     *                        arrays on-demand if the keys array grows
-     *                        without the hook (only relevant on a writer's
-     *                        working copy that took this code path).
-     */
-    public CowEagerStoreStrategy(TxnTripleSet triples, boolean parallel, boolean installGrowHook) {
         this.triples = triples;
         this.subjectIndex = new TxnNodesToIndices();
         this.predicateIndex = new TxnNodesToIndices();
@@ -162,9 +124,6 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
         this.sReverseIndices = new int[len];
         this.pReverseIndices = new int[len];
         this.oReverseIndices = new int[len];
-        if (installGrowHook) {
-            triples.setOnKeysGrowHook(this::onTriplesKeysGrew);
-        }
         if (triples.size() > 0) {
             if (parallel) {
                 indexAllParallel();
@@ -175,12 +134,12 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
     }
 
     /**
-     * Fork constructor — used by {@link #fork(CowIndexedSetTripleStore)}.
-     * Forks each spine and clones each reverse-index array. The new
-     * strategy is stamped with a fresh {@link #ownerId}, so every
-     * {@link IndexList} inherited from the source is treated as
-     * "not writer-owned" until {@link #ensureWritableList} clones it on
-     * first mutation.
+     * Fork constructor — used by {@link #fork(CowWriteTxn)}. Forks each
+     * spine and clones each reverse-index array. Every {@link IndexList}
+     * inherited from the source is "not writer-owned" until
+     * {@link #ensureWritableList} clones it on first mutation, because
+     * the spines' {@code valueOwnedByThisWriter} bitmaps start fresh
+     * (all-clear) on fork.
      */
     private CowEagerStoreStrategy(TxnTripleSet newTriples, CowEagerStoreStrategy source) {
         this.triples = newTriples;
@@ -190,13 +149,11 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
         this.sReverseIndices = source.sReverseIndices.clone();
         this.pReverseIndices = source.pReverseIndices.clone();
         this.oReverseIndices = source.oReverseIndices.clone();
-        // Hook routes grow events to THIS strategy's reverse-index arrays.
-        newTriples.setOnKeysGrowHook(this::onTriplesKeysGrew);
     }
 
     @Override
-    public CowStoreStrategy fork(CowIndexedSetTripleStore newStore) {
-        return new CowEagerStoreStrategy(newStore.getTriples(), this);
+    public CowStoreStrategy fork(CowWriteTxn newWriteTxn) {
+        return new CowEagerStoreStrategy(newWriteTxn.getTriples(), this);
     }
 
     @Override
@@ -208,25 +165,22 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
 
     @Override
     public void addToIndex(Triple t, int index) {
-        ensureReverseIndicesCapacity(index);
+        // Resize the writer-private reverse-index arrays in lock-step
+        // with the writer's keys[] capacity. This branch is rare (grows
+        // are amortised O(log N)); on the common path it is a single
+        // length compare. Replaces the earlier setOnKeysGrowHook +
+        // ensureReverseIndicesCapacity machinery (no callback to install
+        // because only the writer ever grows the keys array, and the
+        // writer drives addToIndex itself).
+        final int keysLen = triples.getInternalKeysLength();
+        if (sReverseIndices.length < keysLen) {
+            sReverseIndices = Arrays.copyOf(sReverseIndices, keysLen);
+            pReverseIndices = Arrays.copyOf(pReverseIndices, keysLen);
+            oReverseIndices = Arrays.copyOf(oReverseIndices, keysLen);
+        }
         sReverseIndices[index] = ensureWritableList(subjectIndex, t.getSubject()).add(index);
         pReverseIndices[index] = ensureWritableList(predicateIndex, t.getPredicate()).add(index);
         oReverseIndices[index] = ensureWritableList(objectIndex, t.getObject()).add(index);
-    }
-
-    /**
-     * Defensively resize the three reverse-index arrays so they cover
-     * {@code index}. Normally the keys-grow hook (if installed) does this
-     * eagerly when {@code triples.keys[]} grows; this fallback covers the
-     * case where the strategy was constructed without the hook (see the
-     * {@code installGrowHook} parameter on the constructor).
-     */
-    private void ensureReverseIndicesCapacity(int index) {
-        if (index < sReverseIndices.length) return;
-        final int newLength = Math.max(triples.getInternalKeysLength(), index + 1);
-        sReverseIndices = Arrays.copyOf(sReverseIndices, newLength);
-        pReverseIndices = Arrays.copyOf(pReverseIndices, newLength);
-        oReverseIndices = Arrays.copyOf(oReverseIndices, newLength);
     }
 
     @Override
@@ -245,8 +199,6 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
         sReverseIndices = new int[len];
         pReverseIndices = new int[len];
         oReverseIndices = new int[len];
-        // Ownership stamp on this strategy is unchanged — any list
-        // created from here on still belongs to this strategy.
     }
 
     private void removeFromComponent(TxnNodesToIndices spine, Node node, int idx, int[] reverse) {
@@ -263,37 +215,29 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
     /**
      * Return the {@link IndexList} stored at {@code spine.get(node)},
      * cloned and re-installed if it's still shared with the snapshot.
-     * Ownership is determined by {@link IndexList#getOwnerId()}: if the
-     * list's stamped id matches this strategy's {@link #ownerId} the
-     * list is already writer-owned and can be mutated in place;
-     * otherwise it is cloned, the clone is stamped, and the spine slot
-     * is updated via {@link TxnNodesToIndices#put} (the COW
-     * tombstone-and-append, so any open snapshot still resolves the key
-     * to the original list through its own probe table).
+     * Ownership is read from the spine's per-slot
+     * {@link TxnNodesToIndices#isValueOwnedByThisWriter writer-owned}
+     * bitmap: a set bit means the slot's value was placed by this writer
+     * (and is therefore safe to mutate in place); a clear bit means the
+     * value is still shared with a snapshot and must be cloned. The
+     * clone is re-installed via {@link TxnNodesToIndices#put} (the COW
+     * tombstone-and-append), which automatically marks the new slot
+     * writer-owned.
      */
     private IndexList ensureWritableList(TxnNodesToIndices spine, Node node) {
-        IndexList list = spine.get(node);
-        if (list == null) {
-            list = new IndexList();
-            list.setOwnerId(ownerId);
-            spine.put(node, list);
+        final int eIndex = spine.indexOf(node);
+        if (eIndex < 0) {
+            final IndexList list = new IndexList();
+            spine.put(node, list);              // marks new slot writer-owned
             return list;
         }
-        if (list.getOwnerId() == ownerId) {
-            return list;                        // already writer-owned
+        if (spine.isValueOwnedByThisWriter(eIndex)) {
+            return spine.getValueAt(eIndex);    // already writer-owned
         }
         // Shared with snapshot — clone before mutation.
-        final IndexList forked = list.clone();
-        forked.setOwnerId(ownerId);
+        final IndexList forked = spine.getValueAt(eIndex).clone();
         spine.put(node, forked);                // tombstone-and-append on the spine
         return forked;
-    }
-
-    /** Resize the reverse-index arrays whenever {@code triples.keys[]} grows. */
-    private void onTriplesKeysGrew(int newKeysLength) {
-        sReverseIndices = Arrays.copyOf(sReverseIndices, newKeysLength);
-        pReverseIndices = Arrays.copyOf(pReverseIndices, newKeysLength);
-        oReverseIndices = Arrays.copyOf(oReverseIndices, newKeysLength);
     }
 
     /** Sequentially populate all three indices from {@link #triples}. */

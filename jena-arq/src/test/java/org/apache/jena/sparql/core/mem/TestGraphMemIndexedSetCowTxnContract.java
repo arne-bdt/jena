@@ -34,6 +34,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.jena.sparql.core.mem.CowTxnTestHelper.t;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -53,11 +54,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class TestGraphMemIndexedSetCowTxnContract {
 
-    private static Triple t(String s, String p, String o) {
-        return Triple.create(NodeFactory.createURI("http://ex/" + s),
-                             NodeFactory.createURI("http://ex/" + p),
-                             NodeFactory.createURI("http://ex/" + o));
-    }
 
     private static Node n(String s) {
         return NodeFactory.createURI("http://ex/" + s);

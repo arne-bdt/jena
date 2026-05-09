@@ -21,64 +21,37 @@
 
 package org.apache.jena.mem.store.cow;
 
-import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
 /**
  * Unit tests for {@link TxnTripleSet}. The bulk of the behaviour is already
  * covered by {@code TxnFastHashSetTest}; these tests focus on the additions
- * specific to {@code TxnTripleSet}: the grow hook and the fork semantics.
+ * specific to {@code TxnTripleSet}: the keys-length accessor and the fork
+ * semantics.
  */
 public class TxnTripleSetTest {
 
-    private static Triple t(String s) {
-        return Triple.create(NodeFactory.createURI("http://ex/" + s),
-                             NodeFactory.createURI("http://ex/p"),
-                             NodeFactory.createURI("http://ex/o"));
-    }
-
     @Test
-    public void onKeysGrowHookFiresOnGrow() {
+    public void getInternalKeysLengthReportsCurrentCapacity() {
         TxnTripleSet ts = new TxnTripleSet();
-        List<Integer> grownLengths = new ArrayList<>();
-        ts.setOnKeysGrowHook(grownLengths::add);
-
         int initial = ts.getInternalKeysLength();
-        // Insert enough to force at least one grow.
+        // Insert enough to force at least one grow; the reported length
+        // must increase past the initial capacity.
         for (int i = 0; i < initial * 4; i++) {
-            ts.tryAdd(t("s" + i));
+            ts.tryAdd(triple("s" + i + " p o"));
         }
-        assertFalse("hook should fire at least once across multiple grows", grownLengths.isEmpty());
-        assertTrue("each fired length must exceed the initial capacity",
-                grownLengths.stream().allMatch(l -> l > initial));
-    }
-
-    @Test
-    public void forkDoesNotInheritGrowHook() {
-        // The grow hook is writer-private — the fork must NOT inherit the
-        // source's hook (that hook is wired to the source's parallel arrays,
-        // not to anything the fork knows about).
-        TxnTripleSet src = new TxnTripleSet();
-        boolean[] sourceFired = {false};
-        src.setOnKeysGrowHook(len -> sourceFired[0] = true);
-
-        TxnTripleSet fork = src.fork();
-        // Drive the fork through several grows; the source's hook must not fire.
-        for (int i = 0; i < 1000; i++) fork.tryAdd(t("k" + i));
-
-        assertFalse("source's hook must not fire on fork's growth", sourceFired[0]);
+        assertTrue("keys.length must grow past the initial capacity",
+                ts.getInternalKeysLength() > initial);
     }
 
     @Test
     public void forkIsolationForTriples() {
         TxnTripleSet src = new TxnTripleSet();
-        Triple a = t("a"), b = t("b"), c = t("c");
+        Triple a = triple("a p o"), b = triple("b p o"), c = triple("c p o");
         src.tryAdd(a); src.tryAdd(b);
 
         TxnTripleSet fork = src.fork();
@@ -97,14 +70,14 @@ public class TxnTripleSetTest {
     @Test
     public void copyDelegatesToFork() {
         TxnTripleSet src = new TxnTripleSet();
-        src.tryAdd(t("a"));
+        src.tryAdd(triple("a p o"));
 
         TxnTripleSet copy = src.copy();
-        copy.tryAdd(t("b"));
+        copy.tryAdd(triple("b p o"));
 
         // Same fork semantics: source unaffected by copy's mutations.
-        assertFalse(src.containsKey(t("b")));
-        assertTrue(copy.containsKey(t("a")));
-        assertTrue(copy.containsKey(t("b")));
+        assertFalse(src.containsKey(triple("b p o")));
+        assertTrue(copy.containsKey(triple("a p o")));
+        assertTrue(copy.containsKey(triple("b p o")));
     }
 }

@@ -64,24 +64,49 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
      */
     protected V[] values;
 
+    /**
+     * Per-slot, writer-private bitmap: {@code true} at index {@code i}
+     * iff the value at {@code values[i]} was placed by <i>this writer</i>
+     * (since fork). Lets the eager strategy decide whether the value
+     * object stored at a slot is still shared with a snapshot (and must
+     * be cloned-on-first-touch before in-place mutation) or is already
+     * writer-owned.
+     * <p>
+     * This array is <b>not</b> propagated from the source on fork — every
+     * fork starts with all bits cleared, since by definition no slot
+     * currently holds a value placed by the new writer. Within a writer's
+     * lifetime, the bit is grown and preserved by
+     * {@link #onKeysAndHashCodesGrown} just like {@link #values}, and
+     * reset to all-clear by {@link #clear()}.
+     * <p>
+     * Tombstoned slots' bits are never read (callers go through
+     * {@link #findPosition}/{@link #containsKey} which skip dead slots),
+     * so we don't bother clearing them on remove or update.
+     */
+    protected boolean[] valueOwnedByThisWriter;
+
     protected TxnFastHashMap(int initialSize) {
         super(initialSize);
         this.values = newValuesArray(keys.length);
+        this.valueOwnedByThisWriter = new boolean[keys.length];
     }
 
     protected TxnFastHashMap() {
         super();
         this.values = newValuesArray(keys.length);
+        this.valueOwnedByThisWriter = new boolean[keys.length];
     }
 
     /**
      * Fork constructor — see {@link TxnFastHashBase#TxnFastHashBase(TxnFastHashBase)}.
      * Shares {@code values} (in addition to {@code keys}/{@code hashCodes})
-     * with the source.
+     * with the source. {@link #valueOwnedByThisWriter} is allocated fresh
+     * (all-clear) — the new writer has, by construction, placed nothing yet.
      */
     protected TxnFastHashMap(final TxnFastHashMap<K, V> source) {
         super(source);
         this.values = source.values;
+        this.valueOwnedByThisWriter = new boolean[source.values.length];
     }
 
     /** Subclasses allocate their typed value array here. */
@@ -103,6 +128,11 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
             }
         }
         this.values = newValues;
+        // valueOwnedByThisWriter is writer-private; preserve the bits across
+        // the grow.
+        final boolean[] newOwned = new boolean[this.keys.length];
+        System.arraycopy(valueOwnedByThisWriter, 0, newOwned, 0, oldLength);
+        this.valueOwnedByThisWriter = newOwned;
     }
 
     // Note: removeFrom is inherited unchanged from TxnFastHashBase. Unlike
@@ -114,6 +144,7 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
     public void clear() {
         super.clear();
         values = newValuesArray(keys.length);
+        valueOwnedByThisWriter = new boolean[keys.length];
     }
 
     // ----- Insert / update --------------------------------------------
@@ -170,6 +201,10 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
         // old tombstone — growKeysAndHashCodeArrays arraycopies the old
         // deleted[] without clearing compacted bits).
         deleted[eIndex] = false;
+        // This writer just placed the value; mark the slot writer-owned
+        // so the eager strategy's clone-on-first-touch knows it can
+        // mutate the value in place.
+        valueOwnedByThisWriter[eIndex] = true;
         positions[emptyPIndex] = ~eIndex;
         return eIndex;
     }
@@ -203,6 +238,17 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
      */
     public V getValueAt(int i) {
         return values[i];
+    }
+
+    /**
+     * @return {@code true} iff the value at slot {@code eIndex} was placed
+     * by <i>this writer</i> (since fork). Lets the COW eager strategy
+     * decide whether the value object is still shared with a snapshot
+     * (and must be cloned-on-first-touch before in-place mutation) or is
+     * already writer-owned. See {@link #valueOwnedByThisWriter}.
+     */
+    public boolean isValueOwnedByThisWriter(int eIndex) {
+        return valueOwnedByThisWriter[eIndex];
     }
 
     @Override

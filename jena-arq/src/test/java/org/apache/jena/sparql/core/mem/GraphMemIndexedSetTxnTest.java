@@ -36,16 +36,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.apache.jena.sparql.core.mem.CowTxnTestHelper.t;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class GraphMemIndexedSetTxnTest {
 
-    private static Triple t(String s, String p, String o) {
-        return Triple.create(
-                NodeFactory.createURI("http://ex/" + s),
-                NodeFactory.createURI("http://ex/" + p),
-                NodeFactory.createURI("http://ex/" + o));
-    }
 
     @Test
     public void writeCommitMakesChangesVisible() {

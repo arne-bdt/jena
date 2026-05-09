@@ -30,16 +30,17 @@ import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
 /**
- * Direct tests for {@link CowIndexedSetTripleStore} at the store layer
+ * Direct tests for {@link CowWriteTxn} at the store layer
  * (the graph-level lifecycle is tested separately by
  * {@code GraphMemIndexedSetCowTxnTest}). Covers:
  * <ul>
  *   <li>The basic {@code TripleStore} contract on a freshly-built store.
- *   <li>Equivalence between {@link CowIndexedSetTripleStore#forkForWrite()}
- *       and {@link CowIndexedSetTripleStore#forkForWriteParallel()} — both
+ *   <li>Equivalence between {@link CowWriteTxn#forkForWrite()}
+ *       and {@link CowWriteTxn#forkForWriteParallel()} — both
  *       must produce a mutated fork that reaches the same end state for
  *       any sequence of operations and must leave the source untouched.
  * </ul>
@@ -48,45 +49,40 @@ import static org.junit.Assert.*;
  */
 public class CowIndexedSetTripleStoreTest {
 
-    private static Triple t(String s, String p, String o) {
-        return Triple.create(NodeFactory.createURI("http://ex/" + s),
-                             NodeFactory.createURI("http://ex/" + p),
-                             NodeFactory.createURI("http://ex/" + o));
-    }
 
-    private static Set<Triple> drain(CowIndexedSetTripleStore s) {
+    private static Set<Triple> drain(CowWriteTxn s) {
         return s.stream().collect(Collectors.toCollection(HashSet::new));
     }
 
     @Test
     public void emptyStoreIsEmpty() {
-        CowIndexedSetTripleStore s = new CowIndexedSetTripleStore();
+        CowWriteTxn s = new CowWriteTxn();
         assertTrue(s.isEmpty());
         assertEquals(0, s.countTriples());
-        assertFalse(s.contains(t("a", "b", "c")));
+        assertFalse(s.contains(triple("a b c")));
     }
 
     @Test
     public void addRemoveContains() {
-        CowIndexedSetTripleStore s = new CowIndexedSetTripleStore();
-        s.add(t("a", "b", "c"));
-        s.add(t("a", "b", "d"));
+        CowWriteTxn s = new CowWriteTxn();
+        s.add(triple("a b c"));
+        s.add(triple("a b d"));
         assertEquals(2, s.countTriples());
-        assertTrue(s.contains(t("a", "b", "c")));
-        assertFalse(s.contains(t("a", "b", "missing")));
+        assertTrue(s.contains(triple("a b c")));
+        assertFalse(s.contains(triple("a b missing")));
 
-        s.remove(t("a", "b", "c"));
+        s.remove(triple("a b c"));
         assertEquals(1, s.countTriples());
-        assertFalse(s.contains(t("a", "b", "c")));
-        assertTrue(s.contains(t("a", "b", "d")));
+        assertFalse(s.contains(triple("a b c")));
+        assertTrue(s.contains(triple("a b d")));
     }
 
     @Test
     public void patternMatchAcrossAllEightCases() {
-        CowIndexedSetTripleStore s = new CowIndexedSetTripleStore();
-        Triple t1 = t("s1", "p", "o1");
-        Triple t2 = t("s1", "p", "o2");
-        Triple t3 = t("s2", "p", "o1");
+        CowWriteTxn s = new CowWriteTxn();
+        Triple t1 = triple("s1 p o1");
+        Triple t2 = triple("s1 p o2");
+        Triple t3 = triple("s2 p o1");
         s.add(t1); s.add(t2); s.add(t3);
 
         // SUB_PRE_OBJ and ANY_ANY_ANY are exercised via existing graph tests;
@@ -103,25 +99,25 @@ public class CowIndexedSetTripleStoreTest {
     public void forkForWriteAndForkForWriteParallel_produceEquivalentResults() {
         // Build a non-trivial source store.
         Random rnd = new Random(123L);
-        CowIndexedSetTripleStore source = new CowIndexedSetTripleStore();
+        CowWriteTxn source = new CowWriteTxn();
         Set<Triple> seeds = new HashSet<>();
         for (int i = 0; i < 500; i++) {
-            Triple x = t("s" + rnd.nextInt(100),
-                         "p" + rnd.nextInt(20),
-                         "o" + rnd.nextInt(100));
+            Triple x = triple("s" + rnd.nextInt(100)
+                    + " p" + rnd.nextInt(20)
+                    + " o" + rnd.nextInt(100));
             if (seeds.add(x)) source.add(x);
         }
         Set<Triple> sourceContents = drain(source);
 
         // Fork both ways; apply the same mutation script to each fork.
-        CowIndexedSetTripleStore seq = source.forkForWrite();
-        CowIndexedSetTripleStore par = source.forkForWriteParallel();
+        CowWriteTxn seq = source.forkForWrite();
+        CowWriteTxn par = source.forkForWriteParallel();
 
         Random opsRnd = new Random(456L);
         for (int i = 0; i < 200; i++) {
-            Triple x = t("s" + opsRnd.nextInt(100),
-                         "p" + opsRnd.nextInt(20),
-                         "o" + opsRnd.nextInt(100));
+            Triple x = triple("s" + opsRnd.nextInt(100)
+                    + " p" + opsRnd.nextInt(20)
+                    + " o" + opsRnd.nextInt(100));
             if (opsRnd.nextBoolean()) {
                 seq.add(x);
                 par.add(x);
@@ -143,13 +139,13 @@ public class CowIndexedSetTripleStoreTest {
     public void forkForWriteParallel_preservesSnapshotIsolation() {
         // Same property as for the sequential fork: writes to the parallel
         // fork must not leak into the source.
-        CowIndexedSetTripleStore source = new CowIndexedSetTripleStore();
-        for (int i = 0; i < 200; i++) source.add(t("s" + i, "p", "o"));
+        CowWriteTxn source = new CowWriteTxn();
+        for (int i = 0; i < 200; i++) source.add(triple("s" + i + " " + "p" + " " + "o"));
         Set<Triple> srcSnapshot = drain(source);
 
-        CowIndexedSetTripleStore par = source.forkForWriteParallel();
-        for (int i = 0; i < 100; i++) par.remove(t("s" + i, "p", "o"));
-        for (int i = 0; i < 50; i++) par.add(t("new" + i, "p", "o"));
+        CowWriteTxn par = source.forkForWriteParallel();
+        for (int i = 0; i < 100; i++) par.remove(triple("s" + i + " " + "p" + " " + "o"));
+        for (int i = 0; i < 50; i++) par.add(triple("new" + i + " " + "p" + " " + "o"));
 
         assertEquals("source view drifted under parallel fork", srcSnapshot, drain(source));
         assertEquals(150, par.countTriples());
@@ -157,13 +153,13 @@ public class CowIndexedSetTripleStoreTest {
 
     @Test
     public void clearResetsToEmptyAndAllowsFurtherUse() {
-        CowIndexedSetTripleStore s = new CowIndexedSetTripleStore();
-        for (int i = 0; i < 50; i++) s.add(t("s" + i, "p", "o"));
+        CowWriteTxn s = new CowWriteTxn();
+        for (int i = 0; i < 50; i++) s.add(triple("s" + i + " " + "p" + " " + "o"));
         s.clear();
         assertTrue(s.isEmpty());
         assertEquals(0, s.countTriples());
-        s.add(t("post", "clear", "ok"));
+        s.add(triple("post clear ok"));
         assertEquals(1, s.countTriples());
-        assertTrue(s.contains(t("post", "clear", "ok")));
+        assertTrue(s.contains(triple("post clear ok")));
     }
 }

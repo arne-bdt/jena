@@ -23,7 +23,8 @@ package org.apache.jena.mem.store.cow.strategies;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.pattern.MatchPattern;
-import org.apache.jena.mem.store.cow.CowIndexedSetTripleStore;
+import org.apache.jena.mem.store.cow.CowStore;
+import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.stream.Stream;
@@ -33,7 +34,7 @@ import java.util.stream.Stream;
  * {@link org.apache.jena.mem.store.strategies.LazyStoreStrategy}: defers
  * index construction until the first pattern lookup. Add/remove are
  * no-ops while the index is absent (the triples themselves are still
- * maintained in the enclosing {@link CowIndexedSetTripleStore}; only the
+ * maintained in the enclosing {@link CowStore}; only the
  * subject/predicate/object index is skipped). On the first
  * {@code containsMatch} / {@code streamMatch} / {@code findMatch} call,
  * a fresh {@link CowEagerStoreStrategy} is built from the enclosing
@@ -46,9 +47,9 @@ import java.util.stream.Stream;
  * eager build. The build is a pure function of the triple set (it
  * doesn't mutate {@code triples}) and produces equivalent results across
  * runs, so the race is harmless: one writer wins the
- * {@link CowIndexedSetTripleStore#tryInstallEagerStrategy} compare-and-set
- * and its eager strategy becomes the published view; the losers' builds
- * are GC'd. All threads — winners and losers alike — return their answer
+ * {@link CowStore#tryInstallEagerStrategy} compare-and-set and its
+ * eager strategy becomes the published view; the losers' builds are
+ * GC'd. All threads — winners and losers alike — return their answer
  * via the eager strategy they actually built (the winner's CAS does not
  * affect the answer of a still-running loser, just the cached strategy
  * for future lookups).
@@ -66,22 +67,24 @@ public final class CowLazyStoreStrategy implements CowStoreStrategy {
     private final boolean parallel;
 
     /**
-     * Reference to the enclosing store; the auto-build callback uses it
-     * to read the canonical triples and to install the freshly-built
-     * eager strategy.
+     * Reference to the enclosing store. May be either a
+     * {@link org.apache.jena.mem.store.cow.CowSnapshot} (the published
+     * read-only view, where readers trigger the auto-build) or a
+     * {@link CowWriteTxn} (the writer's working copy, where the writer
+     * may trigger the auto-build with its own pattern lookups).
      */
-    private final CowIndexedSetTripleStore store;
+    private final CowStore store;
 
-    public CowLazyStoreStrategy(CowIndexedSetTripleStore store, boolean parallel) {
+    public CowLazyStoreStrategy(CowStore store, boolean parallel) {
         this.store = store;
         this.parallel = parallel;
     }
 
     @Override
-    public CowStoreStrategy fork(CowIndexedSetTripleStore newStore) {
+    public CowStoreStrategy fork(CowWriteTxn newWriteTxn) {
         // Lazy itself has no per-store mutable state; just rebind the
-        // callback target.
-        return new CowLazyStoreStrategy(newStore, parallel);
+        // callback target to the new write txn.
+        return new CowLazyStoreStrategy(newWriteTxn, parallel);
     }
 
     @Override public void addToIndex(Triple triple, int index)    { /* no index yet */ }
@@ -96,25 +99,23 @@ public final class CowLazyStoreStrategy implements CowStoreStrategy {
     /**
      * Build an eager strategy from the store's current triples and
      * attempt to install it via
-     * {@link CowIndexedSetTripleStore#tryInstallEagerStrategy(CowLazyStoreStrategy, CowEagerStoreStrategy)}.
+     * {@link CowStore#tryInstallEagerStrategy(CowLazyStoreStrategy, CowEagerStoreStrategy)}.
      * If a concurrent caller wins the CAS, this thread's build is
      * discarded (the strategy slot already points at someone else's
      * eager) — but the answer returned to <i>this</i> caller is still
      * computed against the eager strategy this thread just built, which
      * is consistent.
      * <p>
-     * The eager is built with {@code installGrowHook = false} because
-     * this code path can run on a published snapshot held by multiple
-     * concurrent readers; race-installing the keys-grow hook would
-     * write to a field that should be considered frozen on a published
-     * {@link org.apache.jena.mem.store.cow.TxnTripleSet}. A snapshot's
-     * keys array never grows, so the hook would be a no-op anyway. On a
-     * working-copy upgrade, {@code CowEagerStoreStrategy#addToIndex}
-     * resizes its reverse-index arrays on demand.
+     * On a published snapshot the underlying triples cannot grow (only
+     * the writer ever appends), so the eager build is a pure function
+     * of the frozen triple set. On a writer's working copy this method
+     * may also be invoked; the eager strategy's
+     * {@code addToIndex} resizes its reverse-index arrays on demand as
+     * the writer continues to append.
      */
     private CowEagerStoreStrategy upgradeAndAnswer() {
         final CowEagerStoreStrategy mine =
-                new CowEagerStoreStrategy(store.getTriples(), parallel, false);
+                new CowEagerStoreStrategy(store.getTriples(), parallel);
         store.tryInstallEagerStrategy(this, mine);
         return mine;
     }

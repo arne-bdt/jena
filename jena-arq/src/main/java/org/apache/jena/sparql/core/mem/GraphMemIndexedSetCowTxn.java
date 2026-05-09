@@ -26,7 +26,9 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.graph.impl.GraphBase;
 import org.apache.jena.graph.impl.GraphWithPerform;
 import org.apache.jena.mem.IndexingStrategy;
-import org.apache.jena.mem.store.cow.CowIndexedSetTripleStore;
+import org.apache.jena.mem.store.cow.CowSnapshot;
+import org.apache.jena.mem.store.cow.CowStore;
+import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.query.TxnType;
 import org.apache.jena.sparql.JenaTransactionException;
@@ -42,23 +44,16 @@ import java.util.stream.Stream;
  * concurrency contract of the Phase A baseline {@link GraphMemIndexedSetTxn}
  * (which is kept for benchmark comparison) but routes the
  * begin-write / commit / publish dance through
- * {@link CowIndexedSetTripleStore#forkForWrite()} rather than
- * {@code copy()}.
+ * {@link CowSnapshot#forkForWrite()} (returning a mutable
+ * {@link CowWriteTxn}) and {@link CowWriteTxn#freeze()} (returning a fresh
+ * {@link CowSnapshot} to publish).
  * <p>
- * <b>Why a separate method, not just {@code copy()}?</b>
- * {@code Copyable.copy()} promises an independent copy where both the
- * original and the copy can be mutated separately. Copy-on-write fork is a
- * <i>stronger</i> contract: the original must not be mutated after the fork
- * (only the fork is). Naming the operation {@code forkForWrite()} makes the
- * discipline explicit at the call site and lets the underlying store
- * legitimately share state with the fork.
- * <p>
- * <b>Phase B status.</b> The graph here is end-to-end functional. The
- * {@link CowIndexedSetTripleStore} that backs it currently performs a full
- * deep copy in {@code forkForWrite()}, so the cost model matches the Phase A
- * baseline. As the COW internals (transactional collection types, shared
- * key arrays, tombstone bookkeeping) are filled in, this class needs no
- * changes — only the store implementation evolves.
+ * <b>Why split snapshot and write txn?</b> Splitting the read-only and
+ * mutable APIs into two types makes "snapshots are not mutated" a
+ * compile-time guarantee instead of a discipline. {@link CowSnapshot}
+ * exposes only read methods; {@link CowWriteTxn} exposes
+ * {@code add}/{@code remove}/{@code clear} plus the strategy-control
+ * setters; only {@link CowSnapshot#forkForWrite()} crosses between them.
  * <p>
  * Concurrency: one writer at a time (serialised by a {@link ReentrantLock});
  * any number of concurrent readers, lock-free.
@@ -70,30 +65,26 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
     private final ReentrantLock writeLock = new ReentrantLock();
 
     /**
-     * The currently visible store. Read by {@code begin(READ)} (captured as
-     * the reader's snapshot) and replaced by {@code commit()} of a dirty
+     * The currently visible snapshot. Read by {@code begin(READ)} (captured
+     * as the reader's view) and replaced by {@code commit()} of a dirty
      * write transaction. {@code volatile} establishes happens-before
      * between the commit and any later reader's {@code begin}.
-     * <p>
-     * Once published, this reference must never be mutated. Writers always
-     * fork a private copy via {@link CowIndexedSetTripleStore#forkForWrite()}
-     * and only swap it in atomically at commit.
      */
-    private volatile CowIndexedSetTripleStore published;
+    private volatile CowSnapshot published;
 
     /** Per-thread transaction state; {@code null} when no transaction is active. */
     private final ThreadLocal<TxnState> activeTxn = new ThreadLocal<>();
 
     /**
      * Selects between sequential and parallel implementations of
-     * {@link CowIndexedSetTripleStore#forkForWrite()} when starting a write
-     * transaction. Exposed primarily so benchmarks can compare the two
-     * fork strategies on the same workload.
+     * {@link CowSnapshot#forkForWrite()} when starting a write transaction.
+     * Exposed primarily so benchmarks can compare the two fork strategies
+     * on the same workload.
      */
     public enum ForkMode {
-        /** Sequential: {@link CowIndexedSetTripleStore#forkForWrite()}. */
+        /** Sequential: {@link CowSnapshot#forkForWrite()}. */
         SEQUENTIAL,
-        /** Parallel: {@link CowIndexedSetTripleStore#forkForWriteParallel()}. */
+        /** Parallel: {@link CowSnapshot#forkForWriteParallel()}. */
         PARALLEL
     }
 
@@ -112,11 +103,11 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
     }
 
     public GraphMemIndexedSetCowTxn(IndexingStrategy indexingStrategy, ForkMode forkMode) {
-        this.published = new CowIndexedSetTripleStore(indexingStrategy);
+        this.published = new CowSnapshot(indexingStrategy);
         this.forkMode = forkMode;
     }
 
-    private CowIndexedSetTripleStore fork() {
+    private CowWriteTxn fork() {
         return switch (forkMode) {
             case SEQUENTIAL -> published.forkForWrite();
             case PARALLEL   -> published.forkForWriteParallel();
@@ -195,12 +186,13 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
          */
         ReadWrite mode;
         /**
-         * The store reads and writes go through. While in READ mode this is
-         * the {@code published} reference at the point of {@code begin}
-         * (i.e. the snapshot). After promote/begin(WRITE), it is the
-         * private working copy produced by {@code forkForWrite()}.
+         * Read view: a {@link CowSnapshot} (captured at begin, or the
+         * latest published) for READ-only paths; a {@link CowWriteTxn}
+         * after promote/begin(WRITE). Both share the {@link CowStore}
+         * read API; only WRITE-mode access uses the {@link CowWriteTxn}
+         * mutation API.
          */
-        CowIndexedSetTripleStore active;
+        CowStore active;
         /** True once any add/delete has run since begin or successful promote. */
         boolean dirty;
     }
@@ -214,26 +206,26 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
 
     /**
      * Resolve the store to read from. Outside any transaction this returns
-     * the latest published store, so reads are always possible without first
-     * starting a transaction (writes still require one).
+     * the latest published snapshot, so reads are always possible without
+     * first starting a transaction (writes still require one).
      */
-    private CowIndexedSetTripleStore readStore() {
+    private CowStore readStore() {
         TxnState t = activeTxn.get();
         return (t == null) ? published : t.active;
     }
 
     /**
-     * Resolve the store to write to. Implicitly promotes a
+     * Resolve the writer's working copy. Implicitly promotes a
      * {@code READ_PROMOTE}/{@code READ_COMMITTED_PROMOTE} transaction by
      * delegating to the no-arg {@link Transactional#promote()} default,
      * which dispatches to the right {@link Promote} variant for the type.
      */
-    private CowIndexedSetTripleStore writeStore() {
+    private CowWriteTxn writeStore() {
         TxnState t = require();
         if (t.mode != ReadWrite.WRITE && !promote())
             throw new JenaTransactionException(
                     "Cannot write: read-only transaction or promote failed");
-        return t.active;
+        return (CowWriteTxn) t.active;
     }
 
     // --- Transactional ----------------------------------------------------
@@ -307,8 +299,11 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
             // commit, forcing every future writer to re-build the index.
             // The single volatile write below is the publication point;
             // all structural changes to t.active happen-before it.
-            if (t.mode == ReadWrite.WRITE && (t.dirty || t.active.wasStrategyChanged()))
-                published = t.active;
+            if (t.mode == ReadWrite.WRITE) {
+                CowWriteTxn w = (CowWriteTxn) t.active;
+                if (t.dirty || w.wasStrategyChanged())
+                    published = w.freeze();
+            }
         } finally {
             if (t.mode == ReadWrite.WRITE)
                 writeLock.unlock();

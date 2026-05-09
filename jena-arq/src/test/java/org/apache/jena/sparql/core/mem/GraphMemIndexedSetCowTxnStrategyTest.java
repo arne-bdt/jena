@@ -28,6 +28,7 @@ import org.apache.jena.query.TxnType;
 import org.apache.jena.sparql.JenaTransactionException;
 import org.junit.jupiter.api.Test;
 
+import static org.apache.jena.sparql.core.mem.CowTxnTestHelper.t;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -42,12 +43,6 @@ import static org.junit.jupiter.api.Assertions.*;
  * state, and committed strategy changes survive across transactions.
  */
 public class GraphMemIndexedSetCowTxnStrategyTest {
-
-    private static Triple t(String s, String p, String o) {
-        return Triple.create(NodeFactory.createURI("http://ex/" + s),
-                             NodeFactory.createURI("http://ex/" + p),
-                             NodeFactory.createURI("http://ex/" + o));
-    }
 
     private static GraphMemIndexedSetCowTxn populated(IndexingStrategy s) {
         GraphMemIndexedSetCowTxn g = new GraphMemIndexedSetCowTxn(s);

@@ -23,7 +23,7 @@ package org.apache.jena.mem.store.cow.strategies;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.pattern.MatchPattern;
-import org.apache.jena.mem.store.cow.CowIndexedSetTripleStore;
+import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
 import java.util.stream.Stream;
@@ -52,7 +52,7 @@ public final class CowManualStoreStrategy implements CowStoreStrategy {
 
     private CowManualStoreStrategy() {}
 
-    @Override public CowStoreStrategy fork(CowIndexedSetTripleStore newStore) { return this; }
+    @Override public CowStoreStrategy fork(CowWriteTxn newWriteTxn) { return this; }
 
     @Override public void addToIndex(Triple t, int i)    { /* no index */ }
     @Override public void removeFromIndex(Triple t, int i) { /* no index */ }

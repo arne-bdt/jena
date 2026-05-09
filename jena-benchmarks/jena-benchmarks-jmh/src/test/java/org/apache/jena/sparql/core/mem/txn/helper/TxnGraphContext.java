@@ -99,16 +99,12 @@ public final class TxnGraphContext {
     /**
      * Run {@code work} on {@code graph} inside a write transaction if the
      * graph is {@link Transactional}; otherwise just run the lambda.
+     * Thin wrapper over {@link Transactional#executeWrite(Runnable)} that
+     * handles the non-transactional baseline graphs.
      */
     public static void writeTxn(Graph graph, Runnable work) {
         if (graph instanceof Transactional t) {
-            t.begin(org.apache.jena.query.TxnType.WRITE);
-            try {
-                work.run();
-                t.commit();
-            } finally {
-                t.end();
-            }
+            t.executeWrite(work);
         } else {
             work.run();
         }
@@ -117,12 +113,7 @@ public final class TxnGraphContext {
     /** Read-transaction wrapper analogue to {@link #writeTxn}. */
     public static void readTxn(Graph graph, Runnable work) {
         if (graph instanceof Transactional t) {
-            t.begin(org.apache.jena.query.TxnType.READ);
-            try {
-                work.run();
-            } finally {
-                t.end();
-            }
+            t.executeRead(work);
         } else {
             work.run();
         }
