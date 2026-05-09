@@ -39,11 +39,11 @@ import java.util.function.Function;
  *
  * <h2>What "read-only" means</h2>
  * The triple set and the writer-private slices of any spines that back
- * the strategy are treated as immutable from the moment publication
- * happens. The one apparent exception is the strategy slot itself: a
- * lazy strategy may CAS-install a freshly built eager strategy on first
- * lookup. That mutation is semantically a cache: it does not change
- * which triples the snapshot answers for, only how it answers.
+ * the strategy are immutable from the moment publication happens. The
+ * one apparent exception is the strategy slot: a lazy strategy may
+ * install a freshly built eager strategy on first lookup. That
+ * mutation is semantically a cache — it does not change which triples
+ * the snapshot answers for, only how it answers.
  *
  * <h2>Forks</h2>
  * Both {@link #forkForWrite()} and {@link #forkForWriteParallel()}

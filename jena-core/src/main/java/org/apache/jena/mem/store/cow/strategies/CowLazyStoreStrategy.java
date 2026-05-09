@@ -39,21 +39,19 @@ import java.util.stream.Stream;
  * subject/predicate/object index is skipped). On the first
  * {@code containsMatch} / {@code streamMatch} / {@code findMatch} call,
  * a fresh {@link CowEagerStoreStrategy} is built from the enclosing
- * store's triples and atomically installed in the store's strategy slot;
- * the triggering lookup is then forwarded to it.
+ * store's triples and installed in the store's strategy slot via
+ * {@link CowStore#installEagerStrategy(CowEagerStoreStrategy)}; the
+ * triggering lookup is then forwarded to it.
  *
  * <h2>Concurrent first-lookup race</h2>
- * On a published snapshot held by multiple readers, several threads may
- * concurrently hit a still-pending lazy strategy and each kick off an
- * eager build. The build is a pure function of the triple set (it
- * doesn't mutate {@code triples}) and produces equivalent results across
- * runs, so the race is harmless: one writer wins the
- * {@link CowStore#tryInstallEagerStrategy} compare-and-set and its
- * eager strategy becomes the published view; the losers' builds are
- * GC'd. All threads — winners and losers alike — return their answer
- * via the eager strategy they actually built (the winner's CAS does not
- * affect the answer of a still-running loser, just the cached strategy
- * for future lookups).
+ * On a published snapshot held by multiple readers, several threads
+ * may concurrently hit a still-pending lazy strategy and each kick
+ * off an eager build. The build is a pure function of the (frozen)
+ * triple set and produces equivalent results across runs, so the
+ * race is harmless: every racer's install is a plain volatile write
+ * — last writer wins, the others' eager builds are GC'd. Each
+ * caller answers its own triggering lookup against the eager
+ * strategy it itself just built, which is consistent.
  *
  * <h2>Sequential vs parallel build</h2>
  * The {@link #parallel} flag toggles between

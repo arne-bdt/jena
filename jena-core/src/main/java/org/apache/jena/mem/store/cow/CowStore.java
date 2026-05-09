@@ -53,16 +53,17 @@ import java.util.stream.Stream;
  *       lives in each subclass (not on this base) so the
  *       concurrency model can differ:
  *       <ul>
- *         <li>{@link CowSnapshot} stores it in an
- *             {@link java.util.concurrent.atomic.AtomicReference} so
- *             that the LAZY → EAGER first-lookup auto-upgrade can
- *             race-install a freshly built eager strategy without
- *             locking. Snapshots are read by any number of concurrent
- *             reader threads.
+ *         <li>{@link CowSnapshot} stores it in a {@code volatile}
+ *             field. Snapshots are read by any number of concurrent
+ *             reader threads, and the LAZY → EAGER first-lookup
+ *             auto-upgrade installs a freshly built eager strategy
+ *             with a plain volatile write — any two equivalent
+ *             eagers racing here are interchangeable, so
+ *             last-writer-wins is sufficient.
  *         <li>{@link CowWriteTxn} stores it in a plain field — the
  *             slot is mutated only by the single writer thread (the
  *             graph's {@code writeLock} serialises writers), so no
- *             {@code volatile} read overhead is paid on the
+ *             volatile read overhead is paid on the
  *             {@code add} / {@code remove} hot path.
  *       </ul>
  *   <li>{@link #initialStrategy} — the strategy enum value passed at

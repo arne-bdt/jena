@@ -40,14 +40,14 @@ import java.util.stream.Stream;
 /**
  * Transactional variant of {@link org.apache.jena.mem.GraphMemIndexedSet}.
  * <p>
- * Phase A implementation: snapshot isolation is achieved by switching
- * {@link TripleStore} instances at transaction boundaries. {@code begin(WRITE)}
- * deep-copies the currently published {@link IndexedSetTripleStore} via
- * {@link IndexedSetTripleStore#copy()}; mutations happen on the working copy;
- * {@code commit()} publishes the working copy as the new visible store.
- * Readers capture the published reference at {@code begin(READ)} and hold it
- * for the whole transaction, so they always see a stable snapshot regardless
- * of concurrent writers.
+ * Snapshot isolation is achieved by switching {@link TripleStore}
+ * instances at transaction boundaries. {@code begin(WRITE)} deep-copies
+ * the currently published {@link IndexedSetTripleStore} via
+ * {@link IndexedSetTripleStore#copy()}; mutations happen on the working
+ * copy; {@code commit()} publishes the working copy as the new visible
+ * store. Readers capture the published reference at {@code begin(READ)}
+ * and hold it for the whole transaction, so they always see a stable
+ * snapshot regardless of concurrent writers.
  * <p>
  * Concurrency: one writer at a time (serialised by a {@link ReentrantLock});
  * any number of concurrent readers, lock-free.

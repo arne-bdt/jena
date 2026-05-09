@@ -31,11 +31,11 @@ import org.apache.jena.graph.Triple;
  * indices back to {@link Triple} instances without coupling to a single
  * concrete type.
  * <p>
- * Implemented by both {@link TripleSet} (the baseline indexed-set's
- * triple collection) and {@code TxnTripleSet} (the copy-on-write twin in
- * the {@code mem.store.cow} package). Keeping the interface intentionally
- * tiny (just {@code size()} and {@code getKeyAt(int)}) lets the iterators
- * stay implementation-agnostic.
+ * Implemented by {@link TripleSet} (the indexed-set's triple
+ * collection) and {@code TxnTripleSet} (the copy-on-write triple
+ * collection in {@code mem.store.cow}). Keeping the interface
+ * intentionally tiny (just {@code size()} and {@code getKeyAt(int)})
+ * lets the iterators stay implementation-agnostic.
  */
 public interface IndexedTripleSource {
 

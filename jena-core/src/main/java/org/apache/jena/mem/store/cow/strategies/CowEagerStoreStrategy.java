@@ -69,17 +69,6 @@ import java.util.stream.StreamSupport;
  * (the COW tombstone-and-append), which automatically marks the new
  * slot writer-owned.
  *
- * <h2>Why spine-level ownership</h2>
- * Earlier designs tracked ownership either via an {@code IdentityHashMap
- * <IndexList>} per strategy or via a {@code long ownerId} field on
- * {@link IndexList} itself. The current scheme moves the bit onto the
- * spine's per-slot writer-private array, where ownership conceptually
- * belongs: the spine is the place that knows which slots it has freshly
- * written this transaction. The bit is set exclusively by the spine's
- * {@code put} path and never propagated across forks (a fresh fork has
- * placed nothing yet, so all bits start clear), so no cloning of the
- * ownership array is needed at fork time.
- *
  * <h2>Reverse-index growth</h2>
  * The three reverse-index arrays must stay sized at least as large as
  * {@code triples.getInternalKeysLength()} so any newly added triple's
@@ -180,11 +169,10 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
         if (!installGrowHook) {
             // Snapshot-side construction (e.g. the LAZY auto-upgrade
             // race on a published snapshot, or a brand-new empty
-            // CowSnapshot configured EAGER). The build-phase needs
+            // CowSnapshot configured EAGER). The build phase needs
             // the writer-owned bitmap so insertAt can stamp slots,
-            // but the resulting strategy only ever serves reads —
-            // release the bitmaps now so the snapshot doesn't carry
-            // dead writer-only state.
+            // but the resulting strategy only ever serves reads, so
+            // the bitmaps are released here.
             freeWriterOwnedBitmaps();
         }
     }

@@ -40,23 +40,20 @@ import java.util.stream.Stream;
 
 /**
  * Transactional, copy-on-write variant of
- * {@link org.apache.jena.mem.GraphMemIndexedSet}. Mirrors the lifecycle and
- * concurrency contract of the Phase A baseline {@link GraphMemIndexedSetTxn}
- * (which is kept for benchmark comparison) but routes the
+ * {@link org.apache.jena.mem.GraphMemIndexedSet}. Routes the
  * begin-write / commit / publish dance through
  * {@link CowSnapshot#forkForWrite()} (returning a mutable
- * {@link CowWriteTxn}) and {@link CowWriteTxn#freeze()} (returning a fresh
- * {@link CowSnapshot} to publish).
+ * {@link CowWriteTxn}) and {@link CowWriteTxn#freeze()} (returning a
+ * fresh {@link CowSnapshot} to publish).
  * <p>
- * <b>Why split snapshot and write txn?</b> Splitting the read-only and
- * mutable APIs into two types makes "snapshots are not mutated" a
- * compile-time guarantee instead of a discipline. {@link CowSnapshot}
- * exposes only read methods; {@link CowWriteTxn} exposes
- * {@code add}/{@code remove}/{@code clear} plus the strategy-control
- * setters; only {@link CowSnapshot#forkForWrite()} crosses between them.
+ * The read-only / mutable API split lives in the underlying types:
+ * {@link CowSnapshot} exposes only read methods; {@link CowWriteTxn}
+ * exposes {@code add}/{@code remove}/{@code clear} plus the
+ * strategy-control setters. {@link CowSnapshot#forkForWrite()} is the
+ * only operation that crosses between the two.
  * <p>
- * Concurrency: one writer at a time (serialised by a {@link ReentrantLock});
- * any number of concurrent readers, lock-free.
+ * Concurrency: one writer at a time (serialised by a
+ * {@link ReentrantLock}); any number of concurrent readers, lock-free.
  */
 public class GraphMemIndexedSetCowTxn extends GraphBase
         implements Transactional, GraphWithPerform {

@@ -115,8 +115,8 @@ public class TxnTripleSet
     }
 
     /**
-     * Cheap fork (the canonical Phase B path). Discipline: after this
-     * returns, treat the source as frozen — only the fork is mutated.
+     * Cheap fork. After this returns, the source must be treated as
+     * frozen — only the returned instance may be mutated.
      */
     public TxnTripleSet fork() {
         return new TxnTripleSet(this);
@@ -128,9 +128,6 @@ public class TxnTripleSet
      * <b>This is a fork, not a deep copy.</b> The source must not be
      * mutated after this call — only the returned instance is safe to
      * mutate. See {@link #fork()} and the class Javadoc.
-     * <p>
-     * If a future caller needs a truly independent deep copy, this is
-     * the place to add it.
      */
     @Override
     public TxnTripleSet copy() {

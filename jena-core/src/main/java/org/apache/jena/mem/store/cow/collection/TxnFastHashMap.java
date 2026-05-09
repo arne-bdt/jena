@@ -33,20 +33,18 @@ import java.util.function.UnaryOperator;
  * See {@link TxnFastHashBase} for the sharing and tombstone discipline.
  *
  * <h2>The update path: tombstone-and-append</h2>
- * The most subtle divergence from {@code FastHashMap} is how a put on an
- * <i>already-present</i> key is handled. The baseline simply overwrites
- * {@code values[entryIndex]}. The COW twin <b>cannot</b>: {@code values}
- * is shared with any open snapshot, and overwriting would change the
- * snapshot's view of the key's value.
- * <p>
- * Instead, an update <b>tombstones</b> the old slot via {@link #removeFrom}
- * (writer-private {@code deleted[oldEIndex] = true}, plus Algorithm-R on
- * the writer-private probe table) and then <b>appends</b> a new entry at
- * {@code keysPos++}. The snapshot's probe table still resolves the key to
- * the old slot, where it sees the old value through {@code values[]}; the
- * writer's probe table resolves to the new slot with the new value. Both
- * views remain self-consistent without any shared-array writes that could
- * cross the snapshot boundary.
+ * A put on an <i>already-present</i> key cannot overwrite
+ * {@code values[entryIndex]} in place: {@code values} is shared with
+ * any open snapshot, and overwriting would change the snapshot's view
+ * of the key's value. Instead, an update <b>tombstones</b> the old
+ * slot via {@link #removeFrom} (writer-private
+ * {@code deleted[oldEIndex] = true}, plus Algorithm-R on the
+ * writer-private probe table) and then <b>appends</b> a new entry at
+ * {@code keysPos++}. The snapshot's probe table still resolves the
+ * key to the old slot, where it sees the old value through
+ * {@code values[]}; the writer's probe table resolves to the new slot
+ * with the new value. Both views remain self-consistent without any
+ * shared-array writes that could cross the snapshot boundary.
  * <p>
  * Cost per update: one extra slot consumed (cleaned up at the next
  * {@code grow}); one extra Algorithm-R pass; same big-O as a remove + add.
@@ -158,11 +156,10 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
             }
         }
         this.values = newValues;
-        // valueOwnedByThisWriter is writer-private. In writer-side
-        // operation it's non-null and we preserve the bits across the
-        // grow; the null guard handles the case where freeze has
-        // already released it (snapshots don't grow so this path
-        // shouldn't fire, but it costs nothing to be defensive).
+        // valueOwnedByThisWriter is writer-private; preserve the bits
+        // across the grow. The null guard covers the case where the
+        // bitmap has been freed by freeze() — snapshots don't grow, so
+        // this branch normally doesn't fire.
         if (valueOwnedByThisWriter != null) {
             final boolean[] newOwned = new boolean[this.keys.length];
             System.arraycopy(valueOwnedByThisWriter, 0, newOwned, 0, oldLength);
@@ -170,19 +167,18 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
         }
     }
 
-    // Note: removeFrom is inherited unchanged from TxnFastHashBase. Unlike
-    // FastHashMap, we deliberately do NOT null values[~positions[here]] —
-    // values[] is shared with snapshots. Reaping happens later in
-    // onKeysAndHashCodesGrown when the writer allocates fresh arrays.
+    // removeFrom is inherited from TxnFastHashBase unchanged. The
+    // tombstoned slot's values[] entry is intentionally NOT nulled
+    // here — values[] is shared with snapshots, so the dead V
+    // reference must remain visible until the writer allocates fresh
+    // arrays in onKeysAndHashCodesGrown.
 
     @Override
     public void clear() {
         super.clear();
         values = newValuesArray(keys.length);
-        // clear() is reachable only via writer-side paths (CowWriteTxn
-        // exposes it; CowSnapshot does not), so the bitmap is always
-        // non-null here. Re-allocate to a fresh all-clear bitmap of
-        // the new size.
+        // clear() is writer-side only (CowSnapshot does not expose it),
+        // so allocate a fresh bitmap rather than null it out.
         valueOwnedByThisWriter = new boolean[keys.length];
     }
 

@@ -33,17 +33,10 @@ import java.util.stream.Stream;
  * Plug-in interface that controls how the auxiliary
  * subject/predicate/object index of a
  * {@link org.apache.jena.mem.store.cow.CowStore} is maintained and how
- * partial-pattern matches are evaluated.
- *
- * <h2>Relationship to the baseline {@code StoreStrategy}</h2>
- * The baseline {@link org.apache.jena.mem.store.strategies.StoreStrategy}
- * is built around the deep-copy {@code IndexedSetTripleStore}; its
- * implementations work on {@link org.apache.jena.mem.store.indexed.TripleSet}
- * and {@link org.apache.jena.mem.store.indexed.NodesToIndices}, neither of
- * which give the right semantics for snapshot-isolated reads. This
- * interface mirrors the baseline's surface but its implementations work on
- * the COW-aware {@link org.apache.jena.mem.store.cow.TxnTripleSet} and
- * {@link org.apache.jena.mem.store.cow.TxnNodesToIndices}.
+ * partial-pattern matches are evaluated. Implementations work on the
+ * COW-aware {@link org.apache.jena.mem.store.cow.TxnTripleSet} and
+ * {@link org.apache.jena.mem.store.cow.TxnNodesToIndices}, which
+ * provide snapshot-isolated reads alongside a single writer.
  *
  * <h2>Fork semantics</h2>
  * Each strategy must implement {@link #fork(CowWriteTxn)} to produce
@@ -52,14 +45,14 @@ import java.util.stream.Stream;
  * transaction (snapshots are read-only and never fork themselves), so
  * the receiver is always a {@link CowWriteTxn}. Fork has two duties:
  * <ul>
- *   <li>For strategies that hold writer-private state (currently only
- *       eager): clone that state. The shared spine arrays inside
+ *   <li>For strategies that hold writer-private state (eager): clone
+ *       that state. The shared spine arrays inside
  *       {@link org.apache.jena.mem.store.cow.TxnTripleSet} /
  *       {@link org.apache.jena.mem.store.cow.TxnNodesToIndices} are
  *       handled by their own fork constructors.
- *   <li>For strategies that need an enclosing-store reference (currently
- *       only lazy, whose auto-build callback installs a freshly-built
- *       eager strategy onto the enclosing store): re-bind that reference
+ *   <li>For strategies that need an enclosing-store reference (lazy,
+ *       whose auto-build callback installs a freshly-built eager
+ *       strategy onto the enclosing store): re-bind that reference
  *       to the new write transaction.
  * </ul>
  *
@@ -151,9 +144,9 @@ public interface CowStoreStrategy {
      * <p>
      * Default has no preparatory work — the assembler just delegates
      * to {@link #fork(CowWriteTxn)} when applied. Strategies with
-     * several parallelisable allocations (currently only eager,
-     * which has three spine forks and three reverse-index clones)
-     * override to dispatch real work in Phase 1.
+     * several parallelisable allocations (eager, which has three
+     * spine forks and three reverse-index clones) override to
+     * dispatch real work in Phase 1.
      *
      * @return an assembler function. Must be invoked exactly once
      * with the freshly forked write transaction; the returned

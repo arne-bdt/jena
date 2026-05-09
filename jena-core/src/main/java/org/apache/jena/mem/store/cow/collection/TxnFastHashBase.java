@@ -375,9 +375,8 @@ public abstract class TxnFastHashBase<K> implements JenaMapSetCommon<K> {
         System.arraycopy(deleted, 0, newDeleted, 0, oldLength);
 
         // Build the freelist inside the new arrays. Walking from low to
-        // high index puts the highest tombstoned slot at the head — a
-        // LIFO discipline like FastHashBase's remove-time freelist, just
-        // built lazily here instead of on every remove.
+        // high index puts the highest tombstoned slot at the head, so
+        // getFreeKeyIndex() consumes the freelist LIFO.
         int newLast = -1;
         for (int i = 0; i < keysPos; i++) {
             if (newDeleted[i]) {

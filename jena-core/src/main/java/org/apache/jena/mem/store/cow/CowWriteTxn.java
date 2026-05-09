@@ -73,10 +73,10 @@ public final class CowWriteTxn extends CowStore {
      * True if any of {@link #resetIndexStrategy()},
      * {@link #initializeIndex()}, {@link #initializeIndexParallel()},
      * or a writer-side LAZY → EAGER auto-upgrade via
-     * {@link #tryInstallEagerStrategy(CowLazyStoreStrategy, CowEagerStoreStrategy)}
-     * mutated the strategy slot. The graph reads this at commit to
-     * decide whether a strategy upgrade is worth publishing even when
-     * no triples were added or removed.
+     * {@link #installEagerStrategy(CowEagerStoreStrategy)} mutated the
+     * strategy slot. The graph reads this at commit to decide whether
+     * a strategy upgrade is worth publishing even when no triples
+     * were added or removed.
      * <p>
      * {@code volatile} so the graph's commit thread sees the latest
      * value (in practice the same writer thread sets and reads it, but
@@ -210,8 +210,9 @@ public final class CowWriteTxn extends CowStore {
      * <ul>
      *   <li>If the current strategy is a {@link CowLazyStoreStrategy}
      *       its enclosing-store reference is rebound to the new
-     *       snapshot so the lazy auto-build CAS targets the snapshot's
-     *       strategy slot, not the writer's.
+     *       snapshot, so the lazy auto-build installs onto the
+     *       snapshot's strategy slot rather than the (now-defunct)
+     *       writer's.
      *   <li>If the current strategy is a {@link CowEagerStoreStrategy}
      *       the writer-only ownership bitmaps inside its three spines
      *       are released. Snapshots only serve reads and never

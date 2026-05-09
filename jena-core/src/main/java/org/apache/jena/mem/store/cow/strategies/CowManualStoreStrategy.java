@@ -34,10 +34,9 @@ import java.util.stream.Stream;
  * builds an index automatically. Add/remove/clear are no-ops on the
  * index side; pattern-match operations throw
  * {@link UnsupportedOperationException} until the user explicitly
- * initialises the index (typically via
- * {@code CowIndexedSetTripleStore.initializeIndex()} /
- * {@code initializeIndexParallel()}, which atomically swap this strategy
- * for a {@link CowEagerStoreStrategy}).
+ * initialises the index via {@link CowWriteTxn#initializeIndex()} or
+ * {@link CowWriteTxn#initializeIndexParallel()}, which install a
+ * {@link CowEagerStoreStrategy} in this strategy's place.
  *
  * <p>Stateless: the same instance is shared across all forks; there is
  * nothing to copy.
