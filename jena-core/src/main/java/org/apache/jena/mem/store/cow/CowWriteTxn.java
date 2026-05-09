@@ -180,14 +180,29 @@ public final class CowWriteTxn extends CowStore {
      * triple set and strategy. After this call, treat {@code this} as
      * dead — only the returned snapshot is valid.
      * <p>
-     * If the current strategy is a {@link CowLazyStoreStrategy} its
-     * enclosing-store reference is rebound to the new snapshot so the
-     * lazy auto-build CAS targets the snapshot's strategy slot, not the
-     * writer's. Other strategies don't carry an enclosing-store
-     * reference and are aliased as-is.
+     * Two strategy-specific patches happen here:
+     * <ul>
+     *   <li>If the current strategy is a {@link CowLazyStoreStrategy}
+     *       its enclosing-store reference is rebound to the new
+     *       snapshot so the lazy auto-build CAS targets the snapshot's
+     *       strategy slot, not the writer's.
+     *   <li>If the current strategy is a {@link CowEagerStoreStrategy}
+     *       the writer-only ownership bitmaps inside its three spines
+     *       are released. Snapshots only serve reads and never
+     *       consult the bitmaps; freeing them avoids carrying the
+     *       writer-only tracking memory along with every published
+     *       snapshot. Subsequent forks of the snapshot allocate a
+     *       fresh bitmap on the new writer's spines via the spine
+     *       fork constructor.
+     * </ul>
+     * Other strategies (manual, minimal) carry no writer-only state
+     * and are aliased as-is.
      */
     public CowSnapshot freeze() {
         final CowStoreStrategy s = strategy.get();
+        if (s instanceof CowEagerStoreStrategy eager) {
+            eager.freeWriterOwnedBitmaps();
+        }
         final CowSnapshot snap = new CowSnapshot(initialStrategy, triples, s);
         if (s instanceof CowLazyStoreStrategy lazy) {
             snap.installStrategy(new CowLazyStoreStrategy(snap, lazy.isParallel()));

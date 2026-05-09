@@ -72,16 +72,27 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
      * be cloned-on-first-touch before in-place mutation) or is already
      * writer-owned.
      * <p>
-     * This array is <b>not</b> propagated from the source on fork — every
-     * fork starts with all bits cleared, since by definition no slot
-     * currently holds a value placed by the new writer. Within a writer's
-     * lifetime, the bit is grown and preserved by
-     * {@link #onKeysAndHashCodesGrown} just like {@link #values}, and
-     * reset to all-clear by {@link #clear()}.
-     * <p>
+     * Lifecycle:
+     * <ul>
+     *   <li>Allocated by the constructors (so the build phase of
+     *       {@code CowEagerStoreStrategy.indexAllSequential/Parallel}
+     *       can write through {@link #insertAt} without a hot-path
+     *       null check).
+     *   <li>Allocated fresh (all-clear) by the fork constructor — the
+     *       new writer has, by construction, placed nothing yet.
+     *   <li>Grown in lock-step with {@code values[]} by
+     *       {@link #onKeysAndHashCodesGrown}; reset by {@link #clear()}.
+     *   <li>Released by {@link #freeWriterOwnedBitmap()} once the
+     *       containing spine is handed to a snapshot — snapshots don't
+     *       write, so the bitmap is dead weight at that point. Called
+     *       from {@link org.apache.jena.mem.store.cow.CowWriteTxn#freeze()}
+     *       and from the snapshot-side branch of
+     *       {@code CowEagerStoreStrategy}'s constructor (after the
+     *       LAZY-upgrade build completes).
+     * </ul>
      * Tombstoned slots' bits are never read (callers go through
-     * {@link #findPosition}/{@link #containsKey} which skip dead slots),
-     * so we don't bother clearing them on remove or update.
+     * {@link #findPosition}/{@link #containsKey} which skip dead
+     * slots), so we don't bother clearing them on remove or update.
      */
     protected boolean[] valueOwnedByThisWriter;
 
@@ -101,12 +112,31 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
      * Fork constructor — see {@link TxnFastHashBase#TxnFastHashBase(TxnFastHashBase)}.
      * Shares {@code values} (in addition to {@code keys}/{@code hashCodes})
      * with the source. {@link #valueOwnedByThisWriter} is allocated fresh
-     * (all-clear) — the new writer has, by construction, placed nothing yet.
+     * (all-clear) — the new writer has, by construction, placed nothing
+     * yet.
      */
     protected TxnFastHashMap(final TxnFastHashMap<K, V> source) {
         super(source);
         this.values = source.values;
         this.valueOwnedByThisWriter = new boolean[source.values.length];
+    }
+
+    /**
+     * Release the writer-owned bitmap. Called once a spine has been
+     * aliased into a {@link org.apache.jena.mem.store.cow.CowSnapshot}
+     * — the snapshot doesn't write, so the bitmap is dead weight.
+     * Reads do not consult the bitmap (it's a writer-only tracking
+     * aid), so freeing it does not affect the snapshot.
+     * <p>
+     * If the spine is later re-forked for a new write transaction,
+     * the {@linkplain #TxnFastHashMap(TxnFastHashMap) fork constructor}
+     * allocates a fresh bitmap on the writer side — the source
+     * snapshot's spine stays null.
+     * <p>
+     * Idempotent.
+     */
+    public void freeWriterOwnedBitmap() {
+        valueOwnedByThisWriter = null;
     }
 
     /** Subclasses allocate their typed value array here. */
@@ -128,11 +158,16 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
             }
         }
         this.values = newValues;
-        // valueOwnedByThisWriter is writer-private; preserve the bits across
-        // the grow.
-        final boolean[] newOwned = new boolean[this.keys.length];
-        System.arraycopy(valueOwnedByThisWriter, 0, newOwned, 0, oldLength);
-        this.valueOwnedByThisWriter = newOwned;
+        // valueOwnedByThisWriter is writer-private. In writer-side
+        // operation it's non-null and we preserve the bits across the
+        // grow; the null guard handles the case where freeze has
+        // already released it (snapshots don't grow so this path
+        // shouldn't fire, but it costs nothing to be defensive).
+        if (valueOwnedByThisWriter != null) {
+            final boolean[] newOwned = new boolean[this.keys.length];
+            System.arraycopy(valueOwnedByThisWriter, 0, newOwned, 0, oldLength);
+            this.valueOwnedByThisWriter = newOwned;
+        }
     }
 
     // Note: removeFrom is inherited unchanged from TxnFastHashBase. Unlike
@@ -144,6 +179,10 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
     public void clear() {
         super.clear();
         values = newValuesArray(keys.length);
+        // clear() is reachable only via writer-side paths (CowWriteTxn
+        // exposes it; CowSnapshot does not), so the bitmap is always
+        // non-null here. Re-allocate to a fresh all-clear bitmap of
+        // the new size.
         valueOwnedByThisWriter = new boolean[keys.length];
     }
 

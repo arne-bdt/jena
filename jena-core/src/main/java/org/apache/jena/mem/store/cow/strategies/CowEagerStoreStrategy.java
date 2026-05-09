@@ -177,6 +177,16 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
                 indexAllSequential();
             }
         }
+        if (!installGrowHook) {
+            // Snapshot-side construction (e.g. the LAZY auto-upgrade
+            // race on a published snapshot, or a brand-new empty
+            // CowSnapshot configured EAGER). The build-phase needs
+            // the writer-owned bitmap so insertAt can stamp slots,
+            // but the resulting strategy only ever serves reads —
+            // release the bitmaps now so the snapshot doesn't carry
+            // dead writer-only state.
+            freeWriterOwnedBitmaps();
+        }
     }
 
     /**
@@ -296,6 +306,19 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
         sReverseIndices = Arrays.copyOf(sReverseIndices, newKeysLength);
         pReverseIndices = Arrays.copyOf(pReverseIndices, newKeysLength);
         oReverseIndices = Arrays.copyOf(oReverseIndices, newKeysLength);
+    }
+
+    /**
+     * Release each spine's writer-only ownership bitmap. Called from
+     * the snapshot-side branch of the constructor and from
+     * {@link org.apache.jena.mem.store.cow.CowWriteTxn#freeze()} so
+     * that snapshots don't carry the writer-only tracking arrays
+     * past their useful life. Idempotent.
+     */
+    public void freeWriterOwnedBitmaps() {
+        subjectIndex.freeWriterOwnedBitmap();
+        predicateIndex.freeWriterOwnedBitmap();
+        objectIndex.freeWriterOwnedBitmap();
     }
 
     @Override
