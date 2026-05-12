@@ -212,6 +212,28 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
     }
 
     /**
+     * Return the current read view active on this thread — the {@link CowStore}
+     * the next read operation would route through. Outside any transaction
+     * this is the latest published snapshot; inside a transaction it is the
+     * snapshot captured at {@link #begin(TxnType) begin(READ)} or the
+     * writer's working copy under WRITE.
+     * <p>
+     * Useful for callers that want to capture a stable view on one thread
+     * and use it later from a different thread — for example, a
+     * {@link org.apache.jena.sparql.core.DatasetGraph DatasetGraph} doing
+     * parallel cross-graph reads on a {@link java.util.concurrent.ForkJoinPool}
+     * cannot consult the per-thread state on each worker, so it captures
+     * {@code readView()} on the caller's thread and dispatches
+     * {@code view.find(match)} / {@code view.stream(match)} directly on the
+     * captured reference. The view's read operations are thread-safe.
+     *
+     * @return the {@link CowStore} read view active for the calling thread.
+     */
+    public CowStore readView() {
+        return readStore();
+    }
+
+    /**
      * Resolve the writer's working copy. Implicitly promotes a
      * {@code READ_PROMOTE}/{@code READ_COMMITTED_PROMOTE} transaction by
      * delegating to the no-arg {@link Transactional#promote()} default,

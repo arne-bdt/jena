@@ -43,6 +43,7 @@ public class QuickRunDatasetBenchmarks {
                 .include(TestTxnDatasetMultiGraphLoad.class.getSimpleName())
                 .include(TestTxnDatasetTransactions.class.getSimpleName())
                 .include(TestTxnDatasetConcurrentReadersWithWriter.class.getSimpleName())
+                .include(TestTxnDatasetCrossGraphFind.class.getSimpleName())
                 .mode(Mode.AverageTime)
                 .timeUnit(TimeUnit.MILLISECONDS)
                 .warmupIterations(3)

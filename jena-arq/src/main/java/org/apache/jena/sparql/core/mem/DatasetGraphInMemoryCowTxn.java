@@ -21,19 +21,24 @@
 
 package org.apache.jena.sparql.core.mem;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.store.cow.CowStore;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.query.TxnType;
 import org.apache.jena.riot.system.PrefixMap;
@@ -45,6 +50,8 @@ import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.core.Transactional;
 import org.apache.jena.system.G;
 import org.apache.jena.system.Txn;
+import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.NiceIterator;
 
 /**
  * Transactional, in-memory {@link org.apache.jena.sparql.core.DatasetGraph}
@@ -119,6 +126,26 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
 
     private final PrefixMap prefixes = new PrefixMapStd();
 
+    /**
+     * Cross-graph operations parallelise their per-graph
+     * iterator/stream <em>construction</em> across the common
+     * {@link java.util.concurrent.ForkJoinPool} when the dataset is
+     * configured with {@link GraphMemIndexedSetCowTxn.ForkMode#PARALLEL}
+     * and the number of named graphs reaches this threshold. Below the
+     * threshold, FJP submission overhead typically dominates per-graph
+     * construction work, so the sequential captured-view path is faster.
+     * <p>
+     * The threshold is intentionally conservative: parallelism helps most
+     * when per-graph {@code find()} construction is meaningfully larger
+     * than FJP dispatch overhead — e.g. with {@code LAZY} indexing
+     * strategies that build their index on first partial-pattern lookup,
+     * or with large per-graph triple sets. For typical Fuseki workloads
+     * with a handful of graphs and {@code EAGER} indexes, the captured-view
+     * sequential path is already several times faster than
+     * {@link org.apache.jena.sparql.core.mem.DatasetGraphInMemory}.
+     */
+    private static final int PARALLEL_CROSS_GRAPH_THRESHOLD = 16;
+
     // --- Construction ---------------------------------------------------------
 
     public DatasetGraphInMemoryCowTxn() {
@@ -161,6 +188,19 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         GraphTopology pinned;
         /** Generation counter value at begin; used to detect concurrent commits. */
         long startGeneration;
+        /**
+         * Per-graph {@link CowStore} read views captured atomically at
+         * {@code begin(READ)}. Non-null only in READ mode before any
+         * promotion. Enables thread-safe parallel cross-graph reads —
+         * workers from a {@link java.util.concurrent.ForkJoinPool} use
+         * the captured references directly, avoiding the per-graph
+         * {@code ThreadLocal} that the per-thread {@code readStore()}
+         * path would consult. Also keeps the read view stable past the
+         * end of an auto-wrapped READ transaction, so iterators returned
+         * from {@link #findInAnyNamedGraphs} continue to observe the
+         * same snapshot after the wrapping txn ends.
+         */
+        Map<Node, CowStore> capturedViews;
         /** Graphs newly added during this write transaction; null until first add. */
         Map<Node, GraphMemIndexedSetCowTxn> additions;
         /** Graphs marked removed during this write transaction; null until first remove. */
@@ -305,9 +345,19 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
                 s.pinned = published;
                 s.startGeneration = generation.get();
                 // Eager per-graph begin: captures every graph's snapshot
-                // atomically with respect to a writer's publication.
-                for (GraphMemIndexedSetCowTxn g : s.pinned.graphs().values())
+                // atomically with respect to a writer's publication. The
+                // capturedViews map records each captured snapshot reference
+                // so that subsequent cross-graph operations can dispatch to
+                // ForkJoinPool workers (which do not have the per-thread
+                // transaction state set up here) without falling back to
+                // each graph's latest published snapshot.
+                Map<Node, CowStore> views = new HashMap<>(s.pinned.graphs().size());
+                for (Map.Entry<Node, GraphMemIndexedSetCowTxn> e : s.pinned.graphs().entrySet()) {
+                    GraphMemIndexedSetCowTxn g = e.getValue();
                     g.begin(type);
+                    views.put(e.getKey(), g.readView());
+                }
+                s.capturedViews = views;
             } finally {
                 publicationLock.readLock().unlock();
             }
@@ -345,6 +395,12 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         }
         // ISOLATED: keep per-graph READ txns alive; they get promoted to WRITE
         // on first per-graph write via enlistForWrite.
+        // After any promote, capturedViews is stale for graphs we'll write to
+        // (writer's working copy must be visible). Drop it to force the
+        // cross-graph operations onto the per-thread path, which correctly
+        // composes reads of the writer's working copy with reads of the
+        // captured published snapshots on the per-graph TxnState.
+        t.capturedViews = null;
         t.mode = ReadWrite.WRITE;
         return true;
     }
@@ -508,18 +564,18 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
     @Override
     protected Iterator<Quad> findInDftGraph(Node s, Node p, Node o) {
         return access(() -> {
-            GraphMemIndexedSetCowTxn g = currentGraph(Quad.defaultGraphIRI);
-            if (g == null) return Iter.<Quad>nullIterator();
-            return G.triples2quadsDftGraph(g.find(Triple.createMatch(s, p, o)));
+            CowStore view = readViewFor(Quad.defaultGraphIRI);
+            if (view == null) return Iter.<Quad>nullIterator();
+            return G.triples2quadsDftGraph(view.find(Triple.createMatch(s, p, o)));
         });
     }
 
     @Override
     protected Iterator<Quad> findInSpecificNamedGraph(Node g, Node s, Node p, Node o) {
         return access(() -> {
-            GraphMemIndexedSetCowTxn graph = currentGraph(g);
-            if (graph == null) return Iter.<Quad>nullIterator();
-            return graph.find(Triple.createMatch(s, p, o))
+            CowStore view = readViewFor(g);
+            if (view == null) return Iter.<Quad>nullIterator();
+            return view.find(Triple.createMatch(s, p, o))
                     .mapWith(t -> Quad.create(g, t));
         });
     }
@@ -527,18 +583,213 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
     @Override
     protected Iterator<Quad> findInAnyNamedGraphs(Node s, Node p, Node o) {
         return access(() -> {
-            Map<Node, GraphMemIndexedSetCowTxn> topo = currentTopology();
             Triple match = Triple.createMatch(s, p, o);
-            // Chain per-graph iterators lazily (Iter.flatMap) so the caller
-            // can short-circuit without materialising every graph's matches.
-            Iterator<Map.Entry<Node, GraphMemIndexedSetCowTxn>> entries = topo.entrySet().iterator();
-            return Iter.flatMap(entries, e -> {
-                if (Quad.defaultGraphIRI.equals(e.getKey()))
-                    return Iter.nullIterator();
-                Node name = e.getKey();
-                return e.getValue().find(match).mapWith(t -> Quad.create(name, t));
-            });
+            Map<Node, CowStore> views = capturedNamedGraphViews();
+            if (views != null) {
+                // READ path: use captured views so the result is correct on
+                // any thread (including FJP workers) and after the wrapping
+                // txn ends. When the dataset is configured PARALLEL and the
+                // graph count is above the threshold, construct per-graph
+                // iterators in parallel and chain them with `andThen`. The
+                // chain is consumed sequentially so callers can short-circuit
+                // through the chained iterators normally; what's parallelised
+                // is the (often expensive) per-graph find() call itself.
+                if (shouldParallelizeCrossGraph(views))
+                    return parallelFindInNamedGraphs(views, match);
+                return sequentialFindInNamedGraphs(views, match);
+            }
+            // WRITE path (or post-promote): fall back to the per-thread
+            // route so the writer's working copy is visible on the named
+            // graphs we have enlisted, while reads on non-enlisted graphs
+            // still see their captured per-graph snapshots.
+            return sequentialFindInNamedGraphsByThread(match);
         });
+    }
+
+    /**
+     * The captured per-named-graph read views for the active transaction,
+     * or {@code null} if cross-graph reads should fall back to the
+     * per-thread route (no transaction, WRITE transaction, or post-promote).
+     */
+    private Map<Node, CowStore> capturedNamedGraphViews() {
+        DsTxnState t = activeTxn.get();
+        if (t == null) return null;
+        return t.capturedViews;
+    }
+
+    private boolean shouldParallelizeCrossGraph(Map<Node, CowStore> views) {
+        if (forkMode != GraphMemIndexedSetCowTxn.ForkMode.PARALLEL) return false;
+        // -1 because defaultGraphIRI is in the map but never matches a named-graph query.
+        return views.size() - 1 >= PARALLEL_CROSS_GRAPH_THRESHOLD;
+    }
+
+    /**
+     * Build per-graph iterators in parallel on the common ForkJoinPool and
+     * chain them with {@link ExtendedIterator#andThen}. Iteration of the
+     * chain is sequential; only the (often-expensive, e.g. LAZY index build)
+     * construction of the underlying iterators is parallelised.
+     */
+    private ExtendedIterator<Quad> parallelFindInNamedGraphs(Map<Node, CowStore> views, Triple match) {
+        List<ExtendedIterator<Quad>> perGraph = views.entrySet().parallelStream()
+                .filter(e -> !Quad.defaultGraphIRI.equals(e.getKey()))
+                .map(e -> {
+                    Node name = e.getKey();
+                    CowStore view = e.getValue();
+                    return view.find(match).mapWith(t -> Quad.create(name, t));
+                })
+                .collect(Collectors.toList());
+        return concat(perGraph);
+    }
+
+    private ExtendedIterator<Quad> sequentialFindInNamedGraphs(Map<Node, CowStore> views, Triple match) {
+        ExtendedIterator<Quad> result = NiceIterator.emptyIterator();
+        for (Map.Entry<Node, CowStore> e : views.entrySet()) {
+            if (Quad.defaultGraphIRI.equals(e.getKey())) continue;
+            Node name = e.getKey();
+            ExtendedIterator<Quad> it = e.getValue().find(match).mapWith(t -> Quad.create(name, t));
+            result = result.andThen(it);
+        }
+        return result;
+    }
+
+    /**
+     * Per-thread sequential fallback. Used when capturedViews is unavailable
+     * (no transaction, WRITE transaction, or post-promote). Lazy:
+     * {@code find()} on graph K is delayed until the caller has exhausted
+     * graphs 1..K-1, so short-circuit consumers like {@code ASK} pay for
+     * only the graphs they touch.
+     */
+    private Iterator<Quad> sequentialFindInNamedGraphsByThread(Triple match) {
+        Map<Node, GraphMemIndexedSetCowTxn> topo = currentTopology();
+        Iterator<Map.Entry<Node, GraphMemIndexedSetCowTxn>> entries = topo.entrySet().iterator();
+        return Iter.flatMap(entries, e -> {
+            if (Quad.defaultGraphIRI.equals(e.getKey()))
+                return Iter.nullIterator();
+            Node name = e.getKey();
+            return e.getValue().find(match).mapWith(t -> Quad.create(name, t));
+        });
+    }
+
+    private static <T> ExtendedIterator<T> concat(List<ExtendedIterator<T>> iters) {
+        ExtendedIterator<T> result = NiceIterator.emptyIterator();
+        for (ExtendedIterator<T> it : iters)
+            result = result.andThen(it);
+        return result;
+    }
+
+    // --- Stream paths ---------------------------------------------------------
+
+    /**
+     * Specialised {@link DatasetGraph#stream(Node, Node, Node, Node)} that
+     * routes cross-graph queries through the same captured-view path as
+     * {@link #findInAnyNamedGraphs} and, under
+     * {@link GraphMemIndexedSetCowTxn.ForkMode#PARALLEL} with enough named
+     * graphs, builds the per-graph streams in parallel on the common
+     * ForkJoinPool. Single-graph queries delegate straight to the
+     * captured view's {@link CowStore#stream(Triple)} so the returned
+     * stream is independently parallelisable via {@code .parallel()} by
+     * the caller — they hold a stable view reference and don't touch any
+     * per-thread transaction state.
+     * <p>
+     * The default super-interface implementation just wraps {@link #find}
+     * via {@code Iter.asStream}; that path is correct but doesn't expose
+     * the parallelism, and inherits the caveats of the iterator path.
+     */
+    @Override
+    public Stream<Quad> stream(Node g, Node s, Node p, Node o) {
+        Triple match = Triple.createMatch(s, p, o);
+
+        if (Quad.isUnionGraph(g)) {
+            // Defer to the inherited union-graph routing (deduplicates triples).
+            return Iter.asStream(findNG(g, s, p, o));
+        }
+
+        // Specific default graph (defaultGraphIRI or defaultGraphNodeGenerated).
+        if (Quad.isDefaultGraph(g)) {
+            return access(() -> {
+                CowStore view = readViewFor(Quad.defaultGraphIRI);
+                if (view == null) return Stream.<Quad>empty();
+                return view.stream(match).map(t -> Quad.create(Quad.defaultGraphIRI, t));
+            });
+        }
+
+        // Wildcard graph: null or Node.ANY. Mirrors DatasetGraphBaseFind.find:
+        // the default graph plus every named graph.
+        if (g == null || Node.ANY.equals(g)) {
+            return access(() -> {
+                Map<Node, CowStore> views = capturedNamedGraphViews();
+                Stream<Quad> namedGraphs;
+                if (views != null) {
+                    namedGraphs = shouldParallelizeCrossGraph(views)
+                            ? parallelStreamInNamedGraphs(views, match)
+                            : sequentialStreamInNamedGraphs(views, match);
+                } else {
+                    namedGraphs = streamInNamedGraphsByThread(match);
+                }
+                CowStore dft = readViewFor(Quad.defaultGraphIRI);
+                if (dft == null) return namedGraphs;
+                return Stream.concat(
+                        dft.stream(match).map(t -> Quad.create(Quad.defaultGraphIRI, t)),
+                        namedGraphs);
+            });
+        }
+
+        // Specific named graph.
+        return access(() -> {
+            CowStore view = readViewFor(g);
+            if (view == null) return Stream.<Quad>empty();
+            return view.stream(match).map(t -> Quad.create(g, t));
+        });
+    }
+
+    /**
+     * The captured read view for {@code name}, or the per-thread view if no
+     * captured-views map is available. Returns {@code null} only for a
+     * named graph that does not exist in the current transaction's
+     * topology.
+     */
+    private CowStore readViewFor(Node name) {
+        DsTxnState t = activeTxn.get();
+        if (t != null && t.capturedViews != null) {
+            CowStore v = t.capturedViews.get(name);
+            if (v != null) return v;
+        }
+        GraphMemIndexedSetCowTxn g = currentGraph(name);
+        return (g == null) ? null : g.readView();
+    }
+
+    private Stream<Quad> parallelStreamInNamedGraphs(Map<Node, CowStore> views, Triple match) {
+        // Build per-graph streams in parallel; outer stream is sequential.
+        List<Stream<Quad>> perGraph = views.entrySet().parallelStream()
+                .filter(e -> !Quad.defaultGraphIRI.equals(e.getKey()))
+                .map(e -> {
+                    Node name = e.getKey();
+                    CowStore view = e.getValue();
+                    return view.stream(match).map(t -> Quad.create(name, t));
+                })
+                .collect(Collectors.toList());
+        return perGraph.stream().flatMap(s -> s);
+    }
+
+    private Stream<Quad> sequentialStreamInNamedGraphs(Map<Node, CowStore> views, Triple match) {
+        return views.entrySet().stream()
+                .filter(e -> !Quad.defaultGraphIRI.equals(e.getKey()))
+                .flatMap(e -> {
+                    Node name = e.getKey();
+                    return e.getValue().stream(match).map(t -> Quad.create(name, t));
+                });
+    }
+
+    private Stream<Quad> streamInNamedGraphsByThread(Triple match) {
+        return currentTopology().entrySet().stream()
+                .filter(e -> !Quad.defaultGraphIRI.equals(e.getKey()))
+                .flatMap(e -> {
+                    Node name = e.getKey();
+                    return e.getValue().stream(match.getSubject(),
+                                               match.getPredicate(),
+                                               match.getObject())
+                            .map(t -> Quad.create(name, t));
+                });
     }
 
     // --- Graph container view -------------------------------------------------
