@@ -115,6 +115,12 @@ import org.slf4j.Logger;
         serverArgs.allowUpdate = true;
     }
 
+    /*package*/ static void setupMemCow(Logger log, ServerArgs serverArgs) {
+        serverArgs.datasetDescription = "in-memory (copy-on-write)";
+        serverArgs.dataset = DatasetGraphFactory.createTxnMemCow();
+        serverArgs.allowUpdate = true;
+    }
+
     /*package*/ static void setupFile(Logger log, List<String> filenames, ServerArgs serverArgs) {
         serverArgs.datasetDescription = "in-memory, with files loaded";
         serverArgs.dataset = DatasetGraphFactory.createTxnMem();

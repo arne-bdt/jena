@@ -127,6 +127,10 @@ export default {
           item: 'mem',
           name: 'In-memory – dataset will be recreated when Fuseki restarts, but contents will be lost'
         },
+        {
+          item: 'mem-cow',
+          name: 'In-memory copy-on-write – like In-memory, but with lock-free readers and faster bulk loads'
+        },
         // {
         //   item: 'tdb',
         //   name: 'Persistent – dataset will persist across Fuseki restart'

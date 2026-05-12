@@ -93,6 +93,7 @@ public class FusekiArgs extends CmdGeneral {
     }
 
     private final static ArgDecl  argMem          = new ArgDecl(ArgDecl.NoValue,  "mem");
+    private final static ArgDecl  argMemCow       = new ArgDecl(ArgDecl.NoValue,  "mem-cow", "memCow");
     private final static ArgDecl  argUpdate       = new ArgDecl(ArgDecl.NoValue,  "update", "allowUpdate");
     private final static ArgDecl  argFile         = new ArgDecl(ArgDecl.HasValue, "file");
 
@@ -218,6 +219,8 @@ public class FusekiArgs extends CmdGeneral {
         // ---- Describe the dataset on the command line.
         add(argMem, "--mem",
             "Create an in-memory, non-persistent dataset for the server");
+        add(argMemCow, "--mem-cow",
+            "Create an in-memory, non-persistent copy-on-write dataset for the server");
         add(argFile, "--file=FILE",
             "Create an in-memory, non-persistent dataset for the server, initialised with the contents of the file");
         add(argTDB2mode, "--tdb2",
@@ -311,6 +314,10 @@ public class FusekiArgs extends CmdGeneral {
             setup = MEM;
             numDefinitions++;
         }
+        if ( contains(argMemCow) ) {
+            setup = MEMCOW;
+            numDefinitions++;
+        }
         if ( contains(argFile) ) {
             setup = FILE;
             numDefinitions++;
@@ -349,7 +356,7 @@ public class FusekiArgs extends CmdGeneral {
         boolean startEmpty = ( setup == NONE || setup == SPARQLer );
 
         if ( numDefinitions > 1 )
-            throw new CmdException("Multiple ways providing a dataset. Only one of --mem, --file, --loc or --conf");
+            throw new CmdException("Multiple ways providing a dataset. Only one of --mem, --mem-cow, --file, --loc or --conf");
 
         if ( startEmpty && numDefinitions > 0 )
             throw new CmdException("Dataset provided but 'no dataset' flag given");
@@ -409,6 +416,9 @@ public class FusekiArgs extends CmdGeneral {
             }
             case MEM->{
                 serverArgs.dsgMaker = args->DSGSetup.setupMem(log, args);
+            }
+            case MEMCOW->{
+                serverArgs.dsgMaker = args->DSGSetup.setupMemCow(log, args);
             }
             case FILE->{
                 List<String> filenames = getValues(argFile);
