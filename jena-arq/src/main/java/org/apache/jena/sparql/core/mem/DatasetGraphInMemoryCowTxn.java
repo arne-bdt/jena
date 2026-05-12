@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -104,6 +105,15 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
      */
     private volatile GraphTopology published;
 
+    /**
+     * Monotonic write-transaction counter. Incremented by every committed
+     * write — including no-op commits — so an ISOLATED promote can detect
+     * <i>any</i> intervening writer, regardless of whether that writer
+     * actually changed data. Mirrors {@code DatasetGraphInMemory}'s
+     * generation counter.
+     */
+    private final AtomicLong generation = new AtomicLong(0);
+
     /** Per-thread transaction state; {@code null} when no transaction is active. */
     private final ThreadLocal<DsTxnState> activeTxn = new ThreadLocal<>();
 
@@ -149,6 +159,8 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         ReadWrite mode;
         /** Topology pinned at begin (read txns also start per-graph reads on every entry). */
         GraphTopology pinned;
+        /** Generation counter value at begin; used to detect concurrent commits. */
+        long startGeneration;
         /** Graphs newly added during this write transaction; null until first add. */
         Map<Node, GraphMemIndexedSetCowTxn> additions;
         /** Graphs marked removed during this write transaction; null until first remove. */
@@ -284,12 +296,14 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
             datasetWriteLock.lock();
             s.mode = ReadWrite.WRITE;
             s.pinned = published;
+            s.startGeneration = generation.get();
             // Per-graph WRITE transactions are started lazily on first write.
         } else {
             s.mode = ReadWrite.READ;
             publicationLock.readLock().lock();
             try {
                 s.pinned = published;
+                s.startGeneration = generation.get();
                 // Eager per-graph begin: captures every graph's snapshot
                 // atomically with respect to a writer's publication.
                 for (GraphMemIndexedSetCowTxn g : s.pinned.graphs().values())
@@ -306,13 +320,17 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         DsTxnState t = require();
         if (t.mode == ReadWrite.WRITE) return true;
         if (t.type == TxnType.READ)
-            throw new JenaTransactionException("Cannot promote a READ transaction");
+            return false;
 
         if (mode == Promote.READ_COMMITTED) {
             datasetWriteLock.lock();
         } else {
-            if (!datasetWriteLock.tryLock()) return false;
-            if (t.pinned != published) {
+            // ISOLATED: fail-fast if the dataset already moved past our snapshot;
+            // otherwise block on the writer lock, then re-check after acquiring
+            // (a concurrent writer may have committed while we waited).
+            if (t.startGeneration != generation.get()) return false;
+            datasetWriteLock.lock();
+            if (t.startGeneration != generation.get()) {
                 datasetWriteLock.unlock();
                 return false;
             }
@@ -323,6 +341,7 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
             // because we hold datasetWriteLock), and writes lazy-fork as usual.
             for (GraphMemIndexedSetCowTxn g : t.pinned.graphs().values()) g.end();
             t.pinned = published;
+            t.startGeneration = generation.get();
         }
         // ISOLATED: keep per-graph READ txns alive; they get promoted to WRITE
         // on first per-graph write via enlistForWrite.
@@ -351,6 +370,10 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
                 }
                 if (t.dirty)
                     published = buildPublishedTopology(t);
+                // Always bump the generation: an ISOLATED promote that began
+                // before this commit must fail even if nothing was actually
+                // written, matching DatasetGraphInMemory.
+                generation.incrementAndGet();
             } finally {
                 publicationLock.writeLock().unlock();
             }
@@ -419,26 +442,14 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         DsTxnState t = activeTxn.get();
         if (t == null) return;
         if (t.mode == ReadWrite.WRITE) {
-            if (t.dirty) {
-                // Force-abort to release the lock; mirrors DatasetGraphInMemory.
-                abortWrite(t);
-                throw new JenaTransactionException(
-                        "Write transaction was not committed or aborted before end()");
-            }
-            try {
-                if (t.enlisted != null) {
-                    for (Node name : t.enlisted) {
-                        GraphMemIndexedSetCowTxn g = resolveEnlisted(t, name);
-                        if (g != null) g.end();
-                    }
-                }
-            } finally {
-                datasetWriteLock.unlock();
-                activeTxn.remove();
-            }
-        } else {
-            endReadTxn(t);
+            // Reaching end() in WRITE mode without commit() or abort() is a
+            // programming error. Force an abort to release the writer lock,
+            // then surface the mistake — mirrors DatasetGraphInMemory.
+            abortWrite(t);
+            throw new JenaTransactionException(
+                    "Write transaction was not committed or aborted before end()");
         }
+        endReadTxn(t);
     }
 
     @Override public boolean isInTransaction() { return activeTxn.get() != null; }
