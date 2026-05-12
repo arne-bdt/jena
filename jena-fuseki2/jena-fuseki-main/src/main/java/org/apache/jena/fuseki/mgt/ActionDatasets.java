@@ -79,10 +79,11 @@ public class ActionDatasets extends ActionContainerItem {
 
     private static final String paramDatasetName    = "dbName";
     private static final String paramDatasetType    = "dbType";
-    private static final String tDatabaseTDB        = "tdb";
-    private static final String tDatabaseTDB2       = "tdb2";
-    private static final String tDatabaseMem        = "mem";
-    private static final String tDatabaseMemCow     = "mem-cow";
+    private static final String tDatabaseTDB         = "tdb";
+    private static final String tDatabaseTDB2        = "tdb2";
+    private static final String tDatabaseMem         = "mem";
+    private static final String tDatabaseMemCow      = "mem-cow";
+    private static final String tDatabaseMemCowPar   = "mem-cow-parallel";
 
     public ActionDatasets() { super(); }
 
@@ -509,10 +510,11 @@ public class ActionDatasets extends ActionContainerItem {
 
     private static Map<String, String> dbTypeToTemplate = new HashMap<>();
     static {
-        dbTypeToTemplate.put(tDatabaseTDB,    Template.templateTDB1_FN);
-        dbTypeToTemplate.put(tDatabaseTDB2,   Template.templateTDB2_FN);
-        dbTypeToTemplate.put(tDatabaseMem,    Template.templateTIM_MemFN);
-        dbTypeToTemplate.put(tDatabaseMemCow, Template.templateTIM_MemCowFN);
+        dbTypeToTemplate.put(tDatabaseTDB,       Template.templateTDB1_FN);
+        dbTypeToTemplate.put(tDatabaseTDB2,      Template.templateTDB2_FN);
+        dbTypeToTemplate.put(tDatabaseMem,       Template.templateTIM_MemFN);
+        dbTypeToTemplate.put(tDatabaseMemCow,    Template.templateTIM_MemCowFN);
+        dbTypeToTemplate.put(tDatabaseMemCowPar, Template.templateTIM_MemCowParallelFN);
     }
 
     private static void assemblerFromForm(HttpAction action, StreamRDF dest) {

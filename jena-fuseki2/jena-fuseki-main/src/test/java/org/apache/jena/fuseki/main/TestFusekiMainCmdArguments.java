@@ -198,7 +198,7 @@ public class TestFusekiMainCmdArguments {
         // given
         List<String> arguments =
                 List.of("--mem", "--file=file", "--dataset=dataset", "--tdb=file", "--memtdb=file", "--config=file");
-        String expectedMessage = "Multiple ways providing a dataset. Only one of --mem, --mem-cow, --file, --loc or --conf";
+        String expectedMessage = "Multiple ways providing a dataset. Only one of --mem, --mem-cow, --mem-cow-parallel, --file, --loc or --conf";
         // when, then
         testForCmdException(arguments, expectedMessage);
     }

@@ -161,6 +161,10 @@ public class TestAdminAddDatasetTemplate extends FusekiServerPerTestClass {
         testAddDeleteAdd("db_add_delete_mem_cow_1", "mem-cow", false, false);
     }
 
+    @Test public void add_delete_mem_cow_parallel_1() {
+        testAddDeleteAdd("db_add_delete_mem_cow_par_1", "mem-cow-parallel", false, false);
+    }
+
     @Test public void add_delete_tdb_1() {
         if ( Sys.isWindows  )
             return;

@@ -129,7 +129,11 @@ export default {
         },
         {
           item: 'mem-cow',
-          name: 'In-memory copy-on-write – like In-memory, but with lock-free readers and faster bulk loads'
+          name: 'In-memory copy-on-write (experimental) – alternative in-memory implementation; benchmark for your workload'
+        },
+        {
+          item: 'mem-cow-parallel',
+          name: 'In-memory copy-on-write, parallel fork (experimental) – as above, parallel per-graph fork (large graphs only)'
         },
         // {
         //   item: 'tdb',

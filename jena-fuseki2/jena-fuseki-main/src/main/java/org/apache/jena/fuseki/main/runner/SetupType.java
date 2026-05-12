@@ -24,9 +24,9 @@ package org.apache.jena.fuseki.main.runner;
 // Command line DSG
 public enum SetupType {
     UNSET,
-    MEM, MEMCOW, FILE, TDB, MEMTDB,  // Datasets on the command line
-    CONF,                            // Configuration file.
-    ASSEM,                           // Assembler for a datasets. Legacy.
-    NONE,                            // Explicitly no dataset or configuration file.
-    SPARQLer                         // SPARQler mode
+    MEM, MEMCOW, MEMCOW_PARALLEL, FILE, TDB, MEMTDB,  // Datasets on the command line
+    CONF,                                             // Configuration file.
+    ASSEM,                                            // Assembler for a datasets. Legacy.
+    NONE,                                             // Explicitly no dataset or configuration file.
+    SPARQLer                                          // SPARQler mode
 }

@@ -94,6 +94,7 @@ public class FusekiArgs extends CmdGeneral {
 
     private final static ArgDecl  argMem          = new ArgDecl(ArgDecl.NoValue,  "mem");
     private final static ArgDecl  argMemCow       = new ArgDecl(ArgDecl.NoValue,  "mem-cow", "memCow");
+    private final static ArgDecl  argMemCowPar    = new ArgDecl(ArgDecl.NoValue,  "mem-cow-parallel", "memCowParallel");
     private final static ArgDecl  argUpdate       = new ArgDecl(ArgDecl.NoValue,  "update", "allowUpdate");
     private final static ArgDecl  argFile         = new ArgDecl(ArgDecl.HasValue, "file");
 
@@ -220,7 +221,9 @@ public class FusekiArgs extends CmdGeneral {
         add(argMem, "--mem",
             "Create an in-memory, non-persistent dataset for the server");
         add(argMemCow, "--mem-cow",
-            "Create an in-memory, non-persistent copy-on-write dataset for the server");
+            "Experimental: in-memory copy-on-write dataset (alternative to --mem; benchmark first)");
+        add(argMemCowPar, "--mem-cow-parallel",
+            "Experimental: as --mem-cow, with PARALLEL per-graph fork (for very large graphs)");
         add(argFile, "--file=FILE",
             "Create an in-memory, non-persistent dataset for the server, initialised with the contents of the file");
         add(argTDB2mode, "--tdb2",
@@ -318,6 +321,10 @@ public class FusekiArgs extends CmdGeneral {
             setup = MEMCOW;
             numDefinitions++;
         }
+        if ( contains(argMemCowPar) ) {
+            setup = MEMCOW_PARALLEL;
+            numDefinitions++;
+        }
         if ( contains(argFile) ) {
             setup = FILE;
             numDefinitions++;
@@ -356,7 +363,7 @@ public class FusekiArgs extends CmdGeneral {
         boolean startEmpty = ( setup == NONE || setup == SPARQLer );
 
         if ( numDefinitions > 1 )
-            throw new CmdException("Multiple ways providing a dataset. Only one of --mem, --mem-cow, --file, --loc or --conf");
+            throw new CmdException("Multiple ways providing a dataset. Only one of --mem, --mem-cow, --mem-cow-parallel, --file, --loc or --conf");
 
         if ( startEmpty && numDefinitions > 0 )
             throw new CmdException("Dataset provided but 'no dataset' flag given");
@@ -419,6 +426,10 @@ public class FusekiArgs extends CmdGeneral {
             }
             case MEMCOW->{
                 serverArgs.dsgMaker = args->DSGSetup.setupMemCow(log, args);
+            }
+            case MEMCOW_PARALLEL->{
+                serverArgs.dsgMaker = args->DSGSetup.setupMemCow(log, args,
+                        org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn.ForkMode.PARALLEL);
             }
             case FILE->{
                 List<String> filenames = getValues(argFile);
