@@ -257,7 +257,7 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
         if (t.mode == ReadWrite.WRITE)
             return true;                        // already a writer
         if (t.type == TxnType.READ)
-            throw new JenaTransactionException("Cannot promote a READ transaction");
+            return false;                       // plain READ cannot promote
         // Remaining types: READ_PROMOTE, READ_COMMITTED_PROMOTE.
 
         if (mode == Promote.READ_COMMITTED) {
@@ -267,13 +267,19 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
             // this transaction may be stale, by definition.
             writeLock.lock();
         } else {
-            // ISOLATED: snapshot must not have moved since begin(). We try
-            // the lock without blocking; even if we acquire it, we still
-            // abort if a commit happened between begin and now.
-            // t.active is the snapshot reference captured at begin (we are
-            // still in READ mode, so it has not been replaced).
-            if (!writeLock.tryLock())
+            // ISOLATED: the snapshot we captured at begin must still be the
+            // published one when we finish promoting. Two checks are needed:
+            //  1. Fail fast if it has already moved (no point blocking).
+            //  2. Block on the writer slot — a concurrent writer may yet
+            //     abort, in which case published is unchanged and we can
+            //     promote successfully.
+            //  3. After acquiring, re-check: if the writer we waited for
+            //     committed a *real* change, published has moved and we
+            //     must abort. A no-op commit leaves published equal to
+            //     t.active and is therefore harmless.
+            if (t.active != published)
                 return false;
+            writeLock.lock();
             if (t.active != published) {
                 writeLock.unlock();
                 return false;

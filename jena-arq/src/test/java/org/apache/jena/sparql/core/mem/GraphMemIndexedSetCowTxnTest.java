@@ -410,6 +410,214 @@ public class GraphMemIndexedSetCowTxnTest {
         g.end();
     }
 
+    // ----- promote() contract --------------------------------------------
+
+    /**
+     * {@code promote(Promote)} on a plain READ transaction must return
+     * {@code false} (matching the default no-arg {@code promote()} behaviour
+     * and {@code DatasetGraphInMemory}). It must not throw.
+     */
+    @Test
+    public void promoteOnPlainReadReturnsFalseForIsolated() {
+        GraphMemIndexedSetCowTxn g = new GraphMemIndexedSetCowTxn();
+        g.begin(TxnType.READ);
+        try {
+            assertFalse(g.promote(Transactional.Promote.ISOLATED));
+            assertEquals(ReadWrite.READ, g.transactionMode());
+        } finally {
+            g.end();
+        }
+    }
+
+    @Test
+    public void promoteOnPlainReadReturnsFalseForReadCommitted() {
+        GraphMemIndexedSetCowTxn g = new GraphMemIndexedSetCowTxn();
+        g.begin(TxnType.READ);
+        try {
+            assertFalse(g.promote(Transactional.Promote.READ_COMMITTED));
+            assertEquals(ReadWrite.READ, g.transactionMode());
+        } finally {
+            g.end();
+        }
+    }
+
+    /**
+     * ISOLATED promote must block on an active concurrent writer rather than
+     * failing immediately. If that writer subsequently aborts, the reader's
+     * snapshot is still the published one and the promote must succeed.
+     */
+    @Test
+    @Timeout(5)
+    public void isolatedPromoteBlocksAndSucceedsWhenActiveWriterAborts() throws Exception {
+        GraphMemIndexedSetCowTxn g = new GraphMemIndexedSetCowTxn();
+
+        // Active writer thread holds the write lock and ultimately aborts.
+        CountDownLatch writerHoldsLock = new CountDownLatch(1);
+        CountDownLatch writerMayProceed = new CountDownLatch(1);
+        Thread activeWriter = new Thread(() -> {
+            g.begin(TxnType.WRITE);
+            writerHoldsLock.countDown();
+            try {
+                writerMayProceed.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            g.abort();
+            g.end();
+        });
+        activeWriter.start();
+        assertTrue(writerHoldsLock.await(2, TimeUnit.SECONDS));
+
+        // Reader runs in its own thread so its READ_PROMOTE txn state is
+        // separate from this thread's. The promoter blocks on the writer's
+        // lock and should succeed when the writer aborts (snapshot unchanged).
+        AtomicReference<Boolean> promoteResult = new AtomicReference<>();
+        AtomicReference<Throwable> promoteError = new AtomicReference<>();
+        Thread promoter = new Thread(() -> {
+            try {
+                g.begin(TxnType.READ_PROMOTE);
+                promoteResult.set(g.promote(Transactional.Promote.ISOLATED));
+                g.commit();
+                g.end();
+            } catch (Throwable th) { promoteError.set(th); }
+        });
+        promoter.start();
+        // Give the promoter a moment to reach the blocking lock acquisition.
+        Thread.sleep(100);
+        assertNull(promoteResult.get(), "promote should still be blocking on the writer");
+
+        // Release the writer; it aborts. The promoter should then succeed.
+        writerMayProceed.countDown();
+        promoter.join(5_000);
+        if (promoteError.get() != null) throw new AssertionError(promoteError.get());
+        assertEquals(Boolean.TRUE, promoteResult.get(),
+                "promote(ISOLATED) must succeed once a no-op aborting writer releases");
+        activeWriter.join(2_000);
+    }
+
+    /**
+     * ISOLATED promote must block on an active concurrent writer. If that
+     * writer commits a real change, the reader's snapshot has moved and
+     * promote must return false.
+     */
+    @Test
+    @Timeout(5)
+    public void isolatedPromoteBlocksAndFailsWhenActiveWriterCommitsChanges() throws Exception {
+        GraphMemIndexedSetCowTxn g = new GraphMemIndexedSetCowTxn();
+
+        CountDownLatch writerHoldsLock = new CountDownLatch(1);
+        CountDownLatch writerMayProceed = new CountDownLatch(1);
+        Thread activeWriter = new Thread(() -> {
+            g.begin(TxnType.WRITE);
+            g.add(t("changed", "by", "writer"));
+            writerHoldsLock.countDown();
+            try {
+                writerMayProceed.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            g.commit();
+            g.end();
+        });
+        activeWriter.start();
+        assertTrue(writerHoldsLock.await(2, TimeUnit.SECONDS));
+
+        AtomicReference<Boolean> promoteResult = new AtomicReference<>();
+        AtomicReference<Throwable> promoteError = new AtomicReference<>();
+        Thread promoter = new Thread(() -> {
+            try {
+                g.begin(TxnType.READ_PROMOTE);
+                promoteResult.set(g.promote(Transactional.Promote.ISOLATED));
+                g.commit();
+                g.end();
+            } catch (Throwable th) { promoteError.set(th); }
+        });
+        promoter.start();
+        Thread.sleep(100);
+        assertNull(promoteResult.get(), "promote should still be blocking on the writer");
+
+        writerMayProceed.countDown();
+        promoter.join(5_000);
+        if (promoteError.get() != null) throw new AssertionError(promoteError.get());
+        assertEquals(Boolean.FALSE, promoteResult.get(),
+                "promote(ISOLATED) must fail once a writer commits a real change");
+        activeWriter.join(2_000);
+    }
+
+    /**
+     * No-op concurrent commits (writer didn't change anything visible) must
+     * not invalidate a reader's snapshot: ISOLATED promote may still succeed.
+     * This is the per-graph "snapshot identity" semantics — distinct from the
+     * stricter "any commit invalidates" rule that DatasetGraphInMemory and
+     * its CowTxn sibling enforce at the dataset level via a generation
+     * counter.
+     */
+    @Test
+    @Timeout(5)
+    public void isolatedPromoteSucceedsAfterConcurrentNoOpCommit() throws Exception {
+        GraphMemIndexedSetCowTxn g = new GraphMemIndexedSetCowTxn();
+
+        CountDownLatch writerHoldsLock = new CountDownLatch(1);
+        CountDownLatch writerMayProceed = new CountDownLatch(1);
+        Thread activeWriter = new Thread(() -> {
+            g.begin(TxnType.WRITE);
+            writerHoldsLock.countDown();
+            try {
+                writerMayProceed.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            g.commit();   // no-op commit: nothing was added
+            g.end();
+        });
+        activeWriter.start();
+        assertTrue(writerHoldsLock.await(2, TimeUnit.SECONDS));
+
+        AtomicReference<Boolean> promoteResult = new AtomicReference<>();
+        AtomicReference<Throwable> promoteError = new AtomicReference<>();
+        Thread promoter = new Thread(() -> {
+            try {
+                g.begin(TxnType.READ_PROMOTE);
+                promoteResult.set(g.promote(Transactional.Promote.ISOLATED));
+                g.commit();
+                g.end();
+            } catch (Throwable th) { promoteError.set(th); }
+        });
+        promoter.start();
+        Thread.sleep(100);
+        assertNull(promoteResult.get(), "promote should still be blocking on the writer");
+
+        writerMayProceed.countDown();
+        promoter.join(5_000);
+        if (promoteError.get() != null) throw new AssertionError(promoteError.get());
+        assertEquals(Boolean.TRUE, promoteResult.get(),
+                "promote(ISOLATED) must succeed after a no-op commit (snapshot identity unchanged)");
+        activeWriter.join(2_000);
+    }
+
+    /**
+     * Pre-acquisition fast-path: if the snapshot already moved before we
+     * even try to take the writer lock, ISOLATED promote returns false
+     * without blocking.
+     */
+    @Test
+    @Timeout(5)
+    public void isolatedPromoteFailsFastIfSnapshotAlreadyMoved() throws Exception {
+        GraphMemIndexedSetCowTxn g = new GraphMemIndexedSetCowTxn();
+
+        g.begin(TxnType.READ_PROMOTE);
+        try {
+            // Another thread commits a change end-to-end before we attempt promote.
+            Thread writer = new Thread(() -> {
+                g.begin(TxnType.WRITE);
+                g.add(t("s", "p", "o"));
+                g.commit();
+                g.end();
+            });
+            writer.start();
+            writer.join(2_000);
+
+            assertFalse(g.promote(Transactional.Promote.ISOLATED));
+            assertEquals(ReadWrite.READ, g.transactionMode());
+        } finally {
+            g.end();
+        }
+    }
+
     /**
      * Smoke test for {@link GraphMemIndexedSetCowTxn.ForkMode#PARALLEL}:
      * the parallel fork mode must exhibit identical visible behaviour to
