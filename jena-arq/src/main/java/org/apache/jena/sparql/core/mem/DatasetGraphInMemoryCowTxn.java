@@ -834,6 +834,90 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         });
     }
 
+    // --- contains / isEmpty optimisations -------------------------------------
+    //
+    // DatasetGraphBase's defaults build an iterator and ask hasNext(). We can
+    // do considerably better by short-circuiting on per-graph CowStore.contains
+    // (an O(1) indexed lookup when (s,p,o) is concrete + EAGER index, and
+    // short-circuiting per-graph for wildcards). The captured-view path also
+    // keeps the boolean answer stable past the end of an auto-wrapped READ
+    // transaction, mirroring the find/stream paths above.
+
+    /**
+     * Test whether the dataset contains a quad matching the pattern. Routes
+     * by graph node — default graph, union graph, wildcard, or specific
+     * named graph — and short-circuits on the first match.
+     * <p>
+     * The default {@link org.apache.jena.sparql.core.DatasetGraphBase
+     * DatasetGraphBase} implementation builds a {@code find(...)} iterator
+     * and asks {@code hasNext()}. Each pre-graph view's
+     * {@link CowStore#contains(Triple)} is dramatically faster for the
+     * (s,p,o)-concrete case (a single hash lookup with EAGER indexing) and
+     * still short-circuits at the dataset level for wildcards.
+     */
+    @Override
+    public boolean contains(Node g, Node s, Node p, Node o) {
+        Triple match = Triple.createMatch(s, p, o);
+        return access(() -> {
+            if (Quad.isDefaultGraph(g)) {
+                CowStore view = readViewFor(Quad.defaultGraphIRI);
+                return view != null && view.contains(match);
+            }
+            if (Quad.isUnionGraph(g)) {
+                return anyNamedGraphContains(match);
+            }
+            if (g == null || Node.ANY.equals(g)) {
+                // Wildcard: default graph plus any named graph.
+                CowStore dft = readViewFor(Quad.defaultGraphIRI);
+                if (dft != null && dft.contains(match)) return true;
+                return anyNamedGraphContains(match);
+            }
+            CowStore view = readViewFor(g);
+            return view != null && view.contains(match);
+        });
+    }
+
+    private boolean anyNamedGraphContains(Triple match) {
+        Map<Node, CowStore> views = capturedNamedGraphViews();
+        if (views != null) {
+            for (Map.Entry<Node, CowStore> e : views.entrySet()) {
+                if (Quad.defaultGraphIRI.equals(e.getKey())) continue;
+                if (e.getValue().contains(match)) return true;
+            }
+            return false;
+        }
+        // Per-thread fallback (WRITE txn or auto-wrap outside a txn).
+        for (Map.Entry<Node, GraphMemIndexedSetCowTxn> e : currentTopology().entrySet()) {
+            if (Quad.defaultGraphIRI.equals(e.getKey())) continue;
+            if (e.getValue().contains(match)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Whether the dataset has no quads in any graph. The default
+     * implementation builds a wildcard {@code find(...)} iterator just to
+     * check {@code hasNext()}; we ask each captured view's
+     * {@link CowStore#isEmpty()} directly and short-circuit on the first
+     * non-empty graph.
+     */
+    @Override
+    public boolean isEmpty() {
+        return access(() -> {
+            Map<Node, CowStore> views = capturedNamedGraphViews();
+            if (views != null) {
+                for (CowStore v : views.values()) {
+                    if (!v.isEmpty()) return false;
+                }
+                return true;
+            }
+            for (GraphMemIndexedSetCowTxn g : currentTopology().values()) {
+                if (!g.isEmpty()) return false;
+            }
+            return true;
+        });
+    }
+
     // --- Misc DatasetGraph --------------------------------------------------
 
     @Override
