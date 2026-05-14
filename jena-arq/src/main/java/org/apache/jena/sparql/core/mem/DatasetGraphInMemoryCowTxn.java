@@ -195,6 +195,9 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         GraphMemIndexedSetCowTxn get(Node name) {
             return graphs.get(name);
         }
+        boolean contains(Node name) {
+            return graphs.containsKey(name);
+        }
     }
 
     // --- Per-thread transaction state ----------------------------------------
@@ -420,10 +423,16 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         s.type = type;
         if (type == TxnType.WRITE) {
             datasetWriteLock.lock();
-            s.mode = ReadWrite.WRITE;
-            s.pinnedNamed = namedTopology;
-            s.startGeneration = generation.get();
-            // Per-graph WRITE transactions are started lazily on first write.
+            try {
+                s.mode = ReadWrite.WRITE;
+                s.pinnedNamed = namedTopology;
+                s.startGeneration = generation.get();
+                // Per-graph WRITE transactions are started lazily on first write.
+                activeTxn.set(s);
+            } catch (Throwable th) {
+                datasetWriteLock.unlock();
+                throw th;
+            }
         } else {
             s.mode = ReadWrite.READ;
             publicationLock.readLock().lock();
@@ -433,25 +442,55 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
                 // Capture the default graph's view atomically with the named
                 // graph views below. The defaultGraph instance manages its
                 // own per-thread txn state, so we start a READ on it too.
-                defaultGraph.begin(type);
-                s.capturedDefaultView = defaultGraph.readView();
-                // Eager per-graph begin on every named graph: each captures
-                // its current published snapshot, recorded in
-                // capturedNamedViews so that subsequent cross-graph
-                // operations can dispatch to ForkJoinPool workers without
-                // consulting the per-thread state on each call.
-                Map<Node, CowStore> views = new HashMap<>(s.pinnedNamed.graphs().size());
-                for (Map.Entry<Node, GraphMemIndexedSetCowTxn> e : s.pinnedNamed.graphs().entrySet()) {
-                    GraphMemIndexedSetCowTxn g = e.getValue();
-                    g.begin(type);
-                    views.put(e.getKey(), g.readView());
-                }
-                s.capturedNamedViews = views;
+                beginAllPerGraphReads(type, s);
+                activeTxn.set(s);
             } finally {
                 publicationLock.readLock().unlock();
             }
         }
-        activeTxn.set(s);
+    }
+
+    /**
+     * Open a per-graph READ transaction on the default graph and every
+     * pinned named graph, capturing their current snapshots into
+     * {@code s.capturedDefaultView} / {@code s.capturedNamedViews}. If any
+     * per-graph {@code begin} throws partway through, every per-graph txn
+     * we already opened is {@code end()}-ed before the original exception
+     * propagates — so the caller is left with no leaked per-graph state on
+     * this thread.
+     */
+    private void beginAllPerGraphReads(TxnType type, DsTxnState s) {
+        boolean defaultStarted = false;
+        Map<Node, GraphMemIndexedSetCowTxn> started = null;
+        try {
+            defaultGraph.begin(type);
+            defaultStarted = true;
+            s.capturedDefaultView = defaultGraph.readView();
+            // Eager per-graph begin on every named graph: each captures
+            // its current published snapshot, recorded in
+            // capturedNamedViews so that subsequent cross-graph
+            // operations can dispatch to ForkJoinPool workers without
+            // consulting the per-thread state on each call.
+            Map<Node, CowStore> views = new HashMap<>(s.pinnedNamed.graphs().size());
+            started = new HashMap<>(s.pinnedNamed.graphs().size());
+            for (Map.Entry<Node, GraphMemIndexedSetCowTxn> e : s.pinnedNamed.graphs().entrySet()) {
+                GraphMemIndexedSetCowTxn g = e.getValue();
+                g.begin(type);
+                started.put(e.getKey(), g);
+                views.put(e.getKey(), g.readView());
+            }
+            s.capturedNamedViews = views;
+        } catch (Throwable th) {
+            if (started != null) {
+                for (GraphMemIndexedSetCowTxn g : started.values()) {
+                    try { g.end(); } catch (Throwable th2) { th.addSuppressed(th2); }
+                }
+            }
+            if (defaultStarted) {
+                try { defaultGraph.end(); } catch (Throwable th2) { th.addSuppressed(th2); }
+            }
+            throw th;
+        }
     }
 
     @Override
@@ -518,6 +557,13 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
                         if (g != null) g.commit();
                     }
                 }
+                // If we got here from a promote(READ_*PROMOTE), per-graph READ
+                // transactions were started eagerly at dataset begin and are
+                // still open on every pinned graph we did not write to. End
+                // them now so the next dataset txn on this thread does not
+                // hit "nested transactions" on those graphs.
+                if (t.type != TxnType.WRITE)
+                    endNonEnlistedPinned(t);
                 if (t.dirty)
                     namedTopology = buildNamedTopology(t);
                 // Always bump the generation: an ISOLATED promote that began
@@ -530,6 +576,24 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         } finally {
             datasetWriteLock.unlock();
             activeTxn.remove();
+        }
+    }
+
+    /**
+     * End the per-graph READ transaction on every graph in {@code pinnedNamed}
+     * that was not enlisted for write, plus the default graph if it was not
+     * enlisted. Called from commitWrite/abortWrite when the dataset txn was
+     * promoted from a READ variant — so per-graph READ txns were opened by
+     * {@link #begin(TxnType)} but never converted to WRITE. Safe to call when
+     * {@code t.enlistedNamed} is null; {@code end()} is a no-op if the
+     * per-graph activeTxn slot is empty.
+     */
+    private void endNonEnlistedPinned(DsTxnState t) {
+        if (!t.defaultEnlisted) defaultGraph.end();
+        Set<Node> enlisted = t.enlistedNamed;
+        for (Map.Entry<Node, GraphMemIndexedSetCowTxn> e : t.pinnedNamed.graphs().entrySet()) {
+            if (enlisted != null && enlisted.contains(e.getKey())) continue;
+            e.getValue().end();
         }
     }
 
@@ -575,6 +639,10 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
                     if (g != null) g.abort();
                 }
             }
+            // Mirror commitWrite: release per-graph READ txns opened by
+            // begin(READ_*PROMOTE) that we never promoted to WRITE.
+            if (t.type != TxnType.WRITE)
+                endNonEnlistedPinned(t);
         } finally {
             datasetWriteLock.unlock();
             activeTxn.remove();
@@ -651,6 +719,56 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         } else {
             Txn.executeWrite(this, r);
         }
+    }
+
+    @Override
+    public void removeGraph(Node graphName) {
+        mutate(() -> doRemoveGraph(graphName));
+    }
+
+    /**
+     * Drop a named graph from the dataset. The default graph cannot be
+     * dropped: requests to remove it clear its contents in place, matching
+     * {@code DatasetGraphInMemory}. For a named graph, the dataset's
+     * topology no longer contains the graph after commit; on abort, the
+     * graph remains as it was.
+     */
+    private void doRemoveGraph(Node graphName) {
+        DsTxnState t = require();
+        if (t.mode != ReadWrite.WRITE && !promote())
+            throw new JenaTransactionException(
+                    "Cannot remove graph in a non-promotable READ transaction");
+        if (Quad.isDefaultGraph(graphName)) {
+            defaultGraphForWrite().clear();
+            t.dirty = true;
+            return;
+        }
+        // Drop any addition made earlier in this txn. additions are always
+        // enlisted (see namedGraphForWrite), so abort the per-graph WRITE
+        // we started for it and forget the enlistment.
+        if (t.additions != null) {
+            GraphMemIndexedSetCowTxn added = t.additions.remove(graphName);
+            if (added != null) {
+                if (t.enlistedNamed != null) t.enlistedNamed.remove(graphName);
+                added.abort();
+                t.dirty = true;
+                return;
+            }
+        }
+        // Otherwise this is a removal of a pre-existing pinned graph.
+        if (!t.pinnedNamed.contains(graphName))
+            return;     // no such graph; nothing to remove
+        if (t.removals == null) t.removals = new HashSet<>();
+        t.removals.add(graphName);
+        // If the pinned graph was enlisted for write before being removed,
+        // discard the per-graph write so it isn't republished. The per-graph
+        // READ txn that was started at dataset begin remains and will be
+        // ended by commitWrite/abortWrite below.
+        if (t.enlistedNamed != null && t.enlistedNamed.remove(graphName)) {
+            GraphMemIndexedSetCowTxn pinned = t.pinnedNamed.get(graphName);
+            if (pinned != null) pinned.abort();
+        }
+        t.dirty = true;
     }
 
     // --- Find paths -----------------------------------------------------------
