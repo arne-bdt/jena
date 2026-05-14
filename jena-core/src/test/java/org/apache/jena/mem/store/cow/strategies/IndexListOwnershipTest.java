@@ -29,7 +29,6 @@ import org.apache.jena.mem.store.indexed.IndexList;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 
 import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.apache.jena.testing_framework.GraphHelper.triple;
@@ -62,13 +61,13 @@ public class IndexListOwnershipTest {
     /** Reach into a {@link CowWriteTxn} for its eager strategy. */
     private static CowEagerStoreStrategy eagerStrategyOf(CowWriteTxn store)
             throws Exception {
-        // Walk up to the abstract base class for the strategy field.
-        Class<?> base = store.getClass().getSuperclass();
-        Field f = base.getDeclaredField("strategy");
+        // The strategy field lives on CowWriteTxn (not its abstract base):
+        // the slot is intentionally kept off CowStore so the snapshot and the
+        // writer can use different concurrency models for it (volatile vs
+        // plain). See CowStore's Javadoc.
+        Field f = CowWriteTxn.class.getDeclaredField("strategy");
         f.setAccessible(true);
-        Object atomicRef = f.get(store);
-        Method get = atomicRef.getClass().getMethod("get");
-        return (CowEagerStoreStrategy) get.invoke(atomicRef);
+        return (CowEagerStoreStrategy) f.get(store);
     }
 
     /** Reach into the strategy's subjectIndex for direct slot inspection. */
@@ -160,22 +159,22 @@ public class IndexListOwnershipTest {
     @Test
     public void resetIndexStrategyClearsOwnership() throws Exception {
         // After resetIndexStrategy on EAGER, a fresh empty eager strategy
-        // is installed; its fresh empty spines have no slots and so no
-        // writer-owned bits — and the next add lands a fresh
-        // writer-owned slot.
+        // is installed and immediately re-indexes the existing triples
+        // (EAGER's invariant is that the index reflects every triple). The
+        // re-indexing goes through ensureWritableList on each freshly
+        // constructed spine, so every slot is stamped writer-owned — the
+        // old strategy's ownership bookkeeping is gone, and the new
+        // strategy's slots are owned by *this* writer from the moment
+        // they are populated.
         CowWriteTxn store = new CowWriteTxn(IndexingStrategy.EAGER);
         store.add(triple("s1 p o1"));
 
         store.resetIndexStrategy();                 // installs a fresh eager
 
         TxnNodesToIndices spine = subjectIndexOf(eagerStrategyOf(store));
-        assertEquals("fresh strategy's spine starts empty",
-                -1, spine.indexOf(n("s1")));
-
-        store.add(triple("s1 p o1"));
         int eIndex = spine.indexOf(n("s1"));
-        assertTrue(eIndex >= 0);
-        assertTrue("re-added slot is writer-owned",
+        assertTrue("fresh strategy re-indexed existing triples", eIndex >= 0);
+        assertTrue("re-indexed slot is writer-owned",
                 spine.isValueOwnedByThisWriter(eIndex));
     }
 }

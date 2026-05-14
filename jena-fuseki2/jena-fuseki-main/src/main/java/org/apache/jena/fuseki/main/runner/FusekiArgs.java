@@ -221,7 +221,7 @@ public class FusekiArgs extends CmdGeneral {
         add(argMem, "--mem",
             "Create an in-memory, non-persistent dataset for the server");
         add(argMemCow, "--mem-cow",
-            "Experimental: in-memory copy-on-write dataset (alternative to --mem; benchmark first)");
+            "Experimental: in-memory copy-on-write dataset (SEQUENTIAL fork; alternative to --mem; benchmark first)");
         add(argMemCowPar, "--mem-cow-parallel",
             "Experimental: as --mem-cow, with PARALLEL per-graph fork (for very large graphs)");
         add(argFile, "--file=FILE",
