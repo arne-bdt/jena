@@ -261,16 +261,22 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
             // (this txn promises not to mutate it). Readers that captured
             // `published` earlier see no effect from mutations on s.active.
             writeLock.lock();
-            s.mode = ReadWrite.WRITE;
-            s.active = fork();
+            try {
+                s.active = fork();
+                s.mode = ReadWrite.WRITE;
+                activeTxn.set(s);
+            } catch (Throwable th) {
+                writeLock.unlock();
+                throw th;
+            }
         } else {
             // READ, READ_PROMOTE, READ_COMMITTED_PROMOTE all start as readers
             // sharing the same published snapshot. promote() (if called) will
             // upgrade to a working copy.
             s.mode = ReadWrite.READ;
             s.active = published;
+            activeTxn.set(s);
         }
-        activeTxn.set(s);
     }
 
     @Override
@@ -307,9 +313,17 @@ public class GraphMemIndexedSetCowTxn extends GraphBase
                 return false;
             }
         }
-        t.mode = ReadWrite.WRITE;
-        t.active = fork();             // honours the configured ForkMode
-        return true;
+        try {
+            // Take the fork before flipping mode so a failed fork() leaves the
+            // txn observably READ and lets the catch path unlock cleanly.
+            CowWriteTxn forked = fork();
+            t.active = forked;          // honours the configured ForkMode
+            t.mode = ReadWrite.WRITE;
+            return true;
+        } catch (Throwable th) {
+            writeLock.unlock();
+            throw th;
+        }
     }
 
     @Override

@@ -146,16 +146,24 @@ public class GraphMemIndexedSetTxn extends GraphBase
             // store as the private working copy. Readers continue to see
             // `published` and are unaffected by mutations on s.active.
             writeLock.lock();
-            s.mode = ReadWrite.WRITE;
-            s.active = published.copy();
+            try {
+                // Take the copy before flipping mode so a failed copy() leaves
+                // s.mode == READ — the lock-release below covers both paths.
+                s.active = published.copy();
+                s.mode = ReadWrite.WRITE;
+                activeTxn.set(s);
+            } catch (Throwable th) {
+                writeLock.unlock();
+                throw th;
+            }
         } else {
             // READ, READ_PROMOTE, READ_COMMITTED_PROMOTE all start as readers
             // sharing the same published snapshot. promote() (if called) will
             // upgrade to a working copy.
             s.mode = ReadWrite.READ;
             s.active = published;
+            activeTxn.set(s);
         }
-        activeTxn.set(s);
     }
 
     @Override
@@ -164,7 +172,7 @@ public class GraphMemIndexedSetTxn extends GraphBase
         if (t.mode == ReadWrite.WRITE)
             return true;                        // already a writer
         if (t.type == TxnType.READ)
-            throw new JenaTransactionException("Cannot promote a READ transaction");
+            return false;                       // plain READ cannot promote (per Transactional spec)
         // Remaining types: READ_PROMOTE, READ_COMMITTED_PROMOTE.
 
         if (mode == Promote.READ_COMMITTED) {
@@ -174,21 +182,30 @@ public class GraphMemIndexedSetTxn extends GraphBase
             // this transaction may be stale, by definition.
             writeLock.lock();
         } else {
-            // ISOLATED: snapshot must not have moved since begin(). We try
-            // the lock without blocking; even if we acquire it, we still
-            // abort if a commit happened between begin and now.
-            // t.active is the snapshot reference captured at begin (we are
-            // still in READ mode, so it has not been replaced).
-            if (!writeLock.tryLock())
+            // ISOLATED: the snapshot we captured at begin must still be the
+            // published one when we finish promoting. Fail-fast first; then
+            // block on the writer slot (a concurrent writer may abort, in
+            // which case published is unchanged); then re-check after
+            // acquiring (a commit moved published → must fail).
+            if (t.active != published)
                 return false;
+            writeLock.lock();
             if (t.active != published) {
                 writeLock.unlock();
                 return false;
             }
         }
-        t.mode = ReadWrite.WRITE;
-        t.active = published.copy();
-        return true;
+        try {
+            // Take the copy before flipping mode so a failed copy() leaves the
+            // txn observably READ and lets the lock-release path unlock cleanly.
+            TripleStore copy = published.copy();
+            t.active = copy;
+            t.mode = ReadWrite.WRITE;
+            return true;
+        } catch (Throwable th) {
+            writeLock.unlock();
+            throw th;
+        }
     }
 
     @Override
