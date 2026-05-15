@@ -26,6 +26,7 @@ import org.junit.platform.suite.api.Suite;
 
 @Suite
 @SelectClasses({
-    TestInMemDatasetAssembler.class
+    TestInMemDatasetAssembler.class,
+    TestInMemDatasetCowAssembler.class
     })
 public class TS_Assembler {}

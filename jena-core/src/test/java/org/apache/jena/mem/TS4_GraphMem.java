@@ -29,6 +29,19 @@ import org.apache.jena.mem.spliterator.ArraySpliteratorTest;
 import org.apache.jena.mem.spliterator.ArraySubSpliteratorTest;
 import org.apache.jena.mem.spliterator.SparseArraySpliteratorTest;
 import org.apache.jena.mem.spliterator.SparseArraySubSpliteratorTest;
+import org.apache.jena.mem.store.cow.CowIndexedSetTripleStoreFuzzTest;
+import org.apache.jena.mem.store.cow.CowIndexedSetTripleStoreTest;
+import org.apache.jena.mem.store.cow.TxnNodesToIndicesTest;
+import org.apache.jena.mem.store.cow.TxnTripleSetTest;
+import org.apache.jena.mem.store.cow.collection.SparseTombstoneSpliteratorTest;
+import org.apache.jena.mem.store.cow.collection.TxnFastHashCompactionTest;
+import org.apache.jena.mem.store.cow.collection.TxnFastHashMapTest;
+import org.apache.jena.mem.store.cow.collection.TxnFastHashSetTest;
+import org.apache.jena.mem.store.cow.strategies.CowEagerStoreStrategyTest;
+import org.apache.jena.mem.store.cow.strategies.CowEagerWildcardForkTest;
+import org.apache.jena.mem.store.cow.strategies.CowMinimalStoreStrategyTest;
+import org.apache.jena.mem.store.cow.strategies.CowStoreStrategiesTest;
+import org.apache.jena.mem.store.cow.strategies.IndexListOwnershipTest;
 import org.apache.jena.mem.store.fast.FastArrayBunchTest;
 import org.apache.jena.mem.store.fast.FastHashedBunchMapTest;
 import org.apache.jena.mem.store.fast.FastHashedTripleBunchTest;
@@ -80,6 +93,25 @@ import org.junit.runners.Suite;
     // store/roaring
     RoaringTripleStoreTest.class,
     RoaringBitmapTripleIteratorTest.class,
+
+    // store/cow (writer-private collections shared with snapshots)
+    SparseTombstoneSpliteratorTest.class,
+    TxnFastHashSetTest.class,
+    TxnFastHashMapTest.class,
+    TxnFastHashCompactionTest.class,
+    TxnNodesToIndicesTest.class,
+    TxnTripleSetTest.class,
+
+    // store/cow/strategies
+    CowMinimalStoreStrategyTest.class,
+    CowEagerStoreStrategyTest.class,
+    CowEagerWildcardForkTest.class,
+    CowStoreStrategiesTest.class,
+    IndexListOwnershipTest.class,
+
+    // store/cow (end-to-end triple-store)
+    CowIndexedSetTripleStoreTest.class,
+    CowIndexedSetTripleStoreFuzzTest.class,
 
     // store/legacy
     ArrayBunchTest.class,
