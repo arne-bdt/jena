@@ -25,6 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Map;
+
 import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -131,5 +135,55 @@ public class TestDatasetGraphInMemoryCowTxnRemoveGraph {
         // Must not throw, must not leave the dataset in an inconsistent state.
         dsg.executeWrite(() -> dsg.removeGraph(uri("ghost")));
         assertFalse(dsg.containsGraph(uri("ghost")));
+    }
+
+    /**
+     * Pins down the <i>topology</i>-level effect of {@code removeGraph}, not
+     * just the user-visible content. {@code listGraphNodes} and
+     * {@code containsGraph} both filter out empty graphs ({@code !g.isEmpty()}),
+     * so even a buggy inherited {@code removeGraph} that merely empties the
+     * per-graph store looks correct through those APIs. The actual bug —
+     * the empty per-graph store stays pinned in {@code namedTopology}
+     * forever — is invisible without peeking at the internal topology map.
+     * Read it via reflection and assert the map shrinks.
+     */
+    @Test
+    public void removeGraphActuallyShrinksTheTopologyMap() throws Exception {
+        DatasetGraphInMemoryCowTxn dsg = new DatasetGraphInMemoryCowTxn();
+        dsg.executeWrite(() -> dsg.add(nq("g1", "s", "p", "o")));
+        assertEquals(1, namedTopologySize(dsg));
+
+        dsg.executeWrite(() -> dsg.removeGraph(uri("g1")));
+
+        assertEquals(0, namedTopologySize(dsg),
+                "removeGraph must drop the entry from namedTopology, not just empty it");
+    }
+
+    /**
+     * Same idea, in-transaction: add a graph and immediately remove it.
+     * Pre-fix, the inherited {@code deleteAny} would empty the freshly
+     * added graph but the addition would still be enlisted; the committed
+     * topology would contain an empty pinned store. Post-fix, the addition
+     * is dropped and the topology is unchanged from its pre-txn state.
+     */
+    @Test
+    public void addThenRemoveInSameTxnLeavesTopologyUntouched() throws Exception {
+        DatasetGraphInMemoryCowTxn dsg = new DatasetGraphInMemoryCowTxn();
+        dsg.executeWrite(() -> {
+            dsg.add(nq("g1", "s", "p", "o"));
+            dsg.removeGraph(uri("g1"));
+        });
+        assertEquals(0, namedTopologySize(dsg));
+    }
+
+    /** Reflect into the volatile {@code namedTopology} slot and report its size. */
+    private static int namedTopologySize(DatasetGraphInMemoryCowTxn dsg) throws Exception {
+        Field f = DatasetGraphInMemoryCowTxn.class.getDeclaredField("namedTopology");
+        f.setAccessible(true);
+        Object topology = f.get(dsg);
+        Method graphs = topology.getClass().getDeclaredMethod("graphs");
+        graphs.setAccessible(true);
+        Map<?, ?> m = (Map<?, ?>) graphs.invoke(topology);
+        return m.size();
     }
 }
