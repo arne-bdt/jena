@@ -51,6 +51,17 @@ import java.util.stream.Stream;
  * <p>
  * Concurrency: one writer at a time (serialised by a {@link ReentrantLock});
  * any number of concurrent readers, lock-free.
+ * <p>
+ * {@code promote()} on a {@code READ_PROMOTE} or
+ * {@code READ_COMMITTED_PROMOTE} transaction may <em>block</em> waiting for
+ * any concurrent writer to commit or abort. For {@code READ_COMMITTED} this
+ * is unconditional; for {@code ISOLATED} the call first fails fast if the
+ * published store has already moved past the snapshot captured at
+ * {@code begin()}, then blocks on the writer lock (a concurrent writer may
+ * yet abort, in which case promotion succeeds), then re-checks once the
+ * lock is held. Callers that need a non-blocking attempt should detect the
+ * concurrent writer themselves rather than rely on {@code promote} to
+ * fail-fast.
  */
 public class GraphMemIndexedSetTxn extends GraphBase
         implements Transactional, GraphWithPerform {
@@ -147,8 +158,10 @@ public class GraphMemIndexedSetTxn extends GraphBase
             // `published` and are unaffected by mutations on s.active.
             writeLock.lock();
             try {
-                // Take the copy before flipping mode so a failed copy() leaves
-                // s.mode == READ — the lock-release below covers both paths.
+                // Order: copy first, then publish the state. A thrown copy()
+                // leaves activeTxn empty (we never reach set(s)) and the
+                // catch path releases writeLock — no caller-visible state,
+                // no leaked lock.
                 s.active = published.copy();
                 s.mode = ReadWrite.WRITE;
                 activeTxn.set(s);

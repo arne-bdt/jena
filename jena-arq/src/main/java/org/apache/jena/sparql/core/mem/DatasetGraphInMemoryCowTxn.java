@@ -84,6 +84,17 @@ import org.apache.jena.util.iterator.NiceIterator;
  * The result is genuine dataset-wide snapshot isolation with O(1)
  * {@code begin(WRITE)} and pay-for-what-you-touch write costs.
  * <p>
+ * {@code promote()} on a {@code READ_PROMOTE} or
+ * {@code READ_COMMITTED_PROMOTE} transaction may <em>block</em> waiting for
+ * any concurrent dataset writer to commit or abort. For
+ * {@code READ_COMMITTED} this is unconditional; for {@code ISOLATED} the
+ * call first fails fast if the dataset generation has already moved past
+ * the one captured at {@code begin()}, then blocks on
+ * {@link #datasetWriteLock} (a concurrent writer may yet abort, in which
+ * case promotion succeeds), then re-checks once the lock is held. Callers
+ * that need a non-blocking attempt should detect the concurrent writer
+ * themselves rather than rely on {@code promote} to fail-fast.
+ * <p>
  * <b>Fork mode.</b> The {@link GraphMemIndexedSetCowTxn.ForkMode} passed at
  * construction is propagated to every per-graph instance — both the
  * default graph and any new named graphs added during a write transaction.

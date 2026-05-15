@@ -54,6 +54,17 @@ import java.util.stream.Stream;
  * <p>
  * Concurrency: one writer at a time (serialised by a
  * {@link ReentrantLock}); any number of concurrent readers, lock-free.
+ * <p>
+ * {@code promote()} on a {@code READ_PROMOTE} or
+ * {@code READ_COMMITTED_PROMOTE} transaction may <em>block</em> waiting for
+ * any concurrent writer to commit or abort. For {@code READ_COMMITTED} this
+ * is unconditional; for {@code ISOLATED} the call first fails fast if the
+ * published snapshot has already moved past the one captured at
+ * {@code begin()}, then blocks on the writer lock (a concurrent writer may
+ * yet abort, in which case promotion succeeds), then re-checks once the
+ * lock is held. Callers that need a non-blocking attempt should detect the
+ * concurrent writer themselves rather than rely on {@code promote} to
+ * fail-fast.
  */
 public class GraphMemIndexedSetCowTxn extends GraphBase
         implements Transactional, GraphWithPerform {
