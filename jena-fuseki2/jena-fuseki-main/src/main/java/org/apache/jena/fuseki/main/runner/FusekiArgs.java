@@ -49,6 +49,7 @@ import org.apache.jena.query.ARQ;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.sparql.core.assembler.AssemblerUtils;
+import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn;
 import org.slf4j.Logger;
 
 /**
@@ -429,7 +430,7 @@ public class FusekiArgs extends CmdGeneral {
             }
             case MEMCOW_PARALLEL->{
                 serverArgs.dsgMaker = args->DSGSetup.setupMemCow(log, args,
-                        org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn.ForkMode.PARALLEL);
+                        GraphMemIndexedSetCowTxn.ForkMode.PARALLEL);
             }
             case FILE->{
                 List<String> filenames = getValues(argFile);

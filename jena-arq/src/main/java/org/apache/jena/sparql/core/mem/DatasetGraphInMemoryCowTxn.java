@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -123,7 +124,7 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
      * The default graph. Created once at dataset construction and never
      * replaced — its contents may be mutated, but the instance is stable.
      * {@code removeGraph(Quad.defaultGraphIRI)} clears its contents in place;
-     * {@code clear()} likewise. The instance manages its own
+     * {@code clear()} likewise empties the default graph in place. The instance manages its own
      * {@code volatile published} snapshot internally, so the dataset does
      * not need a separate field for the default graph's current state.
      */
@@ -513,6 +514,14 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
 
         if (mode == Promote.READ_COMMITTED) {
             datasetWriteLock.lock();
+            // End per-graph READ txns; re-pin to latest published. Per-graph
+            // read state ends now; subsequent reads route through the live
+            // published view (stable because we hold datasetWriteLock), and
+            // writes lazy-fork as usual.
+            defaultGraph.end();
+            for (GraphMemIndexedSetCowTxn g : t.pinnedNamed.graphs().values()) g.end();
+            t.pinnedNamed = namedTopology;
+            t.startGeneration = generation.get();
         } else {
             // ISOLATED: fail-fast if the dataset already moved past our snapshot;
             // otherwise block on the writer lock, then re-check after acquiring
@@ -523,19 +532,9 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
                 datasetWriteLock.unlock();
                 return false;
             }
+            // ISOLATED: keep per-graph READ txns alive; they get promoted to
+            // WRITE on first per-graph write via startPerGraphWrite.
         }
-        if (mode == Promote.READ_COMMITTED) {
-            // End per-graph READ txns; re-pin to latest published. Per-graph
-            // read state ends now; subsequent reads route through the live
-            // published view (stable because we hold datasetWriteLock), and
-            // writes lazy-fork as usual.
-            defaultGraph.end();
-            for (GraphMemIndexedSetCowTxn g : t.pinnedNamed.graphs().values()) g.end();
-            t.pinnedNamed = namedTopology;
-            t.startGeneration = generation.get();
-        }
-        // ISOLATED: keep per-graph READ txns alive; they get promoted to
-        // WRITE on first per-graph write via {@link #startPerGraphWrite}.
         // After any promote, captured views are stale on graphs we'll
         // write to (writer's working copy must be visible). Drop them to
         // force cross-graph operations onto the per-thread path, which
@@ -904,6 +903,7 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
 
         if (Quad.isUnionGraph(g)) {
             // Defer to the inherited union-graph routing (deduplicates triples).
+            // No access() wrap here: findNG() is itself access()-wrapped.
             return Iter.asStream(findNG(g, s, p, o));
         }
 
@@ -1119,7 +1119,7 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
      * Read inside a transaction if one is active, otherwise wrap in an
      * auto-managed READ transaction so reads always observe a consistent view.
      */
-    private <T> T access(java.util.function.Supplier<T> source) {
+    private <T> T access(Supplier<T> source) {
         return isInTransaction() ? source.get() : Txn.calculateRead(this, source);
     }
 }

@@ -60,9 +60,7 @@ import org.openjdk.jmh.runner.Runner;
  *   <li>{@link DatasetGraphInMemory} via its dataset-level transaction API
  *       (delete/add of {@link Quad}s in the default graph);</li>
  *   <li>A {@link Transactional} graph (the deep-copy and copy-on-write
- *       variants) via {@code begin/commit/end};</li>
- *   <li>A non-transactional baseline that just calls {@code delete}/{@code add}
- *       directly — kept as a floor for the transactional overhead.</li>
+ *       variants) via {@code begin/commit/end}.</li>
  * </ul>
  * Within an iteration the work is intentionally split into two transactions
  * on every other iteration, so the benchmark mixes "single big txn" and
@@ -112,27 +110,6 @@ public class TestTxnGraphTransactions {
     @Benchmark
     public long transactionsWithDeleteAndAdd() {
         return workload.getAsLong();
-    }
-
-    /** Non-transactional baseline: delete-then-add directly on the graph. */
-    private long runNonTransactionalWorkload() {
-        final int batchSize = (int) (triplesToUpdate.size() * UPDATE_RATIO);
-        long changes = 0;
-        for (int iteration = 0; iteration < ITERATION_LIMIT; iteration++) {
-            final double memoryBefore = MEASURE_MEMORY ? runGcAndGetUsedMemoryInMB() : 0;
-            for (int i = 0; i < batchSize; i++) {
-                graph.delete(triplesToUpdate.get(i));
-            }
-            for (int i = 0; i < batchSize; i++) {
-                graph.add(triplesToUpdate.get(i));
-            }
-            changes += batchSize;
-            if (MEASURE_MEMORY) {
-                printMemoryDelta("Graph", iteration, memoryBefore);
-            }
-            Collections.shuffle(triplesToUpdate, new Random(iteration));
-        }
-        return changes;
     }
 
     /** Transactional variant: same workload wrapped in begin/commit/end. */
@@ -207,12 +184,9 @@ public class TestTxnGraphTransactions {
             workload = this::runDatasetGraphWorkload;
         } else {
             graph = TxnGraphContext.createGraph(param1_GraphImplementation);
-            if (graph instanceof Transactional t) {
-                transactional = t;
-                workload = this::runTransactionalWorkload;
-            } else {
-                workload = this::runNonTransactionalWorkload;
-            }
+            // All configured graph variants are Transactional.
+            transactional = (Transactional) graph;
+            workload = this::runTransactionalWorkload;
             TxnGraphContext.writeTxn(graph, () -> allTriples.forEach(graph::add));
         }
         if (MEASURE_MEMORY) {

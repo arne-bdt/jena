@@ -22,7 +22,6 @@
 package org.apache.jena.mem.store.cow;
 
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.mem.store.indexed.IndexList;
 import org.junit.Test;
 

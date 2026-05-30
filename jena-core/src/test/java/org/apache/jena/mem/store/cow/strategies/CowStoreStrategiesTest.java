@@ -21,7 +21,6 @@
 
 package org.apache.jena.mem.store.cow.strategies;
 
-import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
 import org.apache.jena.mem.store.cow.CowWriteTxn;
@@ -134,8 +133,9 @@ public class CowStoreStrategiesTest {
     @Test
     public void lazyConcurrentFirstLookupRaceProducesConsistentAnswers() throws Exception {
         // Many threads hitting a still-pending lazy strategy must each
-        // get the correct answer; the CAS only decides which built
-        // strategy is published, not which answers are returned.
+        // get the correct answer; the last-writer-wins volatile publish
+        // only decides which built strategy is published, not which
+        // answers are returned.
         CowWriteTxn store = seeded(IndexingStrategy.LAZY_PARALLEL);
         final int numReaders = 8;
         CountDownLatch start = new CountDownLatch(1);

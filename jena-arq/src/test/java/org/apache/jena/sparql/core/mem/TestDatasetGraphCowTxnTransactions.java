@@ -22,7 +22,6 @@
 package org.apache.jena.sparql.core.mem;
 
 import org.apache.jena.graph.Graph;
-import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.query.ReadWrite;
@@ -208,10 +207,5 @@ public class TestDatasetGraphCowTxnTransactions {
             ds.end();
         }
         assertFalse(graph.isInTransaction());
-    }
-
-    @SuppressWarnings("unused")
-    private static Node n(String s) {
-        return NodeFactory.createURI("http://ex/" + s);
     }
 }

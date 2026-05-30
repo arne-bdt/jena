@@ -42,12 +42,12 @@ import static org.junit.Assert.*;
  * the strategy-correctness suites; the cases here pin down a couple of
  * properties of the strategy in isolation:
  * <ul>
- *   <li>{@code addToIndex} resizes its reverse-index arrays inline as
- *       the writer's keys array grows. The earlier design used a
- *       {@code setOnKeysGrowHook} callback for this; the current design
- *       resizes inline (one length compare on the hot path), which
- *       removes a writer-private callback field from the shared triple
- *       set.
+ *   <li>The reverse-index arrays grow in lock-step with the writer's
+ *       {@code keys} array. {@code addToIndex} keeps no length check on
+ *       the hot path; instead the writer-side {@code setOnKeysGrowHook}
+ *       (installed at fork time) fires inside {@code triples.addAndGetIndex()}
+ *       before {@code addToIndex} runs, so the three reverse-index arrays
+ *       already cover the new index.
  *   <li>The eager strategy and the minimal strategy must return the
  *       same triple set for every partial pattern over the same data.
  * </ul>
@@ -55,17 +55,17 @@ import static org.junit.Assert.*;
 public class CowEagerStoreStrategyTest {
 
     private static Node n(String s) {
-        return node("" + s);
+        return node(s);
     }
 
     /**
      * Drive the writer through enough triples to force several
-     * keys-array grows. With {@code addToIndex} resizing the
-     * reverse-index arrays inline, the writes must succeed and lookups
-     * must return correct results — without any explicit hook wiring.
+     * keys-array grows. The grow hook must keep the reverse-index arrays
+     * sized in lock-step with {@code triples.keys[]}, so every write
+     * succeeds and every subject lookup returns exactly one triple.
      */
     @Test
-    public void addToIndexResizesReverseArraysInlineAsKeysGrow() {
+    public void reverseIndexArraysGrowInLockStepWithKeys() {
         CowWriteTxn store = new CowWriteTxn(IndexingStrategy.EAGER);
         final int N = 256;
         for (int i = 0; i < N; i++) {

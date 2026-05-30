@@ -30,7 +30,7 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
 /**
- * One-shot helper to run the four {@code TestTxnDataset*} benchmarks with
+ * One-shot helper to run the five {@code TestTxnDataset*} benchmarks with
  * reduced iteration counts so developers can sanity-check the perf claim
  * without waiting for a full JMH run. Not a JUnit test: invoke
  * {@link #main(String[])} explicitly.

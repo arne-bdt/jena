@@ -473,11 +473,7 @@ public abstract class TxnFastHashBase<K> implements JenaMapSetCommon<K> {
     }
 
     public final int removeAndGetIndex(final K key) {
-        return removeAndGetIndex(key, key.hashCode());
-    }
-
-    public final int removeAndGetIndex(final K key, final int hashCode) {
-        final var pIndex = findPosition(key, hashCode);
+        final var pIndex = findPosition(key, key.hashCode());
         if (pIndex < 0) {
             return -1;
         }

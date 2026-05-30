@@ -55,7 +55,7 @@ import static org.junit.Assert.*;
 public class IndexListOwnershipTest {
 
     private static Node n(String s) {
-        return node("" + s);
+        return node(s);
     }
 
     /** Reach into a {@link CowWriteTxn} for its eager strategy. */

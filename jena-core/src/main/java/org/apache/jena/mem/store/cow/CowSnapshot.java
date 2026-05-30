@@ -23,7 +23,6 @@ package org.apache.jena.mem.store.cow;
 
 import org.apache.jena.mem.IndexingStrategy;
 import org.apache.jena.mem.store.cow.strategies.CowEagerStoreStrategy;
-import org.apache.jena.mem.store.cow.strategies.CowLazyStoreStrategy;
 import org.apache.jena.mem.store.cow.strategies.CowStoreStrategy;
 
 import java.util.concurrent.CompletableFuture;

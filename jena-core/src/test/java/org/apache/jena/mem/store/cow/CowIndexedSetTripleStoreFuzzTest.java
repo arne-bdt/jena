@@ -21,8 +21,6 @@
 
 package org.apache.jena.mem.store.cow;
 
-import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.junit.Test;
 

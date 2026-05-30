@@ -110,10 +110,9 @@ public abstract class CowStore {
 
     /**
      * @return the current pluggable strategy. Subclasses provide the
-     * concurrency model: {@link CowSnapshot} reads through an
-     * {@link java.util.concurrent.atomic.AtomicReference} (volatile
-     * semantics, supports the LAZY-upgrade race); {@link CowWriteTxn}
-     * reads from a plain field (single-thread access).
+     * concurrency model: {@link CowSnapshot} reads a {@code volatile}
+     * field (publishes the LAZY-to-EAGER upgrade to all readers);
+     * {@link CowWriteTxn} reads from a plain field (single-thread access).
      */
     protected abstract CowStoreStrategy currentStrategy();
 

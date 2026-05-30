@@ -108,7 +108,7 @@ public final class MEASData {
         final var list = new ArrayList<AnalogValue>(numberOfAnalogValues);
         for (int i = 0; i < numberOfAnalogValues; i++) {
             list.add(new AnalogValue(
-                    "urn:uuid:" + UUID.randomUUID(),
+                    UUID.randomUUID().toString(),
                     RANDOM.nextFloat(),
                     Clock.systemUTC().instant(),
                     RANDOM.nextInt()));
@@ -121,7 +121,7 @@ public final class MEASData {
         final var list = new ArrayList<DiscreteValue>(numberOfDiscreteValues);
         for (int i = 0; i < numberOfDiscreteValues; i++) {
             list.add(new DiscreteValue(
-                    "urn:uuid:" + UUID.randomUUID(),
+                    UUID.randomUUID().toString(),
                     RANDOM.nextInt(),
                     Clock.systemUTC().instant(),
                     RANDOM.nextInt()));

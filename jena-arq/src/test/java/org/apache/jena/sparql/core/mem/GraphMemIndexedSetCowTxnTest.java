@@ -21,8 +21,6 @@
 
 package org.apache.jena.sparql.core.mem;
 
-import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.graph.Triple;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.query.TxnType;
 import org.apache.jena.sparql.JenaTransactionException;

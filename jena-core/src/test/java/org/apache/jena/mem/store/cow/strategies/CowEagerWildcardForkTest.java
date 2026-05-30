@@ -21,8 +21,6 @@
 
 package org.apache.jena.mem.store.cow.strategies;
 
-import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
 import org.apache.jena.mem.store.cow.CowWriteTxn;

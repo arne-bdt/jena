@@ -63,7 +63,7 @@ public class DatasetGraphFactory
      * so overheads can accumulate).
      *
      * @return a transactional, in-memory, modifiable DatasetGraph
-     * @see #createTxnMemCow() for a copy-on-write alternative with lock-free reads.
+     * @see #createTxnMemCow()
      */
     public static DatasetGraph createTxnMem() { return new DatasetGraphInMemory(); }
 
