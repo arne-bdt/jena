@@ -31,6 +31,10 @@ import java.util.function.UnaryOperator;
 /**
  * Copy-on-write twin of {@link org.apache.jena.mem.collection.FastHashMap}.
  * See {@link TxnFastHashBase} for the sharing and tombstone discipline.
+ * <p>
+ * Like {@code FastHashMap}, it does not allow {@code null} keys or values; the
+ * put paths assert this (disabled in production, so no hot-path cost). The
+ * {@link #compute} contract still uses a {@code null} result to mean "remove".
  *
  * <h2>The update path: tombstone-and-append</h2>
  * A put on an <i>already-present</i> key cannot overwrite
@@ -120,6 +124,34 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
     }
 
     /**
+     * Deep-clone {@code source}'s {@code values} array into this instance,
+     * applying {@code valueProcessor} to each live value (e.g.
+     * {@code IndexList::copy} to duplicate mutable values). This is the
+     * value-array half of a genuine {@code copy()} — call it after
+     * {@link #copyBaseStateFrom} has cloned the base arrays.
+     * <p>
+     * Unlike the {@linkplain #TxnFastHashMap(TxnFastHashMap) fork constructor}
+     * (which shares {@code values} with the source and defers cloning to the
+     * eager strategy's clone-on-first-touch), this produces fully independent
+     * values, so every live slot is marked writer-owned: the copy already
+     * owns each duplicated value and may mutate it in place.
+     */
+    protected final void copyValuesFrom(final TxnFastHashMap<K, V> source,
+                                        final UnaryOperator<V> valueProcessor) {
+        this.values = newValuesArray(source.values.length);
+        this.valueOwnedByThisWriter = new boolean[source.values.length];
+        for (int i = 0; i < source.keysPos; i++) {
+            if (!source.deleted[i]) {
+                final V value = source.values[i];
+                if (value != null) {
+                    this.values[i] = valueProcessor.apply(value);
+                }
+                this.valueOwnedByThisWriter[i] = true;
+            }
+        }
+    }
+
+    /**
      * Release the writer-owned bitmap. Called once a spine has been
      * aliased into a {@link org.apache.jena.mem.store.cow.CowSnapshot}
      * — the snapshot doesn't write, so the bitmap is dead weight.
@@ -186,6 +218,8 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
 
     @Override
     public boolean tryPut(K key, V value) {
+        assert(key != null);
+        assert(value != null);
         growPositionsArrayIfNeeded();
         final int hashCode = key.hashCode();
         final var pIndex = findPosition(key, hashCode);
@@ -200,6 +234,8 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
 
     @Override
     public void put(K key, V value) {
+        assert(key != null);
+        assert(value != null);
         growPositionsArrayIfNeeded();
         final int hashCode = key.hashCode();
         final var pIndex = findPosition(key, hashCode);
@@ -212,6 +248,8 @@ public abstract class TxnFastHashMap<K, V> extends TxnFastHashBase<K> implements
 
     @Override
     public int putAndGetIndex(K key, V value) {
+        assert(key != null);
+        assert(value != null);
         growPositionsArrayIfNeeded();
         final int hashCode = key.hashCode();
         final var pIndex = findPosition(key, hashCode);

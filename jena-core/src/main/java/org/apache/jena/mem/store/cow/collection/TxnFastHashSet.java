@@ -27,6 +27,9 @@ import org.apache.jena.mem.collection.JenaSetIndexed;
  * Copy-on-write twin of {@link org.apache.jena.mem.collection.FastHashSet}
  * built on {@link TxnFastHashBase}. See the base class for the sharing and
  * tombstone discipline.
+ * <p>
+ * Like {@code FastHashSet}, it does not allow {@code null} elements; the add
+ * paths assert this (disabled in production, so no hot-path cost).
  *
  * @param <K> the element type
  */
@@ -55,6 +58,7 @@ public abstract class TxnFastHashSet<K> extends TxnFastHashBase<K> implements Je
 
     @Override
     public boolean tryAdd(K key, int hashCode) {
+        assert(key != null);
         growPositionsArrayIfNeeded();
         final var pIndex = findPosition(key, hashCode);
         if (pIndex < 0) {
@@ -75,6 +79,7 @@ public abstract class TxnFastHashSet<K> extends TxnFastHashBase<K> implements Je
 
     @Override
     public int addAndGetIndex(K key) {
+        assert(key != null);
         growPositionsArrayIfNeeded();
         final var hashCode = key.hashCode();
         final var pIndex = findPosition(key, hashCode);
@@ -102,6 +107,7 @@ public abstract class TxnFastHashSet<K> extends TxnFastHashBase<K> implements Je
 
     @Override
     public void addUnchecked(K key, int hashCode) {
+        assert(key != null);
         growPositionsArrayIfNeeded();
         final var eIndex = getFreeKeyIndex();
         keys[eIndex] = key;

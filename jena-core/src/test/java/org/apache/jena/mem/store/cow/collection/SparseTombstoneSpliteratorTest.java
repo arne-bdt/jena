@@ -33,18 +33,22 @@ import static org.junit.Assert.assertTrue;
  * Pins the {@code characteristics()} contract of
  * {@link SparseTombstoneSpliterator}.
  * <p>
- * The same spliterator class is used to walk both keys (via
- * {@link TxnFastHashBase#keySpliterator()}, where {@code NONNULL} would be
- * accurate) and values (via {@link TxnFastHashMap#valueSpliterator()},
- * where {@code put(K, null)} is permitted and {@code NONNULL} would be
- * unsafe). The class therefore must <i>not</i> declare {@code NONNULL}.
+ * The same spliterator class walks both keys (via
+ * {@link TxnFastHashBase#keySpliterator()}) and values (via
+ * {@link TxnFastHashMap#valueSpliterator()}). The mem maps/sets reject
+ * {@code null} keys and values, and dead slots are skipped via the
+ * {@code deleted} bitmap, so every yielded element is non-null: the class
+ * declares {@code NONNULL}, matching its non-CoW twin
+ * {@link org.apache.jena.mem.spliterator.SparseArraySpliterator}.
  * <p>
- * It must declare {@code ORDERED} (iteration walks the slice deterministically
- * from high index down to low) and {@code DISTINCT} (the underlying set
- * guarantees distinct keys, and the value walk is over distinct slots).
- * It must <i>not</i> declare {@code IMMUTABLE} (the owning collection can
- * still be structurally mutated by a writer for the duration of a write
- * transaction).
+ * It also declares {@code DISTINCT} (the underlying set guarantees distinct
+ * keys, and the value walk is over distinct slots). It must <i>not</i>
+ * declare {@code ORDERED}: although iteration walks the slice
+ * deterministically from high index down to low, the indexed-set family does
+ * not promise callers a stable encounter order (sibling spliterators/iterators
+ * may walk in the opposite direction). It must <i>not</i> declare
+ * {@code IMMUTABLE} (the owning collection can still be structurally mutated
+ * by a writer for the duration of a write transaction).
  */
 public class SparseTombstoneSpliteratorTest {
 
@@ -58,29 +62,31 @@ public class SparseTombstoneSpliteratorTest {
     }
 
     @Test
-    public void keySpliteratorDeclaresOrderedDistinctNotNonNullNotImmutable() {
+    public void keySpliteratorDeclaresDistinctNonNullNotOrderedNotImmutable() {
         StringSet s = new StringSet();
         s.tryAdd("a");
         s.tryAdd("b");
         Spliterator<String> spl = s.keySpliterator();
-        assertTrue("ORDERED expected", spl.hasCharacteristics(Spliterator.ORDERED));
         assertTrue("DISTINCT expected", spl.hasCharacteristics(Spliterator.DISTINCT));
-        assertFalse("NONNULL forbidden (shared with value walk)",
+        assertTrue("NONNULL expected (null keys rejected)",
                 spl.hasCharacteristics(Spliterator.NONNULL));
+        assertFalse("ORDERED forbidden (family does not promise encounter order)",
+                spl.hasCharacteristics(Spliterator.ORDERED));
         assertFalse("IMMUTABLE forbidden (writer may mutate)",
                 spl.hasCharacteristics(Spliterator.IMMUTABLE));
     }
 
     @Test
-    public void valueSpliteratorDeclaresOrderedDistinctNotNonNull() {
+    public void valueSpliteratorDeclaresDistinctNonNullNotOrdered() {
         StringMap m = new StringMap();
         m.put("a", "A");
-        m.put("b", null);                  // null values are permitted
+        m.put("b", "B");                   // null values are rejected (assert)
         Spliterator<String> spl = m.valueSpliterator();
-        assertTrue("ORDERED expected", spl.hasCharacteristics(Spliterator.ORDERED));
         assertTrue("DISTINCT expected", spl.hasCharacteristics(Spliterator.DISTINCT));
-        assertFalse("NONNULL forbidden (null values permitted)",
+        assertTrue("NONNULL expected (null values rejected)",
                 spl.hasCharacteristics(Spliterator.NONNULL));
+        assertFalse("ORDERED forbidden (family does not promise encounter order)",
+                spl.hasCharacteristics(Spliterator.ORDERED));
     }
 
     @Test
@@ -90,7 +96,7 @@ public class SparseTombstoneSpliteratorTest {
         StringSet s = new StringSet();
         s.tryAdd("a");
         Spliterator<String> spl = s.keySpliterator();
-        assertEquals(Spliterator.ORDERED | Spliterator.DISTINCT,
+        assertEquals(Spliterator.DISTINCT | Spliterator.NONNULL,
                 spl.characteristics());
     }
 }

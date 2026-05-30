@@ -77,12 +77,23 @@ public class TxnNodesToIndices
     /**
      * {@inheritDoc}
      * <p>
-     * <b>This is a fork, not a deep copy.</b> The source must not be
-     * mutated after this call — only the returned instance is safe to
-     * mutate. See {@link #fork()} and the class Javadoc.
+     * Returns an <b>independent deep copy</b>, mirroring
+     * {@link org.apache.jena.mem.store.indexed.NodesToIndices#copy()}: the
+     * base arrays are cloned and each value is an independent
+     * {@link IndexList#copy() clone} of the corresponding source list, so this
+     * source and the returned map are both freely mutable down to their index
+     * lists and neither sees the other's changes.
+     * <p>
+     * Contrast {@link #fork()}, the cheap copy-on-write path, which shares the
+     * spine and {@code values} arrays (deferring per-list duplication to the
+     * eager strategy's clone-on-first-touch) and therefore requires the source
+     * to be treated as frozen afterwards.
      */
     @Override
     public TxnNodesToIndices copy() {
-        return fork();
+        final TxnNodesToIndices result = new TxnNodesToIndices();
+        result.copyBaseStateFrom(this);
+        result.copyValuesFrom(this, IndexList::copy);
+        return result;
     }
 }

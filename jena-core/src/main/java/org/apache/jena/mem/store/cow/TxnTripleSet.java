@@ -125,13 +125,22 @@ public class TxnTripleSet
     /**
      * {@inheritDoc}
      * <p>
-     * <b>This is a fork, not a deep copy.</b> The source must not be
-     * mutated after this call — only the returned instance is safe to
-     * mutate. See {@link #fork()} and the class Javadoc.
+     * Returns an <b>independent deep copy</b>: every backing array is cloned,
+     * so this source and the returned instance are both freely mutable and
+     * neither sees the other's changes. This is the {@link Copyable} contract
+     * and the counterpart of {@link org.apache.jena.mem.store.indexed.TripleSet#copy()}.
+     * <p>
+     * Contrast {@link #fork()}, which is the cheap copy-on-write path: a fork
+     * shares the spine arrays and therefore requires the source to be treated
+     * as frozen afterwards. Triples are immutable, so (unlike the spine map)
+     * no per-element duplication is needed. The {@code onKeysGrowHook} is not
+     * copied — a copy installs its own if required.
      */
     @Override
     public TxnTripleSet copy() {
-        return fork();
+        final TxnTripleSet result = new TxnTripleSet();
+        result.copyBaseStateFrom(this);
+        return result;
     }
 
     /**

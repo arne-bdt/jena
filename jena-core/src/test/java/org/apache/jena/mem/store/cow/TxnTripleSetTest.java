@@ -68,16 +68,27 @@ public class TxnTripleSetTest {
     }
 
     @Test
-    public void copyDelegatesToFork() {
+    public void copyIsIndependentDeepCopy() {
         TxnTripleSet src = new TxnTripleSet();
-        src.tryAdd(triple("a p o"));
+        Triple a = triple("a p o"), b = triple("b p o"), d = triple("d p o");
+        src.tryAdd(a);
 
         TxnTripleSet copy = src.copy();
-        copy.tryAdd(triple("b p o"));
 
-        // Same fork semantics: source unaffected by copy's mutations.
-        assertFalse(src.containsKey(triple("b p o")));
-        assertTrue(copy.containsKey(triple("a p o")));
-        assertTrue(copy.containsKey(triple("b p o")));
+        // Unlike fork(), copy() leaves BOTH instances independently mutable.
+        // Mutating the copy must not touch the source ...
+        copy.tryAdd(b);
+        assertFalse("source must not see the copy's additions", src.containsKey(b));
+
+        // ... and (the stronger guarantee fork() does NOT make) mutating the
+        // source must not touch the copy: fork() requires the source to be
+        // frozen, copy() does not.
+        src.tryAdd(d);
+        assertFalse("copy must not see the source's later additions", copy.containsKey(d));
+
+        assertTrue(src.containsKey(a));
+        assertTrue(src.containsKey(d));
+        assertTrue(copy.containsKey(a));
+        assertTrue(copy.containsKey(b));
     }
 }

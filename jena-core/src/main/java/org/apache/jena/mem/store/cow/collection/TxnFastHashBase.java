@@ -227,6 +227,32 @@ public abstract class TxnFastHashBase<K> implements JenaMapSetCommon<K> {
     }
 
     /**
+     * Overwrite this instance's base arrays and scalars with independent
+     * (deep) clones of {@code source}'s — <i>nothing</i> is shared. This is
+     * the genuine-copy counterpart to the {@linkplain
+     * #TxnFastHashBase(TxnFastHashBase) fork constructor}: where {@code fork}
+     * aliases the spine arrays (and so requires the source to be frozen
+     * afterwards), this leaves both this and {@code source} independently
+     * mutable. Used by subclass {@code copy()} implementations.
+     * <p>
+     * The stable index layout is preserved verbatim (every slot, tombstone,
+     * and probe-table entry is cloned at the same position), so the result is
+     * structurally identical to {@code source}, just backed by its own
+     * arrays. Subclasses holding additional arrays (e.g. a map's
+     * {@code values}) must clone those separately — see
+     * {@link TxnFastHashMap#copyValuesFrom}.
+     */
+    protected final void copyBaseStateFrom(final TxnFastHashBase<K> source) {
+        this.positions = source.positions.clone();
+        this.keys = source.keys.clone();
+        this.hashCodes = source.hashCodes.clone();
+        this.deleted = source.deleted.clone();
+        this.keysPos = source.keysPos;
+        this.removedKeysCount = source.removedKeysCount;
+        this.lastDeletedIndex = source.lastDeletedIndex;
+    }
+
+    /**
      * Subclasses allocate their typed key array here.
      */
     protected abstract K[] newKeysArray(int size);

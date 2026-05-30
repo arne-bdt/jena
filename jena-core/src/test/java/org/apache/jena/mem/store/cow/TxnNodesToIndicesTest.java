@@ -33,7 +33,7 @@ import static org.junit.Assert.*;
  * Unit tests for {@link TxnNodesToIndices}. The map's behaviour is largely
  * inherited from {@link org.apache.jena.mem.store.cow.collection.TxnFastHashMap},
  * which has dedicated tests; this class focuses on the {@link IndexList}
- * value type and fork semantics.
+ * value type and the fork / deep-copy semantics.
  */
 public class TxnNodesToIndicesTest {
 
@@ -111,5 +111,39 @@ public class TxnNodesToIndicesTest {
             else assertNotNull(fork.get(n("k" + i)));
         }
         assertSame(newList, fork.get(n("brand-new")));
+    }
+
+    @Test
+    public void copyDeepCopiesListValuesAndIsIndependent() {
+        TxnNodesToIndices src = new TxnNodesToIndices();
+        Node a = n("a"), b = n("b");
+        IndexList listA = new IndexList(); listA.add(7); listA.add(8);
+        IndexList listB = new IndexList(); listB.add(1);
+        src.put(a, listA);
+        src.put(b, listB);
+
+        TxnNodesToIndices copy = src.copy();
+
+        // Values are independent clones, not shared references (contrast
+        // forkSharesListReferencesUntilReplaced above).
+        assertNotSame(listA, copy.get(a));
+        assertNotSame(listB, copy.get(b));
+        assertEquals(2, copy.get(a).size());
+        assertEquals(7, copy.get(a).getIndexAt(0));
+        assertEquals(8, copy.get(a).getIndexAt(1));
+
+        // Mutating a value through the copy must not touch the source's list.
+        copy.get(a).add(99);
+        assertEquals(2, src.get(a).size());
+        assertEquals(3, copy.get(a).size());
+
+        // Structural independence in BOTH directions — fork() forbids
+        // mutating the source, copy() does not.
+        copy.tryRemove(b);
+        src.put(n("c"), new IndexList());
+        assertEquals(3, src.size());          // a, b, c
+        assertNotNull(src.get(b));
+        assertEquals(1, copy.size());         // a only (b removed, c never added)
+        assertNull(copy.get(n("c")));
     }
 }

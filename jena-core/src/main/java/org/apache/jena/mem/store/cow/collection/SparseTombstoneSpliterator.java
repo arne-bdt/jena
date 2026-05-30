@@ -132,10 +132,16 @@ public class SparseTombstoneSpliterator<E> implements Spliterator<E> {
 
     @Override
     public int characteristics() {
-        // Deliberately NOT IMMUTABLE — see class Javadoc. ORDERED is correct:
-        // iteration walks the slice from high index to low, deterministically.
-        // NONNULL is omitted because the spliterator is also used to walk
-        // value arrays of TxnFastHashMap, where null values are permitted.
-        return DISTINCT | ORDERED;
+        // Deliberately NOT IMMUTABLE — see class Javadoc.
+        // ORDERED is intentionally NOT declared: although this spliterator
+        // walks its slice deterministically (high index to low), the
+        // indexed-set family does not guarantee a stable encounter order to
+        // callers — sibling spliterators/iterators may walk in the opposite
+        // direction — so we must not commit to one here.
+        // NONNULL is declared: the mem maps/sets reject null keys and values
+        // (see the assertions in TxnFastHashSet / TxnFastHashMap), and dead
+        // slots are skipped via the deleted bitmap, so every yielded element
+        // is non-null. Mirrors the non-CoW SparseArraySpliterator twin.
+        return DISTINCT | NONNULL;
     }
 }
