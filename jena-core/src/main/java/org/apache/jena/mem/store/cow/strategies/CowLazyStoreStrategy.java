@@ -21,8 +21,8 @@
 
 package org.apache.jena.mem.store.cow.strategies;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.store.cow.CowSnapshot;
 import org.apache.jena.mem.store.cow.CowStore;
 import org.apache.jena.mem.store.cow.CowWriteTxn;
@@ -37,8 +37,8 @@ import java.util.stream.Stream;
  * no-ops while the index is absent (the triples themselves are still
  * maintained in the enclosing {@link CowStore}; only the
  * subject/predicate/object index is skipped). On the first
- * {@code containsMatch} / {@code streamMatch} / {@code findMatch} call,
- * a fresh {@link CowEagerStoreStrategy} is built from the enclosing
+ * partial-pattern lookup ({@code containsXxx} / {@code streamXxx} /
+ * {@code findXxx}), a fresh {@link CowEagerStoreStrategy} is built from the enclosing
  * store's triples and installed in the store's strategy slot via
  * {@link CowStore#installEagerStrategy(CowEagerStoreStrategy)}; the
  * triggering lookup is then forwarded to it.
@@ -123,20 +123,29 @@ public final class CowLazyStoreStrategy implements CowStoreStrategy {
         return mine;
     }
 
-    @Override
-    public boolean containsMatch(Triple tripleMatch, MatchPattern pattern) {
-        return upgradeAndAnswer().containsMatch(tripleMatch, pattern);
-    }
+    // Each partial-pattern lookup triggers the upgrade and forwards to the
+    // freshly built eager strategy.
 
-    @Override
-    public Stream<Triple> streamMatch(Triple tripleMatch, MatchPattern pattern) {
-        return upgradeAndAnswer().streamMatch(tripleMatch, pattern);
-    }
+    @Override public boolean containsSubAnyAny(Node s) { return upgradeAndAnswer().containsSubAnyAny(s); }
+    @Override public boolean containsAnyPreAny(Node p) { return upgradeAndAnswer().containsAnyPreAny(p); }
+    @Override public boolean containsAnyAnyObj(Node o) { return upgradeAndAnswer().containsAnyAnyObj(o); }
+    @Override public boolean containsSubPreAny(Node s, Node p) { return upgradeAndAnswer().containsSubPreAny(s, p); }
+    @Override public boolean containsSubAnyObj(Node s, Node o) { return upgradeAndAnswer().containsSubAnyObj(s, o); }
+    @Override public boolean containsAnyPreObj(Node p, Node o) { return upgradeAndAnswer().containsAnyPreObj(p, o); }
 
-    @Override
-    public ExtendedIterator<Triple> findMatch(Triple tripleMatch, MatchPattern pattern) {
-        return upgradeAndAnswer().findMatch(tripleMatch, pattern);
-    }
+    @Override public Stream<Triple> streamSubAnyAny(Node s) { return upgradeAndAnswer().streamSubAnyAny(s); }
+    @Override public Stream<Triple> streamAnyPreAny(Node p) { return upgradeAndAnswer().streamAnyPreAny(p); }
+    @Override public Stream<Triple> streamAnyAnyObj(Node o) { return upgradeAndAnswer().streamAnyAnyObj(o); }
+    @Override public Stream<Triple> streamSubPreAny(Node s, Node p) { return upgradeAndAnswer().streamSubPreAny(s, p); }
+    @Override public Stream<Triple> streamSubAnyObj(Node s, Node o) { return upgradeAndAnswer().streamSubAnyObj(s, o); }
+    @Override public Stream<Triple> streamAnyPreObj(Node p, Node o) { return upgradeAndAnswer().streamAnyPreObj(p, o); }
+
+    @Override public ExtendedIterator<Triple> findSubAnyAny(Node s) { return upgradeAndAnswer().findSubAnyAny(s); }
+    @Override public ExtendedIterator<Triple> findAnyPreAny(Node p) { return upgradeAndAnswer().findAnyPreAny(p); }
+    @Override public ExtendedIterator<Triple> findAnyAnyObj(Node o) { return upgradeAndAnswer().findAnyAnyObj(o); }
+    @Override public ExtendedIterator<Triple> findSubPreAny(Node s, Node p) { return upgradeAndAnswer().findSubPreAny(s, p); }
+    @Override public ExtendedIterator<Triple> findSubAnyObj(Node s, Node o) { return upgradeAndAnswer().findSubAnyObj(s, o); }
+    @Override public ExtendedIterator<Triple> findAnyPreObj(Node p, Node o) { return upgradeAndAnswer().findAnyPreObj(p, o); }
 
     /** @return whether this lazy strategy uses the parallel build path. */
     public boolean isParallel() {

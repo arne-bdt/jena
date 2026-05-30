@@ -21,8 +21,8 @@
 
 package org.apache.jena.mem.store.cow.strategies;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.util.iterator.ExtendedIterator;
 
@@ -59,18 +59,30 @@ public final class CowManualStoreStrategy implements CowStoreStrategy {
 
     @Override public boolean throwsOnUninitializedLookup() { return true; }
 
-    @Override
-    public boolean containsMatch(Triple match, MatchPattern pattern) {
-        throw new UnsupportedOperationException(NOT_INITIALIZED);
-    }
+    // Every partial-pattern lookup throws until the index is initialised.
 
-    @Override
-    public Stream<Triple> streamMatch(Triple match, MatchPattern pattern) {
-        throw new UnsupportedOperationException(NOT_INITIALIZED);
-    }
+    @Override public boolean containsSubAnyAny(Node s) { throw notInitialised(); }
+    @Override public boolean containsAnyPreAny(Node p) { throw notInitialised(); }
+    @Override public boolean containsAnyAnyObj(Node o) { throw notInitialised(); }
+    @Override public boolean containsSubPreAny(Node s, Node p) { throw notInitialised(); }
+    @Override public boolean containsSubAnyObj(Node s, Node o) { throw notInitialised(); }
+    @Override public boolean containsAnyPreObj(Node p, Node o) { throw notInitialised(); }
 
-    @Override
-    public ExtendedIterator<Triple> findMatch(Triple match, MatchPattern pattern) {
-        throw new UnsupportedOperationException(NOT_INITIALIZED);
+    @Override public Stream<Triple> streamSubAnyAny(Node s) { throw notInitialised(); }
+    @Override public Stream<Triple> streamAnyPreAny(Node p) { throw notInitialised(); }
+    @Override public Stream<Triple> streamAnyAnyObj(Node o) { throw notInitialised(); }
+    @Override public Stream<Triple> streamSubPreAny(Node s, Node p) { throw notInitialised(); }
+    @Override public Stream<Triple> streamSubAnyObj(Node s, Node o) { throw notInitialised(); }
+    @Override public Stream<Triple> streamAnyPreObj(Node p, Node o) { throw notInitialised(); }
+
+    @Override public ExtendedIterator<Triple> findSubAnyAny(Node s) { throw notInitialised(); }
+    @Override public ExtendedIterator<Triple> findAnyPreAny(Node p) { throw notInitialised(); }
+    @Override public ExtendedIterator<Triple> findAnyAnyObj(Node o) { throw notInitialised(); }
+    @Override public ExtendedIterator<Triple> findSubPreAny(Node s, Node p) { throw notInitialised(); }
+    @Override public ExtendedIterator<Triple> findSubAnyObj(Node s, Node o) { throw notInitialised(); }
+    @Override public ExtendedIterator<Triple> findAnyPreObj(Node p, Node o) { throw notInitialised(); }
+
+    private static UnsupportedOperationException notInitialised() {
+        return new UnsupportedOperationException(NOT_INITIALIZED);
     }
 }

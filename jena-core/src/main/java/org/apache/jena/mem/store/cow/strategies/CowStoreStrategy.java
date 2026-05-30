@@ -21,6 +21,7 @@
 
 package org.apache.jena.mem.store.cow.strategies;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.store.cow.CowWriteTxn;
@@ -98,14 +99,33 @@ public interface CowStoreStrategy {
         return false;
     }
 
-    /** Test whether any triple matches the given pattern. */
-    boolean containsMatch(Triple tripleMatch, MatchPattern pattern);
+    // ----- Partial-pattern matching -----------------------------------
+    // One method per partial MatchPattern (the six listed in the class
+    // Javadoc), so the enclosing CowStore can classify the match once and
+    // dispatch straight to the right method without a second switch on the
+    // strategy side. Mirrors the non-CoW
+    // org.apache.jena.mem.store.strategies.StoreStrategy.
 
-    /** Stream the triples matching the given pattern. */
-    Stream<Triple> streamMatch(Triple tripleMatch, MatchPattern pattern);
+    boolean containsSubAnyAny(Node s);
+    boolean containsAnyPreAny(Node p);
+    boolean containsAnyAnyObj(Node o);
+    boolean containsSubPreAny(Node s, Node p);
+    boolean containsSubAnyObj(Node s, Node o);
+    boolean containsAnyPreObj(Node p, Node o);
 
-    /** Iterate the triples matching the given pattern. */
-    ExtendedIterator<Triple> findMatch(Triple tripleMatch, MatchPattern pattern);
+    Stream<Triple> streamSubAnyAny(Node s);
+    Stream<Triple> streamAnyPreAny(Node p);
+    Stream<Triple> streamAnyAnyObj(Node o);
+    Stream<Triple> streamSubPreAny(Node s, Node p);
+    Stream<Triple> streamSubAnyObj(Node s, Node o);
+    Stream<Triple> streamAnyPreObj(Node p, Node o);
+
+    ExtendedIterator<Triple> findSubAnyAny(Node s);
+    ExtendedIterator<Triple> findAnyPreAny(Node p);
+    ExtendedIterator<Triple> findAnyAnyObj(Node o);
+    ExtendedIterator<Triple> findSubPreAny(Node s, Node p);
+    ExtendedIterator<Triple> findSubAnyObj(Node s, Node o);
+    ExtendedIterator<Triple> findAnyPreObj(Node p, Node o);
 
     /**
      * Build a strategy of the same kind, bound to the given freshly

@@ -21,8 +21,8 @@
 
 package org.apache.jena.mem.store.cow.strategies;
 
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.mem.store.cow.TxnTripleSet;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -58,23 +58,41 @@ public final class CowMinimalStoreStrategy implements CowStoreStrategy {
     @Override public void removeFromIndex(Triple t, int i) { /* no bitmaps */ }
     @Override public void clearIndex()                   { /* no bitmaps */ }
 
-    // The {@code pattern} parameter on the three match methods below is
-    // part of the {@link CowStoreStrategy} contract but unused here: a
-    // linear scan against {@code Triple#matches} is uniform across all
-    // partial patterns, so no per-pattern dispatch is needed.
+    // No index: every partial pattern is answered by a uniform linear scan
+    // against Triple#matches. The six-method split mirrors CowStoreStrategy;
+    // each rebuilds the match triple and delegates to the shared scan
+    // helpers below.
 
-    @Override
-    public boolean containsMatch(Triple tripleMatch, MatchPattern pattern) {
+    @Override public boolean containsSubAnyAny(Node s) { return containsMatch(Triple.create(s, Node.ANY, Node.ANY)); }
+    @Override public boolean containsAnyPreAny(Node p) { return containsMatch(Triple.create(Node.ANY, p, Node.ANY)); }
+    @Override public boolean containsAnyAnyObj(Node o) { return containsMatch(Triple.create(Node.ANY, Node.ANY, o)); }
+    @Override public boolean containsSubPreAny(Node s, Node p) { return containsMatch(Triple.create(s, p, Node.ANY)); }
+    @Override public boolean containsSubAnyObj(Node s, Node o) { return containsMatch(Triple.create(s, Node.ANY, o)); }
+    @Override public boolean containsAnyPreObj(Node p, Node o) { return containsMatch(Triple.create(Node.ANY, p, o)); }
+
+    @Override public Stream<Triple> streamSubAnyAny(Node s) { return streamMatch(Triple.create(s, Node.ANY, Node.ANY)); }
+    @Override public Stream<Triple> streamAnyPreAny(Node p) { return streamMatch(Triple.create(Node.ANY, p, Node.ANY)); }
+    @Override public Stream<Triple> streamAnyAnyObj(Node o) { return streamMatch(Triple.create(Node.ANY, Node.ANY, o)); }
+    @Override public Stream<Triple> streamSubPreAny(Node s, Node p) { return streamMatch(Triple.create(s, p, Node.ANY)); }
+    @Override public Stream<Triple> streamSubAnyObj(Node s, Node o) { return streamMatch(Triple.create(s, Node.ANY, o)); }
+    @Override public Stream<Triple> streamAnyPreObj(Node p, Node o) { return streamMatch(Triple.create(Node.ANY, p, o)); }
+
+    @Override public ExtendedIterator<Triple> findSubAnyAny(Node s) { return findMatch(Triple.create(s, Node.ANY, Node.ANY)); }
+    @Override public ExtendedIterator<Triple> findAnyPreAny(Node p) { return findMatch(Triple.create(Node.ANY, p, Node.ANY)); }
+    @Override public ExtendedIterator<Triple> findAnyAnyObj(Node o) { return findMatch(Triple.create(Node.ANY, Node.ANY, o)); }
+    @Override public ExtendedIterator<Triple> findSubPreAny(Node s, Node p) { return findMatch(Triple.create(s, p, Node.ANY)); }
+    @Override public ExtendedIterator<Triple> findSubAnyObj(Node s, Node o) { return findMatch(Triple.create(s, Node.ANY, o)); }
+    @Override public ExtendedIterator<Triple> findAnyPreObj(Node p, Node o) { return findMatch(Triple.create(Node.ANY, p, o)); }
+
+    private boolean containsMatch(Triple tripleMatch) {
         return triples.anyMatch(tripleMatch::matches);
     }
 
-    @Override
-    public Stream<Triple> streamMatch(Triple tripleMatch, MatchPattern pattern) {
+    private Stream<Triple> streamMatch(Triple tripleMatch) {
         return triples.keyStream().filter(tripleMatch::matches);
     }
 
-    @Override
-    public ExtendedIterator<Triple> findMatch(Triple tripleMatch, MatchPattern pattern) {
+    private ExtendedIterator<Triple> findMatch(Triple tripleMatch) {
         return triples.keyIterator().filterKeep(tripleMatch::matches);
     }
 }

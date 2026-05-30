@@ -23,7 +23,6 @@ package org.apache.jena.mem.store.cow.strategies;
 
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.store.cow.CowWriteTxn;
 import org.apache.jena.mem.store.cow.TxnNodesToIndices;
 import org.apache.jena.mem.store.cow.TxnTripleSet;
@@ -86,8 +85,6 @@ import java.util.stream.StreamSupport;
  * installs from multiple readers would race on the (plain) field.
  */
 public final class CowEagerStoreStrategy implements CowStoreStrategy {
-
-    private static final String UNSUPPORTED_PATTERN = "Unsupported pattern classifier: %s";
 
     /** Canonical triples. Borrowed reference to the enclosing store's triples. */
     private final TxnTripleSet triples;
@@ -396,20 +393,23 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
 
     // ----- Pattern match ---------------------------------------------
 
+    @Override public boolean containsSubAnyAny(Node s) { return subjectIndex.containsKey(s); }
+    @Override public boolean containsAnyPreAny(Node p) { return predicateIndex.containsKey(p); }
+    @Override public boolean containsAnyAnyObj(Node o) { return objectIndex.containsKey(o); }
+
     @Override
-    public boolean containsMatch(Triple match, MatchPattern pattern) {
-        return switch (pattern) {
-            case SUB_ANY_ANY -> subjectIndex.containsKey(match.getSubject());
-            case ANY_PRE_ANY -> predicateIndex.containsKey(match.getPredicate());
-            case ANY_ANY_OBJ -> objectIndex.containsKey(match.getObject());
-            case SUB_PRE_ANY -> bothIndexed(subjectIndex, match.getSubject(), sReverseIndices,
-                                            predicateIndex, match.getPredicate(), pReverseIndices);
-            case ANY_PRE_OBJ -> bothIndexed(predicateIndex, match.getPredicate(), pReverseIndices,
-                                            objectIndex, match.getObject(), oReverseIndices);
-            case SUB_ANY_OBJ -> bothIndexed(subjectIndex, match.getSubject(), sReverseIndices,
-                                            objectIndex, match.getObject(), oReverseIndices);
-            default -> throw new IllegalStateException(String.format(UNSUPPORTED_PATTERN, pattern));
-        };
+    public boolean containsSubPreAny(Node s, Node p) {
+        return bothIndexed(subjectIndex, s, sReverseIndices, predicateIndex, p, pReverseIndices);
+    }
+
+    @Override
+    public boolean containsAnyPreObj(Node p, Node o) {
+        return bothIndexed(predicateIndex, p, pReverseIndices, objectIndex, o, oReverseIndices);
+    }
+
+    @Override
+    public boolean containsSubAnyObj(Node s, Node o) {
+        return bothIndexed(subjectIndex, s, sReverseIndices, objectIndex, o, oReverseIndices);
     }
 
     private static boolean bothIndexed(TxnNodesToIndices a, Node aKey, int[] aReverse,
@@ -421,20 +421,23 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
         return IndexList.intersects(aList, aReverse, bList, bReverse);
     }
 
+    @Override public Stream<Triple> streamSubAnyAny(Node s) { return singleListStream(subjectIndex, s); }
+    @Override public Stream<Triple> streamAnyPreAny(Node p) { return singleListStream(predicateIndex, p); }
+    @Override public Stream<Triple> streamAnyAnyObj(Node o) { return singleListStream(objectIndex, o); }
+
     @Override
-    public Stream<Triple> streamMatch(Triple match, MatchPattern pattern) {
-        return switch (pattern) {
-            case SUB_ANY_ANY -> singleListStream(subjectIndex, match.getSubject());
-            case ANY_PRE_ANY -> singleListStream(predicateIndex, match.getPredicate());
-            case ANY_ANY_OBJ -> singleListStream(objectIndex, match.getObject());
-            case SUB_PRE_ANY -> intersectStream(subjectIndex, match.getSubject(), sReverseIndices,
-                                                predicateIndex, match.getPredicate(), pReverseIndices);
-            case ANY_PRE_OBJ -> intersectStream(predicateIndex, match.getPredicate(), pReverseIndices,
-                                                objectIndex, match.getObject(), oReverseIndices);
-            case SUB_ANY_OBJ -> intersectStream(subjectIndex, match.getSubject(), sReverseIndices,
-                                                objectIndex, match.getObject(), oReverseIndices);
-            default -> throw new IllegalStateException(String.format(UNSUPPORTED_PATTERN, pattern));
-        };
+    public Stream<Triple> streamSubPreAny(Node s, Node p) {
+        return intersectStream(subjectIndex, s, sReverseIndices, predicateIndex, p, pReverseIndices);
+    }
+
+    @Override
+    public Stream<Triple> streamAnyPreObj(Node p, Node o) {
+        return intersectStream(predicateIndex, p, pReverseIndices, objectIndex, o, oReverseIndices);
+    }
+
+    @Override
+    public Stream<Triple> streamSubAnyObj(Node s, Node o) {
+        return intersectStream(subjectIndex, s, sReverseIndices, objectIndex, o, oReverseIndices);
     }
 
     private Stream<Triple> singleListStream(TxnNodesToIndices spine, Node key) {
@@ -453,20 +456,23 @@ public final class CowEagerStoreStrategy implements CowStoreStrategy {
                 new IndexListsSpliterator(triples, aList, aReverse, bList, bReverse), false);
     }
 
+    @Override public ExtendedIterator<Triple> findSubAnyAny(Node s) { return singleListFind(subjectIndex, s); }
+    @Override public ExtendedIterator<Triple> findAnyPreAny(Node p) { return singleListFind(predicateIndex, p); }
+    @Override public ExtendedIterator<Triple> findAnyAnyObj(Node o) { return singleListFind(objectIndex, o); }
+
     @Override
-    public ExtendedIterator<Triple> findMatch(Triple match, MatchPattern pattern) {
-        return switch (pattern) {
-            case SUB_ANY_ANY -> singleListFind(subjectIndex, match.getSubject());
-            case ANY_PRE_ANY -> singleListFind(predicateIndex, match.getPredicate());
-            case ANY_ANY_OBJ -> singleListFind(objectIndex, match.getObject());
-            case SUB_PRE_ANY -> intersectFind(subjectIndex, match.getSubject(), sReverseIndices,
-                                              predicateIndex, match.getPredicate(), pReverseIndices);
-            case ANY_PRE_OBJ -> intersectFind(predicateIndex, match.getPredicate(), pReverseIndices,
-                                              objectIndex, match.getObject(), oReverseIndices);
-            case SUB_ANY_OBJ -> intersectFind(subjectIndex, match.getSubject(), sReverseIndices,
-                                              objectIndex, match.getObject(), oReverseIndices);
-            default -> throw new IllegalStateException(String.format(UNSUPPORTED_PATTERN, pattern));
-        };
+    public ExtendedIterator<Triple> findSubPreAny(Node s, Node p) {
+        return intersectFind(subjectIndex, s, sReverseIndices, predicateIndex, p, pReverseIndices);
+    }
+
+    @Override
+    public ExtendedIterator<Triple> findAnyPreObj(Node p, Node o) {
+        return intersectFind(predicateIndex, p, pReverseIndices, objectIndex, o, oReverseIndices);
+    }
+
+    @Override
+    public ExtendedIterator<Triple> findSubAnyObj(Node s, Node o) {
+        return intersectFind(subjectIndex, s, sReverseIndices, objectIndex, o, oReverseIndices);
     }
 
     private ExtendedIterator<Triple> singleListFind(TxnNodesToIndices spine, Node key) {

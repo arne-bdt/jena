@@ -22,7 +22,6 @@
 package org.apache.jena.mem.store.cow.strategies;
 
 import org.apache.jena.graph.Triple;
-import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.store.cow.TxnTripleSet;
 import org.junit.Test;
 
@@ -35,11 +34,10 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
 /**
- * Sanity tests for {@link CowMinimalStoreStrategy}: it implements the
- * {@link CowStoreStrategy} pattern-match methods with a uniform linear
- * scan, ignoring the {@code MatchPattern} argument. The tests below pin
- * down that "ignored" property: passing two different patterns must yield
- * the same set of results for the same probe triple.
+ * Sanity tests for {@link CowMinimalStoreStrategy}: it answers the
+ * {@link CowStoreStrategy} partial-pattern methods with a uniform linear
+ * scan over the triple set (it builds no index). The tests below check that
+ * each split method filters to the right triples.
  */
 public class CowMinimalStoreStrategyTest {
 
@@ -49,37 +47,38 @@ public class CowMinimalStoreStrategyTest {
     }
 
     @Test
-    public void streamMatchIgnoresPatternArgument() {
+    public void streamMatchesByPartialPattern() {
         TxnTripleSet triples = new TxnTripleSet();
         for (int i = 0; i < 10; i++) {
-            triples.tryAdd(triple("s" + i + " " + "p" + " " + "o" + i));
+            triples.tryAdd(triple("s" + i + " p o" + i));
         }
         CowMinimalStoreStrategy strategy = new CowMinimalStoreStrategy(triples);
 
-        Triple probe = Triple.createMatch(
-                node("s3"), null, null);
+        // SUB_ANY_ANY: only s3's triple.
+        Set<Triple> bySubject = drain(strategy.streamSubAnyAny(node("s3")));
+        assertEquals(1, bySubject.size());
+        assertTrue(bySubject.contains(triple("s3 p o3")));
 
-        // Use two different MatchPattern values for the same probe; the
-        // strategy must produce the same result either way.
-        Set<Triple> a = drain(strategy.streamMatch(probe, MatchPattern.SUB_ANY_ANY));
-        Set<Triple> b = drain(strategy.streamMatch(probe, MatchPattern.ANY_ANY_OBJ));
+        // ANY_PRE_ANY: the shared predicate matches all ten.
+        assertEquals(10, drain(strategy.streamAnyPreAny(node("p"))).size());
 
-        assertEquals("MinimalStrategy must ignore the pattern argument", a, b);
-        assertEquals(1, a.size());
-        assertTrue(a.contains(triple("s3 p o3")));
+        // ANY_ANY_OBJ: only o7's triple.
+        Set<Triple> byObject = drain(strategy.streamAnyAnyObj(node("o7")));
+        assertEquals(1, byObject.size());
+        assertTrue(byObject.contains(triple("s7 p o7")));
     }
 
     @Test
-    public void containsMatchIgnoresPatternArgument() {
+    public void containsMatchesByPartialPattern() {
         TxnTripleSet triples = new TxnTripleSet();
         for (int i = 0; i < 5; i++) {
-            triples.tryAdd(triple("s" + i + " " + "p" + " " + "o" + i));
+            triples.tryAdd(triple("s" + i + " p o" + i));
         }
         CowMinimalStoreStrategy strategy = new CowMinimalStoreStrategy(triples);
 
-        Triple probe = Triple.createMatch(
-                node("s2"), null, null);
-        assertTrue(strategy.containsMatch(probe, MatchPattern.SUB_ANY_ANY));
-        assertTrue(strategy.containsMatch(probe, MatchPattern.ANY_PRE_OBJ));
+        assertTrue(strategy.containsSubAnyAny(node("s2")));
+        assertTrue(strategy.containsAnyPreObj(node("p"), node("o2")));    // s2 p o2 exists
+        assertFalse(strategy.containsAnyPreObj(node("p"), node("oX")));   // no such object
+        assertFalse(strategy.containsSubAnyAny(node("nope")));
     }
 }

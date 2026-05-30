@@ -23,7 +23,6 @@ package org.apache.jena.mem.store.cow;
 
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
-import org.apache.jena.mem.pattern.MatchPattern;
 import org.apache.jena.mem.pattern.PatternClassifier;
 import org.apache.jena.mem.store.cow.strategies.CowEagerStoreStrategy;
 import org.apache.jena.mem.store.cow.strategies.CowLazyStoreStrategy;
@@ -202,11 +201,15 @@ public abstract class CowStore {
 
     /** @return {@code true} iff some triple matches the given pattern. */
     public final boolean contains(Triple match) {
-        final MatchPattern pattern = PatternClassifier.classify(match);
-        return switch (pattern) {
+        return switch (PatternClassifier.classify(match)) {
             case SUB_PRE_OBJ -> triples.containsKey(match);
+            case SUB_ANY_ANY -> currentStrategy().containsSubAnyAny(match.getSubject());
+            case ANY_PRE_ANY -> currentStrategy().containsAnyPreAny(match.getPredicate());
+            case ANY_ANY_OBJ -> currentStrategy().containsAnyAnyObj(match.getObject());
+            case SUB_PRE_ANY -> currentStrategy().containsSubPreAny(match.getSubject(), match.getPredicate());
+            case SUB_ANY_OBJ -> currentStrategy().containsSubAnyObj(match.getSubject(), match.getObject());
+            case ANY_PRE_OBJ -> currentStrategy().containsAnyPreObj(match.getPredicate(), match.getObject());
             case ANY_ANY_ANY -> !isEmpty();
-            default -> currentStrategy().containsMatch(match, pattern);
         };
     }
 
@@ -217,22 +220,30 @@ public abstract class CowStore {
 
     /** @return a stream over the triples matching the given pattern. */
     public final Stream<Triple> stream(Triple match) {
-        final MatchPattern pattern = PatternClassifier.classify(match);
-        return switch (pattern) {
-            case ANY_ANY_ANY -> stream();
+        return switch (PatternClassifier.classify(match)) {
             case SUB_PRE_OBJ -> triples.containsKey(match) ? Stream.of(match) : Stream.empty();
-            default -> currentStrategy().streamMatch(match, pattern);
+            case SUB_ANY_ANY -> currentStrategy().streamSubAnyAny(match.getSubject());
+            case ANY_PRE_ANY -> currentStrategy().streamAnyPreAny(match.getPredicate());
+            case ANY_ANY_OBJ -> currentStrategy().streamAnyAnyObj(match.getObject());
+            case SUB_PRE_ANY -> currentStrategy().streamSubPreAny(match.getSubject(), match.getPredicate());
+            case SUB_ANY_OBJ -> currentStrategy().streamSubAnyObj(match.getSubject(), match.getObject());
+            case ANY_PRE_OBJ -> currentStrategy().streamAnyPreObj(match.getPredicate(), match.getObject());
+            case ANY_ANY_ANY -> stream();
         };
     }
 
     /** @return an iterator over the triples matching the given pattern. */
     public final ExtendedIterator<Triple> find(Triple match) {
-        final MatchPattern pattern = PatternClassifier.classify(match);
-        return switch (pattern) {
-            case ANY_ANY_ANY -> triples.keyIterator();
+        return switch (PatternClassifier.classify(match)) {
             case SUB_PRE_OBJ -> triples.containsKey(match)
                     ? new SingletonIterator<>(match) : NiceIterator.emptyIterator();
-            default -> currentStrategy().findMatch(match, pattern);
+            case SUB_ANY_ANY -> currentStrategy().findSubAnyAny(match.getSubject());
+            case ANY_PRE_ANY -> currentStrategy().findAnyPreAny(match.getPredicate());
+            case ANY_ANY_OBJ -> currentStrategy().findAnyAnyObj(match.getObject());
+            case SUB_PRE_ANY -> currentStrategy().findSubPreAny(match.getSubject(), match.getPredicate());
+            case SUB_ANY_OBJ -> currentStrategy().findSubAnyObj(match.getSubject(), match.getObject());
+            case ANY_PRE_OBJ -> currentStrategy().findAnyPreObj(match.getPredicate(), match.getObject());
+            case ANY_ANY_ANY -> triples.keyIterator();
         };
     }
 }
