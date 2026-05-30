@@ -36,6 +36,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.query.TxnType;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryCowTxn;
+import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryMvccTxn;
 import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn;
 import org.apache.jena.sparql.graph.NodeConst;
 
@@ -103,6 +104,35 @@ public class TestDatasetGraphFactory {
     @Test
     public void createTxnMemCow_basicQuadRoundTrip() {
         DatasetGraph dsg = DatasetGraphFactory.createTxnMemCow();
+        Node g = NodeFactory.createURI("http://example/g");
+        Node x = NodeFactory.createURI("http://example/x");
+        dsg.begin(TxnType.WRITE);
+        try {
+            dsg.add(g, x, x, NodeConst.TRUE);
+            dsg.commit();
+        } finally {
+            dsg.end();
+        }
+        dsg.begin(TxnType.READ);
+        try {
+            assertEquals(1, Iter.count(dsg.find()));
+        } finally {
+            dsg.end();
+        }
+    }
+
+    @Test
+    public void createTxnMemMvcc_basics() {
+        DatasetGraph dsg = DatasetGraphFactory.createTxnMemMvcc();
+        assertInstanceOf(DatasetGraphInMemoryMvccTxn.class, dsg);
+        assertTrue(dsg.supportsTransactions());
+        assertTrue(dsg.supportsTransactionAbort());
+    }
+
+    /** Sanity: a quad written via the MVCC factory round-trips through the API. */
+    @Test
+    public void createTxnMemMvcc_basicQuadRoundTrip() {
+        DatasetGraph dsg = DatasetGraphFactory.createTxnMemMvcc();
         Node g = NodeFactory.createURI("http://example/g");
         Node x = NodeFactory.createURI("http://example/x");
         dsg.begin(TxnType.WRITE);
