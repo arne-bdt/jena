@@ -191,12 +191,19 @@ public final class MvccTripleStore {
     public MvccReadView openReadView() {
         final Gen g = gen;                 // volatile acquire
         vc.registerReader(g.version());
-        return new MvccReadView(this, g);
+        return new MvccReadView(this, g, true);
     }
 
-    /** Open a read view at an already-captured generation (used by promotion paths). */
-    MvccReadView readViewAt(Gen g) {
-        return new MvccReadView(this, g);
+    /**
+     * A transient, unregistered read view over the latest committed generation,
+     * for reads outside any transaction. Needs no {@code close()} — it does not
+     * participate in vacuum tracking; the returned iterators/streams hold the
+     * generation snapshot directly.
+     *
+     * @return an unregistered read view at the current committed version
+     */
+    public MvccReadView transientReadView() {
+        return new MvccReadView(this, gen, false);
     }
 
     /** @return the current published generation (for the writer's committed view). */
@@ -373,7 +380,7 @@ public final class MvccTripleStore {
      *
      * @param txn the write transaction to commit
      */
-    void commit(MvccWriteTxn txn) {
+    public void commit(MvccWriteTxn txn) {
         final long v = txn.version();
         final java.util.Set<Triple> added = txn.added();
         final java.util.Set<Triple> removed = txn.removed();

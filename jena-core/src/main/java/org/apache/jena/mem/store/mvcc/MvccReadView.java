@@ -43,11 +43,13 @@ public final class MvccReadView {
 
     private final MvccTripleStore store;
     private final MvccTripleStore.Gen gen;
+    private final boolean registered;
     private boolean closed = false;
 
-    MvccReadView(MvccTripleStore store, MvccTripleStore.Gen gen) {
+    MvccReadView(MvccTripleStore store, MvccTripleStore.Gen gen, boolean registered) {
         this.store = store;
         this.gen = gen;
+        this.registered = registered;
     }
 
     /** @return the version this view is pinned at. */
@@ -85,9 +87,10 @@ public final class MvccReadView {
         return gen.liveCount() == 0;
     }
 
-    /** Deregister this reader from vacuum tracking. Idempotent. */
+    /** Deregister this reader from vacuum tracking. Idempotent; a no-op for a
+     * transient (unregistered) view. */
     public void close() {
-        if (!closed) {
+        if (registered && !closed) {
             closed = true;
             store.versionControl().deregisterReader(gen.version());
         }
