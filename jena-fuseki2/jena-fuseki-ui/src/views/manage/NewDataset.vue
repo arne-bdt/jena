@@ -135,6 +135,10 @@ export default {
           item: 'mem-cow-parallel',
           name: 'In-memory copy-on-write, parallel fork (experimental) – as above, parallel per-graph fork (large graphs only)'
         },
+        {
+          item: 'mem-mvcc',
+          name: 'In-memory MVCC (experimental) – version-stamped shared store, O(1) begin; benchmark for your workload'
+        },
         // {
         //   item: 'tdb',
         //   name: 'Persistent – dataset will persist across Fuseki restart'

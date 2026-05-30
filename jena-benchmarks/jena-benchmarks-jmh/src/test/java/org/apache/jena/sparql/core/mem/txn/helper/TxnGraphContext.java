@@ -28,6 +28,7 @@ import org.apache.jena.sparql.core.Transactional;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemory;
 import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn;
 import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn.ForkMode;
+import org.apache.jena.sparql.core.mem.GraphMemIndexedSetMvccTxn;
 import org.apache.jena.sparql.core.mem.GraphMemIndexedSetTxn;
 
 /**
@@ -65,6 +66,11 @@ public final class TxnGraphContext {
     public static final String GMIS_COW_TXN_LAZY           = "GraphMemIndexedSetCowTxn LAZY";
     public static final String GMIS_COW_TXN_LAZY_PARALLEL  = "GraphMemIndexedSetCowTxn LAZY_PARALLEL";
 
+    /** MVCC: version-stamped shared store, O(1) begin (no copy). */
+    public static final String GMIS_MVCC_TXN_EAGER   = "GraphMemIndexedSetMvccTxn EAGER";
+    public static final String GMIS_MVCC_TXN_MINIMAL = "GraphMemIndexedSetMvccTxn MINIMAL";
+    public static final String GMIS_MVCC_TXN_MANUAL  = "GraphMemIndexedSetMvccTxn MANUAL";
+
     /**
      * @return a freshly constructed graph for the given variant name.
      * Throws {@link IllegalArgumentException} for an unknown name.
@@ -92,6 +98,13 @@ public final class TxnGraphContext {
                     new GraphMemIndexedSetCowTxn(IndexingStrategy.LAZY, ForkMode.SEQUENTIAL);
             case GMIS_COW_TXN_LAZY_PARALLEL ->
                     new GraphMemIndexedSetCowTxn(IndexingStrategy.LAZY_PARALLEL, ForkMode.PARALLEL);
+
+            case GMIS_MVCC_TXN_EAGER ->
+                    new GraphMemIndexedSetMvccTxn(IndexingStrategy.EAGER);
+            case GMIS_MVCC_TXN_MINIMAL ->
+                    new GraphMemIndexedSetMvccTxn(IndexingStrategy.MINIMAL);
+            case GMIS_MVCC_TXN_MANUAL ->
+                    new GraphMemIndexedSetMvccTxn(IndexingStrategy.MANUAL);
 
             default -> throw new IllegalArgumentException(
                     "Unknown TxnGraphContext variant: " + variant);

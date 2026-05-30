@@ -34,12 +34,7 @@ import org.apache.jena.sparql.core.mem.txn.helper.MEASData;
 import org.apache.jena.sparql.core.mem.txn.helper.TxnGraphContext;
 import org.junit.Assert;
 import org.junit.Test;
-import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Param;
-import org.openjdk.jmh.annotations.Scope;
-import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 
 /**
@@ -57,9 +52,9 @@ import org.openjdk.jmh.runner.Runner;
 public class TestTxnGraphMEASData {
 
     /** Number of AnalogValue resources to pre-load; each contributes 5 triples. */
-    private static final int NUMBER_OF_ANALOG_VALUES = 1_600;
+    private static final int NUMBER_OF_ANALOG_VALUES = 15_000;
     /** Number of DiscreteValue resources to pre-load; each contributes 5 triples. */
-    private static final int NUMBER_OF_DISCRETE_VALUES = 400;
+    private static final int NUMBER_OF_DISCRETE_VALUES = 5_000;
 
     private List<MEASData.AnalogValue> analogValues;
     private List<MEASData.DiscreteValue> discreteValues;
@@ -68,15 +63,18 @@ public class TestTxnGraphMEASData {
             TxnGraphContext.GMIS_DEFAULT_IN_MEMORY,
             TxnGraphContext.GMIS_COW_TXN_EAGER_SEQ,
             TxnGraphContext.GMIS_COW_TXN_EAGER_PARALLEL,
+            TxnGraphContext.GMIS_MVCC_TXN_EAGER
     })
     public String param1_GraphImplementation;
 
-    @Param({"10", "100", "250", "500", "1000"})
+    @Param({"10", "100", "250", "500", "1000", "2000", "5000", "10000"})
     public int numberOfTransactions;
 
     private Graph sut;
 
     @Benchmark
+    @Group("readWrite")
+    @GroupThreads(1)
     public long update() {
         long changes = 0;
         for (int i = 0; i < numberOfTransactions; i++) {
@@ -107,6 +105,23 @@ public class TestTxnGraphMEASData {
         return changes;
     }
 
+    @Benchmark
+    @Group("readWrite")
+    @GroupThreads(8)
+    public List<Triple> reader() {
+        final Transactional txn = (sut instanceof Transactional t) ? t : null;
+        if (txn != null) {
+            txn.begin(TxnType.READ);
+        }
+        var list = sut.stream().toList(); // Force the strategy to do work.
+
+        if (txn != null) {
+            txn.commit();
+            txn.end();
+        }
+        return list;
+    }
+
     private List<Triple> nextUpdateBatch() {
         final int analogSlice = analogValues.size() / numberOfTransactions;
         final int discreteSlice = discreteValues.size() / numberOfTransactions;
@@ -131,7 +146,10 @@ public class TestTxnGraphMEASData {
 
     @Test
     public void benchmark() throws Exception {
-        var opt = JmhDefaultOptions.getDefaults(this.getClass()).build();
+        var opt = JmhDefaultOptions.getDefaults(this.getClass())
+                .warmupIterations(3)
+                .measurementIterations(5)
+                .build();
         Assert.assertNotNull(new Runner(opt).run());
     }
 }

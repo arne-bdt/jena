@@ -118,6 +118,20 @@ public class TestFusekiCmdLineArgs {
         }
     }
 
+    @Test public void mem_mvcc_01() {
+        // --mem-mvcc starts a server backed by DatasetGraphInMemoryMvccTxn.
+        server("--mem-mvcc", "/ds");
+        String update = "INSERT DATA { <x:s> <x:p> 1 }";
+        String query  = "SELECT * { ?s ?p ?o }";
+        try ( RDFConnection conn = RDFConnection.connect(serverURL+"/ds") ) {
+            conn.update(update);
+            conn.queryResultSet(query, rs -> {
+                long count = ResultSetFormatter.consume(rs);
+                assertEquals(1, count);
+            });
+        }
+    }
+
     @Test public void stats_01() {
         server("--mem", "--stats", "/ds");
         String x = HttpOp.httpGetString(serverURL+"/$/stats");

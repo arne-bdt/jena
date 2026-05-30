@@ -30,6 +30,7 @@ import org.apache.jena.query.Dataset;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemory;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryCowTxn;
+import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryMvccTxn;
 import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn;
 import org.apache.jena.sparql.graph.GraphFactory;
 import org.apache.jena.sys.JenaSystem;
@@ -116,6 +117,23 @@ public class DatasetGraphFactory
      */
     public static DatasetGraph createTxnMemCow(GraphMemIndexedSetCowTxn.ForkMode forkMode) {
         return new DatasetGraphInMemoryCowTxn(Objects.requireNonNull(forkMode, "forkMode"));
+    }
+
+    /**
+     * Create a transactional, in-memory {@link DatasetGraph} backed by the MVCC
+     * variant {@link DatasetGraphInMemoryMvccTxn}. Functionally equivalent to
+     * {@link #createTxnMem()} and {@link #createTxnMemCow()} — same data, same
+     * full transaction support — but with a different performance profile: a
+     * single version-stamped store shared by all transactions, so {@code begin}
+     * never copies (O(1) regardless of graph size). This favours large graphs
+     * with many small write transactions; reads pay a small per-candidate
+     * version-visibility check. Benchmark against {@link #createTxnMemCow()} for
+     * your workload.
+     *
+     * @return a transactional, in-memory, MVCC {@code DatasetGraph}
+     */
+    public static DatasetGraph createTxnMemMvcc() {
+        return new DatasetGraphInMemoryMvccTxn();
     }
 
     /**

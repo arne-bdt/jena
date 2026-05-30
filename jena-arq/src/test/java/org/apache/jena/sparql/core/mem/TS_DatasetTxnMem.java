@@ -74,6 +74,13 @@ import org.junit.platform.suite.api.Suite;
     TestDatasetGraphInMemoryCowTxnParallelFind.class,
     TestDatasetGraphInMemoryCowTxnRemoveGraph.class,
     TestDatasetGraphInMemoryCowTxnReuseThread.class,
-    TestDatasetGraphInMemoryCowTxnPartialBeginUnwind.class
+    TestDatasetGraphInMemoryCowTxnPartialBeginUnwind.class,
+
+    // MVCC graph + dataset — same Abstract* contracts as the InMemory variants.
+    TestGraphMemIndexedSetMvccTxnContract.class,
+    TestDatasetGraphInMemoryMvccTxnBasic.class,
+    TestDatasetGraphInMemoryMvccTxnFind.class,
+    TestDatasetGraphInMemoryMvccTxnTransactions.class,
+    TestDatasetGraphInMemoryMvccTxnPromote.class
  })
 public class TS_DatasetTxnMem {}
