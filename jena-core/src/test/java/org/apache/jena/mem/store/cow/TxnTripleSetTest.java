@@ -91,4 +91,29 @@ public class TxnTripleSetTest {
         assertTrue(copy.containsKey(a));
         assertTrue(copy.containsKey(b));
     }
+
+    @Test
+    public void copyAfterChurnPreservesSurvivorsAndStaysIndependent() {
+        TxnTripleSet src = new TxnTripleSet();
+        final int N = 64;
+        for (int i = 0; i < N; i++) src.tryAdd(triple("s" + i + " p o" + i));
+        // Remove half (scatter tombstones), then add more to force grow/compaction.
+        for (int i = 0; i < N; i += 2) src.tryRemove(triple("s" + i + " p o" + i));
+        for (int i = N; i < N + 32; i++) src.tryAdd(triple("s" + i + " p o" + i));
+
+        TxnTripleSet copy = src.copy();
+
+        // The copy sees exactly the survivors, despite the tombstones and grow.
+        assertEquals(src.size(), copy.size());
+        for (int i = 1; i < N; i += 2) assertTrue(copy.containsKey(triple("s" + i + " p o" + i)));
+        for (int i = N; i < N + 32; i++) assertTrue(copy.containsKey(triple("s" + i + " p o" + i)));
+        for (int i = 0; i < N; i += 2) assertFalse(copy.containsKey(triple("s" + i + " p o" + i)));
+
+        // Independent both ways after the churn.
+        copy.tryAdd(triple("brand p new"));
+        assertFalse(src.containsKey(triple("brand p new")));
+        src.tryRemove(triple("s1 p o1"));
+        assertTrue("copy must not see the source's later removal",
+                copy.containsKey(triple("s1 p o1")));
+    }
 }

@@ -67,6 +67,19 @@ public class TestDatasetGraphInMemoryCowTxnSmoke {
     }
 
     @Test
+    public void prefixesRoundTrip() {
+        DatasetGraph ds = new DatasetGraphInMemoryCowTxn();
+        ds.begin(TxnType.WRITE);
+        ds.prefixes().add("ex", "http://example/");
+        ds.commit();
+        ds.end();
+
+        ds.begin(TxnType.READ);
+        assertEquals("http://example/", ds.prefixes().get("ex"));
+        ds.end();
+    }
+
+    @Test
     public void writeAndReadDefaultGraph() {
         DatasetGraph ds = new DatasetGraphInMemoryCowTxn();
         ds.begin(TxnType.WRITE);

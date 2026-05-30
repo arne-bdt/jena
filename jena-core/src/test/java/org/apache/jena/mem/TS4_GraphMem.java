@@ -33,6 +33,7 @@ import org.apache.jena.mem.store.cow.CowIndexedSetTripleStoreFuzzTest;
 import org.apache.jena.mem.store.cow.CowIndexedSetTripleStoreTest;
 import org.apache.jena.mem.store.cow.TxnNodesToIndicesTest;
 import org.apache.jena.mem.store.cow.TxnTripleSetTest;
+import org.apache.jena.mem.store.cow.collection.SparseTombstoneIteratorTest;
 import org.apache.jena.mem.store.cow.collection.SparseTombstoneSpliteratorTest;
 import org.apache.jena.mem.store.cow.collection.TxnFastHashCompactionTest;
 import org.apache.jena.mem.store.cow.collection.TxnFastHashMapTest;
@@ -95,6 +96,7 @@ import org.junit.runners.Suite;
     RoaringBitmapTripleIteratorTest.class,
 
     // store/cow (writer-private collections shared with snapshots)
+    SparseTombstoneIteratorTest.class,
     SparseTombstoneSpliteratorTest.class,
     TxnFastHashSetTest.class,
     TxnFastHashMapTest.class,

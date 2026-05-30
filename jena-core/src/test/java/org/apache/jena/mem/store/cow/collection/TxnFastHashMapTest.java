@@ -76,6 +76,31 @@ public class TxnFastHashMapTest {
     }
 
     @Test
+    public void getOrDefaultReturnsStoredValueForPresentKey() {
+        StringMap m = new StringMap();
+        m.put("a", "1");
+        assertEquals("1", m.getOrDefault("a", "fallback"));   // present: stored, not the default
+        assertEquals("fallback", m.getOrDefault("missing", "fallback"));
+    }
+
+    @Test
+    public void computeInsertGrowsPositionsTableMidOperation() {
+        // Insert many distinct keys via compute(absent -> value) so the probe
+        // table resizes during compute(); compute must recompute the (now
+        // invalid) probe index after the resize and still insert correctly.
+        StringMap m = new StringMap();
+        final int N = 500;
+        for (int i = 0; i < N; i++) {
+            final String k = "k" + i;
+            m.compute(k, prev -> { assertNull(prev); return "v" + k; });
+        }
+        assertEquals(N, m.size());
+        for (int i = 0; i < N; i++) {
+            assertEquals("vk" + i, m.get("k" + i));
+        }
+    }
+
+    @Test
     public void tryPutOnExistingKeyReturnsFalseAndUpdatesValue() {
         StringMap m = new StringMap();
         assertTrue(m.tryPut("a", "1"));

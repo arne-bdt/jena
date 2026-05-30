@@ -63,6 +63,26 @@ public class TxnFastHashSetTest {
         return s.keyStream().collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
+    // ----- anyMatch ---------------------------------------------------
+
+    @Test
+    public void anyMatchAndAnyMatchRandomOrderSkipTombstones() {
+        StringSet s = new StringSet();
+        s.tryAdd("a"); s.tryAdd("b"); s.tryAdd("c");
+        s.tryRemove("b");
+
+        // anyMatch walks the dense array in reverse; anyMatchRandomOrder walks
+        // the probe table. Both must see live keys and skip the tombstone.
+        assertTrue(s.anyMatch("a"::equals));
+        assertTrue(s.anyMatch("c"::equals));
+        assertFalse("a tombstoned element must not match", s.anyMatch("b"::equals));
+        assertFalse(s.anyMatch("z"::equals));
+
+        assertTrue(s.anyMatchRandomOrder("c"::equals));
+        assertFalse(s.anyMatchRandomOrder("b"::equals));
+        assertFalse(s.anyMatchRandomOrder("z"::equals));
+    }
+
     // ----- Basic operations ------------------------------------------
 
     @Test

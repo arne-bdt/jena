@@ -23,10 +23,17 @@ package org.apache.jena.mem.store.cow.collection;
 
 import org.junit.Test;
 
+import java.util.ConcurrentModificationException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Spliterator;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -98,5 +105,74 @@ public class SparseTombstoneSpliteratorTest {
         Spliterator<String> spl = s.keySpliterator();
         assertEquals(Spliterator.DISTINCT | Spliterator.NONNULL,
                 spl.characteristics());
+    }
+
+    // ----- iteration behaviour (trySplit / forEachRemaining / CME) -----
+
+    private static StringSet setOf(String... keys) {
+        StringSet s = new StringSet();
+        for (String k : keys) s.tryAdd(k);
+        return s;
+    }
+
+    @Test
+    public void parallelStreamYieldsEveryLiveElementOnce() {
+        StringSet s = new StringSet();
+        for (int i = 0; i < 1000; i++) s.tryAdd("k" + i);
+        for (int i = 0; i < 1000; i += 3) s.tryRemove("k" + i);   // scatter tombstones
+
+        // A parallel stream drives trySplit() recursively; the result must be
+        // exactly the live set, with nothing dropped or duplicated.
+        Set<String> collected = StreamSupport.stream(s.keySpliterator(), true)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        Set<String> expected = new HashSet<>();
+        for (int i = 0; i < 1000; i++) if (i % 3 != 0) expected.add("k" + i);
+        assertEquals(expected, collected);
+        assertEquals(s.size(), collected.size());
+    }
+
+    @Test
+    public void trySplitCoversDisjointHalves() {
+        StringSet s = setOf("a", "b", "c", "d", "e", "f", "g", "h");
+        s.tryRemove("c");
+        s.tryRemove("f");
+
+        Spliterator<String> a = s.keySpliterator();
+        Spliterator<String> b = a.trySplit();
+        assertNotNull("a set of this size must split", b);
+
+        Set<String> seen = new HashSet<>();
+        a.forEachRemaining(seen::add);
+        b.forEachRemaining(seen::add);
+        assertEquals(Set.of("a", "b", "d", "e", "g", "h"), seen);
+    }
+
+    @Test
+    public void forEachRemainingSkipsTombstones() {
+        StringSet s = setOf("a", "b", "c", "d");
+        s.tryRemove("b");
+
+        Set<String> seen = new HashSet<>();
+        s.keySpliterator().forEachRemaining(seen::add);
+        assertEquals(Set.of("a", "c", "d"), seen);
+    }
+
+    @Test
+    public void structuralModificationThrowsOnForEachRemaining() {
+        StringSet s = setOf("a", "b");
+        Spliterator<String> spl = s.keySpliterator();   // snapshots size
+        s.tryAdd("c");
+        assertThrows(ConcurrentModificationException.class,
+                () -> spl.forEachRemaining(x -> {}));
+    }
+
+    @Test
+    public void structuralModificationThrowsOnTryAdvance() {
+        StringSet s = setOf("a", "b");
+        Spliterator<String> spl = s.keySpliterator();
+        s.tryRemove("a");
+        assertThrows(ConcurrentModificationException.class,
+                () -> spl.tryAdvance(x -> {}));
     }
 }

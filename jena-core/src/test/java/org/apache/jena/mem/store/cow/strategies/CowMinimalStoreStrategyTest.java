@@ -81,4 +81,21 @@ public class CowMinimalStoreStrategyTest {
         assertFalse(strategy.containsAnyPreObj(node("p"), node("oX")));   // no such object
         assertFalse(strategy.containsSubAnyAny(node("nope")));
     }
+
+    @Test
+    public void findMatchesByPartialPattern() {
+        TxnTripleSet triples = new TxnTripleSet();
+        for (int i = 0; i < 10; i++) {
+            triples.tryAdd(triple("s" + i + " p o" + i));
+        }
+        CowMinimalStoreStrategy strategy = new CowMinimalStoreStrategy(triples);
+
+        assertEquals(Set.of(triple("s3 p o3")), strategy.findSubAnyAny(node("s3")).toSet());
+        assertEquals(10, strategy.findAnyPreAny(node("p")).toList().size());
+        assertEquals(Set.of(triple("s7 p o7")), strategy.findAnyAnyObj(node("o7")).toSet());
+        assertEquals(Set.of(triple("s5 p o5")), strategy.findSubPreAny(node("s5"), node("p")).toSet());
+        assertEquals(Set.of(triple("s5 p o5")), strategy.findSubAnyObj(node("s5"), node("o5")).toSet());
+        assertEquals(Set.of(triple("s5 p o5")), strategy.findAnyPreObj(node("p"), node("o5")).toSet());
+        assertFalse(strategy.findSubAnyAny(node("nope")).hasNext());
+    }
 }
