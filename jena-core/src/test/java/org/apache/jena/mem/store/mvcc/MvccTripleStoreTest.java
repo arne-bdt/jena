@@ -26,6 +26,8 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
 import org.junit.Test;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import static org.apache.jena.testing_framework.GraphHelper.triple;
@@ -282,6 +284,183 @@ public class MvccTripleStoreTest {
             assertEquals(3, countFind(v, Triple.create(Node.ANY, Node.ANY, Node.ANY)));
         } finally {
             v.close();
+        }
+    }
+
+    private static void vacuum(MvccTripleStore store) {
+        store.versionControl().lockWriter();
+        try {
+            store.vacuum();
+        } finally {
+            store.versionControl().unlockWriter();
+        }
+    }
+
+    @Test
+    public void vacuumReclaimsDeadSlotsAndRebuildsIndex() {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
+        write(store, w -> {
+            for (int i = 0; i < 100; i++) {
+                w.add(triple("s" + i + " p o" + i));
+            }
+        });
+        write(store, w -> {
+            for (int i = 0; i < 50; i++) {
+                w.remove(triple("s" + i + " p o" + i));
+            }
+        });
+        assertEquals("dead slots linger before vacuum", 100, store.physicalSlotCount());
+
+        vacuum(store); // no active readers -> reclaim every dead slot
+        assertEquals("vacuum reclaims the 50 deleted slots", 50, store.physicalSlotCount());
+
+        final MvccReadView v = store.openReadView();
+        try {
+            assertEquals(50, v.count());
+            assertFalse(v.contains(triple("s0 p o0")));
+            assertTrue(v.contains(triple("s50 p o50")));
+            // The index was rebuilt over the renumbered survivors; partial lookups still work.
+            assertEquals(50, countFind(v, Triple.create(Node.ANY,
+                    triple("x p y").getPredicate(), Node.ANY)));
+        } finally {
+            v.close();
+        }
+    }
+
+    @Test
+    public void vacuumRetainsSlotsRegisteredReadersNeed() {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
+        final Triple t = triple("a b c");
+        write(store, w -> w.add(t));
+
+        final long v1 = store.versionControl().committedVersion();
+        store.versionControl().registerReader(v1);   // a reader pinned at v1
+        write(store, w -> w.remove(t));              // delete at v2 > v1
+        assertTrue("v1 still sees t before vacuum", store.containsAt(v1, t));
+
+        vacuum(store);                               // cutoff = v1 -> t (till=v2) retained
+        assertTrue("vacuum must not reclaim a registered reader's slot", store.containsAt(v1, t));
+        assertEquals(1, store.physicalSlotCount());
+
+        store.versionControl().deregisterReader(v1); // reader gone
+        vacuum(store);                               // cutoff = committed -> reclaim t
+        assertEquals("with no readers, the dead slot is reclaimed", 0, store.physicalSlotCount());
+    }
+
+    @Test
+    public void vacuumPreservesMultiVersionSnapshots() {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
+        final Triple t = triple("a b c");
+
+        write(store, w -> w.add(t));                 // v1: present
+        final long v1 = store.versionControl().committedVersion();
+        store.versionControl().registerReader(v1);
+
+        write(store, w -> w.remove(t));              // v2: deleted
+        final long v2 = store.versionControl().committedVersion();
+        store.versionControl().registerReader(v2);
+
+        write(store, w -> w.add(t));                 // v3: re-added (new slot)
+        final long v3 = store.versionControl().committedVersion();
+        store.versionControl().registerReader(v3);
+
+        vacuum(store); // cutoff = v1 -> both the [v1,v2) and [v3,inf) slots are retained
+
+        assertTrue("pre-delete snapshot survives vacuum", store.containsAt(v1, t));
+        assertFalse("gap snapshot sees neither version", store.containsAt(v2, t));
+        assertTrue("post-readd snapshot survives vacuum", store.containsAt(v3, t));
+
+        store.versionControl().deregisterReader(v1);
+        store.versionControl().deregisterReader(v2);
+        store.versionControl().deregisterReader(v3);
+    }
+
+    @Test
+    public void autoVacuumKicksInUnderChurn() {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
+        // Load enough to clear the auto-vacuum minimum, then delete half with no
+        // active readers: the commit's auto-vacuum should compact in place.
+        write(store, w -> {
+            for (int i = 0; i < 3000; i++) {
+                w.add(triple("s" + i + " p o" + i));
+            }
+        });
+        write(store, w -> {
+            for (int i = 0; i < 2000; i++) {
+                w.remove(triple("s" + i + " p o" + i));
+            }
+        });
+        assertTrue("auto-vacuum should have compacted to roughly the live set, was "
+                        + store.physicalSlotCount(),
+                store.physicalSlotCount() <= 1001);
+        final MvccReadView v = store.openReadView();
+        try {
+            assertEquals(1000, v.count());
+        } finally {
+            v.close();
+        }
+    }
+
+    @Test
+    public void concurrentReadersDuringChurnAndVacuum() throws Exception {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
+        write(store, w -> {
+            for (int i = 0; i < 2000; i++) {
+                w.add(triple("s" + i + " p o" + i));
+            }
+        });
+
+        final AtomicBoolean stop = new AtomicBoolean(false);
+        final AtomicReference<Throwable> error = new AtomicReference<>();
+
+        // Writer: delete then re-add blocks of triples, creating dead slots and
+        // (when no reader lags) triggering auto-vacuum compaction.
+        final Thread writer = new Thread(() -> {
+            try {
+                int round = 0;
+                while (!stop.get()) {
+                    final int base = (round++ % 5) * 200;
+                    write(store, w -> {
+                        for (int i = base; i < base + 200; i++) {
+                            w.remove(triple("s" + i + " p o" + i));
+                        }
+                    });
+                    write(store, w -> {
+                        for (int i = base; i < base + 200; i++) {
+                            w.add(triple("s" + i + " p o" + i));
+                        }
+                    });
+                }
+            } catch (Throwable th) {
+                error.set(th);
+            }
+        });
+        writer.start();
+
+        try {
+            // Each reader snapshot must be internally consistent (count() agrees
+            // with a full enumeration) and never throw, despite concurrent
+            // churn + compaction.
+            for (int k = 0; k < 300; k++) {
+                final MvccReadView v = store.openReadView();
+                try {
+                    final int byCount = v.count();
+                    final int byScan = v.find(Triple.create(Node.ANY, Node.ANY, Node.ANY)).toList().size();
+                    assertEquals("snapshot must be internally consistent", byCount, byScan);
+                    // The snapshot lands either between a delete and its re-add (1800)
+                    // or outside that window (2000) — never anything else.
+                    assertTrue("unexpected snapshot size " + byCount,
+                            byCount >= 1800 && byCount <= 2000);
+                } finally {
+                    v.close();
+                }
+            }
+        } finally {
+            stop.set(true);
+            writer.join(10_000);
+        }
+        if (error.get() != null) {
+            throw new AssertionError("writer thread failed", error.get());
         }
     }
 

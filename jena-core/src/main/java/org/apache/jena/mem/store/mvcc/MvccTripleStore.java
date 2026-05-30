@@ -25,6 +25,7 @@ import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
+import org.apache.jena.mem.store.indexed.TripleSet;
 import org.apache.jena.mem.store.mvcc.strategies.MvccEagerStoreStrategy;
 import org.apache.jena.mem.store.mvcc.strategies.MvccManualStoreStrategy;
 import org.apache.jena.mem.store.mvcc.strategies.MvccMinimalStoreStrategy;
@@ -35,8 +36,10 @@ import org.apache.jena.util.iterator.WrappedIterator;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -46,40 +49,30 @@ import java.util.stream.Stream;
  *
  * <h2>Storage</h2>
  * Triples live in append-only parallel arrays, each slot identified by a stable
- * index:
- * <ul>
- *   <li>{@code keys[i]} — the triple;</li>
- *   <li>{@code since[i]} — the version at which slot {@code i} became visible;</li>
- *   <li>{@code till[i]} — the version at which it was deleted ({@link #ALIVE} while
- *       live). {@code till} is the only field mutated after a slot is created, and
- *       only monotonically (live → deleted), so an older reader is never harmed.</li>
- * </ul>
- * A slot is visible at version {@code v} iff {@code since[i] <= v && v < till[i]}.
- * {@code since}/{@code till} are accessed through a {@link VarHandle} in
- * <em>opaque</em> mode to avoid word tearing under the concurrent
- * delete-stamp / read.
+ * index: {@code keys[i]} (the triple), {@code since[i]} (version it became
+ * visible) and {@code till[i]} ({@link #ALIVE} while live, else the version it was
+ * deleted). A slot is visible at version {@code v} iff
+ * {@code since[i] <= v && v < till[i]}. {@code since}/{@code till} are accessed
+ * through a {@link VarHandle} in opaque mode to avoid word tearing.
  *
  * <h2>Publication</h2>
  * The published state is a single {@code volatile} {@link Gen} record carrying the
- * array references plus the committed {@code count}/{@code liveCount} and the
- * version they correspond to. A reader takes its snapshot with one volatile read
- * of {@link #gen} at {@code begin(READ)} — O(1), no copy. The volatile read/write
- * pair on {@code gen} is the sole cross-thread fence.
+ * arrays, the {@code count}/{@code liveCount}/{@code version}, <em>and</em> the
+ * auxiliary index. Bundling the index into the generation means one volatile read
+ * gives a reader matching arrays + index even across a vacuum that renumbers slots.
  *
  * <h2>Writing (deferred apply)</h2>
- * A {@link MvccWriteTxn} buffers its changes in an overlay and applies them to the
- * shared arrays only at {@link #commit(MvccWriteTxn)}, under the writer lock, then
- * publishes a fresh {@link Gen}. Consequently:
- * <ul>
- *   <li>{@code abort} discards the overlay and touches nothing — no undo log;</li>
- *   <li>concurrent readers, clamped to their snapshot's {@code count}, never
- *       observe a half-applied slot, and the {@code commit} that publishes the new
- *       {@code Gen} establishes happens-before for any later reader;</li>
- *   <li>delete-stamps land on committed slots an older reader may share, but are
- *       version-safe (the delete is in that reader's future).</li>
- * </ul>
- * Writer-private bookkeeping ({@link #committedLive}, the dedup map of committed
- * live triple → slot) is touched only under the writer lock.
+ * A {@link MvccWriteTxn} buffers changes and applies them at
+ * {@link #commit(MvccWriteTxn)} under the writer lock, then publishes a fresh
+ * {@link Gen}; {@code abort} discards the overlay and touches nothing.
+ *
+ * <h2>Vacuum</h2>
+ * Deletes are logical and re-adds append new slots, so the arrays and index lists
+ * accumulate dead entries. {@link #vacuum()} (and an automatic trigger fused into
+ * commit) compacts: it keeps only slots with {@code till > cutoff} where
+ * {@code cutoff = }{@link MvccVersionControl#minActiveReadVersion()}, renumbers
+ * survivors, rebuilds the index, and publishes a new generation. Old readers keep
+ * their old generation (arrays + index) and are unaffected.
  */
 public final class MvccTripleStore {
 
@@ -88,29 +81,35 @@ public final class MvccTripleStore {
 
     private static final int INITIAL_CAPACITY = 16;
 
+    /** Below this slot count, never auto-vacuum (not worth it). */
+    private static final int VACUUM_MIN_COUNT = 1024;
+
     /** Element-wise opaque access to the {@code long} version arrays. */
     private static final VarHandle LONGS = MethodHandles.arrayElementVarHandle(long[].class);
 
     /**
-     * Immutable published snapshot of the dense storage. {@code keys}/{@code since}/
-     * {@code till} are shared with the live store (the writer appends beyond
-     * {@code count} and stamps {@code till} in place), but only indices
-     * {@code [0, count)} are meaningful to a reader holding this generation, and
-     * {@code count}/{@code liveCount}/{@code version} are fixed for it.
+     * Immutable published snapshot: the dense arrays, the committed
+     * {@code count}/{@code liveCount}/{@code version}, and the auxiliary
+     * {@code index}. The arrays and index are shared with the live store between
+     * vacuums (the writer appends beyond {@code count} and into the index lists in
+     * place); only indices {@code [0, count)} are meaningful to a reader holding
+     * this generation, and a vacuum publishes an entirely fresh generation.
      */
-    public record Gen(long version, Triple[] keys, long[] since, long[] till, int count, int liveCount) {}
+    public record Gen(long version, Triple[] keys, long[] since, long[] till,
+                      int count, int liveCount, MvccStoreStrategy index) {}
 
     private final MvccVersionControl vc;
     private final IndexingStrategy indexingStrategy;
 
-    /** Auxiliary index; read concurrently by readers, mutated by the writer at commit. */
-    private final MvccStoreStrategy strategy;
-
     /** Published snapshot. Volatile: published by commit, acquired by begin(READ). */
     private volatile Gen gen;
 
-    /** Writer-private: committed live triple → its slot. Touched only under the writer lock. */
-    private final java.util.HashMap<Triple, Integer> committedLive = new java.util.HashMap<>();
+    // Writer-private dedup: the set of committed-live triples, with a parallel
+    // primitive int[] mapping each set entry's stable index to its version slot.
+    // Reuses the FastHashSet machinery (no boxing) like EagerStoreStrategy's
+    // reverse-index arrays. Touched only under the writer lock; never by readers.
+    private final TripleSet committedLive = new TripleSet();
+    private int[] slotOf;
 
     /** Create a store with its own version timeline. */
     public MvccTripleStore(IndexingStrategy indexingStrategy) {
@@ -120,22 +119,21 @@ public final class MvccTripleStore {
     /**
      * Create a store on a shared version timeline (used by a dataset so all graphs
      * commit on one clock).
-     *
-     * @param indexingStrategy the indexing strategy
-     * @param vc               the shared version control
      */
     public MvccTripleStore(IndexingStrategy indexingStrategy, MvccVersionControl vc) {
         this.vc = vc;
         this.indexingStrategy = indexingStrategy;
-        this.strategy = createStrategy(indexingStrategy);
+        this.slotOf = new int[committedLive.getInternalKeysLength()];
+        committedLive.setOnKeysGrowHook(n -> slotOf = Arrays.copyOf(slotOf, n));
         final long[] since = new long[INITIAL_CAPACITY];
         final long[] till = new long[INITIAL_CAPACITY];
-        java.util.Arrays.fill(since, ALIVE); // unused slots are invisible to everyone
-        java.util.Arrays.fill(till, ALIVE);
-        this.gen = new Gen(0L, new Triple[INITIAL_CAPACITY], since, till, 0, 0);
+        Arrays.fill(since, ALIVE); // unused slots are invisible to everyone
+        Arrays.fill(till, ALIVE);
+        this.gen = new Gen(0L, new Triple[INITIAL_CAPACITY], since, till, 0, 0,
+                createIndex(indexingStrategy));
     }
 
-    private MvccStoreStrategy createStrategy(IndexingStrategy s) {
+    private MvccStoreStrategy createIndex(IndexingStrategy s) {
         return switch (s) {
             case EAGER -> new MvccEagerStoreStrategy();
             case MINIMAL -> new MvccMinimalStoreStrategy();
@@ -158,18 +156,20 @@ public final class MvccTripleStore {
 
     /** @return whether the auxiliary index is built and serving lookups. */
     public boolean isIndexInitialized() {
-        return strategy.isIndexInitialized();
+        return gen.index().isIndexInitialized();
     }
 
     /**
      * Build the auxiliary index over the currently-live committed slots (a no-op
      * unless the configured strategy is {@code MANUAL} and not yet built). Must be
-     * called with the writer lock held.
+     * called with the writer lock held. The build mutates the current generation's
+     * index in place (published via the strategy's own volatile), so no new
+     * generation is needed.
      */
     public void initializeIndex() {
-        if (strategy instanceof MvccManualStoreStrategy manual && !manual.isIndexInitialized()) {
+        final Gen g = gen;
+        if (g.index() instanceof MvccManualStoreStrategy manual && !manual.isIndexInitialized()) {
             final MvccEagerStoreStrategy eager = new MvccEagerStoreStrategy();
-            final Gen g = gen;
             for (int slot = 0; slot < g.count(); slot++) {
                 if (visible(g, slot, g.version())) {
                     eager.onCommitAdd(g.keys()[slot], slot);
@@ -182,30 +182,28 @@ public final class MvccTripleStore {
     // ---- Read views ----------------------------------------------------------
 
     /**
-     * Open a read view pinned at the latest committed version. A single volatile
-     * read of {@link #gen} fixes both the snapshot and its version, so reader state
-     * is internally consistent without a separate version read.
+     * Open a read view pinned at the latest committed version, registered for
+     * vacuum tracking. {@link MvccVersionControl#pinReader()} registers the version
+     * race-free against a concurrent commit/vacuum; the generation is then read,
+     * so it is always consistent with (or newer than) the pinned version.
      *
-     * @return a lock-free read view
+     * @return a lock-free, registered read view
      */
     public MvccReadView openReadView() {
-        final long v = vc.committedVersion();   // pin the commit counter
-        final Gen g = gen;                       // volatile acquire of the snapshot
-        vc.registerReader(v);
+        final long v = vc.pinReader();
+        final Gen g = gen;
         return new MvccReadView(this, g, v, true);
     }
 
     /**
      * A transient, unregistered read view over the latest committed generation,
-     * for reads outside any transaction. Needs no {@code close()} — it does not
-     * participate in vacuum tracking; the returned iterators/streams hold the
-     * generation snapshot directly.
-     *
-     * @return an unregistered read view at the current committed version
+     * for reads outside any transaction. Needs no {@code close()}: it captures a
+     * complete generation (arrays + index), so it is safe even if a later vacuum
+     * compacts the store.
      */
     public MvccReadView transientReadView() {
-        final long v = vc.committedVersion();
-        return new MvccReadView(this, gen, v, false);
+        final Gen g = gen;
+        return new MvccReadView(this, g, g.version(), false);
     }
 
     /** @return the current published generation (for the writer's committed view). */
@@ -213,13 +211,17 @@ public final class MvccTripleStore {
         return gen;
     }
 
+    /**
+     * Diagnostic: the number of physical slots in the current generation (live
+     * plus retained-dead). Shrinks after a {@link #vacuum()} reclaims dead slots.
+     *
+     * @return the physical slot count
+     */
+    public int physicalSlotCount() {
+        return gen.count();
+    }
+
     // ---- Version-parameterised reads against the latest generation -------------
-    //
-    // Used by the dataset, which pins a single global version and reads each
-    // graph's current generation filtered at that version. Reading the latest
-    // generation filtered at an older version yields exactly the snapshot at that
-    // version, because slots are never physically removed (only version-stamped)
-    // before a vacuum that respects active readers.
 
     /** @return iterator over triples matching the pattern, visible at {@code version}. */
     public ExtendedIterator<Triple> findAt(long version, Triple match) {
@@ -238,17 +240,7 @@ public final class MvccTripleStore {
 
     /** @return the number of triples visible at {@code version}. */
     public int countAt(long version) {
-        final Gen g = gen;
-        if (version >= g.version()) {
-            return g.liveCount();
-        }
-        int c = 0;
-        for (int i = 0; i < g.count(); i++) {
-            if (visible(g, i, version)) {
-                c++;
-            }
-        }
-        return c;
+        return countLive(gen, version);
     }
 
     /** @return whether the store has any triple visible at {@code version}. */
@@ -269,14 +261,12 @@ public final class MvccTripleStore {
      * Open a write transaction at {@code committedVersion + 1}, capturing the
      * current committed generation as its read-your-writes base. The caller must
      * hold the writer lock (see {@link MvccVersionControl#lockWriter()}).
-     *
-     * @return a new write transaction
      */
     public MvccWriteTxn openWriteTxn() {
         return new MvccWriteTxn(this, vc.nextWriteVersion(), gen);
     }
 
-    // ---- Visibility & scanning (shared by read view and writer committed view) --
+    // ---- Visibility & scanning -------------------------------------------------
 
     static boolean visible(Gen g, int slot, long version) {
         final long since = (long) LONGS.getOpaque(g.since(), slot);
@@ -285,13 +275,8 @@ public final class MvccTripleStore {
     }
 
     /**
-     * Term-based pattern match: a non-concrete pattern component
-     * ({@code Node.ANY}, a variable, or {@code null}) is a wildcard; a concrete
-     * component must be {@link Object#equals equal}.
-     *
-     * @param pattern the lookup pattern
-     * @param t       a candidate triple
-     * @return {@code true} iff {@code t} matches {@code pattern}
+     * Term-based pattern match: a non-concrete pattern component is a wildcard; a
+     * concrete component must be {@link Object#equals equal}.
      */
     public static boolean matches(Triple pattern, Triple t) {
         final Node s = pattern.getSubject();
@@ -323,7 +308,7 @@ public final class MvccTripleStore {
 
     /** Version-filtered iterator over a pattern, against a fixed generation/version. */
     ExtendedIterator<Triple> find(Gen g, long version, Triple match) {
-        final MvccStoreStrategy.Candidates c = strategy.candidates(match);
+        final MvccStoreStrategy.Candidates c = g.index().candidates(match);
         if (!c.dense() && c.list() == null) {
             return NiceIterator.emptyIterator();
         }
@@ -331,9 +316,6 @@ public final class MvccTripleStore {
     }
 
     boolean contains(Gen g, long version, Triple match) {
-        // Fully-concrete fast path still routes through the candidate scan so the
-        // answer is version-correct (the dedup map reflects only committed state
-        // and is writer-private). The scan short-circuits on the first match.
         return find(g, version, match).hasNext();
     }
 
@@ -352,13 +334,11 @@ public final class MvccTripleStore {
         private final long version;
         private final Triple[] keys;
         private final int count;
-        // pattern terms (null component => wildcard)
         private final Node sm, pm, om;
         private final boolean anyS, anyP, anyO;
-        // candidate source: dense range, or a snapshot of an index list
         private final boolean dense;
         private final int[] list;       // null when dense
-        private final int listLen;      // valid when !dense
+        private final int listLen;
         private int cursor = 0;
         private Triple next;
 
@@ -443,15 +423,13 @@ public final class MvccTripleStore {
     // ---- Commit application (writer lock held) ---------------------------------
 
     /**
-     * Apply a write transaction's overlay to the shared store and publish a new
-     * generation. Called with the writer lock held.
-     *
-     * @param txn the write transaction to commit
+     * Apply a write transaction's overlay to the shared store, publish a new
+     * generation, and auto-vacuum if warranted. Called with the writer lock held.
      */
     public void commit(MvccWriteTxn txn) {
         final long v = txn.version();
-        final java.util.Set<Triple> added = txn.added();
-        final java.util.Set<Triple> removed = txn.removed();
+        final Set<Triple> added = txn.added();
+        final Set<Triple> removed = txn.removed();
 
         Gen g = gen;
         Triple[] keys = g.keys();
@@ -459,9 +437,10 @@ public final class MvccTripleStore {
         long[] till = g.till();
         int count = g.count();
         int liveCount = g.liveCount();
+        final MvccStoreStrategy index = g.index();
 
-        // Grow once, exactly, to the final needed capacity, before any mutation so
-        // all stamps/appends land on the final arrays.
+        // Grow once, exactly, before any mutation so all stamps/appends land on the
+        // final arrays.
         final int needed = count + added.size();
         if (needed > keys.length) {
             int newLen = keys.length;
@@ -469,16 +448,16 @@ public final class MvccTripleStore {
                 final int grown = (newLen >> 1) + newLen;
                 newLen = grown < 0 ? Integer.MAX_VALUE : grown;
             }
-            keys = java.util.Arrays.copyOf(keys, newLen);
+            keys = Arrays.copyOf(keys, newLen);
             since = growVersions(since, newLen);
             till = growVersions(till, newLen);
         }
 
         // Deletes: stamp till on the committed slot (monotonic, opaque).
         for (Triple t : removed) {
-            final Integer slot = committedLive.remove(t);
-            if (slot != null) {
-                LONGS.setOpaque(till, slot, v);
+            final int i = committedLive.removeAndGetIndex(t);
+            if (i >= 0) {
+                LONGS.setOpaque(till, slotOf[i], v);
                 liveCount--;
             }
         }
@@ -490,19 +469,114 @@ public final class MvccTripleStore {
             keys[slot] = t;
             LONGS.setOpaque(till, slot, ALIVE);
             LONGS.setOpaque(since, slot, v);
-            strategy.onCommitAdd(t, slot);
-            committedLive.put(t, slot);
+            index.onCommitAdd(t, slot);
+            int i = committedLive.addAndGetIndex(t);
+            if (i < 0) {
+                i = ~i;
+            }
+            slotOf[i] = slot;
             liveCount++;
         }
 
         // Publish: new generation first (volatile release), then advance the clock.
-        gen = new Gen(v, keys, since, till, count, liveCount);
+        final Gen g1 = new Gen(v, keys, since, till, count, liveCount, index);
+        gen = g1;
         vc.publish(v);
+
+        // Auto-vacuum when there is a lot of dead weight and no reader is lagging
+        // behind the new committed version (so the cutoff reclaims everything).
+        if (shouldAutoVacuum(g1)) {
+            gen = compact(g1, vc.minActiveReadVersion());
+        }
+    }
+
+    private boolean shouldAutoVacuum(Gen g) {
+        final int dead = g.count() - g.liveCount();
+        return g.count() >= VACUUM_MIN_COUNT
+                && dead * 2 >= g.count()                      // >= 50% non-live
+                && vc.minActiveReadVersion() >= g.version();  // no lagging reader
+    }
+
+    /**
+     * Force a compaction of the current generation, reclaiming every slot deleted
+     * at or before {@link MvccVersionControl#minActiveReadVersion()}. Must be
+     * called with the writer lock held.
+     */
+    public void vacuum() {
+        gen = compact(gen, vc.minActiveReadVersion());
+    }
+
+    /**
+     * Build a compacted generation: keep only slots with {@code till > cutoff},
+     * renumber survivors, rebuild the index over them, and remap the dedup table.
+     * The old generation (arrays + index) is untouched, so readers holding it are
+     * unaffected. Must be called with the writer lock held.
+     */
+    private Gen compact(Gen g, long cutoff) {
+        final int n = g.count();
+        final long committed = g.version();
+        final Triple[] oldKeys = g.keys();
+        final long[] oldSince = g.since();
+        final long[] oldTill = g.till();
+
+        int survivors = 0;
+        for (int i = 0; i < n; i++) {
+            if ((long) LONGS.getOpaque(oldTill, i) > cutoff) {
+                survivors++;
+            }
+        }
+        final int cap = Math.max(INITIAL_CAPACITY, survivors);
+        final Triple[] nk = new Triple[cap];
+        final long[] ns = new long[cap];
+        final long[] nt = new long[cap];
+        Arrays.fill(ns, ALIVE);
+        Arrays.fill(nt, ALIVE);
+        final MvccStoreStrategy nidx = freshCompactedIndex(g.index());
+        final int[] oldToNew = new int[n];
+        Arrays.fill(oldToNew, -1);
+
+        int w = 0;
+        int newLive = 0;
+        for (int i = 0; i < n; i++) {
+            final long ti = (long) LONGS.getOpaque(oldTill, i);
+            if (ti > cutoff) {
+                oldToNew[i] = w;
+                nk[w] = oldKeys[i];
+                LONGS.setOpaque(ns, w, (long) LONGS.getOpaque(oldSince, i));
+                LONGS.setOpaque(nt, w, ti);
+                nidx.onCommitAdd(oldKeys[i], w);  // index every survivor (live + retained-dead)
+                if (ti > committed) {
+                    newLive++;
+                }
+                w++;
+            }
+        }
+
+        // Remap the dedup table: every committed-live triple survived, so its
+        // recorded slot is renumbered through oldToNew.
+        committedLive.forEachKey((t, i) -> slotOf[i] = oldToNew[slotOf[i]]);
+
+        return new Gen(committed, nk, ns, nt, survivors, newLive, nidx);
+    }
+
+    private MvccStoreStrategy freshCompactedIndex(MvccStoreStrategy old) {
+        return switch (indexingStrategy) {
+            case EAGER -> new MvccEagerStoreStrategy();
+            case MINIMAL -> new MvccMinimalStoreStrategy();
+            case MANUAL -> {
+                final MvccManualStoreStrategy m = new MvccManualStoreStrategy();
+                if (old.isIndexInitialized()) {
+                    m.install(new MvccEagerStoreStrategy());  // onCommitAdd will populate it
+                }
+                yield m;
+            }
+            case LAZY, LAZY_PARALLEL -> throw new UnsupportedOperationException("unreachable");
+        };
     }
 
     private static long[] growVersions(long[] old, int newLen) {
-        final long[] grown = java.util.Arrays.copyOf(old, newLen);
-        java.util.Arrays.fill(grown, old.length, newLen, ALIVE);
+        final long[] grown = Arrays.copyOf(old, newLen);
+        Arrays.fill(grown, old.length, newLen, ALIVE);
         return grown;
     }
 }

@@ -128,6 +128,19 @@ public class GraphMemIndexedSetMvccTxn extends GraphBase
         store.initializeIndex();
     }
 
+    /**
+     * Compact the store, reclaiming slots deleted at or before the oldest active
+     * reader's version. Must be called inside a write transaction. Auto-vacuum also
+     * runs at commit when there is enough dead weight and no reader is lagging.
+     */
+    public void vacuum() {
+        require();
+        if (transactionMode() != ReadWrite.WRITE && !promote()) {
+            throw new JenaTransactionException("vacuum requires a write transaction");
+        }
+        store.vacuum();
+    }
+
     // --- Transactional ----------------------------------------------------
 
     @Override

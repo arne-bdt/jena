@@ -83,6 +83,8 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
         long version;
         /** Write version (committed base + 1); valid under WRITE. */
         long writeVersion;
+        /** The reader pin held for vacuum tracking, or -1 if none (WRITE / promoted). */
+        long readPin = -1;
         /** Per-store overlays, created lazily on first write to each store. */
         Map<MvccTripleStore, MvccWriteTxn> writeTxns;
     }
@@ -122,7 +124,9 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
             }
         } else {
             s.mode = ReadWrite.READ;
-            s.version = vc.committedVersion();
+            // Pin the version for vacuum tracking, race-free against commit/vacuum.
+            s.readPin = vc.pinReader();
+            s.version = s.readPin;
             activeTxn.set(s);
         }
     }
@@ -147,6 +151,12 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
                 vc.unlockWriter();
                 return false;
             }
+        }
+        // Becoming a writer: release the read pin (the writer lock now provides
+        // exclusion; reads route through the overlay / committed base).
+        if (t.readPin >= 0) {
+            vc.unpinReader(t.readPin);
+            t.readPin = -1;
         }
         t.mode = ReadWrite.WRITE;
         t.version = vc.committedVersion();
@@ -200,6 +210,10 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
     private void finish(DsTxnState t) {
         if (t.mode == ReadWrite.WRITE) {
             vc.unlockWriter();
+        }
+        if (t.readPin >= 0) {
+            vc.unpinReader(t.readPin);
+            t.readPin = -1;
         }
         activeTxn.remove();
     }

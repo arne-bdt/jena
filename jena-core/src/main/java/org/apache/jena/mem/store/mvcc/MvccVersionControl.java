@@ -116,6 +116,41 @@ public final class MvccVersionControl {
     }
 
     /**
+     * Pin a reader at the latest committed version, race-free against a concurrent
+     * commit/vacuum. Returns the pinned version; the caller may then read the
+     * store's generation, which is guaranteed consistent with (or newer than) the
+     * pin.
+     * <p>
+     * The register-then-revalidate loop closes the window between reading
+     * {@code committedVersion} and registering: if a commit (possibly triggering a
+     * vacuum) slipped in, the registration is rolled back and retried, so any
+     * vacuum that runs after this returns is guaranteed to observe the pin and use
+     * a cutoff {@code <=} the pinned version. Must be paired with
+     * {@link #unpinReader(long)}.
+     *
+     * @return the pinned committed version
+     */
+    public long pinReader() {
+        while (true) {
+            final long v = committedVersion;   // volatile read
+            registerReader(v);
+            if (v == committedVersion) {       // no commit slipped in: the pin holds
+                return v;
+            }
+            deregisterReader(v);               // stale pin; retry at the new version
+        }
+    }
+
+    /**
+     * Release a pin taken by {@link #pinReader()}.
+     *
+     * @param version the version returned by {@code pinReader()}
+     */
+    public void unpinReader(long version) {
+        deregisterReader(version);
+    }
+
+    /**
      * Register a reader pinned at {@code version}. Must be paired with
      * {@link #deregisterReader(long)}. The increment happens inside
      * {@code compute} so it cannot race with a concurrent deregister pruning
