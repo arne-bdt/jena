@@ -43,48 +43,56 @@ public final class MvccReadView {
 
     private final MvccTripleStore store;
     private final MvccTripleStore.Gen gen;
+    /**
+     * The committed version pinned at begin. May be greater than
+     * {@code gen.version()} when an empty write transaction bumped the commit
+     * counter without changing this store's data; filtering the generation at
+     * this version is still exact because no slot lives in the gap.
+     */
+    private final long version;
     private final boolean registered;
     private boolean closed = false;
 
-    MvccReadView(MvccTripleStore store, MvccTripleStore.Gen gen, boolean registered) {
+    MvccReadView(MvccTripleStore store, MvccTripleStore.Gen gen, long version, boolean registered) {
         this.store = store;
         this.gen = gen;
+        this.version = version;
         this.registered = registered;
     }
 
-    /** @return the version this view is pinned at. */
+    /** @return the committed version this view is pinned at. */
     public long version() {
-        return gen.version();
+        return version;
     }
 
     /** @return {@code true} iff some triple matches the pattern at this version. */
     public boolean contains(Triple match) {
-        return store.contains(gen, gen.version(), match);
+        return store.contains(gen, version, match);
     }
 
     /** @return an iterator over triples matching the pattern at this version. */
     public ExtendedIterator<Triple> find(Triple match) {
-        return store.find(gen, gen.version(), match);
+        return store.find(gen, version, match);
     }
 
     /** @return a stream over triples matching the pattern at this version. */
     public Stream<Triple> stream(Triple match) {
-        return store.stream(gen, gen.version(), match);
+        return store.stream(gen, version, match);
     }
 
     /** @return a stream over every triple visible at this version. */
     public Stream<Triple> stream() {
-        return store.stream(gen, gen.version(), ANY);
+        return store.stream(gen, version, ANY);
     }
 
     /** @return the number of triples visible at this version. */
     public int count() {
-        return store.countLive(gen);
+        return store.countLive(gen, version);
     }
 
     /** @return {@code true} iff no triples are visible at this version. */
     public boolean isEmpty() {
-        return gen.liveCount() == 0;
+        return count() == 0;
     }
 
     /** Deregister this reader from vacuum tracking. Idempotent; a no-op for a
@@ -92,7 +100,7 @@ public final class MvccReadView {
     public void close() {
         if (registered && !closed) {
             closed = true;
-            store.versionControl().deregisterReader(gen.version());
+            store.versionControl().deregisterReader(version);
         }
     }
 }

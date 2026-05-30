@@ -189,9 +189,10 @@ public final class MvccTripleStore {
      * @return a lock-free read view
      */
     public MvccReadView openReadView() {
-        final Gen g = gen;                 // volatile acquire
-        vc.registerReader(g.version());
-        return new MvccReadView(this, g, true);
+        final long v = vc.committedVersion();   // pin the commit counter
+        final Gen g = gen;                       // volatile acquire of the snapshot
+        vc.registerReader(v);
+        return new MvccReadView(this, g, v, true);
     }
 
     /**
@@ -203,12 +204,65 @@ public final class MvccTripleStore {
      * @return an unregistered read view at the current committed version
      */
     public MvccReadView transientReadView() {
-        return new MvccReadView(this, gen, false);
+        final long v = vc.committedVersion();
+        return new MvccReadView(this, gen, v, false);
     }
 
     /** @return the current published generation (for the writer's committed view). */
     public Gen currentGen() {
         return gen;
+    }
+
+    // ---- Version-parameterised reads against the latest generation -------------
+    //
+    // Used by the dataset, which pins a single global version and reads each
+    // graph's current generation filtered at that version. Reading the latest
+    // generation filtered at an older version yields exactly the snapshot at that
+    // version, because slots are never physically removed (only version-stamped)
+    // before a vacuum that respects active readers.
+
+    /** @return iterator over triples matching the pattern, visible at {@code version}. */
+    public ExtendedIterator<Triple> findAt(long version, Triple match) {
+        return find(gen, version, match);
+    }
+
+    /** @return whether some triple matches the pattern at {@code version}. */
+    public boolean containsAt(long version, Triple match) {
+        return contains(gen, version, match);
+    }
+
+    /** @return stream over triples matching the pattern, visible at {@code version}. */
+    public Stream<Triple> streamAt(long version, Triple match) {
+        return stream(gen, version, match);
+    }
+
+    /** @return the number of triples visible at {@code version}. */
+    public int countAt(long version) {
+        final Gen g = gen;
+        if (version >= g.version()) {
+            return g.liveCount();
+        }
+        int c = 0;
+        for (int i = 0; i < g.count(); i++) {
+            if (visible(g, i, version)) {
+                c++;
+            }
+        }
+        return c;
+    }
+
+    /** @return whether the store has any triple visible at {@code version}. */
+    public boolean isEmptyAt(long version) {
+        final Gen g = gen;
+        if (version >= g.version()) {
+            return g.liveCount() == 0;
+        }
+        for (int i = 0; i < g.count(); i++) {
+            if (visible(g, i, version)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -248,9 +302,23 @@ public final class MvccTripleStore {
                 && (!MvccStoreStrategy.isConcrete(o) || o.equals(t.getObject()));
     }
 
-    /** @return the number of live triples visible at the given generation. */
-    int countLive(Gen g) {
-        return g.liveCount();
+    /**
+     * @return the number of live triples visible at {@code version} within
+     *         generation {@code g}. O(1) when {@code version} is at or beyond the
+     *         generation's own version (the common case); otherwise an O(count)
+     *         scan for an older snapshot.
+     */
+    int countLive(Gen g, long version) {
+        if (version >= g.version()) {
+            return g.liveCount();
+        }
+        int c = 0;
+        for (int i = 0; i < g.count(); i++) {
+            if (visible(g, i, version)) {
+                c++;
+            }
+        }
+        return c;
     }
 
     /** Version-filtered iterator over a pattern, against a fixed generation/version. */

@@ -193,8 +193,13 @@ public class GraphMemIndexedSetMvccTxn extends GraphBase
     public void commit() {
         final TxnState t = require();
         try {
-            if (t.mode == ReadWrite.WRITE && t.writeTxn.hasChanges()) {
-                store.commit(t.writeTxn);
+            if (t.mode == ReadWrite.WRITE) {
+                if (t.writeTxn.hasChanges()) {
+                    store.commit(t.writeTxn);
+                }
+                // Always advance the commit counter so an empty write commit is
+                // still observable to ISOLATED promotion (a writer committed).
+                store.versionControl().publish(t.writeTxn.version());
             }
         } finally {
             finish(t);
@@ -213,14 +218,15 @@ public class GraphMemIndexedSetMvccTxn extends GraphBase
         if (t == null) {
             return;
         }
-        try {
-            if (t.mode == ReadWrite.WRITE && t.writeTxn.hasChanges()) {
-                throw new JenaTransactionException(
-                        "Write transaction was not committed or aborted before end()");
-            }
-        } finally {
+        if (t.mode == ReadWrite.WRITE) {
+            // Reaching end() in WRITE mode without commit()/abort() is a
+            // programming error: discard the overlay (releasing the writer slot)
+            // and surface the mistake.
             finish(t);
+            throw new JenaTransactionException(
+                    "Write transaction was not committed or aborted before end()");
         }
+        finish(t);
     }
 
     private void finish(TxnState t) {

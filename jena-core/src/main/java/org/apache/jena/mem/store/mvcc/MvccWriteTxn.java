@@ -66,7 +66,8 @@ public final class MvccWriteTxn {
         this.committedGen = committedGen;
     }
 
-    long version() {
+    /** @return the version this transaction will commit at. */
+    public long version() {
         return version;
     }
 
