@@ -24,6 +24,7 @@ package org.apache.jena.sparql.core.mem.txn.helper;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemory;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryCowTxn;
+import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryMvccTxn;
 import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn;
 
 /**
@@ -46,6 +47,9 @@ public final class TxnDatasetContext {
     /** New copy-on-write dataset, parallel per-graph fork. */
     public static final String DSG_COW_TXN_PARALLEL = "DatasetGraphInMemoryCowTxn PARALLEL";
 
+    /** New MVCC dataset, version-stamped shared store (O(1) begin). */
+    public static final String DSG_MVCC_TXN = "DatasetGraphInMemoryMvccTxn";
+
     /** @return a freshly constructed {@link DatasetGraph} for the given variant. */
     public static DatasetGraph createDataset(String variant) {
         return switch (variant) {
@@ -55,6 +59,8 @@ public final class TxnDatasetContext {
                     new DatasetGraphInMemoryCowTxn(GraphMemIndexedSetCowTxn.ForkMode.SEQUENTIAL);
             case DSG_COW_TXN_PARALLEL ->
                     new DatasetGraphInMemoryCowTxn(GraphMemIndexedSetCowTxn.ForkMode.PARALLEL);
+            case DSG_MVCC_TXN ->
+                    new DatasetGraphInMemoryMvccTxn();
             default ->
                     throw new IllegalArgumentException(
                             "Unknown TxnDatasetContext variant: " + variant);
