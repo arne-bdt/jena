@@ -78,6 +78,7 @@ public class AssemblerUtils
         registerDataset(tMemoryDataset,    new InMemDatasetAssembler());
         registerDataset(tDatasetTxnMem,    new InMemDatasetAssembler());
         registerDataset(tMemoryDatasetCow, new InMemDatasetCowAssembler());
+        registerDataset(tMemoryDatasetMvcc, new InMemDatasetMvccAssembler());
         registerDataset(tDatasetView,     new ViewDatasetAssembler());
         registerModel(tViewGraph,         new ViewGraphAssembler());
     }

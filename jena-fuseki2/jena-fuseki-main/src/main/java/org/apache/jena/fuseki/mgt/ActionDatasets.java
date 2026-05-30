@@ -84,6 +84,7 @@ public class ActionDatasets extends ActionContainerItem {
     private static final String tDatabaseMem         = "mem";
     private static final String tDatabaseMemCow      = "mem-cow";
     private static final String tDatabaseMemCowPar   = "mem-cow-parallel";
+    private static final String tDatabaseMemMvcc     = "mem-mvcc";
 
     public ActionDatasets() { super(); }
 
@@ -515,6 +516,7 @@ public class ActionDatasets extends ActionContainerItem {
         dbTypeToTemplate.put(tDatabaseMem,       Template.templateTIM_MemFN);
         dbTypeToTemplate.put(tDatabaseMemCow,    Template.templateTIM_MemCowFN);
         dbTypeToTemplate.put(tDatabaseMemCowPar, Template.templateTIM_MemCowParallelFN);
+        dbTypeToTemplate.put(tDatabaseMemMvcc,   Template.templateTIM_MemMvccFN);
     }
 
     private static void assemblerFromForm(HttpAction action, StreamRDF dest) {

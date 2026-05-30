@@ -19,14 +19,35 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.fuseki.main.runner;
+package org.apache.jena.mem.store.mvcc.strategies;
 
-// Command line DSG
-public enum SetupType {
-    UNSET,
-    MEM, MEMCOW, MEMCOW_PARALLEL, MEMMVCC, FILE, TDB, MEMTDB,  // Datasets on the command line
-    CONF,                                             // Configuration file.
-    ASSEM,                                            // Assembler for a datasets. Legacy.
-    NONE,                                             // Explicitly no dataset or configuration file.
-    SPARQLer                                          // SPARQler mode
+import org.apache.jena.graph.Triple;
+
+/**
+ * Minimal MVCC strategy: maintains no auxiliary index. Every lookup scans the
+ * whole dense slot range and is answered by the store's version filter plus
+ * full-pattern match. Lowest memory; suited to small graphs or memory-critical
+ * deployments.
+ */
+public final class MvccMinimalStoreStrategy implements MvccStoreStrategy {
+
+    @Override
+    public Candidates candidates(final Triple match) {
+        return Candidates.DENSE;
+    }
+
+    @Override
+    public void onCommitAdd(final Triple t, final int slot) {
+        // no index to maintain
+    }
+
+    @Override
+    public boolean isIndexInitialized() {
+        return false;
+    }
+
+    @Override
+    public void clear() {
+        // nothing to clear
+    }
 }

@@ -54,6 +54,12 @@ public class DatasetAssemblerVocab
      */
     public static final Property pForkMode           = ResourceFactory.createProperty(NS, "forkMode") ;
 
+    /**
+     * In-memory dataset backed by an MVCC (version-stamped) shared store.
+     * Maps to {@link org.apache.jena.sparql.core.mem.DatasetGraphInMemoryMvccTxn}.
+     */
+    public static final Resource tMemoryDatasetMvcc  = ResourceFactory.createResource(NS+"MemoryDatasetMvcc") ;
+
     // Specialised datasets
     public static final Resource tMemoryDataset      = ResourceFactory.createResource(NS+"MemoryDataset") ;
     public static final Resource tDatasetZero        = ResourceFactory.createResource(NS+"RDFDatasetZero") ;

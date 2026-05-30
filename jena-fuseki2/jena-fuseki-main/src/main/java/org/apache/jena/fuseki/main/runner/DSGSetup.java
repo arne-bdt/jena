@@ -130,6 +130,12 @@ import org.slf4j.Logger;
         serverArgs.allowUpdate = true;
     }
 
+    /*package*/ static void setupMemMvcc(Logger log, ServerArgs serverArgs) {
+        serverArgs.datasetDescription = "in-memory (MVCC)";
+        serverArgs.dataset = DatasetGraphFactory.createTxnMemMvcc();
+        serverArgs.allowUpdate = true;
+    }
+
     /*package*/ static void setupFile(Logger log, List<String> filenames, ServerArgs serverArgs) {
         serverArgs.datasetDescription = "in-memory, with files loaded";
         serverArgs.dataset = DatasetGraphFactory.createTxnMem();

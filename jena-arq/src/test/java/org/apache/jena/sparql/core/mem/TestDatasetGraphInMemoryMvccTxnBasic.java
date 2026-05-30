@@ -19,14 +19,17 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.fuseki.main.runner;
+package org.apache.jena.sparql.core.mem;
 
-// Command line DSG
-public enum SetupType {
-    UNSET,
-    MEM, MEMCOW, MEMCOW_PARALLEL, MEMMVCC, FILE, TDB, MEMTDB,  // Datasets on the command line
-    CONF,                                             // Configuration file.
-    ASSEM,                                            // Assembler for a datasets. Legacy.
-    NONE,                                             // Explicitly no dataset or configuration file.
-    SPARQLer                                          // SPARQler mode
+import org.apache.jena.sparql.core.AbstractDatasetGraphTests;
+import org.apache.jena.sparql.core.DatasetGraph;
+
+/**
+ * {@link AbstractDatasetGraphTests} run against {@link DatasetGraphInMemoryMvccTxn}.
+ */
+public class TestDatasetGraphInMemoryMvccTxnBasic extends AbstractDatasetGraphTests {
+    @Override
+    protected DatasetGraph emptyDataset() {
+        return new DatasetGraphInMemoryMvccTxn();
+    }
 }

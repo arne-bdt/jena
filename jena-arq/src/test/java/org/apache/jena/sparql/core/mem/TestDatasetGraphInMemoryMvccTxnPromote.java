@@ -19,14 +19,29 @@
  *   SPDX-License-Identifier: Apache-2.0
  */
 
-package org.apache.jena.fuseki.main.runner;
+package org.apache.jena.sparql.core.mem;
 
-// Command line DSG
-public enum SetupType {
-    UNSET,
-    MEM, MEMCOW, MEMCOW_PARALLEL, MEMMVCC, FILE, TDB, MEMTDB,  // Datasets on the command line
-    CONF,                                             // Configuration file.
-    ASSEM,                                            // Assembler for a datasets. Legacy.
-    NONE,                                             // Explicitly no dataset or configuration file.
-    SPARQLer                                          // SPARQler mode
+import org.apache.jena.sparql.JenaTransactionException;
+import org.apache.jena.sparql.core.DatasetGraph;
+import org.apache.jena.sparql.transaction.AbstractTestTransPromote;
+
+/** Promote tests for {@link DatasetGraphInMemoryMvccTxn}. */
+public class TestDatasetGraphInMemoryMvccTxnPromote extends AbstractTestTransPromote {
+    public TestDatasetGraphInMemoryMvccTxnPromote() {
+        super(getLoggers());
+    }
+
+    @Override
+    protected DatasetGraph create() {
+        return new DatasetGraphInMemoryMvccTxn();
+    }
+
+    private static String[] getLoggers() {
+        return new String[]{ DatasetGraphInMemoryMvccTxn.class.getName() };
+    }
+
+    @Override
+    protected Class<JenaTransactionException> getTransactionExceptionClass() {
+        return JenaTransactionException.class;
+    }
 }
