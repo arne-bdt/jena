@@ -29,6 +29,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemory;
+import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryBifurcan;
 import org.apache.jena.sparql.graph.GraphFactory;
 import org.apache.jena.sys.JenaSystem;
 
@@ -63,6 +64,19 @@ public class DatasetGraphFactory
      * @return a transactional, in-memory, modifiable DatasetGraph
      */
     public static DatasetGraph createTxnMem() { return new DatasetGraphInMemory(); }
+
+    /**
+     * Create an in-memory, transactional {@link DatasetGraph} backed by
+     * <a href="https://github.com/lacuna/bifurcan">Bifurcan</a> CHAMP indexes.
+     * <p>
+     * This is a drop-in alternative to {@link #createTxnMem()}: same transaction semantics and index coverage, but a
+     * storage layer that uses Bifurcan's linear (transient) collections during write transactions to reduce
+     * per-operation allocation in write-heavy phases.
+     *
+     * @return a transactional, in-memory, modifiable DatasetGraph
+     * @see #createTxnMem
+     */
+    public static DatasetGraph createTxnMemBifurcan() { return new DatasetGraphInMemoryBifurcan(); }
 
     /**
      * Create a general-purpose  {@link DatasetGraph}.<br/>

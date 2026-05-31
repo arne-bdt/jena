@@ -43,6 +43,13 @@ import org.junit.platform.suite.api.Suite;
     TestDatasetGraphInMemoryFindPattern.class,
     TestDatasetGraphInMemoryIsolation.class,
     TestDatasetGraphInMemoryPromote.class,
-    TestDatasetGraphInMemoryMisc.class
+    TestDatasetGraphInMemoryMisc.class,
+
+    // Bifurcan (CHAMP) backed in-memory dataset
+    TestBifurcanHexTable.class,
+    TestBifurcanTriTable.class,
+    TestDatasetGraphInMemoryBifurcanBasic.class,
+    TestDatasetGraphInMemoryBifurcanFind.class,
+    TestDatasetGraphInMemoryBifurcanTransactions.class
  })
 public class TS_DatasetTxnMem {}

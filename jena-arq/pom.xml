@@ -91,6 +91,12 @@
       <artifactId>commons-lang3</artifactId>
     </dependency>
 
+    <!-- CHAMP-based persistent/linear collections for the Bifurcan in-memory dataset -->
+    <dependency>
+      <groupId>io.lacuna</groupId>
+      <artifactId>bifurcan</artifactId>
+    </dependency>
+
     <!-- Testing only -->
     <dependency>
       <groupId>org.graalvm.js</groupId>
