@@ -22,6 +22,7 @@
 package org.apache.jena.mem.store.mvcc;
 
 import org.apache.jena.atlas.iterator.Iter;
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
@@ -39,7 +40,6 @@ import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -428,8 +428,8 @@ public final class MvccTripleStore {
      */
     public void commit(MvccWriteTxn txn) {
         final long v = txn.version();
-        final Set<Triple> added = txn.added();
-        final Set<Triple> removed = txn.removed();
+        final Graph added = txn.added();
+        final TripleSet removed = txn.removed();
 
         Gen g = gen;
         Triple[] keys = g.keys();
@@ -454,7 +454,9 @@ public final class MvccTripleStore {
         }
 
         // Deletes: stamp till on the committed slot (monotonic, opaque).
-        for (Triple t : removed) {
+        final ExtendedIterator<Triple> removedIt = removed.keyIterator();
+        while (removedIt.hasNext()) {
+            final Triple t = removedIt.next();
             final int i = committedLive.removeAndGetIndex(t);
             if (i >= 0) {
                 LONGS.setOpaque(till, slotOf[i], v);
@@ -464,7 +466,9 @@ public final class MvccTripleStore {
 
         // Adds: append a fresh slot. since is written last so any premature
         // observation of the slot (via the index) reads the invisible ALIVE default.
-        for (Triple t : added) {
+        final ExtendedIterator<Triple> addedIt = added.find();
+        while (addedIt.hasNext()) {
+            final Triple t = addedIt.next();
             final int slot = count++;
             keys[slot] = t;
             LONGS.setOpaque(till, slot, ALIVE);
@@ -483,8 +487,12 @@ public final class MvccTripleStore {
         gen = g1;
         vc.publish(v);
 
-        // Auto-vacuum when there is a lot of dead weight and no reader is lagging
-        // behind the new committed version (so the cutoff reclaims everything).
+        // Auto-vacuum on dead-ratio alone (see shouldAutoVacuum). Compacting at
+        // minActiveReadVersion() is safe even when readers are active: it only
+        // reclaims slots whose till has dropped at or below the oldest reader's
+        // pinned version, so nothing any current or future reader can still see is
+        // removed. A lagging reader therefore bounds how much is reclaimed, not
+        // whether vacuum runs.
         if (shouldAutoVacuum(g1)) {
             gen = compact(g1, vc.minActiveReadVersion());
         }
@@ -493,8 +501,7 @@ public final class MvccTripleStore {
     private boolean shouldAutoVacuum(Gen g) {
         final int dead = g.count() - g.liveCount();
         return g.count() >= VACUUM_MIN_COUNT
-                && dead * 2 >= g.count()                      // >= 50% non-live
-                && vc.minActiveReadVersion() >= g.version();  // no lagging reader
+                && dead * 2 >= g.count();   // >= 50% non-live
     }
 
     /**

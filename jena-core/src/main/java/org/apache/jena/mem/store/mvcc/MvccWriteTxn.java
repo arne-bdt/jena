@@ -21,24 +21,37 @@
 
 package org.apache.jena.mem.store.mvcc;
 
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.mem.GraphMemIndexedSet;
+import org.apache.jena.mem.store.indexed.TripleSet;
 import org.apache.jena.mem.store.mvcc.strategies.MvccStoreStrategy;
 import org.apache.jena.util.iterator.ExtendedIterator;
-import org.apache.jena.util.iterator.WrappedIterator;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 /**
  * The writer's working state for one write transaction. Changes are buffered in an
- * overlay (a set of added triples and a set of removed triples) layered over the
- * committed generation captured at begin; nothing touches the shared store until
- * {@link MvccTripleStore#commit(MvccWriteTxn)} applies the overlay. Consequently
- * {@code abort} is a no-op (just drop this object).
+ * overlay layered over the committed generation captured at begin; nothing touches
+ * the shared store until {@link MvccTripleStore#commit(MvccWriteTxn)} applies the
+ * overlay. Consequently {@code abort} is a no-op (just drop this object).
+ * <p>
+ * The added side is an <em>indexed</em> {@link GraphMemIndexedSet} rather than a
+ * plain set, so a read-your-writes {@link #find} narrows through the overlay's
+ * subject/predicate/object index — O(matches) — instead of linearly scanning every
+ * triple added so far in the transaction. Without that index a transaction that adds
+ * {@code B} triples while probing each one (the typical read-modify-write loop) costs
+ * O(B&sup2;); the index restores it to O(B). Matching is term-based (RDF-term
+ * equality), identical to {@link MvccTripleStore}'s committed view, so layering the
+ * two is exact.
+ * <p>
+ * The removed side is a {@link TripleSet} (the same
+ * {@link org.apache.jena.mem.collection.FastHashSet} the committed store uses for its
+ * dedup): it is probed via {@code containsKey} for the committed base's
+ * {@code filterDrop} and iterated in full at commit, both of which it does faster
+ * than a {@link java.util.HashSet}. The whole overlay is thus the
+ * base-plus-indexed-additions-minus-deletions shape of a delta graph.
  * <p>
  * The overlay maintains two invariants, which keep commit application correct and
  * avoid spurious duplicate slots when a committed triple is deleted and re-added
@@ -47,7 +60,8 @@ import java.util.stream.Stream;
  *   <li>{@link #added} holds only triples that are <em>not</em> committed-live;</li>
  *   <li>{@link #removed} holds only triples that <em>are</em> committed-live.</li>
  * </ul>
- * Single-threaded: used only by the writer thread under the store's writer lock.
+ * Single-threaded: used only by the writer thread under the store's writer lock, so
+ * the non-thread-safe overlay structures need no synchronisation.
  */
 public final class MvccWriteTxn {
 
@@ -57,8 +71,8 @@ public final class MvccWriteTxn {
     private final long version;
     private final MvccTripleStore.Gen committedGen;
 
-    private final Set<Triple> added = new HashSet<>();
-    private final Set<Triple> removed = new HashSet<>();
+    private final Graph added = new GraphMemIndexedSet();
+    private final TripleSet removed = new TripleSet();
 
     MvccWriteTxn(MvccTripleStore store, long version, MvccTripleStore.Gen committedGen) {
         this.store = store;
@@ -71,11 +85,11 @@ public final class MvccWriteTxn {
         return version;
     }
 
-    Set<Triple> added() {
+    Graph added() {
         return added;
     }
 
-    Set<Triple> removed() {
+    TripleSet removed() {
         return removed;
     }
 
@@ -90,9 +104,9 @@ public final class MvccWriteTxn {
     public void add(Triple t) {
         if (store.committedContains(t)) {
             // Already committed-live: cancel any pending delete; otherwise no change.
-            removed.remove(t);
+            removed.tryRemove(t);
         } else {
-            removed.remove(t);
+            removed.tryRemove(t);
             added.add(t);
         }
     }
@@ -100,11 +114,11 @@ public final class MvccWriteTxn {
     /** Remove a triple (idempotent against the committed + overlay state). */
     public void remove(Triple t) {
         if (store.committedContains(t)) {
-            added.remove(t);
-            removed.add(t);
+            added.delete(t);
+            removed.tryAdd(t);
         } else {
             // Committed-absent: just cancel any pending add.
-            added.remove(t);
+            added.delete(t);
         }
     }
 
@@ -114,7 +128,7 @@ public final class MvccWriteTxn {
     public boolean contains(Triple match) {
         if (isConcrete(match)) {
             return added.contains(match)
-                    || (store.committedContains(match) && !removed.contains(match));
+                    || (store.committedContains(match) && !removed.containsKey(match));
         }
         return find(match).hasNext();
     }
@@ -123,17 +137,11 @@ public final class MvccWriteTxn {
     public ExtendedIterator<Triple> find(Triple match) {
         final ExtendedIterator<Triple> base =
                 store.find(committedGen, committedGen.version(), match)
-                        .filterDrop(removed::contains);
-        if (added.isEmpty()) {
-            return base;
-        }
-        final List<Triple> extra = new ArrayList<>();
-        for (Triple t : added) {
-            if (MvccTripleStore.matches(match, t)) {
-                extra.add(t);
-            }
-        }
-        return extra.isEmpty() ? base : base.andThen(WrappedIterator.create(extra.iterator()));
+                        .filterDrop(removed::containsKey);
+        // The overlay never holds committed-live triples (see invariants), so it can
+        // never duplicate a triple yielded by base; its find() narrows through the
+        // overlay's own index rather than scanning every added triple.
+        return added.isEmpty() ? base : base.andThen(added.find(match));
     }
 
     /** @return a stream over triples matching the pattern in this txn's view. */
