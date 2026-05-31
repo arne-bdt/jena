@@ -130,7 +130,12 @@ public final class MvccWriteTxn {
             return added.contains(match)
                     || (store.committedContains(match) && !removed.containsKey(match));
         }
-        return find(match).hasNext();
+        // Probe the (typically small) added overlay through its own index first, then
+        // fall back to a version-filtered scan of the committed base minus removed.
+        // Avoids building the combined find() iterator just to test hasNext().
+        return (!added.isEmpty() && added.contains(match))
+                || store.find(committedGen, committedGen.version(), match)
+                        .filterDrop(removed::containsKey).hasNext();
     }
 
     /** @return an iterator over triples matching the pattern in this txn's view. */
@@ -144,9 +149,23 @@ public final class MvccWriteTxn {
         return added.isEmpty() ? base : base.andThen(added.find(match));
     }
 
-    /** @return a stream over triples matching the pattern in this txn's view. */
+    /**
+     * @return a stream over triples matching the pattern in this txn's view. The
+     *     added overlay is a real indexed graph, so it is streamed <em>natively</em>
+     *     ({@code added.stream(s, p, o)}) and concatenated to the version-filtered
+     *     committed base, rather than wrapping the combined iterator — mirroring the
+     *     delta-graph pattern. (The committed base is genuinely iterator-backed, so
+     *     {@code store.stream} wraps its version-filtered slot scan; there is no
+     *     native stream over MVCC slots to use.)
+     */
     public Stream<Triple> stream(Triple match) {
-        return org.apache.jena.atlas.iterator.Iter.asStream(find(match));
+        final Stream<Triple> base =
+                store.stream(committedGen, committedGen.version(), match)
+                        .filter(t -> !removed.containsKey(t));
+        return added.isEmpty()
+                ? base
+                : Stream.concat(base, added.stream(
+                        match.getSubject(), match.getPredicate(), match.getObject()));
     }
 
     /** @return a stream over every triple visible in this txn's view. */
