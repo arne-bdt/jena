@@ -25,6 +25,7 @@ import static java.util.EnumSet.noneOf;
 import static java.util.Objects.nonNull;
 import static java.util.stream.Collectors.toMap;
 import static org.apache.jena.sparql.core.mem.QuadTableForm.GSPO ;
+import static org.apache.jena.sparql.core.mem.QuadTableForm.OPSG ;
 import static org.apache.jena.sparql.core.mem.QuadTableForm.SPOG ;
 import static org.apache.jena.sparql.core.mem.QuadTableForm.chooseFrom ;
 import static org.apache.jena.sparql.core.mem.QuadTableForm.tableForms ;
@@ -93,8 +94,28 @@ public class HexTable implements QuadTable {
 
     @Override
     public Stream<Quad> findInUnionGraph(final Node s, final Node p, final Node o) {
-        // we can use adjacency in SPOG to solve this problem without building up a set of already-seen triples.
-        return indexBlock().get(SPOG).findInUnionGraph(s, p, o);
+        // SPOG and OPSG have GRAPH as their innermost slot, so quads that project to the same triple
+        // are produced adjacently and can be de-duplicated by adjacency, without building up a set of
+        // already-seen triples. This is only valid when the concrete query slots form a prefix of the
+        // chosen index's slot order; otherwise find(...) on that single index would not constrain the
+        // non-prefix slots. For the remaining (rarer) patterns, fall back to set-based de-duplication.
+        if (concreteIsPrefix(s, p, o))
+            return indexBlock().get(SPOG).findInUnionGraph(s, p, o);
+        if (concreteIsPrefix(o, p, s))
+            return indexBlock().get(OPSG).findInUnionGraph(s, p, o);
+        return QuadTable.super.findInUnionGraph(s, p, o);
+    }
+
+    /** Whether the concrete nodes form a prefix of this slot order (no concrete slot follows a wildcard). */
+    private static boolean concreteIsPrefix(final Node... nodesInIndexOrder) {
+        boolean wildcardSeen = false;
+        for (final Node n : nodesInIndexOrder) {
+            if (isConcrete(n)) {
+                if (wildcardSeen) return false;
+            } else
+                wildcardSeen = true;
+        }
+        return true;
     }
 
     @Override

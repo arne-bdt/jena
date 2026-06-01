@@ -433,6 +433,19 @@ public class DatasetGraphInMemory extends DatasetGraphTriplesQuads implements Tr
         return streamInSpecificNamedGraph(ANY, s, p, o);
     }
 
+    // Union graph: use the QuadTable's adjacency-based de-duplication (via the SPOG index) rather
+    // than the general streamInAnyNamedGraphs(...).map(asTriple).distinct() in DatasetGraphBaseFind.
+
+    @Override
+    public Stream<Quad> streamQuadsInUnionGraph(final Node s, final Node p, final Node o) {
+        return access(() -> quadsIndex().findInUnionGraph(s, p, o));
+    }
+
+    @Override
+    public Stream<Triple> streamUnionGraphTriples(final Node s, final Node p, final Node o) {
+        return streamQuadsInUnionGraph(s, p, o).map(Quad::asTriple);
+    }
+
     @Override
     protected Iterator<Quad> findInDftGraph(final Node s, final Node p, final Node o) {
         return streamInDftGraph(s, p, o).iterator();

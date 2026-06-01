@@ -81,10 +81,7 @@ public enum QuadTableForm implements Supplier<QuadTable>,Predicate<Set<TupleSlot
 
                 @Override
                 public Stream<Quad> findInUnionGraph(final Node s, final Node p, final Node o) {
-                    final AtomicReference<Triple> mostRecentlySeen = new AtomicReference<>();
-                    return find(ANY, s, p, o).map(Quad::asTriple).filter(t->{
-                        return !mostRecentlySeen.getAndSet(t).equals(t);
-                    }).map(t->Quad.create(Quad.unionGraph, t)) ;
+                    return unionGraphByAdjacency(find(ANY, s, p, o));
                 }
             };
         }
@@ -107,17 +104,31 @@ public enum QuadTableForm implements Supplier<QuadTable>,Predicate<Set<TupleSlot
         @Override
         public PMapQuadTable get() {
             return new PMapQuadTable(name()) {
-                
+
                 @Override
                 public Stream<Quad> findInUnionGraph(final Node s, final Node p, final Node o) {
-                    final AtomicReference<Triple> mostRecentlySeen = new AtomicReference<>();
-                    return find(ANY, s, p, o).map(Quad::asTriple).filter(t->{
-                        return !mostRecentlySeen.getAndSet(t).equals(t);
-                    }).map(t->Quad.create(Quad.unionGraph, t)) ;
+                    return unionGraphByAdjacency(find(ANY, s, p, o));
                 }
             };
         }
     };
+
+    /**
+     * Project quads to the triples of the union graph, de-duplicating by adjacency. This relies on
+     * the index form having {@link TupleSlot#GRAPH} as its innermost slot (as SPOG and OPSG do), so
+     * that quads which project to the same triple are produced adjacently; it is therefore cheaper
+     * than the full {@code distinct()} used by {@link QuadTable#findInUnionGraph}. The result quads
+     * are in the {@link Quad#unionGraph}.
+     * <p>
+     * The de-duplication uses a stateful predicate, so the stream must be processed sequentially.
+     */
+    static Stream<Quad> unionGraphByAdjacency(Stream<Quad> quads) {
+        final AtomicReference<Triple> mostRecentlySeen = new AtomicReference<>();
+        return quads.sequential()
+                .map(Quad::asTriple)
+                .filter(t -> !t.equals(mostRecentlySeen.getAndSet(t)))
+                .map(t -> Quad.create(Quad.unionGraph, t));
+    }
     
     @Override
     public PMapQuadTable get() {
