@@ -25,6 +25,7 @@ import static org.apache.jena.atlas.iterator.Iter.iter;
 
 import java.util.Iterator;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.graph.Graph;
@@ -143,6 +144,18 @@ public class DatasetGraphWithGraphTransform extends DatasetGraphWrapper implemen
         // Same as specific named graph - we return quads in the union graph.
 //        if ( Quad.isUnionGraph(g) ) {}
         return findOneGraphInf(g, s, p, o);
+    }
+
+    // Route stream access through the inference find(...): DatasetGraphWrapper.stream(...)
+    // forwards to the wrapped dataset, so without these overrides stream() would skip inference.
+    @Override
+    public Stream<Quad> stream(Node g, Node s, Node p, Node o) {
+        return Iter.asStream(find(g, s, p, o));
+    }
+
+    @Override
+    public Stream<Quad> stream() {
+        return Iter.asStream(find());
     }
 
     @Override

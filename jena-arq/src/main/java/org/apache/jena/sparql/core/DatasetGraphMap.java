@@ -26,7 +26,9 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.stream.Stream;
 
+import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.atlas.iterator.IteratorConcat;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
@@ -176,6 +178,23 @@ public class DatasetGraphMap extends DatasetGraphTriplesQuads
                 iter.add(qIter);
         }
         return iter;
+    }
+
+    // Stream primitives backed by Graph#stream (no iterator round-trip).
+
+    @Override
+    protected Stream<Quad> streamInDftGraph(Node s, Node p, Node o) {
+        return G.triples2quadsDftGraph(getDefaultGraph().stream(s, p, o));
+    }
+
+    @Override
+    protected Stream<Quad> streamInSpecificNamedGraph(Node g, Node s, Node p, Node o) {
+        return G.triples2quads(g, getGraph(g).stream(s, p, o));
+    }
+
+    @Override
+    protected Stream<Quad> streamInAnyNamedGraphs(Node s, Node p, Node o) {
+        return Iter.asStream(listGraphNodes()).flatMap(gn -> streamInSpecificNamedGraph(gn, s, p, o));
     }
 
     @Override

@@ -82,6 +82,39 @@ abstract public class DatasetGraphBaseFind extends DatasetGraphBase
         return Iter.append(iter1, iter2);
     }
 
+    /** Stream equivalent of {@link #find(Node, Node, Node, Node)}: splits into the default
+     * graph and the named graphs, routing through the {@code streamInXxx} primitives so that
+     * stream-native implementations stay on streams (no iterator round-trip). */
+    @Override
+    public Stream<Quad> stream(Node g, Node s, Node p, Node o) {
+        if ( Quad.isDefaultGraph(g))
+            return streamInDftGraph(s, p, o) ;
+        if ( ! isWildcard(g) )
+            return streamNG(g, s, p, o) ;
+        return streamAny(s, p, o) ;
+    }
+
+    /** Stream equivalent of {@link #findNG(Node, Node, Node, Node)}. */
+    public Stream<Quad> streamNG(Node g, Node s, Node p , Node o) {
+        Stream<Quad> stream ;
+        if ( Quad.isUnionGraph(g))
+            stream = streamQuadsInUnionGraph(s, p, o) ;
+        else if ( isWildcard(g) )
+            stream = streamInAnyNamedGraphs(s, p, o) ;
+        else if ( Quad.isDefaultGraph(g) )
+            stream = streamInDftGraph(s, p, o) ;
+        else
+            // Not wildcard, not union graph, not default graph.
+            stream = streamInSpecificNamedGraph(g, s, p, o) ;
+        if ( stream == null )
+            return Stream.empty() ;
+        return stream ;
+    }
+
+    protected Stream<Quad> streamAny(Node s, Node p, Node o) {
+        return Stream.concat(streamInDftGraph(s, p, o), streamInAnyNamedGraphs(s, p, o)) ;
+    }
+
     /** Find matches in the default graph.
      *  Return as quads; the default graph is {@link Quad#defaultGraphIRI}
      *  To get Triples, use {@code DatasetGraph.getDefaultGraph().find(...)}.
@@ -92,33 +125,44 @@ abstract public class DatasetGraphBaseFind extends DatasetGraphBase
      * No duplicates - the union graph is a <em>set</em> of triples.
      * See {@link #findInAnyNamedGraphs}, where there may be duplicates.
      * <p>
-     * Implementations are encouraged to override this method. For example, it
-     * may be possible to avoid "distinct".
+     * Implementations are encouraged to override {@link #streamUnionGraphTriples}.
+     * For example, it may be possible to avoid "distinct".
      */
     public Iterator<Triple> findInUnionGraph(Node s, Node p , Node o) {
-        return findUnionGraphTriples(s,p,o).iterator() ;
+        return streamUnionGraphTriples(s,p,o).iterator() ;
     }
 
     /** Find matches in the notional union of all named graphs - return as quads.
      * No duplicates - the union graph is a <em>set</em> of triples.
      * See {@link #findInAnyNamedGraphs}, where there may be duplicates.
      * <p>
-     * Implementations are encouraged to override this method or {@link #findUnionGraphTriples}.
-     * For example, it may be possible to avoid "distinct".
+     * Implementations are encouraged to override {@link #streamQuadsInUnionGraph} or
+     * {@link #streamUnionGraphTriples}. For example, it may be possible to avoid "distinct".
      */
     public Iterator<Quad> findQuadsInUnionGraph(Node s, Node p , Node o) {
-        return findUnionGraphTriples(s,p,o).map(t -> Quad.create(Quad.unionGraph, t)).iterator() ;
+        return streamQuadsInUnionGraph(s,p,o).iterator() ;
     }
 
-    /** Find matches in the notional union of all named graphs - return as triples.
+    /** Stream matches in the notional union of all named graphs - return as triples.
      * No duplicates - the union graph is a <em>set</em> of triples.
-     * See {@link #findInAnyNamedGraphs}, where there may be duplicates.
+     * See {@link #streamInAnyNamedGraphs}, where there may be duplicates.
      * <p>
      * Implementations are encouraged to override this method. For example, it
      * may be possible to avoid "distinct".
      */
-    private Stream<Triple> findUnionGraphTriples(Node s, Node p , Node o) {
-        return Iter.asStream(findInAnyNamedGraphs(s,p,o)).map(Quad::asTriple).distinct() ;
+    public Stream<Triple> streamUnionGraphTriples(Node s, Node p , Node o) {
+        return streamInAnyNamedGraphs(s,p,o).map(Quad::asTriple).distinct() ;
+    }
+
+    /** Stream matches in the notional union of all named graphs - return as quads.
+     * No duplicates - the union graph is a <em>set</em> of triples.
+     * See {@link #streamInAnyNamedGraphs}, where there may be duplicates.
+     * <p>
+     * Implementations are encouraged to override this method or {@link #streamUnionGraphTriples}.
+     * For example, it may be possible to avoid "distinct".
+     */
+    public Stream<Quad> streamQuadsInUnionGraph(Node s, Node p , Node o) {
+        return streamUnionGraphTriples(s,p,o).map(t -> Quad.create(Quad.unionGraph, t)) ;
     }
 
     /** Find in a specific named graph - {@code g} is a ground term (IRI or bNode), not a wild card (or null). */
@@ -129,4 +173,24 @@ abstract public class DatasetGraphBaseFind extends DatasetGraphBase
      * See {@link #findInUnionGraph} for matching without duplicate triples.
      */
     protected abstract Iterator<Quad> findInAnyNamedGraphs(Node s, Node p , Node o) ;
+
+    // Stream primitives mirroring the find primitives above.
+    // The default implementations bridge from the iterator primitives, which is optimal for
+    // iterator-native stores. Stream-native stores (e.g. DatasetGraphInMemory) and graph-backed
+    // stores (which have Graph#stream) should override these to stay on streams.
+
+    /** Stream equivalent of {@link #findInDftGraph}. */
+    protected Stream<Quad> streamInDftGraph(Node s, Node p, Node o) {
+        return Iter.asStream(findInDftGraph(s, p, o)) ;
+    }
+
+    /** Stream equivalent of {@link #findInSpecificNamedGraph}. */
+    protected Stream<Quad> streamInSpecificNamedGraph(Node g, Node s, Node p, Node o) {
+        return Iter.asStream(findInSpecificNamedGraph(g, s, p, o)) ;
+    }
+
+    /** Stream equivalent of {@link #findInAnyNamedGraphs}. */
+    protected Stream<Quad> streamInAnyNamedGraphs(Node s, Node p, Node o) {
+        return Iter.asStream(findInAnyNamedGraphs(s, p, o)) ;
+    }
 }

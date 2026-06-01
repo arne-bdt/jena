@@ -24,7 +24,6 @@ package org.apache.jena.sparql.core.mem;
 import static java.lang.ThreadLocal.withInitial;
 import static org.apache.jena.graph.Node.ANY;
 import static org.apache.jena.query.ReadWrite.WRITE;
-import static org.apache.jena.sparql.core.Quad.isUnionGraph;
 import static org.slf4j.LoggerFactory.getLogger;
 
 import java.util.Iterator;
@@ -32,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong ;
 import java.util.concurrent.locks.ReentrantLock ;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import org.apache.jena.atlas.lib.InternalErrorException ;
 import org.apache.jena.graph.Graph;
@@ -316,23 +316,6 @@ public class DatasetGraphInMemory extends DatasetGraphTriplesQuads implements Tr
         return access(() -> quadsIndex().listGraphNodes().iterator());
     }
 
-    private Iterator<Quad> quadsFinder(final Node g, final Node s, final Node p, final Node o) {
-        if (isUnionGraph(g)) return findInUnionGraph$(s, p, o);
-        return quadsIndex().find(g, s, p, o).iterator();
-    }
-
-    /**
-     * Union graph is the merge of named graphs.
-     */
-    // Temp - Should this be replaced by DatasetGraphBaseFind code?
-    private Iterator<Quad> findInUnionGraph$(final Node s, final Node p, final Node o) {
-        return access(() -> quadsIndex().findInUnionGraph(s, p, o).iterator());
-    }
-
-    private Iterator<Quad> triplesFinder(final Node s, final Node p, final Node o) {
-        return G.triples2quadsDftGraph(defaultGraph().find(s, p, o).iterator());
-    }
-
     @Override
     public Graph getGraph(final Node graphNode) {
         return GraphView.createNamedGraph(this, graphNode);
@@ -431,18 +414,37 @@ public class DatasetGraphInMemory extends DatasetGraphTriplesQuads implements Tr
         mutate(quadsIndex()::delete, Quad.create(g, s, p, o));
     }
 
+    // The backing TripleTable/QuadTable are stream-native (their find(...) returns a Stream over
+    // an immutable snapshot). Keep streams as streams: the stream primitives below are the source
+    // of truth, and the iterator primitives are obtained at the very end via Stream.iterator().
+
+    @Override
+    protected Stream<Quad> streamInDftGraph(final Node s, final Node p, final Node o) {
+        return access(() -> G.triples2quadsDftGraph(defaultGraph().find(s, p, o)));
+    }
+
+    @Override
+    protected Stream<Quad> streamInSpecificNamedGraph(final Node g, final Node s, final Node p, final Node o) {
+        return access(() -> quadsIndex().find(g, s, p, o));
+    }
+
+    @Override
+    protected Stream<Quad> streamInAnyNamedGraphs(final Node s, final Node p, final Node o) {
+        return streamInSpecificNamedGraph(ANY, s, p, o);
+    }
+
     @Override
     protected Iterator<Quad> findInDftGraph(final Node s, final Node p, final Node o) {
-        return access(() -> triplesFinder(s, p, o));
+        return streamInDftGraph(s, p, o).iterator();
     }
 
     @Override
     protected Iterator<Quad> findInSpecificNamedGraph(final Node g, final Node s, final Node p, final Node o) {
-        return access(() -> quadsFinder(g, s, p, o));
+        return streamInSpecificNamedGraph(g, s, p, o).iterator();
     }
 
     @Override
     protected Iterator<Quad> findInAnyNamedGraphs(final Node s, final Node p, final Node o) {
-        return findInSpecificNamedGraph(ANY, s, p, o);
+        return streamInAnyNamedGraphs(s, p, o).iterator();
     }
 }
