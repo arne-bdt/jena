@@ -69,6 +69,7 @@ public final class MvccEagerStoreStrategy implements MvccStoreStrategy {
         // version a current reader can hold.
         MvccIndexList best = null;
         int bestSize = Integer.MAX_VALUE;
+        Dim bestDim = Dim.NONE;
         if (concreteS) {
             final MvccIndexList l = sIndex.get(s);
             if (l == null) {
@@ -76,6 +77,7 @@ public final class MvccEagerStoreStrategy implements MvccStoreStrategy {
             }
             bestSize = l.size();
             best = l;
+            bestDim = Dim.SUBJECT;
         }
         if (concreteP) {
             final MvccIndexList l = pIndex.get(p);
@@ -86,6 +88,7 @@ public final class MvccEagerStoreStrategy implements MvccStoreStrategy {
             if (n < bestSize) {
                 bestSize = n;
                 best = l;
+                bestDim = Dim.PREDICATE;
             }
         }
         if (concreteO) {
@@ -95,9 +98,10 @@ public final class MvccEagerStoreStrategy implements MvccStoreStrategy {
             }
             if (l.size() < bestSize) {
                 best = l;
+                bestDim = Dim.OBJECT;
             }
         }
-        return Candidates.of(best);
+        return Candidates.of(best, bestDim);
     }
 
     @Override

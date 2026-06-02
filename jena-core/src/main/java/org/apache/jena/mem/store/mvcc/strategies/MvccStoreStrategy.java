@@ -42,24 +42,39 @@ import org.apache.jena.mem.store.mvcc.MvccIndexList;
 public interface MvccStoreStrategy {
 
     /**
+     * Which pattern dimension a list-based {@link Candidates} is keyed on. Every
+     * slot in such a list is guaranteed to carry the pattern's node for that
+     * dimension (that is how the index is built), so the caller can skip the
+     * always-true term comparison on it and only compare the remaining concrete
+     * dimensions. {@link #NONE} is used for the dense and empty cases.
+     */
+    enum Dim { SUBJECT, PREDICATE, OBJECT, NONE }
+
+    /**
      * The candidate slots a reader should scan for a pattern, before applying the
      * version filter and full-pattern match. {@code dense} means "scan the whole
      * dense slot range"; otherwise {@code list} is the index list to scan, which
      * may be {@code null} to mean "no candidates" (a bound node absent from the
-     * index).
+     * index). {@code keyed} names the dimension {@code list} is keyed on, so the
+     * caller can skip that dimension's (implied) term comparison.
      *
      * @param list  the index list to scan, or {@code null} for none
      * @param dense whether to scan the whole dense slot range instead
+     * @param keyed the dimension {@code list} is keyed on, or {@link Dim#NONE}
      */
-    record Candidates(MvccIndexList list, boolean dense) {
+    record Candidates(MvccIndexList list, boolean dense, Dim keyed) {
         /** Scan every slot in the dense range. */
-        public static final Candidates DENSE = new Candidates(null, true);
+        public static final Candidates DENSE = new Candidates(null, true, Dim.NONE);
         /** No candidate slots at all (empty result). */
-        public static final Candidates EMPTY = new Candidates(null, false);
+        public static final Candidates EMPTY = new Candidates(null, false, Dim.NONE);
 
-        /** @return {@link #DENSE} unused here; a list source, or {@link #EMPTY} if {@code list} is null. */
-        public static Candidates of(MvccIndexList list) {
-            return list == null ? EMPTY : new Candidates(list, false);
+        /**
+         * @param list  the index list to scan, or {@code null} for none
+         * @param keyed the dimension {@code list} is keyed on (its term match is implied)
+         * @return a list source keyed on {@code keyed}, or {@link #EMPTY} if {@code list} is null
+         */
+        public static Candidates of(MvccIndexList list, Dim keyed) {
+            return list == null ? EMPTY : new Candidates(list, false, keyed);
         }
     }
 

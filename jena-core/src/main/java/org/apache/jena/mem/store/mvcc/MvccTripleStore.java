@@ -275,19 +275,6 @@ public final class MvccTripleStore {
     }
 
     /**
-     * Term-based pattern match: a non-concrete pattern component is a wildcard; a
-     * concrete component must be {@link Object#equals equal}.
-     */
-    public static boolean matches(Triple pattern, Triple t) {
-        final Node s = pattern.getSubject();
-        final Node p = pattern.getPredicate();
-        final Node o = pattern.getObject();
-        return (!MvccStoreStrategy.isConcrete(s) || s.equals(t.getSubject()))
-                && (!MvccStoreStrategy.isConcrete(p) || p.equals(t.getPredicate()))
-                && (!MvccStoreStrategy.isConcrete(o) || o.equals(t.getObject()));
-    }
-
-    /**
      * @return the number of live triples visible at {@code version} within
      *         generation {@code g}. O(1) when {@code version} is at or beyond the
      *         generation's own version (the common case); otherwise an O(count)
@@ -330,11 +317,24 @@ public final class MvccTripleStore {
         }
         final Triple[] keys = g.keys();
         final int count = g.count();
+        final Node sm = match.getSubject();
+        final Node pm = match.getPredicate();
+        final Node om = match.getObject();
+        // Fold the keyed dimension into the "any" flags so the (implied) term match
+        // on the dimension the list is keyed on is skipped (see Candidates#keyed);
+        // a one-bound pattern then needs only the version filter.
+        final MvccStoreStrategy.Dim keyed = c.keyed();
+        final boolean anyS = !MvccStoreStrategy.isConcrete(sm) || keyed == MvccStoreStrategy.Dim.SUBJECT;
+        final boolean anyP = !MvccStoreStrategy.isConcrete(pm) || keyed == MvccStoreStrategy.Dim.PREDICATE;
+        final boolean anyO = !MvccStoreStrategy.isConcrete(om) || keyed == MvccStoreStrategy.Dim.OBJECT;
         if (c.dense()) {
             for (int slot = 0; slot < count; slot++) {
                 if (visible(g, slot, version)) {
                     final Triple t = keys[slot];
-                    if (t != null && matches(match, t)) {
+                    if (t != null
+                            && (anyS || sm.equals(t.getSubject()))
+                            && (anyP || pm.equals(t.getPredicate()))
+                            && (anyO || om.equals(t.getObject()))) {
                         return true;
                     }
                 }
@@ -351,7 +351,10 @@ public final class MvccTripleStore {
             final int slot = list[i];
             if (slot < count && visible(g, slot, version)) {
                 final Triple t = keys[slot];
-                if (t != null && matches(match, t)) {
+                if (t != null
+                        && (anyS || sm.equals(t.getSubject()))
+                        && (anyP || pm.equals(t.getPredicate()))
+                        && (anyO || om.equals(t.getObject()))) {
                     return true;
                 }
             }
@@ -390,9 +393,14 @@ public final class MvccTripleStore {
             this.sm = match.getSubject();
             this.pm = match.getPredicate();
             this.om = match.getObject();
-            this.anyS = !MvccStoreStrategy.isConcrete(sm);
-            this.anyP = !MvccStoreStrategy.isConcrete(pm);
-            this.anyO = !MvccStoreStrategy.isConcrete(om);
+            // Fold the keyed dimension into the "any" flags: every slot in the
+            // chosen list already carries the pattern's node for that dimension, so
+            // its term comparison is implied (see Candidates#keyed). A one-bound
+            // pattern thus needs no term comparison at all, only the version filter.
+            final MvccStoreStrategy.Dim keyed = c.keyed();
+            this.anyS = !MvccStoreStrategy.isConcrete(sm) || keyed == MvccStoreStrategy.Dim.SUBJECT;
+            this.anyP = !MvccStoreStrategy.isConcrete(pm) || keyed == MvccStoreStrategy.Dim.PREDICATE;
+            this.anyO = !MvccStoreStrategy.isConcrete(om) || keyed == MvccStoreStrategy.Dim.OBJECT;
             this.dense = c.dense();
             if (dense) {
                 this.list = null;
