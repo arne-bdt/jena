@@ -28,9 +28,11 @@ import static org.apache.jena.sparql.core.mem.TupleSlot.GRAPH;
 import static org.apache.jena.sparql.core.mem.TupleSlot.OBJECT;
 import static org.apache.jena.sparql.core.mem.TupleSlot.PREDICATE;
 import static org.apache.jena.sparql.core.mem.TupleSlot.SUBJECT;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -70,6 +72,20 @@ public class TestQuadTableForms extends AbstractTestTupleTableForms<QuadTableFor
 			put(of(), of(GSPO));
 		}
 	};
+
+	@Test
+	public void chooseForUnionGraph_picksGraphInnermostFormByPrefix() {
+		// Only SPOG and OPSG order GRAPH innermost. Full scan and subject-prefixes -> SPOG;
+		// object-prefixes -> OPSG; patterns that are a prefix of neither -> empty (set-based fallback).
+		assertEquals(Optional.of(SPOG), QuadTableForm.chooseForUnionGraph(of()));
+		assertEquals(Optional.of(SPOG), QuadTableForm.chooseForUnionGraph(of(SUBJECT)));
+		assertEquals(Optional.of(SPOG), QuadTableForm.chooseForUnionGraph(of(SUBJECT, PREDICATE)));
+		assertEquals(Optional.of(SPOG), QuadTableForm.chooseForUnionGraph(of(SUBJECT, PREDICATE, OBJECT)));
+		assertEquals(Optional.of(OPSG), QuadTableForm.chooseForUnionGraph(of(OBJECT)));
+		assertEquals(Optional.of(OPSG), QuadTableForm.chooseForUnionGraph(of(PREDICATE, OBJECT)));
+		assertEquals(Optional.empty(), QuadTableForm.chooseForUnionGraph(of(PREDICATE)));
+		assertEquals(Optional.empty(), QuadTableForm.chooseForUnionGraph(of(SUBJECT, OBJECT)));
+	}
 
 	@Test
 	public void addAndRemoveSomeQuads() {

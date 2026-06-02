@@ -29,6 +29,7 @@ import static org.apache.jena.sparql.core.mem.TupleSlot.*;
 
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
@@ -165,6 +166,25 @@ public enum QuadTableForm implements Supplier<QuadTable>,Predicate<Set<TupleSlot
      */
     public static QuadTableForm chooseFrom(final Set<TupleSlot> pattern) {
         return tableForms().filter(f -> f.test(pattern)).findFirst().orElse(GSPO);
+    }
+
+    /**
+     * Choose an index form for the adjacency-based union-graph de-duplication used by
+     * {@link QuadTable#findInUnionGraph}. Unlike {@link #chooseFrom} (which only needs the concrete
+     * slots to be a leading prefix so {@code find} can constrain them), this additionally requires
+     * {@link TupleSlot#GRAPH} to be ordered <em>innermost</em>, so quads that project to the same
+     * triple are produced adjacently and can be de-duplicated without a set of already-seen triples.
+     * Only {@link #SPOG} and {@link #OPSG} order GRAPH innermost.
+     *
+     * @param pattern the concrete query slots (a subset of SUBJECT, PREDICATE, OBJECT; GRAPH is the
+     *     union wildcard)
+     * @return a suitable form, or empty if none fits the pattern, in which case the caller must fall
+     *     back to set-based de-duplication (the default {@link QuadTable#findInUnionGraph})
+     */
+    public static Optional<QuadTableForm> chooseForUnionGraph(final Set<TupleSlot> pattern) {
+        // The empty pattern (full scan) is a valid prefix of any form; otherwise reuse the same
+        // leading-prefix test as chooseFrom, restricted to the GRAPH-innermost forms.
+        return Stream.of(SPOG, OPSG).filter(form -> pattern.isEmpty() || form.test(pattern)).findFirst();
     }
 
     /**
