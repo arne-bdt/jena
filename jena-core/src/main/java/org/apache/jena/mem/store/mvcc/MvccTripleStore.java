@@ -275,6 +275,25 @@ public final class MvccTripleStore {
     }
 
     /**
+     * Visibility specialised for a scan whose {@code version >= g.version()} (the
+     * common latest-snapshot read, including every read outside a transaction and
+     * the writer's committed-base reads). Every slot in {@code [0, count)} was
+     * committed at or before {@code g.version() <= version}, so {@code since <= version}
+     * is implied and only {@code till} need be read — halving the per-slot opaque
+     * reads on the hot path. For older snapshots ({@code version < g.version()})
+     * the caller passes {@code latest == false} and the full {@link #visible} check
+     * (both {@code since} and {@code till}) is used.
+     */
+    private static boolean visibleAt(Gen g, int slot, long version, boolean latest) {
+        final long till = (long) LONGS.getOpaque(g.till(), slot);
+        if (latest) {
+            return version < till;
+        }
+        final long since = (long) LONGS.getOpaque(g.since(), slot);
+        return since <= version && version < till;
+    }
+
+    /**
      * @return the number of live triples visible at {@code version} within
      *         generation {@code g}. O(1) when {@code version} is at or beyond the
      *         generation's own version (the common case); otherwise an O(count)
@@ -317,6 +336,7 @@ public final class MvccTripleStore {
         }
         final Triple[] keys = g.keys();
         final int count = g.count();
+        final boolean latest = version >= g.version();
         final Node sm = match.getSubject();
         final Node pm = match.getPredicate();
         final Node om = match.getObject();
@@ -329,7 +349,7 @@ public final class MvccTripleStore {
         final boolean anyO = !MvccStoreStrategy.isConcrete(om) || keyed == MvccStoreStrategy.Dim.OBJECT;
         if (c.dense()) {
             for (int slot = 0; slot < count; slot++) {
-                if (visible(g, slot, version)) {
+                if (visibleAt(g, slot, version, latest)) {
                     final Triple t = keys[slot];
                     if (t != null
                             && (anyS || sm.equals(t.getSubject()))
@@ -349,7 +369,7 @@ public final class MvccTripleStore {
         final int len = snap.length();
         for (int i = 0; i < len; i++) {
             final int slot = list[i];
-            if (slot < count && visible(g, slot, version)) {
+            if (slot < count && visibleAt(g, slot, version, latest)) {
                 final Triple t = keys[slot];
                 if (t != null
                         && (anyS || sm.equals(t.getSubject()))
@@ -380,6 +400,7 @@ public final class MvccTripleStore {
         private final Node sm, pm, om;
         private final boolean anyS, anyP, anyO;
         private final boolean dense;
+        private final boolean latest;
         private final int[] list;       // null when dense
         private final int listLen;
         private int cursor = 0;
@@ -390,6 +411,9 @@ public final class MvccTripleStore {
             this.version = version;
             this.keys = g.keys();
             this.count = g.count();
+            // version >= g.version() (the common latest read): since is implied, so
+            // visibleAt reads only till. See visibleAt.
+            this.latest = version >= g.version();
             this.sm = match.getSubject();
             this.pm = match.getPredicate();
             this.om = match.getObject();
@@ -424,7 +448,7 @@ public final class MvccTripleStore {
             if (dense) {
                 while (cursor < count) {
                     final int slot = cursor++;
-                    if (visible(g, slot, version)) {
+                    if (visibleAt(g, slot, version, latest)) {
                         final Triple t = keys[slot];
                         if (t != null && matches(t)) {
                             next = t;
@@ -435,7 +459,7 @@ public final class MvccTripleStore {
             } else {
                 while (cursor < listLen) {
                     final int slot = list[cursor++];
-                    if (slot < count && visible(g, slot, version)) {
+                    if (slot < count && visibleAt(g, slot, version, latest)) {
                         final Triple t = keys[slot];
                         if (t != null && matches(t)) {
                             next = t;
