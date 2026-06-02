@@ -60,6 +60,18 @@ public final class MvccIndexList {
     public MvccIndexList() {}
 
     /**
+     * @return the current number of entries (a single {@code volatile} read).
+     *         Intended as a cheap size <em>hint</em> for choosing the smaller of
+     *         several candidate lists; the authoritative, tear-free length for
+     *         traversal still comes from {@link #snapshot()}. A concurrent append
+     *         may make this momentarily stale, which only affects the heuristic
+     *         choice, never correctness.
+     */
+    public int size() {
+        return size;
+    }
+
+    /**
      * Append one slot index. Single-writer only (called under the store's writer
      * lock during commit application).
      *

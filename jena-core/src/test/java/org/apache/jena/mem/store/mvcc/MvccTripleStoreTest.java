@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
@@ -77,6 +78,54 @@ public class MvccTripleStoreTest {
             assertTrue(v.contains(triple("s1 p1 o1")));
             assertFalse(v.contains(triple("s9 p9 o9")));
             assertEquals(3, countFind(v, Triple.create(Node.ANY, Node.ANY, Node.ANY)));
+        } finally {
+            v.close();
+        }
+    }
+
+    @Test
+    public void partialPatternContainsAndFindSelectByEachDimension() {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
+        write(store, w -> {
+            w.add(triple("s1 p1 o1"));
+            w.add(triple("s1 p2 o2"));
+            w.add(triple("s2 p1 o2"));
+        });
+        final MvccReadView v = store.openReadView();
+        try {
+            // Two-bound contains across each pair of dimensions: present vs. a
+            // combination whose individual nodes exist but never co-occur.
+            assertTrue(v.contains(Triple.create(node("s1"), node("p2"), Node.ANY)));  // SP_
+            assertFalse(v.contains(Triple.create(node("s2"), node("p2"), Node.ANY))); // SP_ no co-occurrence
+            assertTrue(v.contains(Triple.create(node("s1"), Node.ANY, node("o2"))));  // S_O
+            assertFalse(v.contains(Triple.create(node("s2"), Node.ANY, node("o1")))); // S_O no co-occurrence
+            assertTrue(v.contains(Triple.create(Node.ANY, node("p1"), node("o2"))));  // _PO
+            assertFalse(v.contains(Triple.create(Node.ANY, node("p2"), node("o1")))); // _PO no co-occurrence
+
+            // Find counts must be independent of which (shortest) index list is chosen.
+            assertEquals(2, countFind(v, Triple.create(node("s1"), Node.ANY, Node.ANY)));   // S__
+            assertEquals(2, countFind(v, Triple.create(Node.ANY, node("p1"), Node.ANY)));   // _P_
+            assertEquals(2, countFind(v, Triple.create(Node.ANY, Node.ANY, node("o2"))));   // __O
+            assertEquals(1, countFind(v, Triple.create(node("s1"), node("p1"), Node.ANY))); // SP_
+            assertEquals(1, countFind(v, Triple.create(Node.ANY, node("p1"), node("o2")))); // _PO
+            assertEquals(1, countFind(v, Triple.create(node("s1"), node("p2"), node("o2")))); // SPO
+        } finally {
+            v.close();
+        }
+    }
+
+    @Test
+    public void absentConcreteComponentShortCircuitsToEmpty() {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
+        write(store, w -> w.add(triple("s1 p1 o1")));
+        final MvccReadView v = store.openReadView();
+        try {
+            // Subject and predicate exist, but the object node was never added: the
+            // absent dimension makes the whole pattern empty regardless of the rest.
+            assertFalse(v.contains(Triple.create(node("s1"), node("p1"), node("oX"))));
+            assertEquals(0, countFind(v, Triple.create(node("s1"), node("p1"), node("oX"))));
+            assertFalse(v.contains(Triple.create(node("s1"), Node.ANY, node("oX"))));
+            assertEquals(0, countFind(v, Triple.create(Node.ANY, node("pX"), node("o1"))));
         } finally {
             v.close();
         }

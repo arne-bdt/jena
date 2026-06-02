@@ -315,8 +315,48 @@ public final class MvccTripleStore {
         return WrappedIterator.create(new SlotIterator(g, version, match, c));
     }
 
+    /**
+     * Existence test for a pattern at {@code version}, against a fixed generation.
+     * Unlike {@code find(g, version, match).hasNext()} this allocates no iterator:
+     * it scans the candidate slots (the shortest concrete index list, or the dense
+     * range) directly, applying the version filter and full-pattern match, and
+     * returns on the first hit. A pattern whose concrete components are absent from
+     * the index is rejected in O(1) by {@link MvccStoreStrategy#candidates}.
+     */
     boolean contains(Gen g, long version, Triple match) {
-        return find(g, version, match).hasNext();
+        final MvccStoreStrategy.Candidates c = g.index().candidates(match);
+        if (!c.dense() && c.list() == null) {
+            return false;
+        }
+        final Triple[] keys = g.keys();
+        final int count = g.count();
+        if (c.dense()) {
+            for (int slot = 0; slot < count; slot++) {
+                if (visible(g, slot, version)) {
+                    final Triple t = keys[slot];
+                    if (t != null && matches(match, t)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        // Scan the chosen (shortest concrete) index list. Entries are clamped to
+        // count so a concurrently grown list can never read past this generation's
+        // slots, mirroring SlotIterator.
+        final MvccIndexList.Snapshot snap = c.list().snapshot();
+        final int[] list = snap.array();
+        final int len = snap.length();
+        for (int i = 0; i < len; i++) {
+            final int slot = list[i];
+            if (slot < count && visible(g, slot, version)) {
+                final Triple t = keys[slot];
+                if (t != null && matches(match, t)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     Stream<Triple> stream(Gen g, long version, Triple match) {

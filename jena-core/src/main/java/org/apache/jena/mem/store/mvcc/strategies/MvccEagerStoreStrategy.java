@@ -32,9 +32,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * all committed triples at all times. Each index is a reader-safe
  * {@link ConcurrentHashMap} from node to {@link MvccIndexList} of slot indices.
  * <p>
- * For a pattern, {@link #candidates(Triple)} returns the index list of the first
- * concrete dimension (subject, then predicate, then object); the store then
- * applies the version filter and full-pattern match to that list. A fully
+ * For a pattern, {@link #candidates(Triple)} returns the <em>shortest</em> index
+ * list among the concrete dimensions (so a two/three-bound pattern scans the most
+ * selective of subject/predicate/object rather than always the subject); the
+ * store then applies the version filter and full-pattern match to that list. If
+ * any concrete dimension is absent from its index the pattern is empty. A fully
  * unbound pattern scans the dense range.
  * <p>
  * No reverse-index arrays are needed (unlike the non-transactional eager
@@ -50,18 +52,52 @@ public final class MvccEagerStoreStrategy implements MvccStoreStrategy {
     @Override
     public Candidates candidates(final Triple match) {
         final Node s = match.getSubject();
-        if (MvccStoreStrategy.isConcrete(s)) {
-            return Candidates.of(sIndex.get(s));
-        }
         final Node p = match.getPredicate();
-        if (MvccStoreStrategy.isConcrete(p)) {
-            return Candidates.of(pIndex.get(p));
-        }
         final Node o = match.getObject();
-        if (MvccStoreStrategy.isConcrete(o)) {
-            return Candidates.of(oIndex.get(o));
+        final boolean concreteS = MvccStoreStrategy.isConcrete(s);
+        final boolean concreteP = MvccStoreStrategy.isConcrete(p);
+        final boolean concreteO = MvccStoreStrategy.isConcrete(o);
+        if (!concreteS && !concreteP && !concreteO) {
+            return Candidates.DENSE;            // fully unbound: scan the dense range
         }
-        return Candidates.DENSE;
+        // Pick the shortest index list among the concrete components, so a
+        // two/three-bound pattern scans the most selective dimension (e.g. a rare
+        // object) instead of always the subject. A concrete component absent from
+        // its index means no slot carries it, so the whole pattern is empty: the
+        // index lists are append-only and a vacuum re-indexes every reader-visible
+        // (live or retained-dead) slot, so "absent" is authoritative for any
+        // version a current reader can hold.
+        MvccIndexList best = null;
+        int bestSize = Integer.MAX_VALUE;
+        if (concreteS) {
+            final MvccIndexList l = sIndex.get(s);
+            if (l == null) {
+                return Candidates.EMPTY;
+            }
+            bestSize = l.size();
+            best = l;
+        }
+        if (concreteP) {
+            final MvccIndexList l = pIndex.get(p);
+            if (l == null) {
+                return Candidates.EMPTY;
+            }
+            final int n = l.size();
+            if (n < bestSize) {
+                bestSize = n;
+                best = l;
+            }
+        }
+        if (concreteO) {
+            final MvccIndexList l = oIndex.get(o);
+            if (l == null) {
+                return Candidates.EMPTY;
+            }
+            if (l.size() < bestSize) {
+                best = l;
+            }
+        }
+        return Candidates.of(best);
     }
 
     @Override
