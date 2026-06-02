@@ -131,7 +131,7 @@ public class GraphView extends GraphBase implements NamedGraph, Sync
      * so stream-native dataset (e.g. an in-memory one) stays on streams rather than iterator-wrapping.
      * @param s subject match
      * @param p predicate match
-     * @param o object matc
+     * @param o object match
      * @return stream of matching triples
      */
     @Override

@@ -368,7 +368,21 @@ public class BufferingDatasetGraph extends DatasetGraphTriplesQuads implements D
 
     @Override
     protected Stream<Quad> streamInAnyNamedGraphs(Node s, Node p, Node o) {
-        return Stream.empty();
+        readOperation();
+        return streamQuads(Node.ANY, s, p, o);
+    }
+
+    private Stream<Quad> streamQuads(Node g, Node s, Node p, Node o) {
+        DatasetGraph base = get();
+        Stream<Quad> extra = streamInAddedQuads(g, s, p, o);
+        Stream<Quad> stream =
+                Stream.concat(
+                        base.stream(g, s, p, o)
+                            .filter(q->! deletedQuads.contains(q)),
+                        extra);
+        if ( ! UNIQUE )
+            stream = stream.distinct();
+        return stream;
     }
 
     private Iterator<Quad> findQuads(Node g, Node s, Node p, Node o) {
@@ -386,6 +400,11 @@ public class BufferingDatasetGraph extends DatasetGraphTriplesQuads implements D
     private Iterator<Quad> findInAddedQuads(Node g, Node s, Node p, Node o) {
         return Iter.iter(addedQuads.iterator())
                     .filter(t->match(t,g,s,p,o));
+    }
+
+    private Stream<Quad> streamInAddedQuads(Node g, Node s, Node p, Node o) {
+        return addedQuads.stream()
+                .filter(t-> match(t,g,s,p,o));
     }
 
     // Graphs: read/write operations will come back to the dataset.
