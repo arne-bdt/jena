@@ -357,7 +357,8 @@ public class BufferingDatasetGraph extends DatasetGraphTriplesQuads implements D
 
     @Override
     protected Stream<Quad> streamInSpecificNamedGraph(Node g, Node s, Node p, Node o) {
-        return Stream.empty();
+        readOperation();
+        return streamQuads(g, s, p, o);
     }
 
     @Override
