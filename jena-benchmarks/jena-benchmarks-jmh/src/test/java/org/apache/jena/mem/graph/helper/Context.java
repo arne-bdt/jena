@@ -86,6 +86,26 @@ public class Context {
                 this.graphClass = GraphClass.GraphMemRoaringManual;
                 this.jenaVersion = JenaVersion.CURRENT;
                 break;
+            case "GraphMemIndexedSetTxn (current)":
+            case "GraphMemIndexedSetTxn EAGER (current)":
+                this.graphClass = GraphClass.GraphMemIndexedSetTxnEager;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemIndexedSetCowTxn (current)":
+            case "GraphMemIndexedSetCowTxn EAGER (current)":
+                this.graphClass = GraphClass.GraphMemIndexedSetCowTxnEager;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphMemIndexedSetMvccTxn (current)":
+            case "GraphMemIndexedSetMvccTxn EAGER (current)":
+                this.graphClass = GraphClass.GraphMemIndexedSetMvccTxnEager;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "DatasetGraphInMemoryMvccTxn (current)":
+            case "DatasetGraphInMemoryMvccTxn EAGER (current)":
+                this.graphClass = GraphClass.DatasetGraphInMemoryMvccTxnEager;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
             case "GraphMemValue (Jena 5.6.0)":
                 this.graphClass = GraphClass.GraphMemValue;
                 this.jenaVersion = JenaVersion.JENA_5_6_0;
@@ -127,6 +147,12 @@ public class Context {
         GraphMemRoaringLazyParallel,
         GraphMemRoaringMinimal,
         GraphMemRoaringManual,
+        /* Transactional graphs (snapshot, copy-on-write and MVCC) and the
+           MVCC dataset's default graph, all using the EAGER indexing strategy. */
+        GraphMemIndexedSetTxnEager,
+        GraphMemIndexedSetCowTxnEager,
+        GraphMemIndexedSetMvccTxnEager,
+        DatasetGraphInMemoryMvccTxnEager,
     }
 
 

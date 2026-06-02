@@ -30,6 +30,13 @@ import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.*;
 import org.apache.jena.memvalue.GraphMemValue;
 import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.sparql.core.GraphView;
+import org.apache.jena.sparql.core.Transactional;
+import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryMvccTxn;
+import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn;
+import org.apache.jena.sparql.core.mem.GraphMemIndexedSetMvccTxn;
+import org.apache.jena.sparql.core.mem.GraphMemIndexedSetTxn;
+import org.apache.jena.system.Txn;
 
 public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph, Triple, Node> {
 
@@ -50,7 +57,45 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
             case GraphMemRoaringLazyParallel -> new GraphMemRoaring(IndexingStrategy.LAZY_PARALLEL);
             case GraphMemRoaringMinimal -> new GraphMemRoaring(IndexingStrategy.MINIMAL);
             case GraphMemRoaringManual -> new GraphMemRoaring(IndexingStrategy.MANUAL);
+            case GraphMemIndexedSetTxnEager -> new GraphMemIndexedSetTxn(IndexingStrategy.EAGER);
+            case GraphMemIndexedSetCowTxnEager -> new GraphMemIndexedSetCowTxn(IndexingStrategy.EAGER);
+            case GraphMemIndexedSetMvccTxnEager -> new GraphMemIndexedSetMvccTxn(IndexingStrategy.EAGER);
+            // The MVCC dataset is benchmarked through its default graph; the
+            // GraphView keeps a reference to the (transactional) dataset, which
+            // executeWrite recovers via GraphView.getDataset().
+            case DatasetGraphInMemoryMvccTxnEager ->
+                    new DatasetGraphInMemoryMvccTxn(IndexingStrategy.EAGER).getDefaultGraph();
         };
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The three standalone transactional graphs implement {@link Transactional}
+     * directly. The MVCC dataset is exposed as the default {@link GraphView},
+     * whose controlling {@link Transactional} is the dataset reachable through
+     * {@link GraphView#getDataset()}. In both cases the bulk mutation is run in
+     * a single write transaction; non-transactional graphs run it directly.
+     */
+    @Override
+    public void executeWrite(Graph graph, Runnable action) {
+        final Transactional txn = asTransactional(graph);
+        if (txn != null) {
+            Txn.executeWrite(txn, action);
+        } else {
+            action.run();
+        }
+    }
+
+    /** @return the {@link Transactional} controlling the graph, or {@code null} if it is not transactional. */
+    private static Transactional asTransactional(Graph graph) {
+        if (graph instanceof Transactional t) {
+            return t;
+        }
+        if (graph instanceof GraphView gv && gv.getDataset() instanceof Transactional t) {
+            return t;
+        }
+        return null;
     }
 
     @Override

@@ -47,6 +47,10 @@ public class TestGraphFindAllWithHasNextAndNext {
     @Param({
             "GraphMemFast (current)",
             "GraphMemIndexedSet EAGER (current)",
+            "GraphMemIndexedSetTxn (current)",
+            "GraphMemIndexedSetCowTxn (current)",
+            "GraphMemIndexedSetMvccTxn (current)",
+            "DatasetGraphInMemoryMvccTxn (current)",
 //            "GraphMemIndexedSet LAZY (current)",
 //            "GraphMemIndexedSet LAZY_PARALLEL (current)",
 //            "GraphMemIndexedSet MINIMAL (current)",
@@ -96,7 +100,7 @@ public class TestGraphFindAllWithHasNextAndNext {
                 this.graphFindAll = this::graphFindAllCurrent;
 
                 var triples = Releases.current.readTriples(param0_GraphUri);
-                triples.forEach(this.sutCurrent::add);
+                Releases.current.executeWrite(this.sutCurrent, () -> triples.forEach(this.sutCurrent::add));
             }
             break;
             case JENA_5_6_0: {

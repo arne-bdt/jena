@@ -45,6 +45,10 @@ public class TestGraphAdd {
     @Param({
             "GraphMemFast (current)",
             "GraphMemIndexedSet EAGER (current)",
+            "GraphMemIndexedSetTxn (current)",
+            "GraphMemIndexedSetCowTxn (current)",
+            "GraphMemIndexedSetMvccTxn (current)",
+            "DatasetGraphInMemoryMvccTxn (current)",
 //            "GraphMemIndexedSet LAZY (current)",
 //            "GraphMemIndexedSet LAZY_PARALLEL (current)",
 //            "GraphMemIndexedSet MINIMAL (current)",
@@ -66,7 +70,7 @@ public class TestGraphAdd {
 
     private Object graphAddCurrent() {
         var sutCurrent = Releases.current.createGraph(trialContext.getGraphClass());
-        triplesCurrent.forEach(sutCurrent::add);
+        Releases.current.executeWrite(sutCurrent, () -> triplesCurrent.forEach(sutCurrent::add));
         Assert.assertEquals(triplesCurrent.size(), sutCurrent.size());
         return sutCurrent;
     }

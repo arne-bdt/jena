@@ -51,6 +51,10 @@ public class TestGraphContains {
     @Param({
             "GraphMemFast (current)",
             "GraphMemIndexedSet EAGER (current)",
+            "GraphMemIndexedSetTxn (current)",
+            "GraphMemIndexedSetCowTxn (current)",
+            "GraphMemIndexedSetMvccTxn (current)",
+            "DatasetGraphInMemoryMvccTxn (current)",
 //            "GraphMemIndexedSet LAZY (current)",
 //            "GraphMemIndexedSet LAZY_PARALLEL (current)",
 //            "GraphMemIndexedSet MINIMAL (current)",
@@ -236,7 +240,7 @@ public class TestGraphContains {
                 this.sutCurrent = Releases.current.createGraph(testContext.getGraphClass());
 
                 var triples = Releases.current.readTriples(param0_GraphUri);
-                triples.forEach(this.sutCurrent::add);
+                Releases.current.executeWrite(this.sutCurrent, () -> triples.forEach(this.sutCurrent::add));
 
                 // init index if needed
                 if(this.sutCurrent instanceof GraphMemRoaring roaringGraph

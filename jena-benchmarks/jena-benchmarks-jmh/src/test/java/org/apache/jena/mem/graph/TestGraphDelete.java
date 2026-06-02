@@ -47,6 +47,10 @@ public class TestGraphDelete {
     @Param({
             "GraphMemFast (current)",
             "GraphMemIndexedSet EAGER (current)",
+            "GraphMemIndexedSetTxn (current)",
+            "GraphMemIndexedSetCowTxn (current)",
+            "GraphMemIndexedSetMvccTxn (current)",
+            "DatasetGraphInMemoryMvccTxn (current)",
 //            "GraphMemIndexedSet LAZY (current)",
 //            "GraphMemIndexedSet LAZY_PARALLEL (current)",
 //            "GraphMemIndexedSet MINIMAL (current)",
@@ -71,7 +75,8 @@ public class TestGraphDelete {
     }
 
     private int graphDeleteCurrent() {
-        triplesToDeleteFromSutCurrent.forEach(t -> this.sutCurrent.delete(t));
+        Releases.current.executeWrite(this.sutCurrent,
+                () -> triplesToDeleteFromSutCurrent.forEach(t -> this.sutCurrent.delete(t)));
         Assert.assertTrue(this.sutCurrent.isEmpty());
         return this.sutCurrent.size();
     }
@@ -87,7 +92,7 @@ public class TestGraphDelete {
         switch (this.trialContext.getJenaVersion()) {
             case CURRENT:
                 this.sutCurrent = Releases.current.createGraph(this.trialContext.getGraphClass());
-                this.allTriplesCurrent.forEach(this.sutCurrent::add);
+                Releases.current.executeWrite(this.sutCurrent, () -> this.allTriplesCurrent.forEach(this.sutCurrent::add));
                 /*cloning is important so that the triples are not reference equal */
                 this.triplesToDeleteFromSutCurrent = Releases.current.cloneTriples(this.allTriplesCurrent);
                 /* Shuffle is import because the order might play a role. We want to test the performance of the

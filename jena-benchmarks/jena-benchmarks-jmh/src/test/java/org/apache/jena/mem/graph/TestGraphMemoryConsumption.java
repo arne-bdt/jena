@@ -48,6 +48,10 @@ public class TestGraphMemoryConsumption {
     @Param({
             "GraphMemFast (current)",
             "GraphMemIndexedSet EAGER (current)",
+            "GraphMemIndexedSetTxn (current)",
+            "GraphMemIndexedSetCowTxn (current)",
+            "GraphMemIndexedSetMvccTxn (current)",
+            "DatasetGraphInMemoryMvccTxn (current)",
 //            "GraphMemIndexedSet LAZY (current)",
 //            "GraphMemIndexedSet LAZY_PARALLEL (current)",
 //            "GraphMemIndexedSet MINIMAL (current)",
@@ -82,7 +86,7 @@ public class TestGraphMemoryConsumption {
         var memoryBefore = runGcAndGetUsedMemoryInMB();
         var stopwatch = StopWatch.createStarted();
         var sut = Releases.current.createGraph(trialContext.getGraphClass());
-        allTriplesCurrent.forEach(sut::add);
+        Releases.current.executeWrite(sut, () -> allTriplesCurrent.forEach(sut::add));
         stopwatch.stop();
         var memoryAfter = runGcAndGetUsedMemoryInMB();
         System.out.printf("graphs: %d time to fill graphs: %s additional memory: %5.3f MB%n",

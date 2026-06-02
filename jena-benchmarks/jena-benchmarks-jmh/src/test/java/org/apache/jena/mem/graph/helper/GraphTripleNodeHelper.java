@@ -40,6 +40,20 @@ public interface GraphTripleNodeHelper<G, T, N> {
     G createGraph(Context.GraphClass graphClass);
 
     /**
+     * Runs a bulk mutation (typically a sequence of {@code add}/{@code delete}
+     * calls) against the graph. For transactional graphs the action is wrapped
+     * in a single write transaction; for plain graphs it runs directly. This
+     * lets the benchmarks share one population/mutation idiom regardless of
+     * whether the graph under test requires a transaction for writes.
+     *
+     * @param graph  the graph to mutate
+     * @param action the mutation to run
+     */
+    default void executeWrite(G graph, Runnable action) {
+        action.run();
+    }
+
+    /**
      * Reads the triples from the given file.
      *
      * @param graphUri the file to read the triples from
