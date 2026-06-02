@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.graph.Graph;
@@ -321,10 +322,31 @@ public class BufferingDatasetGraph extends DatasetGraphTriplesQuads implements D
         return iter;
     }
 
+    @Override
+    protected Stream<Quad> streamInDftGraph(Node s, Node p, Node o) {
+        readOperation();
+        DatasetGraph base = get();
+        Stream<Quad> extra = streamInAddedTriples(s, p, o);
+        Stream<Quad> stream =
+                Stream.concat(
+                        base.stream(Quad.defaultGraphIRI, s, p, o)
+                            .filter(q->! deletedQuads.contains(q)),
+                        extra);
+        if ( ! UNIQUE )
+            stream = stream.distinct();
+        return stream;
+    }
+
     private Iterator<Quad> findInAddedTriples(Node s, Node p, Node o) {
         return Iter.iter(addedTriples.iterator())
                     .filter(t->match(t,s,p,o))
                     .map(t->Quad.create(Quad.defaultGraphIRI,t));
+    }
+
+    private Stream<Quad> streamInAddedTriples(Node s, Node p, Node o) {
+        return addedTriples.stream()
+                .filter(t->match(t,s,p,o))
+                .map(t->Quad.create(Quad.defaultGraphIRI,t));
     }
 
     @Override
@@ -334,9 +356,19 @@ public class BufferingDatasetGraph extends DatasetGraphTriplesQuads implements D
     }
 
     @Override
+    protected Stream<Quad> streamInSpecificNamedGraph(Node g, Node s, Node p, Node o) {
+        return Stream.empty();
+    }
+
+    @Override
     protected Iterator<Quad> findInAnyNamedGraphs(Node s, Node p, Node o) {
         readOperation();
         return findQuads(Node.ANY, s, p, o);
+    }
+
+    @Override
+    protected Stream<Quad> streamInAnyNamedGraphs(Node s, Node p, Node o) {
+        return Stream.empty();
     }
 
     private Iterator<Quad> findQuads(Node g, Node s, Node p, Node o) {

@@ -24,7 +24,6 @@ package org.apache.jena.sparql.core;
 import java.util.Iterator;
 import java.util.stream.Stream;
 
-import org.apache.jena.atlas.iterator.Iter;
 import org.apache.jena.atlas.lib.Closeable;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
@@ -134,9 +133,7 @@ public interface DatasetGraph extends Transactional, Closeable
      *
      * @return a stream of quads in this dataset matching the pattern.
      */
-    public default Stream<Quad> stream(Node g, Node s, Node p, Node o) {
-        return Iter.asStream(find(g, s, p, o));
-    }
+    public Stream<Quad> stream(Node g, Node s, Node p, Node o);
 
     /** Returns a {@link Stream} of {@link Quad Quads} in this dataset.
      *
