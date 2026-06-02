@@ -132,6 +132,49 @@ public class MvccTripleStoreTest {
     }
 
     @Test
+    public void fullTripleIndexContainsAcrossDeleteReaddAndAbsent() {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
+        write(store, w -> {
+            w.add(triple("s1 p1 o1"));
+            w.add(triple("s1 p2 o2"));
+            w.add(triple("s2 p1 o2"));
+        });
+        // s1, p1 and o2 all occur, but (s1 p1 o2) never co-occurs: the full-triple
+        // index reports ABSENT and contains returns false without a scan hit.
+        final MvccReadView v0 = store.openReadView();
+        try {
+            assertTrue(v0.contains(triple("s1 p1 o1")));
+            assertFalse(v0.contains(triple("s1 p1 o2")));
+        } finally {
+            v0.close();
+        }
+
+        // Delete: a reader pinned before still sees it (the index slot is filtered
+        // by version, not removed); a later reader does not.
+        final MvccReadView before = store.openReadView();
+        write(store, w -> w.remove(triple("s1 p1 o1")));
+        final MvccReadView after = store.openReadView();
+        try {
+            assertTrue("pre-delete reader sees the triple", before.contains(triple("s1 p1 o1")));
+            assertFalse("post-delete reader does not", after.contains(triple("s1 p1 o1")));
+        } finally {
+            before.close();
+            after.close();
+        }
+
+        // Re-add at a fresh slot: the index entry is updated in place and the latest
+        // reader sees it again.
+        write(store, w -> w.add(triple("s1 p1 o1")));
+        final MvccReadView readd = store.openReadView();
+        try {
+            assertTrue("re-add is visible to the latest reader", readd.contains(triple("s1 p1 o1")));
+            assertEquals(3, readd.count());
+        } finally {
+            readd.close();
+        }
+    }
+
+    @Test
     public void duplicateAddIsIdempotent() {
         final var store = new MvccTripleStore(IndexingStrategy.EAGER);
         write(store, w -> {

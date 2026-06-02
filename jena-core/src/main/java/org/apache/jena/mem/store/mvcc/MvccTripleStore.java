@@ -89,27 +89,21 @@ public final class MvccTripleStore {
 
     /**
      * Immutable published snapshot: the dense arrays, the committed
-     * {@code count}/{@code liveCount}/{@code version}, and the auxiliary
-     * {@code index}. The arrays and index are shared with the live store between
-     * vacuums (the writer appends beyond {@code count} and into the index lists in
-     * place); only indices {@code [0, count)} are meaningful to a reader holding
-     * this generation, and a vacuum publishes an entirely fresh generation.
+     * {@code count}/{@code liveCount}/{@code version}, the auxiliary pattern
+     * {@code index} and the full-triple {@code spo} index. The arrays and both
+     * indices are shared with the live store between vacuums (the writer appends
+     * beyond {@code count} and into the indices in place); only indices
+     * {@code [0, count)} are meaningful to a reader holding this generation, and a
+     * vacuum publishes an entirely fresh generation.
      */
     public record Gen(long version, Triple[] keys, long[] since, long[] till,
-                      int count, int liveCount, MvccStoreStrategy index) {}
+                      int count, int liveCount, MvccStoreStrategy index, MvccTripleIndex spo) {}
 
     private final MvccVersionControl vc;
     private final IndexingStrategy indexingStrategy;
 
     /** Published snapshot. Volatile: published by commit, acquired by begin(READ). */
     private volatile Gen gen;
-
-    // Writer-private dedup: the set of committed-live triples, with a parallel
-    // primitive int[] mapping each set entry's stable index to its version slot.
-    // Reuses the FastHashSet machinery (no boxing) like EagerStoreStrategy's
-    // reverse-index arrays. Touched only under the writer lock; never by readers.
-    private final TripleSet committedLive = new TripleSet();
-    private int[] slotOf;
 
     /** Create a store with its own version timeline. */
     public MvccTripleStore(IndexingStrategy indexingStrategy) {
@@ -123,14 +117,12 @@ public final class MvccTripleStore {
     public MvccTripleStore(IndexingStrategy indexingStrategy, MvccVersionControl vc) {
         this.vc = vc;
         this.indexingStrategy = indexingStrategy;
-        this.slotOf = new int[committedLive.getInternalKeysLength()];
-        committedLive.setOnKeysGrowHook(n -> slotOf = Arrays.copyOf(slotOf, n));
         final long[] since = new long[INITIAL_CAPACITY];
         final long[] till = new long[INITIAL_CAPACITY];
         Arrays.fill(since, ALIVE); // unused slots are invisible to everyone
         Arrays.fill(till, ALIVE);
         this.gen = new Gen(0L, new Triple[INITIAL_CAPACITY], since, till, 0, 0,
-                createIndex(indexingStrategy));
+                createIndex(indexingStrategy), new MvccTripleIndex());
     }
 
     private MvccStoreStrategy createIndex(IndexingStrategy s) {
@@ -330,16 +322,31 @@ public final class MvccTripleStore {
      * the index is rejected in O(1) by {@link MvccStoreStrategy#candidates}.
      */
     boolean contains(Gen g, long version, Triple match) {
-        final MvccStoreStrategy.Candidates c = g.index().candidates(match);
-        if (!c.dense() && c.list() == null) {
-            return false;
-        }
         final Triple[] keys = g.keys();
         final int count = g.count();
         final boolean latest = version >= g.version();
         final Node sm = match.getSubject();
         final Node pm = match.getPredicate();
         final Node om = match.getObject();
+        // Fully-concrete fast path: the full-triple index gives the triple's latest
+        // slot in O(1). ABSENT is definitive (no surviving slot is visible to any
+        // current reader). A present-but-not-visible slot — deleted at the latest
+        // version, or an older snapshot whose visible instance is an earlier re-add —
+        // falls through to the scan below, which resolves it correctly.
+        if (MvccStoreStrategy.isConcrete(sm) && MvccStoreStrategy.isConcrete(pm)
+                && MvccStoreStrategy.isConcrete(om)) {
+            final int slot = g.spo().slotOf(match);
+            if (slot == MvccTripleIndex.ABSENT) {
+                return false;
+            }
+            if (slot < count && visibleAt(g, slot, version, latest)) {
+                return true;            // keys[slot] is the triple put with this slot
+            }
+        }
+        final MvccStoreStrategy.Candidates c = g.index().candidates(match);
+        if (!c.dense() && c.list() == null) {
+            return false;
+        }
         // Fold the keyed dimension into the "any" flags so the (implied) term match
         // on the dimension the list is keyed on is skipped (see Candidates#keyed);
         // a one-bound pattern then needs only the version filter.
@@ -489,7 +496,12 @@ public final class MvccTripleStore {
     // ---- Writer-side committed-state queries (writer lock held) ----------------
 
     boolean committedContains(Triple t) {
-        return committedLive.containsKey(t);
+        final Gen g = gen;
+        final int slot = g.spo().slotOf(t);
+        // The full-triple index keeps deleted entries (an MVCC delete only stamps
+        // till), so committed-live means the latest slot is still alive.
+        return slot >= 0 && slot < g.count()
+                && (long) LONGS.getOpaque(g.till(), slot) == ALIVE;
     }
 
     // ---- Commit application (writer lock held) ---------------------------------
@@ -525,19 +537,24 @@ public final class MvccTripleStore {
             till = growVersions(till, newLen);
         }
 
-        // Deletes: stamp till on the committed slot (monotonic, opaque).
+        // The full-triple index is shared with the live store between vacuums; the
+        // writer appends/updates it in place here, readers see it via the new Gen.
+        final MvccTripleIndex spo = g.spo();
+
+        // Deletes: stamp till on the committed slot (monotonic, opaque). The index
+        // keeps the entry (re-add will update it); committed-live means still alive.
         final ExtendedIterator<Triple> removedIt = removed.keyIterator();
         while (removedIt.hasNext()) {
             final Triple t = removedIt.next();
-            final int i = committedLive.removeAndGetIndex(t);
-            if (i >= 0) {
-                LONGS.setOpaque(till, slotOf[i], v);
+            final int slot = spo.slotOf(t);
+            if (slot >= 0 && (long) LONGS.getOpaque(till, slot) == ALIVE) {
+                LONGS.setOpaque(till, slot, v);
                 liveCount--;
             }
         }
 
         // Adds: append a fresh slot. since is written last so any premature
-        // observation of the slot (via the index) reads the invisible ALIVE default.
+        // observation of the slot (via an index) reads the invisible ALIVE default.
         final ExtendedIterator<Triple> addedIt = added.find();
         while (addedIt.hasNext()) {
             final Triple t = addedIt.next();
@@ -546,16 +563,12 @@ public final class MvccTripleStore {
             LONGS.setOpaque(till, slot, ALIVE);
             LONGS.setOpaque(since, slot, v);
             index.onCommitAdd(t, slot);
-            int i = committedLive.addAndGetIndex(t);
-            if (i < 0) {
-                i = ~i;
-            }
-            slotOf[i] = slot;
+            spo.put(t, slot);          // insert, or update a previously-deleted entry
             liveCount++;
         }
 
         // Publish: new generation first (volatile release), then advance the clock.
-        final Gen g1 = new Gen(v, keys, since, till, count, liveCount, index);
+        final Gen g1 = new Gen(v, keys, since, till, count, liveCount, index, spo);
         gen = g1;
         vc.publish(v);
 
@@ -611,19 +624,21 @@ public final class MvccTripleStore {
         Arrays.fill(ns, ALIVE);
         Arrays.fill(nt, ALIVE);
         final MvccStoreStrategy nidx = freshCompactedIndex(g.index());
-        final int[] oldToNew = new int[n];
-        Arrays.fill(oldToNew, -1);
+        final MvccTripleIndex nspo = new MvccTripleIndex(survivors);
 
         int w = 0;
         int newLive = 0;
         for (int i = 0; i < n; i++) {
             final long ti = (long) LONGS.getOpaque(oldTill, i);
             if (ti > cutoff) {
-                oldToNew[i] = w;
                 nk[w] = oldKeys[i];
                 LONGS.setOpaque(ns, w, (long) LONGS.getOpaque(oldSince, i));
                 LONGS.setOpaque(nt, w, ti);
                 nidx.onCommitAdd(oldKeys[i], w);  // index every survivor (live + retained-dead)
+                // Survivors are visited in ascending old-slot order, so for a triple
+                // with several survivors (a retained-dead slot plus a live re-add) the
+                // last put wins — the latest (live) slot, exactly as required.
+                nspo.put(oldKeys[i], w);
                 if (ti > committed) {
                     newLive++;
                 }
@@ -631,11 +646,7 @@ public final class MvccTripleStore {
             }
         }
 
-        // Remap the dedup table: every committed-live triple survived, so its
-        // recorded slot is renumbered through oldToNew.
-        committedLive.forEachKey((t, i) -> slotOf[i] = oldToNew[slotOf[i]]);
-
-        return new Gen(committed, nk, ns, nt, survivors, newLive, nidx);
+        return new Gen(committed, nk, ns, nt, survivors, newLive, nidx, nspo);
     }
 
     private MvccStoreStrategy freshCompactedIndex(MvccStoreStrategy old) {
