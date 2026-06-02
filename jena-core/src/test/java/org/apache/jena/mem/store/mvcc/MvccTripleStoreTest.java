@@ -557,6 +557,83 @@ public class MvccTripleStoreTest {
     }
 
     @Test
+    public void concurrentSpoContainsDuringIndexResize() throws Exception {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
+        // A stable core that is never deleted: present in every snapshot taken
+        // after this seed commit.
+        write(store, w -> {
+            for (int i = 0; i < 300; i++) {
+                w.add(triple("stable" + i + " p o" + i));
+            }
+        });
+
+        final AtomicBoolean stop = new AtomicBoolean(false);
+        final AtomicReference<Throwable> error = new AtomicReference<>();
+
+        // Writer: continuously add fresh triples (driving the full-triple index
+        // through repeated resizes) while churning a disjoint re-add block.
+        final Thread writer = new Thread(() -> {
+            try {
+                int round = 0;
+                while (!stop.get()) {
+                    final int r = round++;
+                    write(store, w -> {
+                        for (int i = 0; i < 100; i++) {
+                            w.add(triple("grow" + r + "_" + i + " p o"));
+                        }
+                    });
+                    write(store, w -> {
+                        for (int i = 0; i < 100; i++) {
+                            w.remove(triple("churn" + i + " q c" + i));
+                        }
+                    });
+                    write(store, w -> {
+                        for (int i = 0; i < 100; i++) {
+                            w.add(triple("churn" + i + " q c" + i));
+                        }
+                    });
+                }
+            } catch (Throwable th) {
+                error.set(th);
+            }
+        });
+        writer.start();
+
+        try {
+            for (int k = 0; k < 150; k++) {
+                final MvccReadView v = store.openReadView();
+                try {
+                    for (int i = 0; i < 300; i += 30) {
+                        // The stable core resolves via the O(1) index hit path on
+                        // every snapshot, even while the index is resizing.
+                        assertTrue("stable triple must be present",
+                                v.contains(triple("stable" + i + " p o" + i)));
+                        assertTrue("stable triple must be found",
+                                v.find(triple("stable" + i + " p o" + i)).hasNext());
+                        // Triples that were never added must never be reported
+                        // present: a racy index read can only fall back, never lie.
+                        assertFalse("absent-object triple must never be found",
+                                v.contains(triple("stable" + i + " p NEVER")));
+                        assertFalse("fresh-subject triple must never be found",
+                                v.contains(triple("ghost" + k + "_" + i + " p o")));
+                    }
+                    final int byCount = v.count();
+                    final int byScan = v.find(Triple.create(Node.ANY, Node.ANY, Node.ANY)).toList().size();
+                    assertEquals("snapshot must be internally consistent", byCount, byScan);
+                } finally {
+                    v.close();
+                }
+            }
+        } finally {
+            stop.set(true);
+            writer.join(10_000);
+        }
+        if (error.get() != null) {
+            throw new AssertionError("writer thread failed", error.get());
+        }
+    }
+
+    @Test
     public void manualInitializeIndexBuildsAndServes() {
         final var store = new MvccTripleStore(IndexingStrategy.MANUAL);
         write(store, w -> {

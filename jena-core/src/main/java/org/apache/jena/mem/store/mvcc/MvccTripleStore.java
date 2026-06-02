@@ -33,6 +33,7 @@ import org.apache.jena.mem.store.mvcc.strategies.MvccMinimalStoreStrategy;
 import org.apache.jena.mem.store.mvcc.strategies.MvccStoreStrategy;
 import org.apache.jena.util.iterator.ExtendedIterator;
 import org.apache.jena.util.iterator.NiceIterator;
+import org.apache.jena.util.iterator.SingletonIterator;
 import org.apache.jena.util.iterator.WrappedIterator;
 
 import java.lang.invoke.MethodHandles;
@@ -306,6 +307,28 @@ public final class MvccTripleStore {
 
     /** Version-filtered iterator over a pattern, against a fixed generation/version. */
     ExtendedIterator<Triple> find(Gen g, long version, Triple match) {
+        // Fully-concrete fast path: at most one slot of a given triple is visible at
+        // any version (a re-add's since is >= the prior delete's till), so the
+        // full-triple index resolves the single possible match in O(1). ABSENT
+        // yields empty; a visible latest slot yields a singleton; a present but
+        // not-visible slot (an older snapshot whose visible instance is an earlier
+        // re-add) falls back to the scan, which finds that one instance.
+        final Node sm = match.getSubject();
+        final Node pm = match.getPredicate();
+        final Node om = match.getObject();
+        if (MvccStoreStrategy.isConcrete(sm) && MvccStoreStrategy.isConcrete(pm)
+                && MvccStoreStrategy.isConcrete(om)) {
+            final int slot = g.spo().slotOf(match);
+            if (slot == MvccTripleIndex.ABSENT) {
+                return NiceIterator.emptyIterator();
+            }
+            if (slot < g.count() && visibleAt(g, slot, version, version >= g.version())) {
+                final Triple t = g.keys()[slot];
+                if (t != null) {
+                    return new SingletonIterator<>(t);
+                }
+            }
+        }
         final MvccStoreStrategy.Candidates c = g.index().candidates(match);
         if (!c.dense() && c.list() == null) {
             return NiceIterator.emptyIterator();
