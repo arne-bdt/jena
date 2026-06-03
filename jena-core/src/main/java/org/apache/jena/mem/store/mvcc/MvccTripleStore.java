@@ -114,15 +114,43 @@ public final class MvccTripleStore implements TripleStore {
     public record Gen(long version, Triple[] keys, long[] since, long[] till,
                       int count, int liveCount, MvccStoreStrategy index, MvccTripleIndex spo) {}
 
+    /**
+     * Whether work the store does <em>implicitly</em> may use several threads. It is
+     * the MVCC analogue of the copy-on-write graph's fork mode: there is no fork to
+     * parallelise here, but the same single switch turns on parallel processing
+     * wherever the store/dataset can usefully use it —
+     * <ul>
+     *   <li>the per-write-transaction read-your-writes overlay
+     *       ({@code LAZY} vs {@code LAZY_PARALLEL} index build);</li>
+     *   <li>the vacuum/compaction pattern-index rebuild;</li>
+     *   <li>(at the dataset level) collecting per-graph iterators for cross-graph
+     *       reads.</li>
+     * </ul>
+     * The explicit {@link #initializeIndex()} / {@link #initializeIndexParallel()}
+     * choose their own parallelism and are unaffected. Defaults to {@link #SEQUENTIAL}.
+     */
+    public enum ParallelMode {
+        /** Implicit work runs on the calling thread. */
+        SEQUENTIAL,
+        /** Implicit work may use the common {@link java.util.concurrent.ForkJoinPool}. */
+        PARALLEL
+    }
+
     private final MvccVersionControl vc;
     private final IndexingStrategy indexingStrategy;
+    private final ParallelMode parallelMode;
 
     /** Published snapshot. Volatile: published by commit, acquired by begin(READ). */
     private volatile Gen gen;
 
     /** Create a store with its own version timeline. */
     public MvccTripleStore(IndexingStrategy indexingStrategy) {
-        this(indexingStrategy, new MvccVersionControl());
+        this(indexingStrategy, new MvccVersionControl(), ParallelMode.SEQUENTIAL);
+    }
+
+    /** Create a store with its own version timeline and the given parallel mode. */
+    public MvccTripleStore(IndexingStrategy indexingStrategy, ParallelMode parallelMode) {
+        this(indexingStrategy, new MvccVersionControl(), parallelMode);
     }
 
     /**
@@ -130,8 +158,16 @@ public final class MvccTripleStore implements TripleStore {
      * commit on one clock).
      */
     public MvccTripleStore(IndexingStrategy indexingStrategy, MvccVersionControl vc) {
+        this(indexingStrategy, vc, ParallelMode.SEQUENTIAL);
+    }
+
+    /**
+     * Create a store on a shared version timeline with the given parallel mode.
+     */
+    public MvccTripleStore(IndexingStrategy indexingStrategy, MvccVersionControl vc, ParallelMode parallelMode) {
         this.vc = vc;
         this.indexingStrategy = indexingStrategy;
+        this.parallelMode = parallelMode;
         final long[] since = new long[INITIAL_CAPACITY];
         final long[] till = new long[INITIAL_CAPACITY];
         Arrays.fill(since, ALIVE); // unused slots are invisible to everyone
@@ -159,6 +195,11 @@ public final class MvccTripleStore implements TripleStore {
     /** @return the indexing strategy this store was created with. */
     public IndexingStrategy getIndexingStrategy() {
         return indexingStrategy;
+    }
+
+    /** @return the parallel mode for the store's implicit index builds. */
+    public ParallelMode getParallelMode() {
+        return parallelMode;
     }
 
     /** @return whether the auxiliary index is built and serving lookups. */
@@ -195,7 +236,7 @@ public final class MvccTripleStore implements TripleStore {
         if (idx.isIndexInitialized()) {
             return;                             // EAGER, or already built
         }
-        final MvccEagerStoreStrategy eager = buildEager(g, parallel);
+        final MvccEagerStoreStrategy eager = buildEagerOver(g.keys(), g.count(), parallel);
         if (idx instanceof MvccManualStoreStrategy manual) {
             manual.install(eager);
         } else if (idx instanceof MvccMinimalStoreStrategy minimal) {
@@ -222,43 +263,38 @@ public final class MvccTripleStore implements TripleStore {
     }
 
     /**
-     * Build a fresh eager index over the slots live at {@code g}'s version.
-     * Sequential, or — when {@code parallel} — one dimension per thread. Each
-     * {@link MvccIndexList} is therefore appended to by a single thread (subjects,
-     * predicates and objects use disjoint maps), so the list's single-writer
-     * append contract is preserved; mirrors the copy-on-write/Roaring 3-way split.
+     * Build a fresh eager pattern index over slots {@code [0, count)} of
+     * {@code keys}. Every slot is indexed (live and retained-dead alike); the
+     * per-slot version filter at read time decides visibility, so indexing a dead
+     * slot is harmless and keeps the index correct for any reader version. Used
+     * both to (re)build the index for {@code initializeIndex} and to rebuild it
+     * during vacuum compaction.
+     * <p>
+     * Sequential, or — when {@code parallel} — one S/P/O dimension per thread. Each
+     * {@link MvccIndexList} is therefore appended to by a single thread (the three
+     * dimensions use disjoint maps), so the list's single-writer append contract is
+     * preserved; mirrors the copy-on-write/Roaring 3-way split.
      */
-    private MvccEagerStoreStrategy buildEager(Gen g, boolean parallel) {
+    private static MvccEagerStoreStrategy buildEagerOver(Triple[] keys, int count, boolean parallel) {
         final MvccEagerStoreStrategy eager = new MvccEagerStoreStrategy();
-        final Triple[] keys = g.keys();
-        final int count = g.count();
-        final long v = g.version();
         if (!parallel) {
             for (int slot = 0; slot < count; slot++) {
-                if (visible(g, slot, v)) {
-                    eager.onCommitAdd(keys[slot], slot);
-                }
+                eager.onCommitAdd(keys[slot], slot);
             }
             return eager;
         }
         final CompletableFuture<Void> subjects = CompletableFuture.runAsync(() -> {
             for (int slot = 0; slot < count; slot++) {
-                if (visible(g, slot, v)) {
-                    eager.appendSubject(keys[slot].getSubject(), slot);
-                }
+                eager.appendSubject(keys[slot].getSubject(), slot);
             }
         });
         final CompletableFuture<Void> predicates = CompletableFuture.runAsync(() -> {
             for (int slot = 0; slot < count; slot++) {
-                if (visible(g, slot, v)) {
-                    eager.appendPredicate(keys[slot].getPredicate(), slot);
-                }
+                eager.appendPredicate(keys[slot].getPredicate(), slot);
             }
         });
         for (int slot = 0; slot < count; slot++) {              // objects on this thread
-            if (visible(g, slot, v)) {
-                eager.appendObject(keys[slot].getObject(), slot);
-            }
+            eager.appendObject(keys[slot].getObject(), slot);
         }
         CompletableFuture.allOf(subjects, predicates).join();
         return eager;
@@ -348,7 +384,19 @@ public final class MvccTripleStore implements TripleStore {
      * hold the writer lock (see {@link MvccVersionControl#lockWriter()}).
      */
     public MvccWriteTxn openWriteTxn() {
-        return new MvccWriteTxn(this, vc.nextWriteVersion(), gen);
+        return new MvccWriteTxn(this, vc.nextWriteVersion(), gen, overlayIndexingStrategy());
+    }
+
+    /**
+     * The indexing strategy for a write transaction's read-your-writes overlay:
+     * {@code LAZY_PARALLEL} under {@link ParallelMode#PARALLEL} (so the overlay's
+     * index — built on the first partial-pattern read-your-writes — builds in
+     * parallel), otherwise {@code LAZY}.
+     */
+    private IndexingStrategy overlayIndexingStrategy() {
+        return parallelMode == ParallelMode.PARALLEL
+                ? IndexingStrategy.LAZY_PARALLEL
+                : IndexingStrategy.LAZY;
     }
 
     // ---- Non-transactional TripleStore facade (auto-commit) --------------------
@@ -474,7 +522,7 @@ public final class MvccTripleStore implements TripleStore {
     public MvccTripleStore copy() {
         final Gen g = gen;
         final long v = g.version();
-        final MvccTripleStore c = new MvccTripleStore(indexingStrategy);
+        final MvccTripleStore c = new MvccTripleStore(indexingStrategy, parallelMode);
         c.vc.lockWriter();
         try {
             final MvccWriteTxn w = c.openWriteTxn();
@@ -936,7 +984,6 @@ public final class MvccTripleStore implements TripleStore {
         final long[] nt = new long[cap];
         Arrays.fill(ns, ALIVE);
         Arrays.fill(nt, ALIVE);
-        final MvccStoreStrategy nidx = freshCompactedIndex(g.index());
         final MvccTripleIndex nspo = new MvccTripleIndex(survivors);
 
         int w = 0;
@@ -947,7 +994,6 @@ public final class MvccTripleStore implements TripleStore {
                 nk[w] = oldKeys[i];
                 LONGS.setOpaque(ns, w, (long) LONGS.getOpaque(oldSince, i));
                 LONGS.setOpaque(nt, w, ti);
-                nidx.onCommitAdd(oldKeys[i], w);  // index every survivor (live + retained-dead)
                 // Survivors are visited in ascending old-slot order, so for a triple
                 // with several survivors (a retained-dead slot plus a live re-add) the
                 // last put wins — the latest (live) slot, exactly as required.
@@ -959,23 +1005,33 @@ public final class MvccTripleStore implements TripleStore {
             }
         }
 
+        // Rebuild the pattern index over the renumbered survivors. It is independent
+        // of the slot copy and dedup above, so it is built after the renumber loop —
+        // which also lets it run in parallel under ParallelMode.PARALLEL.
+        final MvccStoreStrategy nidx = buildCompactedIndex(g.index(), nk, survivors);
         return new Gen(committed, nk, ns, nt, survivors, newLive, nidx, nspo);
     }
 
-    private MvccStoreStrategy freshCompactedIndex(MvccStoreStrategy old) {
+    /**
+     * Build the compacted generation's pattern index over the {@code count}
+     * renumbered survivors in {@code keys}, preserving the configured strategy kind
+     * and its built/un-built state. The eager build honours {@link #parallelMode}.
+     */
+    private MvccStoreStrategy buildCompactedIndex(MvccStoreStrategy old, Triple[] keys, int count) {
+        final boolean parallel = parallelMode == ParallelMode.PARALLEL;
         return switch (indexingStrategy) {
-            case EAGER -> new MvccEagerStoreStrategy();
+            case EAGER -> buildEagerOver(keys, count, parallel);
             case MINIMAL -> {
                 final MvccMinimalStoreStrategy m = new MvccMinimalStoreStrategy();
                 if (old.isIndexInitialized()) {
-                    m.install(new MvccEagerStoreStrategy());  // preserve a built index; onCommitAdd repopulates it
+                    m.install(buildEagerOver(keys, count, parallel));  // preserve a built index
                 }
                 yield m;
             }
             case MANUAL -> {
                 final MvccManualStoreStrategy m = new MvccManualStoreStrategy();
                 if (old.isIndexInitialized()) {
-                    m.install(new MvccEagerStoreStrategy());  // onCommitAdd will populate it
+                    m.install(buildEagerOver(keys, count, parallel));
                 }
                 yield m;
             }

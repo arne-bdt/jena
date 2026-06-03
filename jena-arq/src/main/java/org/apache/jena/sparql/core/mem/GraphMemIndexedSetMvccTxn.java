@@ -88,6 +88,18 @@ public class GraphMemIndexedSetMvccTxn extends GraphBase
     }
 
     /**
+     * Create a graph with the given parallel mode (see
+     * {@link MvccTripleStore.ParallelMode}), the MVCC analogue of the
+     * copy-on-write graph's fork mode.
+     *
+     * @param indexingStrategy the indexing strategy
+     * @param parallelMode     whether the store may parallelise implicit index builds
+     */
+    public GraphMemIndexedSetMvccTxn(IndexingStrategy indexingStrategy, MvccTripleStore.ParallelMode parallelMode) {
+        this.store = new MvccTripleStore(indexingStrategy, parallelMode);
+    }
+
+    /**
      * Create a graph on a shared version timeline, for use inside a dataset where
      * all graphs commit on one clock.
      *
@@ -106,6 +118,11 @@ public class GraphMemIndexedSetMvccTxn extends GraphBase
     /** @return the underlying shared MVCC store. */
     public MvccTripleStore getStore() {
         return store;
+    }
+
+    /** @return the parallel mode this graph's store was created with. */
+    public MvccTripleStore.ParallelMode getParallelMode() {
+        return store.getParallelMode();
     }
 
     // ----- Indexing-strategy controls -----------------------------------

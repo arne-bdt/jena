@@ -25,6 +25,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
+import org.apache.jena.mem.store.mvcc.MvccTripleStore;
 import org.apache.jena.query.ReadWrite;
 import org.apache.jena.query.TxnType;
 import org.apache.jena.util.iterator.ExtendedIterator;
@@ -293,6 +294,36 @@ public class TestGraphMemIndexedSetMvccTxnContract {
     }
 
     // ----- MVCC-specific: O(1) begin doesn't copy; multi-version readd ----
+
+    /**
+     * The PARALLEL parallel mode (the MVCC analogue of the copy-on-write fork mode)
+     * must exhibit identical visible behaviour to SEQUENTIAL. Under PARALLEL the
+     * write overlay is LAZY_PARALLEL, so a partial-pattern read-your-writes builds
+     * its index in parallel.
+     */
+    @Test
+    public void parallelModeBehavesLikeSequential() {
+        GraphMemIndexedSetMvccTxn g = new GraphMemIndexedSetMvccTxn(
+                IndexingStrategy.EAGER, MvccTripleStore.ParallelMode.PARALLEL);
+        assertEquals(MvccTripleStore.ParallelMode.PARALLEL, g.getParallelMode());
+
+        g.begin(TxnType.WRITE);
+        for (int i = 0; i < 200; i++) {
+            g.add(t("s" + i, "p", "o"));
+        }
+        assertEquals(200, g.size());
+        // Partial-pattern read-your-writes exercises the LAZY_PARALLEL overlay.
+        assertEquals(1, g.find(n("s5"), null, null).toList().size());
+        g.commit();
+        g.end();
+
+        g.begin(TxnType.READ);
+        assertEquals(200, g.size());
+        for (int i = 0; i < 200; i++) {
+            assertTrue(g.contains(t("s" + i, "p", "o")), "missing s" + i);
+        }
+        g.end();
+    }
 
     @Test
     public void multiVersionReaddAcrossTransactions() {

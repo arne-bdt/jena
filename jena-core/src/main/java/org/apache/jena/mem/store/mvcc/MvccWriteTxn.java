@@ -74,15 +74,20 @@ public final class MvccWriteTxn {
 
     /**
      * The overlay of changes to publish at commit. The added graph holds only triples that are not committed-live.
-     * Since e.g. during bulk load there might be no triple match operations, the indexing strategy is LAZY.
+     * Since e.g. during bulk load there might be no triple match operations, the indexing strategy is lazy: it
+     * builds the overlay's index only on the first partial-pattern read-your-writes. The store picks
+     * {@code LAZY} or, under {@link MvccTripleStore.ParallelMode#PARALLEL}, {@code LAZY_PARALLEL} so that build
+     * runs in parallel.
      */
-    private final Graph added = new GraphMemIndexedSet(IndexingStrategy.LAZY);
+    private final Graph added;
     private final TripleSet removed = new TripleSet();
 
-    MvccWriteTxn(MvccTripleStore store, long version, MvccTripleStore.Gen committedGen) {
+    MvccWriteTxn(MvccTripleStore store, long version, MvccTripleStore.Gen committedGen,
+                 IndexingStrategy overlayStrategy) {
         this.store = store;
         this.version = version;
         this.committedGen = committedGen;
+        this.added = new GraphMemIndexedSet(overlayStrategy);
     }
 
     /** @return the version this transaction will commit at. */

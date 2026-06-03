@@ -41,13 +41,16 @@ import org.apache.jena.sparql.core.Transactional;
 import org.apache.jena.system.G;
 import org.apache.jena.system.Txn;
 import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.NiceIterator;
 import org.apache.jena.util.iterator.NullIterator;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -72,6 +75,14 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
 
     private final MvccVersionControl vc = new MvccVersionControl();
     private final IndexingStrategy indexingStrategy;
+    private final MvccTripleStore.ParallelMode parallelMode;
+
+    /**
+     * Minimum number of named graphs before a cross-graph read collects its
+     * per-graph iterators in parallel (only under {@link MvccTripleStore.ParallelMode#PARALLEL}).
+     * Mirrors the copy-on-write dataset's threshold.
+     */
+    private static final int PARALLEL_CROSS_GRAPH_THRESHOLD = 16;
     private final MvccTripleStore defaultStore;
     private final ConcurrentHashMap<Node, MvccTripleStore> namedStores = new ConcurrentHashMap<>();
     private final PrefixMap prefixes = new PrefixMapStd();
@@ -97,9 +108,31 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
     }
 
     public DatasetGraphInMemoryMvccTxn(IndexingStrategy indexingStrategy) {
+        this(indexingStrategy, MvccTripleStore.ParallelMode.SEQUENTIAL);
+    }
+
+    /**
+     * Create a dataset with the given parallel mode — the MVCC analogue of the
+     * copy-on-write dataset's fork mode. Under
+     * {@link MvccTripleStore.ParallelMode#PARALLEL} the per-graph MVCC stores
+     * parallelise their implicit index builds, and cross-graph reads over at least
+     * {@value #PARALLEL_CROSS_GRAPH_THRESHOLD} named graphs collect their per-graph
+     * iterators in parallel.
+     *
+     * @param indexingStrategy the indexing strategy for every per-graph store
+     * @param parallelMode     the parallel mode for every per-graph store and for
+     *                         cross-graph reads
+     */
+    public DatasetGraphInMemoryMvccTxn(IndexingStrategy indexingStrategy, MvccTripleStore.ParallelMode parallelMode) {
         this.indexingStrategy = indexingStrategy;
-        this.defaultStore = new MvccTripleStore(indexingStrategy, vc);
+        this.parallelMode = parallelMode;
+        this.defaultStore = new MvccTripleStore(indexingStrategy, vc, parallelMode);
         this.defaultGraph = new DefaultGraphView();
+    }
+
+    /** @return the parallel mode this dataset was created with. */
+    public MvccTripleStore.ParallelMode getParallelMode() {
+        return parallelMode;
     }
 
     // --- Transactional --------------------------------------------------------
@@ -334,7 +367,7 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
     protected void addToNamedGraph(Node g, Node s, Node p, Node o) {
         mutate(() -> {
             final MvccTripleStore store = namedStores.computeIfAbsent(
-                    g, k -> new MvccTripleStore(indexingStrategy, vc));
+                    g, k -> new MvccTripleStore(indexingStrategy, vc, parallelMode));
             writeTxnFor(store).add(Triple.create(s, p, o));
         });
     }
@@ -403,11 +436,45 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
         final Triple match = Triple.createMatch(s, p, o);
         return access(() -> {
             final DsTxnState t = require();
+            if (shouldParallelizeCrossGraph(t)) {
+                return parallelFindInNamedGraphs(match, t);
+            }
             final Iterator<Map.Entry<Node, MvccTripleStore>> entries =
                     namedStores.entrySet().iterator();
             return Iter.flatMap(entries, e ->
                     storeFind(e.getValue(), match, t).mapWith(tr -> Quad.create(e.getKey(), tr)));
         });
+    }
+
+    /**
+     * Cross-graph collection may go parallel only for read views: a WRITE
+     * transaction's per-store overlays ({@link MvccWriteTxn}) are single-threaded,
+     * so their reads must stay on the writer thread. It is also gated on
+     * {@link MvccTripleStore.ParallelMode#PARALLEL} and a minimum graph count.
+     */
+    private boolean shouldParallelizeCrossGraph(DsTxnState t) {
+        return parallelMode == MvccTripleStore.ParallelMode.PARALLEL
+                && t.mode != ReadWrite.WRITE
+                && namedStores.size() >= PARALLEL_CROSS_GRAPH_THRESHOLD;
+    }
+
+    /**
+     * Build each named graph's per-graph iterator in parallel on the common pool and
+     * chain them. Iteration of the chain stays lazy and sequential, so short-circuit
+     * consumers still stop early — only the (potentially scanning) per-graph
+     * {@code find} construction is parallelised. Read views only (see
+     * {@link #shouldParallelizeCrossGraph}); {@code storeFind} then routes through
+     * the lock-free {@link MvccTripleStore#findAt}, which is thread-safe.
+     */
+    private Iterator<Quad> parallelFindInNamedGraphs(Triple match, DsTxnState t) {
+        final List<ExtendedIterator<Quad>> perGraph = namedStores.entrySet().parallelStream()
+                .map(e -> storeFind(e.getValue(), match, t).mapWith(tr -> Quad.create(e.getKey(), tr)))
+                .collect(Collectors.toList());
+        ExtendedIterator<Quad> result = NiceIterator.emptyIterator();
+        for (ExtendedIterator<Quad> it : perGraph) {
+            result = result.andThen(it);
+        }
+        return result;
     }
 
     // --- Graph container view -------------------------------------------------
@@ -581,7 +648,7 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
 
         @Override
         protected MvccTripleStore storeForWrite() {
-            return namedStores.computeIfAbsent(gname, k -> new MvccTripleStore(indexingStrategy, vc));
+            return namedStores.computeIfAbsent(gname, k -> new MvccTripleStore(indexingStrategy, vc, parallelMode));
         }
     }
 

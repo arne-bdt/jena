@@ -445,6 +445,64 @@ public class MvccTripleStoreTest extends AbstractTripleStoreTest {
     }
 
     @Test
+    public void parallelModeOverlayServesReadYourWrites() {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER, MvccTripleStore.ParallelMode.PARALLEL);
+        assertEquals(MvccTripleStore.ParallelMode.PARALLEL, store.getParallelMode());
+
+        store.versionControl().lockWriter();
+        try {
+            final MvccWriteTxn w = store.openWriteTxn();
+            for (int i = 0; i < 200; i++) {
+                w.add(triple("s" + (i % 5) + " p o" + i));
+            }
+            // A partial-pattern read-your-writes builds the write overlay's index;
+            // under PARALLEL the overlay is LAZY_PARALLEL, so that build runs in
+            // parallel. The result must be identical to the sequential overlay.
+            assertEquals(40, w.find(Triple.create(node("s0"), Node.ANY, Node.ANY)).toList().size());
+            assertEquals(200, w.count());
+            store.commit(w);
+        } finally {
+            store.versionControl().unlockWriter();
+        }
+
+        final MvccReadView v = store.openReadView();
+        try {
+            assertEquals(200, v.count());
+            assertEquals(40, countFind(v, Triple.create(node("s0"), Node.ANY, Node.ANY)));
+        } finally {
+            v.close();
+        }
+    }
+
+    @Test
+    public void parallelModeVacuumRebuildsIndexCorrectly() {
+        final var store = new MvccTripleStore(IndexingStrategy.EAGER, MvccTripleStore.ParallelMode.PARALLEL);
+        write(store, w -> {
+            for (int i = 0; i < 100; i++) {
+                w.add(triple("s" + (i % 5) + " p o" + i));
+            }
+        });
+        write(store, w -> {
+            for (int i = 0; i < 50; i++) {
+                w.remove(triple("s" + (i % 5) + " p o" + i));
+            }
+        });
+
+        vacuum(store);   // compaction rebuilds the pattern index in parallel
+
+        final MvccReadView v = store.openReadView();
+        try {
+            assertEquals(50, v.count());
+            // The parallel-rebuilt index serves partial patterns correctly.
+            assertEquals(50, countFind(v, Triple.create(Node.ANY, node("p"), Node.ANY)));
+            assertTrue(v.contains(triple("s0 p o50")));
+            assertFalse(v.contains(triple("s0 p o0")));
+        } finally {
+            v.close();
+        }
+    }
+
+    @Test
     public void clearIndexRevertsManualToThrowing() {
         final var store = new MvccTripleStore(IndexingStrategy.MANUAL);
         write(store, w -> w.add(triple("s1 p1 o1")));

@@ -94,6 +94,8 @@ import org.junit.platform.suite.api.Suite;
     TestDatasetGraphInMemoryMvccTxnNamedGraphAndStream.class,
     // The full view contract driven through the MVCC dataset's direct-to-store
     // getDefaultGraph()/getGraph().
-    TestDatasetGraphInMemoryMvccTxnViewsDirect.class
+    TestDatasetGraphInMemoryMvccTxnViewsDirect.class,
+    // The PARALLEL parallel-mode knob (overlay + cross-graph reads).
+    TestDatasetGraphInMemoryMvccTxnParallel.class
  })
 public class TS_DatasetTxnMem {}
