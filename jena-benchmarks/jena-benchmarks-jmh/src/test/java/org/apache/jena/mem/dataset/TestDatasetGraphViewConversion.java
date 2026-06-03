@@ -42,6 +42,7 @@ import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.profile.GCProfiler;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.TimeValue;
@@ -57,34 +58,35 @@ import org.openjdk.jmh.runner.options.TimeValue;
  * (minus a small, constant per-op transaction overhead that is identical across all
  * methods and SUTs, so it cancels out when comparing).
  * <p>
- * Two storage models are compared on the same data, loaded into both the default graph
- * and one named graph:
+ * Storage models compared on the same data, loaded into both the default graph and one
+ * named graph:
  * <ul>
  *   <li><b>TxnMem</b> = {@code DatasetGraphInMemory} ({@link DatasetGraphFactory#createTxnMem()}):
  *       hybrid storage — default graph in a {@code TripleTable}, named graphs in a
- *       quad-indexed {@code QuadTable}.</li>
+ *       quad-indexed {@code QuadTable}; {@code find} is {@code Stream}-based.</li>
  *   <li><b>General</b> = {@code DatasetGraphMapLink} ({@link DatasetGraphFactory#createGeneral()}):
  *       triple storage — a {@code Map<Node,Graph>}; {@code getDefaultGraph()}/{@code getGraph()}
  *       hand back the stored {@link Graph} directly, so the triple API does no conversion.</li>
+ *   <li><b>TxnMemCow</b> / <b>TxnMemMvcc</b>: the copy-on-write / MVCC in-memory variants.</li>
  * </ul>
  *
- * Expected shape of the results (why neither model is "free" at the boundary):
- * <pre>
- *                                         TxnMem (quad/hybrid)     General (triple)
- *  defaultGraph_find_triples   (Graph API) Triple-&gt;Quad-&gt;Triple     stored Triple
- *                                          ~2 allocs/row            ~0 allocs/row
- *  namedGraph_find_triples     (Graph API) Quad-&gt;Triple             stored Triple
- *                                          ~1 alloc/row             ~0 allocs/row
- *  namedGraph_find_quads    (DatasetGraph) stored Quad             Triple-&gt;Quad
- *                                          ~0 allocs/row            ~1 alloc/row
- *  defaultGraph_contains       (Graph API) Triple-&gt;Quad-&gt;Triple     stored Triple
- *                                          ~2 allocs/probe          ~0 allocs/probe
- * </pre>
- *
- * The {@code defaultGraph_find_triples} row on TxnMem is the headline: data that is
- * <i>stored</i> as a {@link Triple} and <i>consumed</i> as a {@link Triple} still
- * allocates a {@link Quad} (32 B) and a throwaway {@link Triple} (24 B) per row, and
- * the stored {@link Triple} is never handed out (so no reference reuse is possible today).
+ * <h2>Important: escape analysis can hide the conversion</h2>
+ * The conversion creates one {@link Triple} or {@link Quad} per row. On a hot loop that simply
+ * drops each row ({@code param2_Consumption=count}), C2 escape analysis frequently proves the
+ * converted object never escapes and scalar-replaces it, so {@code gc.alloc.rate.norm} shows the
+ * conversion as ~0 — it measures it away. The realistic case is {@code consume} (default), which
+ * hands every row to a {@code Blackhole} so it escapes, the way a real caller (binding, collection,
+ * SPARQL solution) would retain it; only then is the per-row conversion visible. Where it
+ * materializes it is byte-exact: one {@code Quad} = 32 B, one {@code Triple} = 24 B,
+ * {@code Triple->Quad->Triple} = 56 B.
+ * <p>
+ * Two costs are tangled here and should be read separately:
+ * <ol>
+ *   <li>the <b>find-pipeline</b> allocation of the store itself (huge for TxnMem's {@code Stream}
+ *       path, ~0 for the lean stores), independent of the Quad/Triple question; and</li>
+ *   <li>the <b>conversion</b> object at the view boundary, which only matters once the find
+ *       pipeline is lean enough not to dwarf it (i.e. General / Cow / Mvcc, not stock TxnMem).</li>
+ * </ol>
  */
 @State(Scope.Benchmark)
 public class TestDatasetGraphViewConversion {
@@ -97,12 +99,26 @@ public class TestDatasetGraphViewConversion {
     public String param0_GraphUri;
 
     @Param({
-            "TxnMem",   // DatasetGraphInMemory  - quad/hybrid storage
-            "General",  // DatasetGraphMapLink   - triple storage
-            // "TxnMemCow",  // DatasetGraphInMemoryCowTxn - enable to profile the COW variant
-            // "TxnMemMvcc", // DatasetGraphInMemoryMvccTxn - enable to profile the MVCC variant
+            "TxnMem",     // DatasetGraphInMemory       - quad/hybrid storage, Stream-based find
+            "General",    // DatasetGraphMapLink        - triple storage, native graph iterators
+            "TxnMemCow",  // DatasetGraphInMemoryCowTxn - copy-on-write variant
+            "TxnMemMvcc", // DatasetGraphInMemoryMvccTxn- MVCC variant
     })
     public String param1_DatasetImplementation;
+
+    /**
+     * How the iterated row is consumed.
+     * <ul>
+     *   <li>{@code consume} - hand each row to a {@link Blackhole} so it <i>escapes</i>; this is the
+     *       realistic case (a caller keeps the row) and is the only way to measure the conversion,
+     *       because otherwise C2 escape analysis scalar-replaces the converted {@link Triple}/{@link Quad}.</li>
+     *   <li>{@code count} - just advance the iterator and drop the row; on a hot loop the JIT can prove
+     *       the converted object never escapes and elides the allocation entirely. Useful to demonstrate
+     *       that escape-analysis effect, not to measure the conversion.</li>
+     * </ul>
+     */
+    @Param({ "consume", "count" })
+    public String param2_Consumption;
 
     private static final Node graphName = NodeFactory.createURI("http://example/benchmark/g");
 
@@ -115,38 +131,39 @@ public class TestDatasetGraphViewConversion {
 
     /**
      * Default graph, read through the {@link Graph} (triple) API.
-     * TxnMem: TripleTable -&gt; wrap to Quad -&gt; GraphView unwraps to Triple (2 allocs/row).
-     * General: returns the stored Triple (0 allocs/row).
+     * TxnMem: TripleTable -&gt; wrap to Quad -&gt; GraphView unwraps to Triple.
+     * General: returns the stored Triple (no conversion).
      */
     @Benchmark
-    public long defaultGraph_find_triples() {
-        return Txn.calculateRead(dsg, () -> count(defaultGraphView.find(Node.ANY, Node.ANY, Node.ANY)));
+    public long defaultGraph_find_triples(Blackhole bh) {
+        return Txn.calculateRead(dsg, () -> read(defaultGraphView.find(Node.ANY, Node.ANY, Node.ANY), bh));
     }
 
     /**
      * Named graph, read through the {@link Graph} (triple) API.
-     * TxnMem: QuadTable -&gt; GraphView unwraps Quad to Triple (1 alloc/row).
-     * General: returns the stored Triple (0 allocs/row).
+     * TxnMem: QuadTable -&gt; GraphView unwraps Quad to Triple.
+     * General: returns the stored Triple (no conversion).
      */
     @Benchmark
-    public long namedGraph_find_triples() {
-        return Txn.calculateRead(dsg, () -> count(namedGraphView.find(Node.ANY, Node.ANY, Node.ANY)));
+    public long namedGraph_find_triples(Blackhole bh) {
+        return Txn.calculateRead(dsg, () -> read(namedGraphView.find(Node.ANY, Node.ANY, Node.ANY), bh));
     }
 
     /**
      * Named graph, read through the {@link DatasetGraph} (quad) API.
-     * TxnMem: returns the stored Quad (0 allocs/row).
-     * General: graph.find returns Triple -&gt; wrap to Quad (1 alloc/row).
+     * TxnMem: returns the stored Quad (no conversion).
+     * General: graph.find returns Triple -&gt; wrap to Quad.
      */
     @Benchmark
-    public long namedGraph_find_quads() {
-        return Txn.calculateRead(dsg, () -> count(dsg.find(graphName, Node.ANY, Node.ANY, Node.ANY)));
+    public long namedGraph_find_quads(Blackhole bh) {
+        return Txn.calculateRead(dsg, () -> read(dsg.find(graphName, Node.ANY, Node.ANY, Node.ANY), bh));
     }
 
     /**
      * Default graph membership test through the {@link Graph} (triple) API.
-     * Same conversion chain as {@link #defaultGraph_find_triples()} but per probe, so it
-     * shows that even a boolean {@code contains} allocates on the quad/hybrid store today.
+     * Same conversion chain as {@link #defaultGraph_find_triples} but per probe. The boolean
+     * result escapes, so (unlike a drop-the-row scan) the per-probe find pipeline is measured.
+     * Independent of {@code param2_Consumption}.
      */
     @Benchmark
     public boolean defaultGraph_contains() {
@@ -158,10 +175,14 @@ public class TestDatasetGraphViewConversion {
         });
     }
 
-    private static long count(Iterator<?> it) {
+    /** Iterate, optionally letting each converted row escape into the Blackhole (see param2_Consumption). */
+    private long read(Iterator<?> it, Blackhole bh) {
+        final boolean consume = "consume".equals(param2_Consumption);
         long c = 0;
         while (it.hasNext()) {
-            it.next();   // force materialization of the converted Triple/Quad
+            Object row = it.next();
+            if (consume)
+                bh.consume(row);   // hard escape point: prevents EA from scalar-replacing the Triple/Quad
             c++;
         }
         return c;
@@ -220,6 +241,11 @@ public class TestDatasetGraphViewConversion {
         var onlyImpl = System.getProperty("jmh.impl");
         if (onlyImpl != null)
             builder.param("param1_DatasetImplementation", onlyImpl);
+        // Default to the realistic "consume" mode so a normal run isn't doubled.
+        // Use -Djmh.consume=count, or -Djmh.consume=both to compare and see the escape-analysis effect.
+        var consume = System.getProperty("jmh.consume", "consume");
+        if (!"both".equals(consume))
+            builder.param("param2_Consumption", consume);
         var results = new Runner(builder.build()).run();
         Assert.assertNotNull(results);
     }
