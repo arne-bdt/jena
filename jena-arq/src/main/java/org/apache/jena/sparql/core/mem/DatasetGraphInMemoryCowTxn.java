@@ -131,6 +131,12 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
     private final GraphMemIndexedSetCowTxn defaultGraph;
 
     /**
+     * Cached direct-to-store view of the default graph (see {@link DefaultGraphView}).
+     * Stable for the life of the dataset, like {@link #defaultGraph} itself.
+     */
+    private final Graph defaultGraphView;
+
+    /**
      * Named-graph topology — the set of named graphs currently in the
      * dataset and their per-graph store instances. Volatile so reads
      * outside any transaction see the latest version with a single
@@ -183,6 +189,7 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
         this.forkMode = forkMode;
         this.defaultGraph = newGraph();
         this.namedTopology = new GraphTopology(Map.of());
+        this.defaultGraphView = new DefaultGraphView();
     }
 
     /** Fork mode used for newly created per-graph instances. */
@@ -976,17 +983,165 @@ public class DatasetGraphInMemoryCowTxn extends DatasetGraphTriplesQuads impleme
 
     @Override
     public Graph getDefaultGraph() {
-        return GraphView.createDefaultGraph(this);
+        return defaultGraphView;
     }
 
     @Override
     public Graph getGraph(Node graphNode) {
-        return GraphView.createNamedGraph(this, graphNode);
+        if (graphNode == null || Quad.isDefaultGraph(graphNode)) {
+            return defaultGraphView;
+        }
+        if (Quad.isUnionGraph(graphNode)) {
+            // The union is a cross-graph read with dedup: leave it to the generic view.
+            return GraphView.createUnionGraph(this);
+        }
+        return new NamedGraphView(graphNode);
     }
 
     @Override
     public Graph getUnionGraph() {
         return GraphView.createUnionGraph(this);
+    }
+
+    /**
+     * A triple-level view of one of the dataset's graphs that reads and writes the
+     * backing per-graph {@link CowStore} / {@link GraphMemIndexedSetCowTxn}
+     * <em>directly</em>. It extends {@link GraphView}, so it stays a {@code GraphView}
+     * whose {@link GraphView#getDataset()} is this dataset (keeping the controlling
+     * {@link Transactional} reachable, exactly as the generic view did); it only overrides
+     * the find / contains / size / stream / add / delete hot paths to skip the per-triple
+     * {@code Triple}&harr;{@code Quad} mapping, the {@code find()}-based {@code contains},
+     * and the {@code find()}-based {@code size} of {@code GraphBase}.
+     * <p>
+     * Reads go through the dataset's own {@link #currentDefaultView()} /
+     * {@link #currentNamedView(Node)}: inside a dataset transaction they honour the
+     * writer's working copy (read-your-writes) under WRITE or the snapshot captured at
+     * {@code begin} under READ; outside any transaction they read the latest published
+     * {@link CowStore} snapshot directly — no auto-wrapped dataset READ transaction, so a
+     * single-graph read does not eagerly capture a snapshot of every named graph. Writes
+     * route through {@link #mutate} and the dataset's {@code *ForWrite} enlistment, so a
+     * bare {@code add}/{@code delete} still auto-wraps in a dataset write transaction and
+     * commits atomically with the dataset.
+     */
+    private abstract class StoreBackedGraphView extends GraphView {
+
+        StoreBackedGraphView(Node graphName) {
+            super(DatasetGraphInMemoryCowTxn.this, graphName);
+        }
+
+        /** The read snapshot for this graph in the current context, or {@code null} if it is absent. */
+        protected abstract CowStore readViewOrNull();
+
+        /** Enlist (creating if needed) and return the writable per-graph graph. */
+        protected abstract GraphMemIndexedSetCowTxn graphForWrite();
+
+        /** Enlist and return the writable per-graph graph, or {@code null} if it does not exist. */
+        protected abstract GraphMemIndexedSetCowTxn graphForWriteIfExists();
+
+        @Override
+        protected ExtendedIterator<Triple> graphBaseFind(Triple m) {
+            final CowStore view = readViewOrNull();
+            return (view == null)
+                    ? NiceIterator.emptyIterator()
+                    : view.find(m == null ? Triple.ANY : m);
+        }
+
+        @Override
+        protected ExtendedIterator<Triple> graphBaseFind(Node s, Node p, Node o) {
+            final CowStore view = readViewOrNull();
+            return (view == null)
+                    ? NiceIterator.emptyIterator()
+                    : view.find(Triple.createMatch(s, p, o));
+        }
+
+        @Override
+        protected boolean graphBaseContains(Triple m) {
+            final CowStore view = readViewOrNull();
+            return view != null && view.contains(m);
+        }
+
+        @Override
+        protected int graphBaseSize() {
+            final CowStore view = readViewOrNull();
+            return (view == null) ? 0 : view.countTriples();
+        }
+
+        @Override
+        public Stream<Triple> stream(Node s, Node p, Node o) {
+            final CowStore view = readViewOrNull();
+            return (view == null) ? Stream.empty() : view.stream(Triple.createMatch(s, p, o));
+        }
+
+        @Override
+        public Stream<Triple> stream() {
+            return stream(Node.ANY, Node.ANY, Node.ANY);
+        }
+
+        @Override
+        public void performAdd(Triple t) {
+            mutate(() -> graphForWrite().add(t));
+        }
+
+        @Override
+        public void performDelete(Triple t) {
+            mutate(() -> {
+                final GraphMemIndexedSetCowTxn g = graphForWriteIfExists();
+                if (g != null) {
+                    g.delete(t);
+                }
+            });
+        }
+    }
+
+    /** The default graph, backed by the always-present {@link #defaultGraph}. */
+    private final class DefaultGraphView extends StoreBackedGraphView {
+        private DefaultGraphView() {
+            super(Quad.defaultGraphNodeGenerated);
+        }
+
+        @Override
+        protected CowStore readViewOrNull() {
+            return currentDefaultView();   // never null
+        }
+
+        @Override
+        protected GraphMemIndexedSetCowTxn graphForWrite() {
+            return defaultGraphForWrite();
+        }
+
+        @Override
+        protected GraphMemIndexedSetCowTxn graphForWriteIfExists() {
+            return defaultGraphForWrite();   // the default graph always exists
+        }
+    }
+
+    /**
+     * A named graph, backed by its entry in the dataset topology. The store is absent
+     * until the graph is first written (mirroring {@link #addToNamedGraph}); reads of an
+     * absent graph are empty and a delete against it is a no-op.
+     */
+    private final class NamedGraphView extends StoreBackedGraphView {
+        private final Node gname;
+
+        private NamedGraphView(Node graphName) {
+            super(graphName);
+            this.gname = graphName;
+        }
+
+        @Override
+        protected CowStore readViewOrNull() {
+            return currentNamedView(gname);
+        }
+
+        @Override
+        protected GraphMemIndexedSetCowTxn graphForWrite() {
+            return namedGraphForWrite(gname);
+        }
+
+        @Override
+        protected GraphMemIndexedSetCowTxn graphForWriteIfExists() {
+            return namedGraphForWriteIfExists(gname);
+        }
     }
 
     @Override

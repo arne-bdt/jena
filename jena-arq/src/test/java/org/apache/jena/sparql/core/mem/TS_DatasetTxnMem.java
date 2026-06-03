@@ -59,6 +59,10 @@ import org.junit.platform.suite.api.Suite;
     // CowTxn dataset — same Abstract* contracts as the InMemory variants.
     TestDatasetGraphInMemoryCowTxnBasic.class,
     TestDatasetGraphInMemoryCowTxnViews.class,
+    // The same view contract, but driven through the dataset's own direct-to-store
+    // getDefaultGraph()/getGraph() rather than the generic GraphView factory.
+    TestDatasetGraphInMemoryCowTxnViewsDirect.class,
+    TestDatasetGraphInMemoryCowTxnNamedGraphView.class,
     TestDatasetGraphInMemoryCowTxnLock.class,
     TestDatasetGraphInMemoryCowTxnThreading.class,
     TestDatasetGraphInMemoryCowTxnTransactions.class,
@@ -87,6 +91,9 @@ import org.junit.platform.suite.api.Suite;
     TestDatasetGraphInMemoryMvccTxnDefaultGraph.class,
 
     // MVCC dataset's direct-to-store named graphs and native quad stream().
-    TestDatasetGraphInMemoryMvccTxnNamedGraphAndStream.class
+    TestDatasetGraphInMemoryMvccTxnNamedGraphAndStream.class,
+    // The full view contract driven through the MVCC dataset's direct-to-store
+    // getDefaultGraph()/getGraph().
+    TestDatasetGraphInMemoryMvccTxnViewsDirect.class
  })
 public class TS_DatasetTxnMem {}
