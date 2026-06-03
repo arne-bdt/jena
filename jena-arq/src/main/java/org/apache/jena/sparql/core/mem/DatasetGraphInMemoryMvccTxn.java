@@ -75,6 +75,8 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
     private final ConcurrentHashMap<Node, MvccTripleStore> namedStores = new ConcurrentHashMap<>();
     private final PrefixMap prefixes = new PrefixMapStd();
     private final ThreadLocal<DsTxnState> activeTxn = new ThreadLocal<>();
+    /** Cached direct-to-store view of the default graph (see {@link DefaultGraphView}). */
+    private final Graph defaultGraph;
 
     private static final class DsTxnState {
         TxnType type;
@@ -96,6 +98,7 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
     public DatasetGraphInMemoryMvccTxn(IndexingStrategy indexingStrategy) {
         this.indexingStrategy = indexingStrategy;
         this.defaultStore = new MvccTripleStore(indexingStrategy, vc);
+        this.defaultGraph = new DefaultGraphView();
     }
 
     // --- Transactional --------------------------------------------------------
@@ -286,6 +289,39 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
         return store.isEmptyAt(t.version);
     }
 
+    /** A read membership test over one store, honouring read-your-writes under WRITE. */
+    private boolean storeContains(MvccTripleStore store, Triple match, DsTxnState t) {
+        if (t.mode == ReadWrite.WRITE) {
+            final MvccWriteTxn w = t.writeTxns.get(store);
+            if (w != null) {
+                return w.contains(match);
+            }
+        }
+        return store.containsAt(t.version, match);
+    }
+
+    /** A visible-triple count over one store, honouring read-your-writes under WRITE. */
+    private int storeCount(MvccTripleStore store, DsTxnState t) {
+        if (t.mode == ReadWrite.WRITE) {
+            final MvccWriteTxn w = t.writeTxns.get(store);
+            if (w != null) {
+                return w.count();
+            }
+        }
+        return store.countAt(t.version);
+    }
+
+    /** A read stream over one store, honouring read-your-writes under WRITE. */
+    private Stream<Triple> storeStream(MvccTripleStore store, Triple match, DsTxnState t) {
+        if (t.mode == ReadWrite.WRITE) {
+            final MvccWriteTxn w = t.writeTxns.get(store);
+            if (w != null) {
+                return w.stream(match);
+            }
+        }
+        return store.streamAt(t.version, match);
+    }
+
     // --- Mutation routing (DatasetGraphTriplesQuads) --------------------------
 
     @Override
@@ -377,7 +413,7 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
 
     @Override
     public Graph getDefaultGraph() {
-        return GraphView.createDefaultGraph(this);
+        return defaultGraph;
     }
 
     @Override
@@ -388,6 +424,88 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
     @Override
     public Graph getUnionGraph() {
         return GraphView.createUnionGraph(this);
+    }
+
+    /**
+     * A triple-level view of the dataset's default graph that reads and writes
+     * {@link #defaultStore} <em>directly</em>. It extends {@link GraphView}, so it stays
+     * a {@code GraphView} whose {@link GraphView#getDataset()} is this dataset (keeping
+     * the controlling {@link Transactional} reachable, exactly as the generic view does);
+     * it only overrides the find / contains / size / stream / add / delete hot paths to
+     * skip the per-triple {@code Triple}↔{@code Quad} mapping, the {@code find()}-based
+     * {@code contains}, and the {@code find()}-based {@code size} of {@code GraphBase}.
+     * <p>
+     * Transaction state is the dataset's per-thread {@link DsTxnState}: inside a dataset
+     * transaction reads honour the write overlay (read-your-writes) under WRITE or the
+     * version pinned at {@code begin} under READ; outside any transaction they read the
+     * latest committed state through a transient view, mirroring
+     * {@link GraphMemIndexedSetMvccTxn}. Writes route through {@link #mutate} /
+     * {@link #writeTxnFor(MvccTripleStore)}, so a bare {@code add}/{@code delete} still
+     * auto-wraps in a dataset write transaction.
+     */
+    private final class DefaultGraphView extends GraphView {
+
+        private DefaultGraphView() {
+            super(DatasetGraphInMemoryMvccTxn.this, Quad.defaultGraphNodeGenerated);
+        }
+
+        /** Route a triple read to the overlay/snapshot in-txn, or a transient view out of txn. */
+        private ExtendedIterator<Triple> dftFind(Triple match) {
+            final DsTxnState t = activeTxn.get();
+            return (t == null)
+                    ? defaultStore.transientReadView().find(match)
+                    : storeFind(defaultStore, match, t);
+        }
+
+        @Override
+        protected ExtendedIterator<Triple> graphBaseFind(Triple m) {
+            return dftFind(m == null ? MATCH_ALL : m);
+        }
+
+        @Override
+        protected ExtendedIterator<Triple> graphBaseFind(Node s, Node p, Node o) {
+            return dftFind(Triple.createMatch(s, p, o));
+        }
+
+        @Override
+        protected boolean graphBaseContains(Triple m) {
+            final DsTxnState t = activeTxn.get();
+            return (t == null)
+                    ? defaultStore.transientReadView().contains(m)
+                    : storeContains(defaultStore, m, t);
+        }
+
+        @Override
+        protected int graphBaseSize() {
+            final DsTxnState t = activeTxn.get();
+            return (t == null)
+                    ? defaultStore.transientReadView().count()
+                    : storeCount(defaultStore, t);
+        }
+
+        @Override
+        public Stream<Triple> stream(Node s, Node p, Node o) {
+            final Triple match = Triple.createMatch(s, p, o);
+            final DsTxnState t = activeTxn.get();
+            return (t == null)
+                    ? defaultStore.transientReadView().stream(match)
+                    : storeStream(defaultStore, match, t);
+        }
+
+        @Override
+        public Stream<Triple> stream() {
+            return stream(Node.ANY, Node.ANY, Node.ANY);
+        }
+
+        @Override
+        public void performAdd(Triple t) {
+            mutate(() -> writeTxnFor(defaultStore).add(t));
+        }
+
+        @Override
+        public void performDelete(Triple t) {
+            mutate(() -> writeTxnFor(defaultStore).remove(t));
+        }
     }
 
     @Override
