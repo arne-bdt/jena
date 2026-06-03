@@ -41,6 +41,7 @@ import org.apache.jena.sparql.core.Transactional;
 import org.apache.jena.system.G;
 import org.apache.jena.system.Txn;
 import org.apache.jena.util.iterator.ExtendedIterator;
+import org.apache.jena.util.iterator.NullIterator;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -418,7 +419,14 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
 
     @Override
     public Graph getGraph(Node graphNode) {
-        return GraphView.createNamedGraph(this, graphNode);
+        if (graphNode == null || Quad.isDefaultGraph(graphNode)) {
+            return defaultGraph;
+        }
+        if (Quad.isUnionGraph(graphNode)) {
+            // The union is a cross-graph read with dedup: leave it to the generic view.
+            return GraphView.createUnionGraph(this);
+        }
+        return new NamedGraphView(graphNode);
     }
 
     @Override
@@ -427,13 +435,14 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
     }
 
     /**
-     * A triple-level view of the dataset's default graph that reads and writes
-     * {@link #defaultStore} <em>directly</em>. It extends {@link GraphView}, so it stays
-     * a {@code GraphView} whose {@link GraphView#getDataset()} is this dataset (keeping
-     * the controlling {@link Transactional} reachable, exactly as the generic view does);
-     * it only overrides the find / contains / size / stream / add / delete hot paths to
-     * skip the per-triple {@code Triple}↔{@code Quad} mapping, the {@code find()}-based
-     * {@code contains}, and the {@code find()}-based {@code size} of {@code GraphBase}.
+     * A triple-level view of one of the dataset's graphs that reads and writes the
+     * backing {@link MvccTripleStore} <em>directly</em>. It extends {@link GraphView}, so
+     * it stays a {@code GraphView} whose {@link GraphView#getDataset()} is this dataset
+     * (keeping the controlling {@link Transactional} reachable, exactly as the generic
+     * view does); it only overrides the find / contains / size / stream / add / delete
+     * hot paths to skip the per-triple {@code Triple}&harr;{@code Quad} mapping, the
+     * {@code find()}-based {@code contains}, and the {@code find()}-based {@code size} of
+     * {@code GraphBase}.
      * <p>
      * Transaction state is the dataset's per-thread {@link DsTxnState}: inside a dataset
      * transaction reads honour the write overlay (read-your-writes) under WRITE or the
@@ -443,53 +452,75 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
      * {@link #writeTxnFor(MvccTripleStore)}, so a bare {@code add}/{@code delete} still
      * auto-wraps in a dataset write transaction.
      */
-    private final class DefaultGraphView extends GraphView {
+    private abstract class StoreBackedGraphView extends GraphView {
 
-        private DefaultGraphView() {
-            super(DatasetGraphInMemoryMvccTxn.this, Quad.defaultGraphNodeGenerated);
+        StoreBackedGraphView(Node graphName) {
+            super(DatasetGraphInMemoryMvccTxn.this, graphName);
         }
 
+        /** The backing store, or {@code null} if this graph has none yet (a named graph never written). */
+        protected abstract MvccTripleStore storeOrNull();
+
+        /** The backing store to write into, created on demand. */
+        protected abstract MvccTripleStore storeForWrite();
+
         /** Route a triple read to the overlay/snapshot in-txn, or a transient view out of txn. */
-        private ExtendedIterator<Triple> dftFind(Triple match) {
+        private ExtendedIterator<Triple> doFind(Triple match) {
+            final MvccTripleStore store = storeOrNull();
+            if (store == null) {
+                return NullIterator.instance();
+            }
             final DsTxnState t = activeTxn.get();
             return (t == null)
-                    ? defaultStore.transientReadView().find(match)
-                    : storeFind(defaultStore, match, t);
+                    ? store.transientReadView().find(match)
+                    : storeFind(store, match, t);
         }
 
         @Override
         protected ExtendedIterator<Triple> graphBaseFind(Triple m) {
-            return dftFind(m == null ? MATCH_ALL : m);
+            return doFind(m == null ? MATCH_ALL : m);
         }
 
         @Override
         protected ExtendedIterator<Triple> graphBaseFind(Node s, Node p, Node o) {
-            return dftFind(Triple.createMatch(s, p, o));
+            return doFind(Triple.createMatch(s, p, o));
         }
 
         @Override
         protected boolean graphBaseContains(Triple m) {
+            final MvccTripleStore store = storeOrNull();
+            if (store == null) {
+                return false;
+            }
             final DsTxnState t = activeTxn.get();
             return (t == null)
-                    ? defaultStore.transientReadView().contains(m)
-                    : storeContains(defaultStore, m, t);
+                    ? store.transientReadView().contains(m)
+                    : storeContains(store, m, t);
         }
 
         @Override
         protected int graphBaseSize() {
+            final MvccTripleStore store = storeOrNull();
+            if (store == null) {
+                return 0;
+            }
             final DsTxnState t = activeTxn.get();
             return (t == null)
-                    ? defaultStore.transientReadView().count()
-                    : storeCount(defaultStore, t);
+                    ? store.transientReadView().count()
+                    : storeCount(store, t);
         }
 
         @Override
         public Stream<Triple> stream(Node s, Node p, Node o) {
+            final MvccTripleStore store = storeOrNull();
+            if (store == null) {
+                return Stream.empty();
+            }
             final Triple match = Triple.createMatch(s, p, o);
             final DsTxnState t = activeTxn.get();
             return (t == null)
-                    ? defaultStore.transientReadView().stream(match)
-                    : storeStream(defaultStore, match, t);
+                    ? store.transientReadView().stream(match)
+                    : storeStream(store, match, t);
         }
 
         @Override
@@ -499,12 +530,58 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
 
         @Override
         public void performAdd(Triple t) {
-            mutate(() -> writeTxnFor(defaultStore).add(t));
+            mutate(() -> writeTxnFor(storeForWrite()).add(t));
         }
 
         @Override
         public void performDelete(Triple t) {
-            mutate(() -> writeTxnFor(defaultStore).remove(t));
+            mutate(() -> {
+                final MvccTripleStore store = storeOrNull();
+                if (store != null) {
+                    writeTxnFor(store).remove(t);
+                }
+            });
+        }
+    }
+
+    /** The default graph, backed by the always-present {@link #defaultStore}. */
+    private final class DefaultGraphView extends StoreBackedGraphView {
+        private DefaultGraphView() {
+            super(Quad.defaultGraphNodeGenerated);
+        }
+
+        @Override
+        protected MvccTripleStore storeOrNull() {
+            return defaultStore;
+        }
+
+        @Override
+        protected MvccTripleStore storeForWrite() {
+            return defaultStore;
+        }
+    }
+
+    /**
+     * A named graph, backed by its entry in {@link #namedStores}. The store is absent
+     * until the graph is first written (mirroring {@link #addToNamedGraph}); reads of an
+     * absent store are empty and a delete against it is a no-op.
+     */
+    private final class NamedGraphView extends StoreBackedGraphView {
+        private final Node gname;
+
+        private NamedGraphView(Node graphName) {
+            super(graphName);
+            this.gname = graphName;
+        }
+
+        @Override
+        protected MvccTripleStore storeOrNull() {
+            return namedStores.get(gname);
+        }
+
+        @Override
+        protected MvccTripleStore storeForWrite() {
+            return namedStores.computeIfAbsent(gname, k -> new MvccTripleStore(indexingStrategy, vc));
         }
     }
 
@@ -574,6 +651,23 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
 
     @Override
     public Stream<Quad> stream(Node g, Node s, Node p, Node o) {
+        final Triple match = Triple.createMatch(s, p, o);
+        // Default graph and concrete named graphs stream their store natively (the store's
+        // own Stream), tagging each triple with its graph node — no find() iterator bridge.
+        // This mirrors the dispatch of DatasetGraphBaseFind.find; union and wildcard graph
+        // terms keep the find()-based path (cross-graph append / union dedup).
+        if (Quad.isDefaultGraph(g)) {
+            return access(() -> storeStream(defaultStore, match, require())
+                    .map(tr -> Quad.create(Quad.defaultGraphIRI, tr)));
+        }
+        if (!isWildcard(g) && !Quad.isUnionGraph(g)) {
+            return access(() -> {
+                final MvccTripleStore store = namedStores.get(g);
+                return store == null
+                        ? Stream.<Quad>empty()
+                        : storeStream(store, match, require()).map(tr -> Quad.create(g, tr));
+            });
+        }
         return Iter.asStream(find(g, s, p, o));
     }
 

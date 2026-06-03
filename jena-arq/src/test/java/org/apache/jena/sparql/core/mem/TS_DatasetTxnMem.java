@@ -84,6 +84,9 @@ import org.junit.platform.suite.api.Suite;
     TestDatasetGraphInMemoryMvccTxnPromote.class,
 
     // MVCC dataset's direct-to-store default graph (DefaultGraphView).
-    TestDatasetGraphInMemoryMvccTxnDefaultGraph.class
+    TestDatasetGraphInMemoryMvccTxnDefaultGraph.class,
+
+    // MVCC dataset's direct-to-store named graphs and native quad stream().
+    TestDatasetGraphInMemoryMvccTxnNamedGraphAndStream.class
  })
 public class TS_DatasetTxnMem {}
