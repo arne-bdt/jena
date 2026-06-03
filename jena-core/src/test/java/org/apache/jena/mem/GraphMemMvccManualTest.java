@@ -86,4 +86,33 @@ public class GraphMemMvccManualTest {
         assertEquals(2, g.stream(node("s1"), null, null).count());
         assertEquals(2, g.find(null, node("p"), null).toList().size());
     }
+
+    @Test
+    public void partialPatternLookupsServedAfterInitParallel() {
+        final GraphMemMvcc g = populated();
+
+        g.initializeIndexParallel();
+        assertTrue(g.isIndexInitialized());
+
+        assertTrue(g.contains(node("s1"), null, null));
+        assertEquals(2, g.find(node("s1"), null, null).toList().size());
+        assertEquals(2, g.stream(node("s1"), null, null).count());
+    }
+
+    @Test
+    public void clearIndexRevertsToThrowing() {
+        final GraphMemMvcc g = populated();
+        g.initializeIndex();
+        assertTrue(g.isIndexInitialized());
+        assertTrue(g.contains(node("s1"), null, null));     // served via the index
+
+        g.clearIndex();
+        assertFalse(g.isIndexInitialized());
+
+        // Back to the un-built MANUAL contract: partial patterns throw again,
+        // fully-concrete lookups still work.
+        assertThrows(UnsupportedOperationException.class,
+                () -> g.contains(node("s1"), null, null));
+        assertTrue(g.contains(triple("s1 p o1")));
+    }
 }

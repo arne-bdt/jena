@@ -42,6 +42,7 @@ import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 /**
@@ -166,23 +167,101 @@ public final class MvccTripleStore implements TripleStore {
     }
 
     /**
-     * Build the auxiliary index over the currently-live committed slots (a no-op
-     * unless the configured strategy is {@code MANUAL} and not yet built). Must be
-     * called with the writer lock held. The build mutates the current generation's
-     * index in place (published via the strategy's own volatile), so no new
-     * generation is needed.
+     * Build the auxiliary index over the currently-live committed slots, upgrading
+     * a {@code MANUAL} or {@code MINIMAL} strategy to serve lookups from the index
+     * (a no-op for {@code EAGER}, which is always indexed, or when the index is
+     * already built). Must be called with the writer lock held. The build mutates
+     * the current generation's index in place (published via the strategy's own
+     * volatile), so no new generation is needed. Mirrors
+     * {@link org.apache.jena.mem.store.roaring.RoaringTripleStore#initializeIndex()}.
      */
     public void initializeIndex() {
+        buildAndInstallIndex(false);
+    }
+
+    /**
+     * Like {@link #initializeIndex()} but builds the index in parallel: the
+     * subject/predicate/object dimensions are populated on separate threads, so
+     * every {@link MvccIndexList} still has a single writer and its append contract
+     * holds. Must be called with the writer lock held.
+     */
+    public void initializeIndexParallel() {
+        buildAndInstallIndex(true);
+    }
+
+    private void buildAndInstallIndex(boolean parallel) {
         final Gen g = gen;
-        if (g.index() instanceof MvccManualStoreStrategy manual && !manual.isIndexInitialized()) {
-            final MvccEagerStoreStrategy eager = new MvccEagerStoreStrategy();
-            for (int slot = 0; slot < g.count(); slot++) {
-                if (visible(g, slot, g.version())) {
-                    eager.onCommitAdd(g.keys()[slot], slot);
+        final MvccStoreStrategy idx = g.index();
+        if (idx.isIndexInitialized()) {
+            return;                             // EAGER, or already built
+        }
+        final MvccEagerStoreStrategy eager = buildEager(g, parallel);
+        if (idx instanceof MvccManualStoreStrategy manual) {
+            manual.install(eager);
+        } else if (idx instanceof MvccMinimalStoreStrategy minimal) {
+            minimal.install(eager);
+        }
+    }
+
+    /**
+     * Drop a built {@code MANUAL}/{@code MINIMAL} index and revert to that
+     * strategy's un-built behaviour (MANUAL throws on partial patterns, MINIMAL
+     * dense-scans). A no-op for {@code EAGER}, which stays fully indexed. Must be
+     * called with the writer lock held. Mirrors
+     * {@link org.apache.jena.mem.store.roaring.RoaringTripleStore#clearIndex()}.
+     */
+    public void clearIndex() {
+        final MvccStoreStrategy idx = gen.index();
+        if (idx instanceof MvccManualStoreStrategy manual) {
+            manual.clear();
+        } else if (idx instanceof MvccMinimalStoreStrategy minimal) {
+            minimal.clear();
+        }
+        // EAGER: always indexed; clearing then re-indexing is observably a no-op,
+        // so the eager index is left in place (isIndexInitialized stays true).
+    }
+
+    /**
+     * Build a fresh eager index over the slots live at {@code g}'s version.
+     * Sequential, or — when {@code parallel} — one dimension per thread. Each
+     * {@link MvccIndexList} is therefore appended to by a single thread (subjects,
+     * predicates and objects use disjoint maps), so the list's single-writer
+     * append contract is preserved; mirrors the copy-on-write/Roaring 3-way split.
+     */
+    private MvccEagerStoreStrategy buildEager(Gen g, boolean parallel) {
+        final MvccEagerStoreStrategy eager = new MvccEagerStoreStrategy();
+        final Triple[] keys = g.keys();
+        final int count = g.count();
+        final long v = g.version();
+        if (!parallel) {
+            for (int slot = 0; slot < count; slot++) {
+                if (visible(g, slot, v)) {
+                    eager.onCommitAdd(keys[slot], slot);
                 }
             }
-            manual.install(eager);
+            return eager;
         }
+        final CompletableFuture<Void> subjects = CompletableFuture.runAsync(() -> {
+            for (int slot = 0; slot < count; slot++) {
+                if (visible(g, slot, v)) {
+                    eager.appendSubject(keys[slot].getSubject(), slot);
+                }
+            }
+        });
+        final CompletableFuture<Void> predicates = CompletableFuture.runAsync(() -> {
+            for (int slot = 0; slot < count; slot++) {
+                if (visible(g, slot, v)) {
+                    eager.appendPredicate(keys[slot].getPredicate(), slot);
+                }
+            }
+        });
+        for (int slot = 0; slot < count; slot++) {              // objects on this thread
+            if (visible(g, slot, v)) {
+                eager.appendObject(keys[slot].getObject(), slot);
+            }
+        }
+        CompletableFuture.allOf(subjects, predicates).join();
+        return eager;
     }
 
     // ---- Read views ----------------------------------------------------------
@@ -886,7 +965,13 @@ public final class MvccTripleStore implements TripleStore {
     private MvccStoreStrategy freshCompactedIndex(MvccStoreStrategy old) {
         return switch (indexingStrategy) {
             case EAGER -> new MvccEagerStoreStrategy();
-            case MINIMAL -> new MvccMinimalStoreStrategy();
+            case MINIMAL -> {
+                final MvccMinimalStoreStrategy m = new MvccMinimalStoreStrategy();
+                if (old.isIndexInitialized()) {
+                    m.install(new MvccEagerStoreStrategy());  // preserve a built index; onCommitAdd repopulates it
+                }
+                yield m;
+            }
             case MANUAL -> {
                 final MvccManualStoreStrategy m = new MvccManualStoreStrategy();
                 if (old.isIndexInitialized()) {

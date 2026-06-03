@@ -27,6 +27,7 @@ import org.junit.runners.Parameterized;
 import java.util.Collection;
 import java.util.List;
 
+import static org.apache.jena.testing_framework.GraphHelper.node;
 import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
@@ -85,6 +86,53 @@ public class GraphMemMvccTest extends AbstractGraphMemTest {
             default -> throw new IllegalArgumentException(
                     "Unexpected strategy: " + sut.getIndexingStrategy());
         }
+    }
+
+    @Test
+    public void testInitializeIndex() {
+        final var sut = sutAsMvcc();
+        sut.add(triple("s p o"));
+        sut.add(triple("s p2 o2"));
+
+        sut.initializeIndex();
+
+        // After initializeIndex the index is built for every supported strategy.
+        assertTrue(sut.isIndexInitialized());
+        assertEquals(2, sut.find(node("s"), null, null).toList().size());
+        assertTrue(sut.contains(triple("s p o")));
+    }
+
+    @Test
+    public void testInitializeIndexParallel() {
+        final var sut = sutAsMvcc();
+        sut.add(triple("s p o"));
+        sut.add(triple("s p2 o2"));
+
+        sut.initializeIndexParallel();
+
+        assertTrue(sut.isIndexInitialized());
+        assertEquals(2, sut.find(node("s"), null, null).toList().size());
+        assertTrue(sut.contains(triple("s p o")));
+    }
+
+    @Test
+    public void testClearIndex() {
+        final var sut = sutAsMvcc();
+        sut.add(triple("s p o"));
+        sut.add(triple("s p2 o2"));
+        sut.initializeIndex();
+
+        sut.clearIndex();
+
+        // clearIndex reverts to the configured strategy: EAGER stays indexed,
+        // MINIMAL stops serving from an index (but lookups still work via scan).
+        switch (indexingStrategy) {
+            case EAGER -> assertTrue(sut.isIndexInitialized());
+            case MINIMAL -> assertFalse(sut.isIndexInitialized());
+            default -> throw new IllegalArgumentException(
+                    "Unexpected strategy: " + indexingStrategy);
+        }
+        assertEquals(2, sut.find(node("s"), null, null).toList().size());
     }
 
     @Test

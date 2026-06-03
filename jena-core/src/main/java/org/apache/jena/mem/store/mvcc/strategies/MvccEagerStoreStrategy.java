@@ -111,6 +111,40 @@ public final class MvccEagerStoreStrategy implements MvccStoreStrategy {
         oIndex.computeIfAbsent(t.getObject(), k -> new MvccIndexList()).append(slot);
     }
 
+    /**
+     * Append a slot to the subject index only. Together with
+     * {@link #appendPredicate} and {@link #appendObject} this lets an index build
+     * run one dimension per thread: each {@link MvccIndexList} then still has a
+     * single writer, so its append contract holds. Single-writer-per-dimension
+     * only; not for use on a published strategy under concurrent commits.
+     *
+     * @param s    the subject node
+     * @param slot the triple-slot index
+     */
+    public void appendSubject(final Node s, final int slot) {
+        sIndex.computeIfAbsent(s, k -> new MvccIndexList()).append(slot);
+    }
+
+    /**
+     * Append a slot to the predicate index only. See {@link #appendSubject}.
+     *
+     * @param p    the predicate node
+     * @param slot the triple-slot index
+     */
+    public void appendPredicate(final Node p, final int slot) {
+        pIndex.computeIfAbsent(p, k -> new MvccIndexList()).append(slot);
+    }
+
+    /**
+     * Append a slot to the object index only. See {@link #appendSubject}.
+     *
+     * @param o    the object node
+     * @param slot the triple-slot index
+     */
+    public void appendObject(final Node o, final int slot) {
+        oIndex.computeIfAbsent(o, k -> new MvccIndexList()).append(slot);
+    }
+
     @Override
     public boolean isIndexInitialized() {
         return true;

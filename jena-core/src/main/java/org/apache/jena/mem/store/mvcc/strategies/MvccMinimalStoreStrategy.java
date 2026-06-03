@@ -28,26 +28,52 @@ import org.apache.jena.graph.Triple;
  * whole dense slot range and is answered by the store's version filter plus
  * full-pattern match. Lowest memory; suited to small graphs or memory-critical
  * deployments.
+ * <p>
+ * Like {@link MvccManualStoreStrategy} it can be upgraded in place to behave like
+ * {@link MvccEagerStoreStrategy} by building an index (the store's
+ * {@code initializeIndex()} / {@code initializeIndexParallel()}); {@code clearIndex()}
+ * drops the built index and reverts to dense scanning. The difference from MANUAL is
+ * only the un-built behaviour: MINIMAL dense-scans partial patterns where MANUAL
+ * throws. The built delegate is published through a {@code volatile} so the
+ * write-time build is visible to lock-free readers once installed.
  */
 public final class MvccMinimalStoreStrategy implements MvccStoreStrategy {
 
+    /** Non-null once an index has been built; published volatile. */
+    private volatile MvccEagerStoreStrategy delegate = null;
+
+    /**
+     * Install a freshly built eager index, upgrading this strategy to serve
+     * lookups from the index. Called by the store under the writer lock from
+     * {@code initializeIndex()} / {@code initializeIndexParallel()}.
+     *
+     * @param built the populated eager strategy to delegate to
+     */
+    public void install(final MvccEagerStoreStrategy built) {
+        this.delegate = built;
+    }
+
     @Override
     public Candidates candidates(final Triple match) {
-        return Candidates.DENSE;
+        final MvccEagerStoreStrategy d = delegate;
+        return d == null ? Candidates.DENSE : d.candidates(match);
     }
 
     @Override
     public void onCommitAdd(final Triple t, final int slot) {
-        // no index to maintain
+        final MvccEagerStoreStrategy d = delegate;
+        if (d != null) {
+            d.onCommitAdd(t, slot);
+        }
     }
 
     @Override
     public boolean isIndexInitialized() {
-        return false;
+        return delegate != null;
     }
 
     @Override
     public void clear() {
-        // nothing to clear
+        delegate = null;
     }
 }

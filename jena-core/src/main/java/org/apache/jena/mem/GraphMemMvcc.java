@@ -101,9 +101,9 @@ public class GraphMemMvcc extends GraphMem {
     /**
      * Reports whether the auxiliary index is currently built and serving pattern
      * lookups directly. For {@code EAGER} this is always {@code true}; for
-     * {@code MINIMAL} always {@code false} (it never builds one); for
-     * {@code MANUAL} it flips to {@code true} once {@link #initializeIndex()} has
-     * been called.
+     * {@code MINIMAL} and {@code MANUAL} it is {@code false} until
+     * {@link #initializeIndex()} (or {@link #initializeIndexParallel()}) is called,
+     * and {@code false} again after {@link #clearIndex()}.
      *
      * @return {@code true} iff the index is initialized
      */
@@ -112,14 +112,41 @@ public class GraphMemMvcc extends GraphMem {
     }
 
     /**
-     * Builds the index over the currently-live triples. Only meaningful for the
-     * {@link IndexingStrategy#MANUAL MANUAL} strategy; a no-op otherwise. After
-     * this call pattern lookups are served from the index.
+     * Builds the index over the current triples. After this call pattern lookups
+     * are served from the index, like an {@code EAGER} graph. A no-op for
+     * {@code EAGER} (always indexed) and when the index is already built.
      */
     public void initializeIndex() {
         mvccTripleStore.versionControl().lockWriter();
         try {
             mvccTripleStore.initializeIndex();
+        } finally {
+            mvccTripleStore.versionControl().unlockWriter();
+        }
+    }
+
+    /**
+     * Like {@link #initializeIndex()} but builds the index in parallel, which can be
+     * faster for larger graphs.
+     */
+    public void initializeIndexParallel() {
+        mvccTripleStore.versionControl().lockWriter();
+        try {
+            mvccTripleStore.initializeIndexParallel();
+        } finally {
+            mvccTripleStore.versionControl().unlockWriter();
+        }
+    }
+
+    /**
+     * Clears the index and reverts to the configured indexing strategy's behaviour
+     * ({@code MANUAL}/{@code MINIMAL} stop serving lookups from an index until it is
+     * rebuilt). A no-op for {@code EAGER}, which stays fully indexed.
+     */
+    public void clearIndex() {
+        mvccTripleStore.versionControl().lockWriter();
+        try {
+            mvccTripleStore.clearIndex();
         } finally {
             mvccTripleStore.versionControl().unlockWriter();
         }

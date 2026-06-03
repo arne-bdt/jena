@@ -354,6 +354,28 @@ public class MvccTripleStoreTest extends AbstractTripleStoreTest {
         }
     }
 
+    private static void initializeIndex(MvccTripleStore store, boolean parallel) {
+        store.versionControl().lockWriter();
+        try {
+            if (parallel) {
+                store.initializeIndexParallel();
+            } else {
+                store.initializeIndex();
+            }
+        } finally {
+            store.versionControl().unlockWriter();
+        }
+    }
+
+    private static void clearIndex(MvccTripleStore store) {
+        store.versionControl().lockWriter();
+        try {
+            store.clearIndex();
+        } finally {
+            store.versionControl().unlockWriter();
+        }
+    }
+
     @Test
     public void manualInitializeIndexBuildsAndServes() {
         final var store = new MvccTripleStore(IndexingStrategy.MANUAL);
@@ -363,17 +385,81 @@ public class MvccTripleStoreTest extends AbstractTripleStoreTest {
         });
         assertFalse(store.isIndexInitialized());
 
-        store.versionControl().lockWriter();
-        try {
-            store.initializeIndex();
-        } finally {
-            store.versionControl().unlockWriter();
-        }
+        initializeIndex(store, false);
         assertTrue(store.isIndexInitialized());
 
         final MvccReadView v = store.openReadView();
         try {
-            assertEquals(2, countFind(v, Triple.create(triple("s1 p1 o1").getSubject(), Node.ANY, Node.ANY)));
+            assertEquals(2, countFind(v, Triple.create(node("s1"), Node.ANY, Node.ANY)));
+        } finally {
+            v.close();
+        }
+    }
+
+    @Test
+    public void manualInitializeIndexParallelBuildsAndServes() {
+        final var store = new MvccTripleStore(IndexingStrategy.MANUAL);
+        write(store, w -> {
+            for (int i = 0; i < 200; i++) {
+                w.add(triple("s" + (i % 7) + " p o" + i));
+            }
+        });
+        assertFalse(store.isIndexInitialized());
+
+        initializeIndex(store, true);   // parallel build
+        assertTrue(store.isIndexInitialized());
+
+        final MvccReadView v = store.openReadView();
+        try {
+            // The parallel (one-dimension-per-thread) build must agree with a scan.
+            assertEquals(200, v.count());
+            assertEquals(200, countFind(v, Triple.create(Node.ANY, node("p"), Node.ANY)));
+            assertTrue(v.contains(Triple.create(node("s3"), Node.ANY, Node.ANY)));
+        } finally {
+            v.close();
+        }
+    }
+
+    @Test
+    public void minimalInitializeIndexUpgradesAndSurvivesVacuum() {
+        final var store = new MvccTripleStore(IndexingStrategy.MINIMAL);
+        write(store, w -> {
+            for (int i = 0; i < 10; i++) {
+                w.add(triple("s p o" + i));
+            }
+        });
+        assertFalse(store.isIndexInitialized());
+
+        initializeIndex(store, false);  // MINIMAL upgraded to serve from an index
+        assertTrue(store.isIndexInitialized());
+
+        vacuum(store);                  // a vacuum must preserve the built index
+        assertTrue("vacuum must preserve a built MINIMAL index", store.isIndexInitialized());
+
+        final MvccReadView v = store.openReadView();
+        try {
+            assertEquals(10, countFind(v, Triple.create(node("s"), Node.ANY, Node.ANY)));
+        } finally {
+            v.close();
+        }
+    }
+
+    @Test
+    public void clearIndexRevertsManualToThrowing() {
+        final var store = new MvccTripleStore(IndexingStrategy.MANUAL);
+        write(store, w -> w.add(triple("s1 p1 o1")));
+
+        initializeIndex(store, false);
+        assertTrue(store.isIndexInitialized());
+
+        clearIndex(store);
+        assertFalse(store.isIndexInitialized());
+
+        final MvccReadView v = store.openReadView();
+        try {
+            assertThrows(UnsupportedOperationException.class,
+                    () -> v.find(Triple.create(node("s1"), Node.ANY, Node.ANY)).toList());
+            assertTrue(v.contains(triple("s1 p1 o1")));   // fully-concrete still works
         } finally {
             v.close();
         }
