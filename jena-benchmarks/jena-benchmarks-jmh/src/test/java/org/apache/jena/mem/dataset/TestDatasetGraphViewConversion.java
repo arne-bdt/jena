@@ -70,15 +70,18 @@ import org.openjdk.jmh.runner.options.TimeValue;
  *   <li><b>TxnMemCow</b> / <b>TxnMemMvcc</b>: the copy-on-write / MVCC in-memory variants.</li>
  * </ul>
  *
- * <h2>Important: escape analysis can hide the conversion</h2>
- * The conversion creates one {@link Triple} or {@link Quad} per row. On a hot loop that simply
- * drops each row ({@code param2_Consumption=count}), C2 escape analysis frequently proves the
- * converted object never escapes and scalar-replaces it, so {@code gc.alloc.rate.norm} shows the
- * conversion as ~0 — it measures it away. The realistic case is {@code consume} (default), which
- * hands every row to a {@code Blackhole} so it escapes, the way a real caller (binding, collection,
- * SPARQL solution) would retain it; only then is the per-row conversion visible. Where it
- * materializes it is byte-exact: one {@code Quad} = 32 B, one {@code Triple} = 24 B,
- * {@code Triple->Quad->Triple} = 56 B.
+ * <h2>Important: the conversion is a non-escaping temporary the JIT may scalar-replace</h2>
+ * The conversion creates one {@link Triple} or {@link Quad} per row. When the row is dropped
+ * ({@code param2_Consumption=count}) that temporary does not escape, so C2 escape analysis
+ * <em>may</em> scalar-replace it and {@code gc.alloc.rate.norm} drops to ~0 — measuring the
+ * conversion away. Whether this happens is JVM/scale/data dependent (observed eliding at ~6.75M
+ * rows on one JVM, but not at ~2M on another). The {@code consume} mode (default) hands every row
+ * to a {@code Blackhole} so it escapes, the way a real caller (binding, collection, SPARQL
+ * solution) would retain it; it is the conservative choice that never under-reports. Read the
+ * <b>delta between the triple API and the quad API on the same store</b> rather than absolute
+ * numbers: it is byte-exact — one {@code Quad} = 32 B, one {@code Triple} = 24 B,
+ * {@code Triple->Quad->Triple} = 56 B. (Absolute per-row numbers also include the underlying
+ * graph's own iteration cost, which itself varies with data and size.)
  * <p>
  * Two costs are tangled here and should be read separately:
  * <ol>
