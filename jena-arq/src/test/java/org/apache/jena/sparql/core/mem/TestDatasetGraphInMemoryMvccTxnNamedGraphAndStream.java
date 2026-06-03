@@ -189,6 +189,12 @@ public class TestDatasetGraphInMemoryMvccTxnNamedGraphAndStream {
             assertEquals(generic.size(), optimized.size(), "size, strategy=" + s);
             assertEquals(generic.isEmpty(), optimized.isEmpty(), "isEmpty, strategy=" + s);
             for (Triple pat : patterns) {
+                // MANUAL throws on partial-pattern lookups until the index is built,
+                // and the dataset has no initializeIndex hook, so skip those here
+                // (the throwing contract is covered at the graph/store level).
+                if (s == IndexingStrategy.MANUAL && isPartialPattern(pat)) {
+                    continue;
+                }
                 assertEquals(toSet(generic.find(pat)), toSet(optimized.find(pat)),
                         "find " + pat + " strategy=" + s);
                 assertEquals(generic.contains(pat), optimized.contains(pat),
@@ -197,6 +203,14 @@ public class TestDatasetGraphInMemoryMvccTxnNamedGraphAndStream {
                         "stream " + pat + " strategy=" + s);
             }
         }
+    }
+
+    /** @return whether {@code pat} binds one or two of S/P/O (a partial pattern). */
+    private static boolean isPartialPattern(Triple pat) {
+        int bound = (pat.getSubject().isConcrete() ? 1 : 0)
+                + (pat.getPredicate().isConcrete() ? 1 : 0)
+                + (pat.getObject().isConcrete() ? 1 : 0);
+        return bound == 1 || bound == 2;
     }
 
     // ----- read-your-writes / quad consistency for a named graph ------------

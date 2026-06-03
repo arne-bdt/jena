@@ -134,6 +134,9 @@ public class TestGraphMemIndexedSetMvccTxnContract {
 
     @Test
     public void streamPartialPatternsAgreeAcrossStrategies() {
+        // MANUAL is excluded: partial-pattern lookups throw until the index is
+        // built (see manualThrowsOnPatternLookupUntilInitialized).
+        IndexingStrategy[] nonManual = {IndexingStrategy.EAGER, IndexingStrategy.MINIMAL};
         Set<Triple> goldStandard;
         {
             GraphMemIndexedSetMvccTxn eager = populated(IndexingStrategy.EAGER, 8);
@@ -142,7 +145,7 @@ public class TestGraphMemIndexedSetMvccTxnContract {
                     .collect(Collectors.toCollection(HashSet::new));
             eager.end();
         }
-        for (IndexingStrategy s : STRATEGIES) {
+        for (IndexingStrategy s : nonManual) {
             GraphMemIndexedSetMvccTxn g = populated(s, 8);
             g.begin(TxnType.READ);
             Set<Triple> got = g.stream(n("s3"), null, null)
@@ -150,6 +153,39 @@ public class TestGraphMemIndexedSetMvccTxnContract {
             g.end();
             assertEquals(goldStandard, got, "strategy=" + s);
         }
+    }
+
+    /**
+     * MANUAL: a partial-pattern lookup throws {@link UnsupportedOperationException}
+     * until {@link GraphMemIndexedSetMvccTxn#initializeIndex()} is called (in a
+     * write transaction), while fully-concrete lookups bypass the index throughout.
+     * Mirrors {@code GraphMemIndexedSetCowTxnStrategyTest}.
+     */
+    @Test
+    public void manualThrowsOnPatternLookupUntilInitialized() {
+        GraphMemIndexedSetMvccTxn g = populated(IndexingStrategy.MANUAL, 5);
+
+        g.begin(TxnType.READ);
+        try {
+            assertThrows(UnsupportedOperationException.class,
+                    () -> g.contains(n("s3"), null, null));
+            // Fully-concrete lookup bypasses the strategy.
+            assertTrue(g.contains(t("s3", "p", "o3")));
+        } finally {
+            g.end();
+        }
+
+        // initializeIndex must run inside a write transaction.
+        g.begin(TxnType.WRITE);
+        g.initializeIndex();
+        assertTrue(g.isIndexInitialized());
+        g.commit();
+        g.end();
+
+        // Now pattern lookups work in a fresh read transaction.
+        g.begin(TxnType.READ);
+        assertEquals(2, g.stream(n("s3"), null, null).count());
+        g.end();
     }
 
     // ----- transaction discipline: aborts / read-isolation -----------

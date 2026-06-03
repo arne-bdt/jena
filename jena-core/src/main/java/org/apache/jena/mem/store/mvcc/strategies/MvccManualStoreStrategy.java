@@ -24,11 +24,17 @@ package org.apache.jena.mem.store.mvcc.strategies;
 import org.apache.jena.graph.Triple;
 
 /**
- * Manual MVCC strategy: keeps no index and answers every lookup by a dense scan
- * until the index is explicitly built (under the writer lock), after which it
- * behaves exactly like {@link MvccEagerStoreStrategy}. Useful for the
+ * Manual MVCC strategy backing {@link org.apache.jena.mem.IndexingStrategy#MANUAL}:
+ * keeps no index until it is explicitly built (under the writer lock), after which
+ * it behaves exactly like {@link MvccEagerStoreStrategy}. Useful for the
  * bulk-load-then-index pattern: load with no index maintenance overhead, then
  * build the index once.
+ * <p>
+ * Before the index is built, lookups follow the {@code MANUAL} contract: a genuine
+ * partial pattern (one or two bound terms) throws
+ * {@link UnsupportedOperationException}, while fully-unbound "find all" and
+ * fully-concrete (SPO) lookups — which never need the auxiliary index — are
+ * answered by a dense scan.
  * <p>
  * The built delegate is published through a {@code volatile} so that the
  * write-time build is visible to lock-free readers once installed.
@@ -51,7 +57,38 @@ public final class MvccManualStoreStrategy implements MvccStoreStrategy {
     @Override
     public Candidates candidates(final Triple match) {
         final MvccEagerStoreStrategy d = delegate;
-        return d == null ? Candidates.DENSE : d.candidates(match);
+        if (d != null) {
+            return d.candidates(match);         // built: behave exactly like eager
+        }
+        // Not yet built. Per the IndexingStrategy.MANUAL contract, a genuine
+        // partial pattern (one or two bound terms) must throw until the index is
+        // initialized. Fully-unbound (___) "find all" and fully-concrete (SPO)
+        // lookups never need the auxiliary index — the store answers them by a
+        // dense scan / its full-triple index — so they get a dense candidate set
+        // rather than throwing.
+        if (isPartialPattern(match)) {
+            throw new UnsupportedOperationException(
+                    "Index has not been initialized yet. Please initialize the index before using it.");
+        }
+        return Candidates.DENSE;
+    }
+
+    /**
+     * @return whether {@code match} binds at least one but not all of S/P/O —
+     *     i.e. a partial pattern that needs the auxiliary index.
+     */
+    private static boolean isPartialPattern(final Triple match) {
+        int bound = 0;
+        if (MvccStoreStrategy.isConcrete(match.getSubject())) {
+            bound++;
+        }
+        if (MvccStoreStrategy.isConcrete(match.getPredicate())) {
+            bound++;
+        }
+        if (MvccStoreStrategy.isConcrete(match.getObject())) {
+            bound++;
+        }
+        return bound == 1 || bound == 2;
     }
 
     @Override

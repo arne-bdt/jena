@@ -26,6 +26,7 @@ import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
+import org.apache.jena.mem.store.TripleStore;
 import org.apache.jena.mem.store.indexed.TripleSet;
 import org.apache.jena.mem.store.mvcc.strategies.MvccEagerStoreStrategy;
 import org.apache.jena.mem.store.mvcc.strategies.MvccManualStoreStrategy;
@@ -74,11 +75,23 @@ import java.util.stream.Stream;
  * {@code cutoff = }{@link MvccVersionControl#minActiveReadVersion()}, renumbers
  * survivors, rebuilds the index, and publishes a new generation. Old readers keep
  * their old generation (arrays + index) and are unaffected.
+ *
+ * <h2>Non-transactional facade</h2>
+ * The class also implements the plain {@link TripleStore} contract, backing the
+ * non-transactional {@link org.apache.jena.mem.GraphMemMvcc} graph: each
+ * {@link #add}/{@link #remove}/{@link #clear} is its own atomic commit (applied
+ * directly to the live generation, with no per-call write overlay) and reads run
+ * against the latest committed generation. These convenience methods are
+ * independent of the transactional {@code openWriteTxn}/{@code openReadView} API
+ * above and add no overhead to it.
  */
-public final class MvccTripleStore {
+public final class MvccTripleStore implements TripleStore {
 
     /** {@code till} value of a live slot: visible to every version. */
     public static final long ALIVE = Long.MAX_VALUE;
+
+    /** Match-everything pattern, used by the no-argument {@link #stream()}. */
+    private static final Triple ANY = Triple.create(Node.ANY, Node.ANY, Node.ANY);
 
     private static final int INITIAL_CAPACITY = 16;
 
@@ -257,6 +270,204 @@ public final class MvccTripleStore {
      */
     public MvccWriteTxn openWriteTxn() {
         return new MvccWriteTxn(this, vc.nextWriteVersion(), gen);
+    }
+
+    // ---- Non-transactional TripleStore facade (auto-commit) --------------------
+    //
+    // These implement the plain TripleStore contract so the store can back a
+    // non-transactional GraphMem (org.apache.jena.mem.GraphMemMvcc) and be
+    // exercised by AbstractTripleStoreTest. Each mutation is its own atomic
+    // commit: it grabs the writer slot, applies one change directly to the live
+    // generation (no per-call write-overlay), publishes a new version and
+    // releases. Reads run against the latest published generation, so they need
+    // no transaction. The transactional commit/read-view paths above are not
+    // touched by any of this.
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Auto-commits a single add. Idempotent: a triple already committed-live is
+     * left untouched (no new version is published).
+     */
+    @Override
+    public void add(final Triple triple) {
+        vc.lockWriter();
+        try {
+            if (committedContains(triple)) {
+                return;                         // already live: nothing to do
+            }
+            applyAdd(triple, vc.nextWriteVersion());
+        } finally {
+            vc.unlockWriter();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Auto-commits a single (logical) delete. A triple that is absent or already
+     * deleted is a no-op and publishes no new version.
+     */
+    @Override
+    public void remove(final Triple triple) {
+        vc.lockWriter();
+        try {
+            if (!committedContains(triple)) {
+                return;                         // absent or already deleted
+            }
+            applyRemove(triple, vc.nextWriteVersion());
+        } finally {
+            vc.unlockWriter();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Publishes a fresh, empty generation. Readers holding an earlier generation
+     * are unaffected (they keep their own arrays + index), so snapshot isolation
+     * is preserved exactly as for a vacuum.
+     */
+    @Override
+    public void clear() {
+        vc.lockWriter();
+        try {
+            if (gen.count() == 0) {
+                return;                         // already empty: no version bump
+            }
+            final long v = vc.nextWriteVersion();
+            final long[] since = new long[INITIAL_CAPACITY];
+            final long[] till = new long[INITIAL_CAPACITY];
+            Arrays.fill(since, ALIVE);
+            Arrays.fill(till, ALIVE);
+            gen = new Gen(v, new Triple[INITIAL_CAPACITY], since, till, 0, 0,
+                    createIndex(indexingStrategy), new MvccTripleIndex());
+            vc.publish(v);
+        } finally {
+            vc.unlockWriter();
+        }
+    }
+
+    /** {@inheritDoc} The number of triples live in the latest committed generation. */
+    @Override
+    public int countTriples() {
+        return gen.liveCount();
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return gen.liveCount() == 0;
+    }
+
+    @Override
+    public boolean contains(final Triple tripleMatch) {
+        final Gen g = gen;
+        return contains(g, g.version(), tripleMatch);
+    }
+
+    @Override
+    public ExtendedIterator<Triple> find(final Triple tripleMatch) {
+        final Gen g = gen;
+        return find(g, g.version(), tripleMatch);
+    }
+
+    @Override
+    public Stream<Triple> stream() {
+        final Gen g = gen;
+        return stream(g, g.version(), ANY);
+    }
+
+    @Override
+    public Stream<Triple> stream(final Triple tripleMatch) {
+        final Gen g = gen;
+        return stream(g, g.version(), tripleMatch);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Returns an independent store (its own version timeline) holding the
+     * currently-live triples, built under a single write transaction. The
+     * indexing strategy is preserved; the dead slots and version history of this
+     * store are not carried over.
+     */
+    @Override
+    public MvccTripleStore copy() {
+        final Gen g = gen;
+        final long v = g.version();
+        final MvccTripleStore c = new MvccTripleStore(indexingStrategy);
+        c.vc.lockWriter();
+        try {
+            final MvccWriteTxn w = c.openWriteTxn();
+            for (int slot = 0; slot < g.count(); slot++) {
+                if (visible(g, slot, v)) {
+                    w.add(g.keys()[slot]);
+                }
+            }
+            if (w.hasChanges()) {
+                c.commit(w);
+            }
+        } finally {
+            c.vc.unlockWriter();
+        }
+        return c;
+    }
+
+    /**
+     * Append one triple at a fresh slot and publish a new generation. Mirrors the
+     * add branch of {@link #commit(MvccWriteTxn)} for a single triple: stamp
+     * {@code till} then {@code since} (written last, so a premature index
+     * observation reads the invisible {@code ALIVE} default), update both indices,
+     * then release-publish the new generation before advancing the clock. Must be
+     * called with the writer lock held and only when {@code triple} is not
+     * committed-live (callers check); a re-add of a deleted triple correctly
+     * appends a new slot. Adds create no dead slots, so no auto-vacuum is needed.
+     */
+    private void applyAdd(final Triple triple, final long v) {
+        final Gen g = gen;
+        Triple[] keys = g.keys();
+        long[] since = g.since();
+        long[] till = g.till();
+        final int count = g.count();
+
+        if (count + 1 > keys.length) {
+            int newLen = keys.length;
+            while (newLen < count + 1) {
+                final int grown = (newLen >> 1) + newLen;
+                newLen = grown < 0 ? Integer.MAX_VALUE : grown;
+            }
+            keys = Arrays.copyOf(keys, newLen);
+            since = growVersions(since, newLen);
+            till = growVersions(till, newLen);
+        }
+
+        keys[count] = triple;
+        LONGS.setOpaque(till, count, ALIVE);
+        LONGS.setOpaque(since, count, v);
+        g.index().onCommitAdd(triple, count);
+        g.spo().put(triple, count);             // insert, or update a deleted entry
+
+        gen = new Gen(v, keys, since, till, count + 1, g.liveCount() + 1, g.index(), g.spo());
+        vc.publish(v);
+    }
+
+    /**
+     * Stamp {@code till} on the committed-live slot of {@code triple} and publish
+     * a new generation; auto-vacuums afterwards on the same dead-ratio rule as
+     * {@link #commit(MvccWriteTxn)}. Must be called with the writer lock held and
+     * only when {@code triple} is committed-live (callers check).
+     */
+    private void applyRemove(final Triple triple, final long v) {
+        final Gen g = gen;
+        final int slot = g.spo().slotOf(triple);   // known live (caller checked)
+        LONGS.setOpaque(g.till(), slot, v);
+        final Gen g1 = new Gen(v, g.keys(), g.since(), g.till(), g.count(),
+                g.liveCount() - 1, g.index(), g.spo());
+        gen = g1;
+        vc.publish(v);
+        if (shouldAutoVacuum(g1)) {
+            gen = compact(g1, vc.minActiveReadVersion());
+        }
     }
 
     // ---- Visibility & scanning -------------------------------------------------

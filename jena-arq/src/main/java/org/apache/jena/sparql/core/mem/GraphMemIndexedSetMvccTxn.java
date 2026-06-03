@@ -40,6 +40,10 @@ import java.util.stream.Stream;
 
 /**
  * Transactional, MVCC variant of {@link org.apache.jena.mem.GraphMemIndexedSet}.
+ * The non-transactional counterpart — the same {@link MvccTripleStore} behind the
+ * plain {@link org.apache.jena.graph.Graph} surface — is
+ * {@link org.apache.jena.mem.GraphMemMvcc}; this class adds the transactional
+ * behaviour on top.
  * Unlike the copy-on-write {@link GraphMemIndexedSetCowTxn}, it never copies the
  * store: all transactions share a single {@link MvccTripleStore} and isolation is
  * provided by per-triple version stamps. {@code begin} is therefore O(1) — a read

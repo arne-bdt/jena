@@ -24,6 +24,8 @@ package org.apache.jena.mem.store.mvcc;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.mem.IndexingStrategy;
+import org.apache.jena.mem.store.AbstractTripleStoreTest;
+import org.apache.jena.mem.store.TripleStore;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -35,12 +37,25 @@ import static org.apache.jena.testing_framework.GraphHelper.triple;
 import static org.junit.Assert.*;
 
 /**
- * Unit tests for the low-level MVCC store, focusing on the properties that
- * distinguish it from the copy-on-write variant: O(1)-begin snapshot isolation,
- * logical (version-stamped) deletes, multi-version delete-then-readd, and
- * undo-free abort.
+ * Tests for the low-level MVCC store.
+ * <p>
+ * The plain {@link TripleStore} contract (add / remove / contains / find / stream /
+ * count / copy, value semantics) is inherited from {@link AbstractTripleStoreTest},
+ * exercised through the store's non-transactional auto-commit facade on an
+ * {@link IndexingStrategy#EAGER} store.
+ * <p>
+ * The tests defined here focus on the properties that distinguish the MVCC store
+ * from the copy-on-write variant and that the generic contract cannot reach:
+ * O(1)-begin snapshot isolation, logical (version-stamped) deletes, multi-version
+ * delete-then-readd, undo-free abort, vacuum/auto-vacuum, lock-free concurrent
+ * reads, and the MANUAL/MINIMAL strategy behaviours.
  */
-public class MvccTripleStoreTest {
+public class MvccTripleStoreTest extends AbstractTripleStoreTest {
+
+    @Override
+    protected TripleStore createTripleStore() {
+        return new MvccTripleStore(IndexingStrategy.EAGER);
+    }
 
     private static void write(MvccTripleStore store, Consumer<MvccWriteTxn> ops) {
         store.versionControl().lockWriter();
@@ -61,74 +76,6 @@ public class MvccTripleStoreTest {
 
     private static int countFind(MvccReadView v, Triple pattern) {
         return v.find(pattern).toList().size();
-    }
-
-    @Test
-    public void addContainsCountFind() {
-        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
-        write(store, w -> {
-            w.add(triple("s1 p1 o1"));
-            w.add(triple("s1 p2 o2"));
-            w.add(triple("s2 p1 o3"));
-        });
-        final MvccReadView v = store.openReadView();
-        try {
-            assertEquals(3, v.count());
-            assertFalse(v.isEmpty());
-            assertTrue(v.contains(triple("s1 p1 o1")));
-            assertFalse(v.contains(triple("s9 p9 o9")));
-            assertEquals(3, countFind(v, Triple.create(Node.ANY, Node.ANY, Node.ANY)));
-        } finally {
-            v.close();
-        }
-    }
-
-    @Test
-    public void partialPatternContainsAndFindSelectByEachDimension() {
-        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
-        write(store, w -> {
-            w.add(triple("s1 p1 o1"));
-            w.add(triple("s1 p2 o2"));
-            w.add(triple("s2 p1 o2"));
-        });
-        final MvccReadView v = store.openReadView();
-        try {
-            // Two-bound contains across each pair of dimensions: present vs. a
-            // combination whose individual nodes exist but never co-occur.
-            assertTrue(v.contains(Triple.create(node("s1"), node("p2"), Node.ANY)));  // SP_
-            assertFalse(v.contains(Triple.create(node("s2"), node("p2"), Node.ANY))); // SP_ no co-occurrence
-            assertTrue(v.contains(Triple.create(node("s1"), Node.ANY, node("o2"))));  // S_O
-            assertFalse(v.contains(Triple.create(node("s2"), Node.ANY, node("o1")))); // S_O no co-occurrence
-            assertTrue(v.contains(Triple.create(Node.ANY, node("p1"), node("o2"))));  // _PO
-            assertFalse(v.contains(Triple.create(Node.ANY, node("p2"), node("o1")))); // _PO no co-occurrence
-
-            // Find counts must be independent of which (shortest) index list is chosen.
-            assertEquals(2, countFind(v, Triple.create(node("s1"), Node.ANY, Node.ANY)));   // S__
-            assertEquals(2, countFind(v, Triple.create(Node.ANY, node("p1"), Node.ANY)));   // _P_
-            assertEquals(2, countFind(v, Triple.create(Node.ANY, Node.ANY, node("o2"))));   // __O
-            assertEquals(1, countFind(v, Triple.create(node("s1"), node("p1"), Node.ANY))); // SP_
-            assertEquals(1, countFind(v, Triple.create(Node.ANY, node("p1"), node("o2")))); // _PO
-            assertEquals(1, countFind(v, Triple.create(node("s1"), node("p2"), node("o2")))); // SPO
-        } finally {
-            v.close();
-        }
-    }
-
-    @Test
-    public void absentConcreteComponentShortCircuitsToEmpty() {
-        final var store = new MvccTripleStore(IndexingStrategy.EAGER);
-        write(store, w -> w.add(triple("s1 p1 o1")));
-        final MvccReadView v = store.openReadView();
-        try {
-            // Subject and predicate exist, but the object node was never added: the
-            // absent dimension makes the whole pattern empty regardless of the rest.
-            assertFalse(v.contains(Triple.create(node("s1"), node("p1"), node("oX"))));
-            assertEquals(0, countFind(v, Triple.create(node("s1"), node("p1"), node("oX"))));
-            assertFalse(v.contains(Triple.create(node("s1"), Node.ANY, node("oX"))));
-            assertEquals(0, countFind(v, Triple.create(Node.ANY, node("pX"), node("o1"))));
-        } finally {
-            v.close();
-        }
     }
 
     @Test
@@ -330,19 +277,14 @@ public class MvccTripleStoreTest {
         }
     }
 
-    @Test
-    public void partialPatternsEager() {
-        assertPartialPatterns(IndexingStrategy.EAGER);
-    }
-
+    /**
+     * MINIMAL keeps no index and answers partial patterns by a dense scan, so the
+     * counts must match those an EAGER store would give. (EAGER's own partial
+     * patterns are covered by the inherited {@link AbstractTripleStoreTest}.)
+     */
     @Test
     public void partialPatternsMinimal() {
         assertPartialPatterns(IndexingStrategy.MINIMAL);
-    }
-
-    @Test
-    public void partialPatternsManual() {
-        assertPartialPatterns(IndexingStrategy.MANUAL);
     }
 
     private void assertPartialPatterns(IndexingStrategy strategy) {
@@ -374,6 +316,64 @@ public class MvccTripleStoreTest {
             assertTrue(v.contains(t1));
             // ANY_ANY_ANY
             assertEquals(3, countFind(v, Triple.create(Node.ANY, Node.ANY, Node.ANY)));
+        } finally {
+            v.close();
+        }
+    }
+
+    /**
+     * MANUAL keeps no index until explicitly built: a partial-pattern lookup must
+     * throw {@link UnsupportedOperationException} until then, while fully-concrete
+     * (SPO) and fully-unbound (find-all / count) lookups never need the index and
+     * work throughout. (Matches the {@link IndexingStrategy#MANUAL} contract and
+     * the copy-on-write store's behaviour.)
+     */
+    @Test
+    public void manualPartialPatternThrowsUntilInitialized() {
+        final var store = new MvccTripleStore(IndexingStrategy.MANUAL);
+        write(store, w -> {
+            w.add(triple("s1 p1 o1"));
+            w.add(triple("s1 p2 o2"));
+        });
+        assertFalse(store.isIndexInitialized());
+
+        final MvccReadView v = store.openReadView();
+        try {
+            // Partial patterns throw until the index is built.
+            assertThrows(UnsupportedOperationException.class,
+                    () -> v.find(Triple.create(node("s1"), Node.ANY, Node.ANY)).toList());
+            assertThrows(UnsupportedOperationException.class,
+                    () -> v.contains(Triple.create(node("s1"), Node.ANY, Node.ANY)));
+            // Fully-concrete and fully-unbound lookups never need the index.
+            assertTrue(v.contains(triple("s1 p1 o1")));
+            assertFalse(v.contains(triple("s1 p1 missing")));
+            assertEquals(2, v.count());
+            assertEquals(2, countFind(v, Triple.create(Node.ANY, Node.ANY, Node.ANY)));
+        } finally {
+            v.close();
+        }
+    }
+
+    @Test
+    public void manualInitializeIndexBuildsAndServes() {
+        final var store = new MvccTripleStore(IndexingStrategy.MANUAL);
+        write(store, w -> {
+            w.add(triple("s1 p1 o1"));
+            w.add(triple("s1 p2 o2"));
+        });
+        assertFalse(store.isIndexInitialized());
+
+        store.versionControl().lockWriter();
+        try {
+            store.initializeIndex();
+        } finally {
+            store.versionControl().unlockWriter();
+        }
+        assertTrue(store.isIndexInitialized());
+
+        final MvccReadView v = store.openReadView();
+        try {
+            assertEquals(2, countFind(v, Triple.create(triple("s1 p1 o1").getSubject(), Node.ANY, Node.ANY)));
         } finally {
             v.close();
         }
@@ -630,31 +630,6 @@ public class MvccTripleStoreTest {
         }
         if (error.get() != null) {
             throw new AssertionError("writer thread failed", error.get());
-        }
-    }
-
-    @Test
-    public void manualInitializeIndexBuildsAndServes() {
-        final var store = new MvccTripleStore(IndexingStrategy.MANUAL);
-        write(store, w -> {
-            w.add(triple("s1 p1 o1"));
-            w.add(triple("s1 p2 o2"));
-        });
-        assertFalse(store.isIndexInitialized());
-
-        store.versionControl().lockWriter();
-        try {
-            store.initializeIndex();
-        } finally {
-            store.versionControl().unlockWriter();
-        }
-        assertTrue(store.isIndexInitialized());
-
-        final MvccReadView v = store.openReadView();
-        try {
-            assertEquals(2, countFind(v, Triple.create(triple("s1 p1 o1").getSubject(), Node.ANY, Node.ANY)));
-        } finally {
-            v.close();
         }
     }
 }
