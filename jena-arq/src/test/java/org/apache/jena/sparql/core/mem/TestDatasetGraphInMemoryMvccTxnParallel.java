@@ -22,6 +22,7 @@
 package org.apache.jena.sparql.core.mem;
 
 import org.apache.jena.atlas.iterator.Iter;
+import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.mem.IndexingStrategy;
@@ -86,6 +87,33 @@ public class TestDatasetGraphInMemoryMvccTxnParallel {
                 countFindPattern(par, NodeFactory.createURI("http://ex/s")));
     }
 
+    @Test
+    public void parallelCrossGraphStreamAgreesWithSequential() {
+        DatasetGraphInMemoryMvccTxn seq = populated(MvccTripleStore.ParallelMode.SEQUENTIAL);
+        DatasetGraphInMemoryMvccTxn par = populated(MvccTripleStore.ParallelMode.PARALLEL);
+
+        // Wildcard-graph stream takes the dedicated parallel per-graph-stream path
+        // under PARALLEL with >= 16 graphs; results must match sequential.
+        assertEquals(2L * GRAPHS, countStreamAny(seq));
+        assertEquals(countStreamAny(seq), countStreamAny(par),
+                "parallel cross-graph stream must agree with sequential");
+
+        final Node s = NodeFactory.createURI("http://ex/s");
+        assertEquals((long) GRAPHS, countStreamPattern(seq, s));
+        assertEquals(countStreamPattern(seq, s), countStreamPattern(par, s));
+    }
+
+    @Test
+    public void unionGraphStreamAgrees() {
+        DatasetGraphInMemoryMvccTxn seq = populated(MvccTripleStore.ParallelMode.SEQUENTIAL);
+        DatasetGraphInMemoryMvccTxn par = populated(MvccTripleStore.ParallelMode.PARALLEL);
+        // The union graph deduplicates triples: (s,p,o0..oN-1) are distinct (GRAPHS)
+        // and (s2,p,o) repeats in every graph -> 1, so GRAPHS + 1 in total.
+        assertEquals((long) GRAPHS + 1, countUnionGraphStream(seq));
+        assertEquals(countUnionGraphStream(seq), countUnionGraphStream(par),
+                "parallel union-graph stream must agree with sequential");
+    }
+
     private static long countFindAny(DatasetGraphInMemoryMvccTxn dsg) {
         return Txn.calculateRead(dsg,
                 () -> Iter.count(dsg.find(Node.ANY, Node.ANY, Node.ANY, Node.ANY)));
@@ -94,5 +122,22 @@ public class TestDatasetGraphInMemoryMvccTxnParallel {
     private static long countFindPattern(DatasetGraphInMemoryMvccTxn dsg, Node subject) {
         return Txn.calculateRead(dsg,
                 () -> Iter.count(dsg.find(Node.ANY, subject, Node.ANY, Node.ANY)));
+    }
+
+    private static long countStreamAny(DatasetGraphInMemoryMvccTxn dsg) {
+        return Txn.calculateRead(dsg,
+                () -> dsg.stream(Node.ANY, Node.ANY, Node.ANY, Node.ANY).count());
+    }
+
+    private static long countStreamPattern(DatasetGraphInMemoryMvccTxn dsg, Node subject) {
+        return Txn.calculateRead(dsg,
+                () -> dsg.stream(Node.ANY, subject, Node.ANY, Node.ANY).count());
+    }
+
+    private static long countUnionGraphStream(DatasetGraphInMemoryMvccTxn dsg) {
+        return Txn.calculateRead(dsg, () -> {
+            final Graph union = dsg.getUnionGraph();
+            return union.stream().count();
+        });
     }
 }

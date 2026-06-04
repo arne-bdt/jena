@@ -721,8 +721,6 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
         final Triple match = Triple.createMatch(s, p, o);
         // Default graph and concrete named graphs stream their store natively (the store's
         // own Stream), tagging each triple with its graph node — no find() iterator bridge.
-        // This mirrors the dispatch of DatasetGraphBaseFind.find; union and wildcard graph
-        // terms keep the find()-based path (cross-graph append / union dedup).
         if (Quad.isDefaultGraph(g)) {
             return access(() -> storeStream(defaultStore, match, require())
                     .map(tr -> Quad.create(Quad.defaultGraphIRI, tr)));
@@ -735,7 +733,39 @@ public class DatasetGraphInMemoryMvccTxn extends DatasetGraphTriplesQuads implem
                         : storeStream(store, match, require()).map(tr -> Quad.create(g, tr));
             });
         }
-        return Iter.asStream(find(g, s, p, o));
+        if (Quad.isUnionGraph(g)) {
+            // The union graph deduplicates triples across graphs: keep the find()-based path.
+            return Iter.asStream(find(g, s, p, o));
+        }
+        // Wildcard graph term (null / Node.ANY): the default graph plus every named graph,
+        // mirroring DatasetGraphBaseFind.find. Streams natively and — like the find path,
+        // under ParallelMode.PARALLEL for a read view with enough named graphs — builds the
+        // per-graph named streams in parallel rather than via the find() iterator bridge.
+        return access(() -> {
+            final DsTxnState t = require();
+            final Stream<Quad> dft = storeStream(defaultStore, match, t)
+                    .map(tr -> Quad.create(Quad.defaultGraphIRI, tr));
+            return Stream.concat(dft, streamInNamedGraphs(match, t));
+        });
+    }
+
+    /**
+     * Stream every named graph's matching quads. Under
+     * {@link MvccTripleStore.ParallelMode#PARALLEL} for a read view with at least
+     * {@value #PARALLEL_CROSS_GRAPH_THRESHOLD} named graphs, the per-graph streams
+     * are built in parallel on the common pool (the outer stream stays sequential,
+     * so consumption is lazy); otherwise a sequential flat-map. Read views only —
+     * see {@link #shouldParallelizeCrossGraph}.
+     */
+    private Stream<Quad> streamInNamedGraphs(Triple match, DsTxnState t) {
+        if (shouldParallelizeCrossGraph(t)) {
+            final List<Stream<Quad>> perGraph = namedStores.entrySet().parallelStream()
+                    .map(e -> storeStream(e.getValue(), match, t).map(tr -> Quad.create(e.getKey(), tr)))
+                    .collect(Collectors.toList());
+            return perGraph.stream().flatMap(quadStream -> quadStream);
+        }
+        return namedStores.entrySet().stream()
+                .flatMap(e -> storeStream(e.getValue(), match, t).map(tr -> Quad.create(e.getKey(), tr)));
     }
 
     @Override
