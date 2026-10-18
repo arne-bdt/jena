@@ -21,6 +21,8 @@
 
 package org.apache.jena.sparql.core.mem.txn.helper;
 
+import org.apache.jena.mem.IndexingStrategy;
+import org.apache.jena.mem.store.mvcc.MvccTripleStore;
 import org.apache.jena.sparql.core.DatasetGraph;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemory;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryCowTxn;
@@ -47,8 +49,11 @@ public final class TxnDatasetContext {
     /** New copy-on-write dataset, parallel per-graph fork. */
     public static final String DSG_COW_TXN_PARALLEL = "DatasetGraphInMemoryCowTxn PARALLEL";
 
-    /** New MVCC dataset, version-stamped shared store (O(1) begin). */
-    public static final String DSG_MVCC_TXN = "DatasetGraphInMemoryMvccTxn";
+    /** New MVCC dataset, version-stamped shared store */
+    public static final String DSG_MVCC_TXN_SEQ = "DatasetGraphInMemoryMvccTxn SEQ";
+
+    /** New MVCC dataset, version-stamped shared store  */
+    public static final String DSG_MVCC_TXN_PARALLEL = "DatasetGraphInMemoryMvccTxn PARALLEL";
 
     /** @return a freshly constructed {@link DatasetGraph} for the given variant. */
     public static DatasetGraph createDataset(String variant) {
@@ -59,8 +64,10 @@ public final class TxnDatasetContext {
                     new DatasetGraphInMemoryCowTxn(GraphMemIndexedSetCowTxn.ForkMode.SEQUENTIAL);
             case DSG_COW_TXN_PARALLEL ->
                     new DatasetGraphInMemoryCowTxn(GraphMemIndexedSetCowTxn.ForkMode.PARALLEL);
-            case DSG_MVCC_TXN ->
-                    new DatasetGraphInMemoryMvccTxn();
+            case DSG_MVCC_TXN_SEQ ->
+                    new DatasetGraphInMemoryMvccTxn(IndexingStrategy.EAGER, MvccTripleStore.ParallelMode.SEQUENTIAL);
+            case DSG_MVCC_TXN_PARALLEL ->
+                    new DatasetGraphInMemoryMvccTxn(IndexingStrategy.LAZY_PARALLEL, MvccTripleStore.ParallelMode.PARALLEL);
             default ->
                     throw new IllegalArgumentException(
                             "Unknown TxnDatasetContext variant: " + variant);

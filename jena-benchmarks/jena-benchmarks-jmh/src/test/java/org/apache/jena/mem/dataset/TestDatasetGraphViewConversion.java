@@ -98,6 +98,15 @@ public class TestDatasetGraphViewConversion {
             "../testing/cheeses-0.1.ttl",
             "../testing/pizza.owl.rdf",
             "../testing/data.nt.gz",
+//            "C:/temp/CGMES_ConformityAssessmentScheme_r3-0-2/CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3/v3.0/RealGrid/RealGrid-Merged/RealGrid_EQ.rdf",
+//            "C:/temp/CGMES_ConformityAssessmentScheme_r3-0-2/CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3/v3.0/RealGrid/RealGrid-Merged/RealGrid_SSH.rdf",
+//            "C:/temp/CGMES_ConformityAssessmentScheme_r3-0-2/CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3/v3.0/RealGrid/RealGrid-Merged/RealGrid_TP.rdf",
+//            "C:/temp/CGMES_ConformityAssessmentScheme_r3-0-2/CGMES_ConformityAssessmentScheme_TestConfigurations_v3-0-3/v3.0/RealGrid/RealGrid-Merged/RealGrid_SV.rdf",
+//            "C:/temp/TestGrid_6750000.rdf",
+//            "../testing/BSBM/bsbm-1m.nt.gz",
+//            "../testing/BSBM/bsbm-5m.nt.gz",
+//            "../testing/BSBM/bsbm-25m.nt.gz",
+//            "../testing/BSBM/bsbm-50m.nt.gz",
     })
     public String param0_GraphUri;
 
@@ -214,13 +223,13 @@ public class TestDatasetGraphViewConversion {
     }
 
     private static DatasetGraph createDataset(String impl) {
-        switch (impl) {
-            case "TxnMem":    return DatasetGraphFactory.createTxnMem();
-            case "General":   return DatasetGraphFactory.createGeneral();
-            case "TxnMemCow": return DatasetGraphFactory.createTxnMemCow();
-            case "TxnMemMvcc":return DatasetGraphFactory.createTxnMemMvcc();
-            default: throw new IllegalArgumentException("Unknown dataset implementation: " + impl);
-        }
+        return switch (impl) {
+            case "TxnMem" -> DatasetGraphFactory.createTxnMem();
+            case "General" -> DatasetGraphFactory.createGeneral();
+            case "TxnMemCow" -> DatasetGraphFactory.createTxnMemCow();
+            case "TxnMemMvcc" -> DatasetGraphFactory.createTxnMemMvcc();
+            default -> throw new IllegalArgumentException("Unknown dataset implementation: " + impl);
+        };
     }
 
     @Test
@@ -234,7 +243,7 @@ public class TestDatasetGraphViewConversion {
                 // Keep a full run feasible; bump these up for publication-quality numbers.
                 .warmupIterations(Integer.getInteger("jmh.wi", 3))
                 .measurementIterations(Integer.getInteger("jmh.mi", 5));
-        var seconds = Integer.getInteger("jmh.time", 0);
+        int seconds = Integer.getInteger("jmh.time", 0);
         if (seconds > 0) {
             builder.warmupTime(TimeValue.seconds(seconds)).measurementTime(TimeValue.seconds(seconds));
         }

@@ -33,6 +33,7 @@ import org.apache.shadedJena560.graph.NodeFactory;
 import org.apache.shadedJena560.graph.Triple;
 import org.apache.shadedJena560.mem.GraphMem;
 import org.apache.shadedJena560.riot.RDFDataMgr;
+import org.apache.shadedJena560.sparql.graph.GraphFactory;
 
 public class GraphTripleNodeHelper560 implements GraphTripleNodeHelper<Graph, Triple, Node> {
 
@@ -48,6 +49,7 @@ public class GraphTripleNodeHelper560 implements GraphTripleNodeHelper<Graph, Tr
             case GraphMemRoaringLazyParallel -> new GraphMem2Roaring(IndexingStrategy.LAZY_PARALLEL);
             case GraphMemRoaringMinimal -> new GraphMem2Roaring(IndexingStrategy.MINIMAL);
             case GraphMemRoaringManual -> new GraphMem2Roaring(IndexingStrategy.MANUAL);
+            case GraphFactoryTxnGraph -> GraphFactory.createTxnGraph();
             default -> throw new IllegalStateException("Unexpected value: " + graphClass);
         };
     }

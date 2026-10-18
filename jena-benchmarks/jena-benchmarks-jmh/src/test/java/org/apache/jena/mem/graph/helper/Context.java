@@ -119,6 +119,14 @@ public class Context {
                 this.graphClass = GraphClass.GraphMemRoaringEager;
                 this.jenaVersion = JenaVersion.JENA_5_6_0;
                 break;
+            case "GraphFactory.createTxnGraph() (current)":
+                this.graphClass = GraphClass.GraphFactoryTxnGraph;
+                this.jenaVersion = JenaVersion.CURRENT;
+                break;
+            case "GraphFactory.createTxnGraph() (Jena 5.6.0)":
+                this.graphClass = GraphClass.GraphFactoryTxnGraph;
+                this.jenaVersion = JenaVersion.JENA_5_6_0;
+                break;
             default:
                 throw new IllegalArgumentException("Unknown graph implementation: " + graphImplementation);
         }
@@ -153,6 +161,7 @@ public class Context {
         GraphMemIndexedSetCowTxnEager,
         GraphMemIndexedSetMvccTxnEager,
         DatasetGraphInMemoryMvccTxnEager,
+        GraphFactoryTxnGraph,
     }
 
 

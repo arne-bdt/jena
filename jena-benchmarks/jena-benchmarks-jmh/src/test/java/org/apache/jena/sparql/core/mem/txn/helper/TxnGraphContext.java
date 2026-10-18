@@ -24,6 +24,7 @@ package org.apache.jena.sparql.core.mem.txn.helper;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.mem.GraphMemIndexedSet;
 import org.apache.jena.mem.IndexingStrategy;
+import org.apache.jena.mem.store.mvcc.MvccTripleStore;
 import org.apache.jena.sparql.core.Transactional;
 import org.apache.jena.sparql.core.mem.DatasetGraphInMemory;
 import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn;
@@ -67,9 +68,10 @@ public final class TxnGraphContext {
     public static final String GMIS_COW_TXN_LAZY_PARALLEL  = "GraphMemIndexedSetCowTxn LAZY_PARALLEL";
 
     /** MVCC: version-stamped shared store, O(1) begin (no copy). */
-    public static final String GMIS_MVCC_TXN_EAGER   = "GraphMemIndexedSetMvccTxn EAGER";
-    public static final String GMIS_MVCC_TXN_MINIMAL = "GraphMemIndexedSetMvccTxn MINIMAL";
-    public static final String GMIS_MVCC_TXN_MANUAL  = "GraphMemIndexedSetMvccTxn MANUAL";
+    public static final String GMIS_MVCC_TXN_EAGER         = "GraphMemIndexedSetMvccTxn EAGER";
+    public static final String GMIS_MVCC_TXN_EAGER_PARALLEL = "GraphMemIndexedSetMvccTxn EAGER PARALLEL";
+    public static final String GMIS_MVCC_TXN_MINIMAL       = "GraphMemIndexedSetMvccTxn MINIMAL";
+    public static final String GMIS_MVCC_TXN_MANUAL        = "GraphMemIndexedSetMvccTxn MANUAL";
 
     /**
      * @return a freshly constructed graph for the given variant name.
@@ -101,6 +103,8 @@ public final class TxnGraphContext {
 
             case GMIS_MVCC_TXN_EAGER ->
                     new GraphMemIndexedSetMvccTxn(IndexingStrategy.EAGER);
+            case GMIS_MVCC_TXN_EAGER_PARALLEL ->
+                    new GraphMemIndexedSetMvccTxn(IndexingStrategy.EAGER, MvccTripleStore.ParallelMode.PARALLEL);
             case GMIS_MVCC_TXN_MINIMAL ->
                     new GraphMemIndexedSetMvccTxn(IndexingStrategy.MINIMAL);
             case GMIS_MVCC_TXN_MANUAL ->

@@ -36,6 +36,7 @@ import org.apache.jena.sparql.core.mem.DatasetGraphInMemoryMvccTxn;
 import org.apache.jena.sparql.core.mem.GraphMemIndexedSetCowTxn;
 import org.apache.jena.sparql.core.mem.GraphMemIndexedSetMvccTxn;
 import org.apache.jena.sparql.core.mem.GraphMemIndexedSetTxn;
+import org.apache.jena.sparql.graph.GraphFactory;
 import org.apache.jena.system.Txn;
 
 public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph, Triple, Node> {
@@ -65,6 +66,7 @@ public class GraphTripleNodeHelperCurrent implements GraphTripleNodeHelper<Graph
             // executeWrite recovers via GraphView.getDataset().
             case DatasetGraphInMemoryMvccTxnEager ->
                     new DatasetGraphInMemoryMvccTxn(IndexingStrategy.EAGER).getDefaultGraph();
+            case GraphFactoryTxnGraph -> GraphFactory.createTxnGraph();
         };
     }
 

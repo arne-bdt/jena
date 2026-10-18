@@ -52,29 +52,30 @@ import org.openjdk.jmh.runner.Runner;
 public class TestTxnGraphMEASData {
 
     /** Number of AnalogValue resources to pre-load; each contributes 5 triples. */
-    private static final int NUMBER_OF_ANALOG_VALUES = 15_000;
+    private static final int NUMBER_OF_ANALOG_VALUES = 150_000;
     /** Number of DiscreteValue resources to pre-load; each contributes 5 triples. */
-    private static final int NUMBER_OF_DISCRETE_VALUES = 5_000;
+    private static final int NUMBER_OF_DISCRETE_VALUES = 50_000;
 
     private List<MEASData.AnalogValue> analogValues;
     private List<MEASData.DiscreteValue> discreteValues;
 
     @Param({
-            TxnGraphContext.GMIS_DEFAULT_IN_MEMORY,
+//            TxnGraphContext.GMIS_DEFAULT_IN_MEMORY,
             TxnGraphContext.GMIS_COW_TXN_EAGER_SEQ,
-            TxnGraphContext.GMIS_COW_TXN_EAGER_PARALLEL,
-            TxnGraphContext.GMIS_MVCC_TXN_EAGER
+//            TxnGraphContext.GMIS_COW_TXN_EAGER_PARALLEL,
+            TxnGraphContext.GMIS_MVCC_TXN_EAGER,
+//            TxnGraphContext.GMIS_MVCC_TXN_EAGER_PARALLEL
     })
     public String param1_GraphImplementation;
 
-    @Param({"10", "100", "250", "500", "1000", "2000", "5000", "10000"})
+    //@Param({"10", "100", "250", "500", "1000", "2000", "5000", "10000"})
+    @Param({"100"})
     public int numberOfTransactions;
 
     private Graph sut;
 
     @Benchmark
     @Group("readWrite")
-    @GroupThreads(1)
     public long update() {
         long changes = 0;
         for (int i = 0; i < numberOfTransactions; i++) {
